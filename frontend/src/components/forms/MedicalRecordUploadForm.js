@@ -3,6 +3,7 @@ import { Upload, X, FileText, Image, File, Calendar } from 'lucide-react';
 import ConfirmationModal from '../modals/ConfirmationModal';
 import { useAudit } from '../../hooks/useAudit';
 import { apiFetch } from '../../api/apiService';
+import ThemedSelect from './ThemedSelect';
 
 const MedicalRecordUploadForm = ({ patientId, onSuccess, onCancel, theme = 'light', providers = [] }) => {
   const { logFormView, logCreate, logError, startAction } = useAudit();
@@ -12,12 +13,27 @@ const MedicalRecordUploadForm = ({ patientId, onSuccess, onCancel, theme = 'ligh
     classification: 'General',
     providerId: '',
     recordDate: new Date().toISOString().split('T')[0],
+    // 'local' keeps the document on this server, which is what an
+    // on-premises install wants. Cloud options appear only once a provider is
+    // connected in Admin Settings.
+    destination: 'local',
     file: null
   });
+  const [storageProviders, setStorageProviders] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
   const [preview, setPreview] = useState(null);
   const [showConfirmation, setShowConfirmation] = useState(false);
+
+  // Which cloud destinations are available to offer.
+  useEffect(() => {
+    let cancelled = false;
+    apiFetch('/backup/cloud/providers')
+      .then(r => (r.ok ? r.json() : { providers: [] }))
+      .then(d => { if (!cancelled) setStorageProviders(d.providers || []); })
+      .catch(() => { if (!cancelled) setStorageProviders([]); });
+    return () => { cancelled = true; };
+  }, []);
 
   // Log form view on mount
   useEffect(() => {
@@ -116,6 +132,7 @@ const MedicalRecordUploadForm = ({ patientId, onSuccess, onCancel, theme = 'ligh
       uploadFormData.append('description', formData.description);
       uploadFormData.append('classification', formData.classification);
       uploadFormData.append('recordDate', formData.recordDate);
+      uploadFormData.append('destination', formData.destination);
       if (formData.providerId) {
         uploadFormData.append('providerId', formData.providerId);
       }
@@ -132,6 +149,12 @@ const MedicalRecordUploadForm = ({ patientId, onSuccess, onCancel, theme = 'ligh
 
       const result = await response.json();
 
+      // The record saved but the cloud copy did not. Say so rather than
+      // letting the clinician believe the document reached the provider.
+      if (result.cloudError) {
+        setError(`Saved to this server, but the copy to the cloud failed: ${result.cloudError}`);
+      }
+
       // Log successful upload
       logCreate('MedicalRecordUploadForm', uploadData, {
         module: 'EHR',
@@ -147,6 +170,7 @@ const MedicalRecordUploadForm = ({ patientId, onSuccess, onCancel, theme = 'ligh
 
       // Reset form
       setFormData({
+        destination: formData.destination,
         title: '',
         description: '',
         classification: 'General',
@@ -315,20 +339,45 @@ const MedicalRecordUploadForm = ({ patientId, onSuccess, onCancel, theme = 'ligh
           <label className={`block text-sm mb-2 font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
             Classification
           </label>
-          <select
+          <ThemedSelect
+            theme={theme}
             value={formData.classification}
             onChange={(e) => setFormData({ ...formData, classification: e.target.value })}
-            className={`w-full px-4 py-2 border rounded-lg ${
-              theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'
-            }`}
           >
             {classifications.map((classification) => (
               <option key={classification} value={classification}>
                 {classification}
               </option>
             ))}
-          </select>
+          </ThemedSelect>
         </div>
+
+        {/* Storage destination — only worth showing once somewhere else to
+            put the file exists. */}
+        {storageProviders.length > 0 && (
+          <div>
+            <label className={`block text-sm mb-2 font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+              Store in
+            </label>
+            <ThemedSelect
+              theme={theme}
+              value={formData.destination}
+              onChange={(e) => setFormData({ ...formData, destination: e.target.value })}
+            >
+              <option value="local">This server (stays on premises)</option>
+              {storageProviders.map((p) => (
+                <option key={p.provider} value={p.provider}>{p.label}</option>
+              ))}
+            </ThemedSelect>
+            <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+              {formData.destination === 'local'
+                ? 'The document is kept on this server and is not sent anywhere else.'
+                : `A copy is placed in the AureonCare Uploads folder on ${
+                    storageProviders.find(p => p.provider === formData.destination)?.label || 'the provider'
+                  }.`}
+            </p>
+          </div>
+        )}
 
         {/* Provider Selection */}
         {providers && providers.length > 0 && (
@@ -336,12 +385,10 @@ const MedicalRecordUploadForm = ({ patientId, onSuccess, onCancel, theme = 'ligh
             <label className={`block text-sm mb-2 font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
               Provider (Optional)
             </label>
-            <select
+            <ThemedSelect
+              theme={theme}
               value={formData.providerId}
               onChange={(e) => setFormData({ ...formData, providerId: e.target.value })}
-              className={`w-full px-4 py-2 border rounded-lg ${
-                theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'
-              }`}
             >
               <option value="">Select a provider</option>
               {providers.map((provider) => (
@@ -349,7 +396,7 @@ const MedicalRecordUploadForm = ({ patientId, onSuccess, onCancel, theme = 'ligh
                   Dr. {provider.firstName || provider.first_name} {provider.lastName || provider.last_name}{provider.specialty || provider.specialization ? ` - ${provider.specialty || provider.specialization}` : ''}
                 </option>
               ))}
-            </select>
+            </ThemedSelect>
           </div>
         )}
 

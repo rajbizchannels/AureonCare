@@ -1,5 +1,22 @@
 // API Configuration
-const API_BASE_URL = process.env.REACT_APP_SVC_URL || 'http://localhost:3001/api';
+// SEC-15: default to a RELATIVE base so the API is same-origin with the SPA (vercel.json
+// already routes /api/* to the backend). Same-origin means the session cookie is
+// first-party: it works in every browser, is unaffected by third-party-cookie blocking
+// (Safari/ITP), and can use SameSite=Lax. Setting REACT_APP_SVC_URL to an absolute URL
+// still works but puts the API on another origin, which forces the cross-site cookie mode
+// and keeps the Bearer fallback alive.
+const API_BASE_URL = process.env.REACT_APP_SVC_URL || '/api';
+
+// True when the API shares the SPA's origin — the condition under which the session
+// cookie alone is sufficient and no token needs to be kept in JS-readable storage.
+const API_IS_SAME_ORIGIN = (() => {
+  try {
+    if (API_BASE_URL.startsWith('/')) return true;
+    return new URL(API_BASE_URL, window.location.href).origin === window.location.origin;
+  } catch (_) {
+    return false;
+  }
+})();
 
 console.log('API Service: Base URL configured as:', API_BASE_URL);
 
@@ -7,15 +24,48 @@ console.log('API Service: Base URL configured as:', API_BASE_URL);
  * Get authentication headers using the stored JWT.
  * @returns {Object} Headers object with Authorization: Bearer <token>
  */
+// SEC-15: read the CSRF token from the JS-readable cookie the server sets at login. The
+// session itself lives in an HttpOnly cookie the page cannot read, which is the point.
+const readCookie = (name) => {
+  try {
+    const m = document.cookie.match(new RegExp('(?:^|; )' + name + '=([^;]*)'));
+    return m ? decodeURIComponent(m[1]) : null;
+  } catch (_) {
+    return null;
+  }
+};
+
+/**
+ * Headers for the PUBLIC endpoints — signup, invite acceptance, domain join.
+ *
+ * These are reached with no account, so they deliberately skip authenticatedFetch. But the
+ * API is same-origin, which means the browser attaches any session cookie the visitor
+ * already has WITHOUT being asked. verifyCsrf then sees a cookie-authenticated request and
+ * rejects it for want of a token — so registering a new subscription, or accepting an
+ * invite, failed with 403 for anyone who happened to be signed in or merely had a stale
+ * cookie. Sending the token when we have one keeps the protection and fixes the flow.
+ */
+const publicPostHeaders = () => {
+  const headers = { 'Content-Type': 'application/json' };
+  const csrf = readCookie('ac_csrf');
+  if (csrf) headers['X-CSRF-Token'] = csrf;
+  return headers;
+};
+
 const getAuthHeaders = () => {
   const headers = { 'Content-Type': 'application/json' };
   try {
+    // Transitional: the Bearer token is still sent when present, so a browser that blocks
+    // third-party cookies (Safari/ITP, with the API on another origin) keeps working.
+    // Once the API is served same-site this fallback can be dropped entirely.
     const token = sessionStorage.getItem('token');
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
     }
+    const csrf = readCookie('ac_csrf');
+    if (csrf) headers['X-CSRF-Token'] = csrf;
   } catch (error) {
-    console.error('Error reading token from sessionStorage:', error);
+    console.error('Error building auth headers:', error);
   }
   return headers;
 };
@@ -36,6 +86,9 @@ const authenticatedFetch = async (url, options = {}) => {
 
   const mergedOptions = {
     ...options,
+    // SEC-15: send the HttpOnly session cookie. The API is cross-origin, so this is
+    // required for the cookie to be attached at all (CORS already allows credentials).
+    credentials: 'include',
     headers: {
       ...authHeaders,
       ...(options.headers || {})
@@ -457,6 +510,191 @@ const api = {
     return response.json();
   },
 
+  // ── Secure messaging ──────────────────────────────────────────────────────
+  // The messaging API serves both audiences, so it accepts either credential:
+  // a staff JWT or a patient portal session token. Staff wins when both are
+  // present — a staff member previewing the portal is still acting as staff.
+  _messagingHeaders: (extra = {}) => {
+    const headers = { 'Content-Type': 'application/json', ...extra };
+    try {
+      // Transitional Bearer fallback, same as getAuthHeaders. Since SEC-15 the session
+      // normally lives in an HttpOnly cookie and sessionStorage holds nothing, so this is
+      // usually absent — the cookie sent below is what actually authenticates.
+      const token = sessionStorage.getItem('token') || sessionStorage.getItem('portalSessionToken');
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      const csrf = readCookie('ac_csrf');
+      if (csrf) headers['X-CSRF-Token'] = csrf;
+    } catch (error) {
+      console.error('Error reading session token:', error);
+    }
+    return headers;
+  },
+  _messagingFetch: async (path, options = {}, errorMessage = 'Messaging request failed') => {
+    const response = await fetch(`${API_BASE_URL}/messages${path}`, {
+      ...options,
+      // Without this the HttpOnly session cookie is not attached at all, and every
+      // messaging call answers 401 for any session that has no Bearer token in
+      // sessionStorage — which, after SEC-15, is the normal case. Every other call in this
+      // module goes through authenticatedFetch, which has always sent credentials; this
+      // one path was left behind.
+      credentials: 'include',
+      headers: api._messagingHeaders(options.headers)
+    });
+    if (!response.ok) {
+      const detail = await response.json().catch(() => ({}));
+      throw new Error(detail.error || errorMessage);
+    }
+    return response.json();
+  },
+
+  getMessageThreads: async (filters = {}) => {
+    const params = new URLSearchParams(
+      Object.entries(filters).filter(([, v]) => v !== undefined && v !== null && v !== '')
+    );
+    const query = params.toString() ? `?${params}` : '';
+    return api._messagingFetch(`/threads${query}`, {}, 'Failed to load message threads');
+  },
+  getUnreadMessageCount: async () => {
+    const { count } = await api._messagingFetch('/unread-count', {}, 'Failed to count unread messages');
+    return count;
+  },
+  getMessageThread: async (threadId) =>
+    api._messagingFetch(`/threads/${threadId}`, {}, 'Failed to load thread'),
+  getThreadMessages: async (threadId, { limit, offset } = {}) => {
+    const params = new URLSearchParams();
+    if (limit) params.set('limit', limit);
+    if (offset) params.set('offset', offset);
+    const query = params.toString() ? `?${params}` : '';
+    return api._messagingFetch(`/threads/${threadId}/messages${query}`, {}, 'Failed to load messages');
+  },
+  createMessageThread: async (data) =>
+    api._messagingFetch('/threads', { method: 'POST', body: JSON.stringify(data) }, 'Failed to start conversation'),
+  sendMessage: async (threadId, data) =>
+    api._messagingFetch(`/threads/${threadId}/messages`, { method: 'POST', body: JSON.stringify(data) }, 'Failed to send message'),
+  updateMessageThread: async (threadId, data) =>
+    api._messagingFetch(`/threads/${threadId}`, { method: 'PATCH', body: JSON.stringify(data) }, 'Failed to update conversation'),
+  markThreadRead: async (threadId) =>
+    api._messagingFetch(`/threads/${threadId}/read`, { method: 'POST' }, 'Failed to mark thread as read'),
+  withdrawMessage: async (messageId) =>
+    api._messagingFetch(`/messages/${messageId}`, { method: 'DELETE' }, 'Failed to withdraw message'),
+  addThreadParticipant: async (threadId, participant) =>
+    api._messagingFetch(`/threads/${threadId}/participants`, { method: 'POST', body: JSON.stringify(participant) }, 'Failed to add participant'),
+  removeThreadParticipant: async (threadId, participantRowId) =>
+    api._messagingFetch(`/threads/${threadId}/participants/${participantRowId}`, { method: 'DELETE' }, 'Failed to remove participant'),
+  getMessageRecipients: async (q = '') =>
+    api._messagingFetch(`/recipients?q=${encodeURIComponent(q)}`, {}, 'Failed to load recipients'),
+  /** Patient-safe recipient list — the caller's own care team, never the directory. */
+  getMessageCareTeam: async (patientId) =>
+    api._messagingFetch(
+      `/care-team${patientId ? `?patientId=${encodeURIComponent(patientId)}` : ''}`,
+      {},
+      'Failed to load your care team'
+    ),
+  /** Attachments are fetched as blobs, so this bypasses the JSON helper. */
+  downloadMessageAttachment: async (attachmentId) => {
+    const response = await fetch(`${API_BASE_URL}/messages/attachments/${attachmentId}`, {
+      headers: api._messagingHeaders()
+    });
+    if (!response.ok) throw new Error('Failed to download attachment');
+    return response.blob();
+  },
+
+  // ── Documents filed from secure messages ──────────────────────────────────
+  // A patient may be signed in two ways: with a portal session (portal login)
+  // or with a staff-issued JWT on a users row of role 'patient'. Only the
+  // former can reach /patient-portal/*, only the latter can reach the staff
+  // routers — so each call picks its path from the credential actually held.
+  _hasPortalSession: () => {
+    try {
+      return Boolean(sessionStorage.getItem('portalSessionToken') && !sessionStorage.getItem('token'));
+    } catch {
+      return false;
+    }
+  },
+
+  /**
+   * Forms Requested for the signed-in patient.
+   * /form-management is behind a staff JWT, so a portal session reads the
+   * mirrored portal route instead.
+   */
+  getPatientFormRequests: async (patientId) => {
+    if (api._hasPortalSession()) {
+      const response = await fetch(`${API_BASE_URL}/patient-portal/${patientId}/form-requests`, {
+        headers: api._getPortalAuthHeader(),
+      });
+      if (!response.ok) throw new Error('Failed to load requested forms');
+      return response.json();
+    }
+    return api.getFormSubmissions({ patient_id: patientId });
+  },
+
+  /** Download a document that was filed into Patient Records from a message. */
+  downloadRecordAttachment: async (recordId, attachmentId, patientId) => {
+    const usePortal = api._hasPortalSession();
+    const url = usePortal
+      ? `${API_BASE_URL}/patient-portal/${patientId}/medical-records/${recordId}/attachments/${attachmentId}`
+      : `${API_BASE_URL}/medical-records/${recordId}/attachments/${attachmentId}`;
+    const response = await fetch(url, {
+      headers: usePortal ? api._getPortalAuthHeader() : getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to download document');
+    return response.blob();
+  },
+
+  /** Download the document behind a Forms Requested item. */
+  downloadRequestedDocument: async (submissionId, patientId) => {
+    const usePortal = api._hasPortalSession();
+    const url = usePortal
+      ? `${API_BASE_URL}/patient-portal/${patientId}/form-requests/${submissionId}/document`
+      : `${API_BASE_URL}/form-management/submissions/${submissionId}/document`;
+    const response = await fetch(url, {
+      headers: usePortal ? api._getPortalAuthHeader() : getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error('Failed to download document');
+    return response.blob();
+  },
+
+  /** Complete a document-backed request (read-and-confirm, or sign). */
+  acknowledgeRequestedDocument: async (submissionId, patientId) => {
+    const usePortal = api._hasPortalSession();
+    const url = usePortal
+      ? `${API_BASE_URL}/patient-portal/${patientId}/form-requests/${submissionId}/acknowledge`
+      : `${API_BASE_URL}/form-management/submissions/${submissionId}/acknowledge`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: usePortal
+        ? { 'Content-Type': 'application/json', ...api._getPortalAuthHeader() }
+        : getAuthHeaders(),
+    });
+    if (!response.ok) {
+      const detail = await response.json().catch(() => ({}));
+      throw new Error(detail.error || 'Failed to complete request');
+    }
+    return response.json();
+  },
+
+  /** Patient-supplied documents no one has verified yet, oldest first. */
+  getPendingDocumentReviews: async (limit) => {
+    const query = limit ? `?limit=${limit}` : '';
+    const response = await authenticatedFetch(`${API_BASE_URL}/medical-records/pending-review${query}`);
+    if (!response.ok) throw new Error('Failed to load documents awaiting review');
+    return response.json();
+  },
+
+  /** Staff decision on a patient-supplied document awaiting review. */
+  reviewPatientDocument: async (recordId, decision, notes) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/medical-records/${recordId}/review`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ decision, notes }),
+    });
+    if (!response.ok) {
+      const detail = await response.json().catch(() => ({}));
+      throw new Error(detail.error || 'Failed to review document');
+    }
+    return response.json();
+  },
+
   // Tasks
   getTasks: async () => {
     const response = await authenticatedFetch(`${API_BASE_URL}/tasks`);
@@ -528,14 +766,28 @@ const api = {
     const response = await authenticatedFetch(`${API_BASE_URL}/users/${id}`, {
       method: 'DELETE'
     });
-    if (!response.ok) throw new Error('Failed to delete user');
+    if (!response.ok) {
+      // "Failed to delete user" told the admin nothing — it was the same message whether
+      // the account was in another practice, unlinked, or still referenced by other
+      // records. The server distinguishes those; pass its answer through.
+      const data = await response.json().catch(() => ({}));
+      const detail = data.code || data.detail
+        ? ` [${[data.code, data.detail].filter(Boolean).join(': ')}]`
+        : '';
+      throw new Error((data.error || 'Failed to delete user') + detail);
+    }
     return response.json();
   },
 
   // Providers
   getProviders: async () => {
     const response = await authenticatedFetch(`${API_BASE_URL}/providers`);
-    if (!response.ok) throw new Error('Failed to fetch providers');
+    if (!response.ok) {
+      // The server distinguishes "not linked to a practice" from a generic failure;
+      // discarding the body turned that into an unactionable "Failed to fetch providers".
+      const body = await response.json().catch(() => ({}));
+      throw new Error(body.message || body.error || 'Failed to fetch providers');
+    }
     return response.json();
   },
   getProvider: async (id) => {
@@ -568,14 +820,23 @@ const api = {
   },
 
   // Auth
-  login: async (email, password) => {
+  login: async (email, password, mfaCode) => {
     const response = await authenticatedFetch(`${API_BASE_URL}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password })
+      body: JSON.stringify({ email, password, mfaCode })
     });
-    if (!response.ok) throw new Error('Failed to login');
-    return response.json();
+    if (!response.ok) {
+      // This used to throw a flat 'Failed to login', discarding what the server said —
+      // including "your account is pending approval" and the second-factor prompt, which
+      // are not failures the user can act on if they never see them.
+      const data = await response.json().catch(() => ({}));
+      const err = new Error(data.error || 'Failed to login');
+      err.mfaRequired = Boolean(data.mfaRequired);
+      err.mfaEnrolmentRequired = Boolean(data.mfaEnrolmentRequired);
+      throw err;
+    }
+    return api._storePortalSessionToken(await response.json());
   },
   changePassword: async (currentPassword, newPassword) => {
     const response = await authenticatedFetch(`${API_BASE_URL}/auth/change-password`, {
@@ -586,7 +847,14 @@ const api = {
       const error = await response.json();
       throw new Error(error.error || 'Failed to change password');
     }
-    return response.json();
+    const data = await response.json();
+    // SEC-09: the server bumps token_version on a password change, invalidating the
+    // token this tab is currently using. It returns a fresh token for this session —
+    // store it so the current tab keeps working while other sessions are revoked.
+    if (data && data.token) {
+      api.storeToken(data.token);
+    }
+    return data;
   },
   forgotPassword: async (email) => {
     const response = await authenticatedFetch(`${API_BASE_URL}/auth/forgot-password`, {
@@ -609,6 +877,40 @@ const api = {
     }
     return response.json();
   },
+  // SEC-20: authorization-code exchange. The browser only ever handles a single-use
+  // code; the provider's access token is redeemed server-side with the client secret and
+  // never enters JavaScript.
+  // `inviteToken` binds the new account to the inviting practice. Without it an OAuth
+  // signup has no practice and lands in an empty workspace.
+  exchangeGoogleCode: async (code, redirectUri, inviteToken) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/auth/oauth/google/exchange`, {
+      method: 'POST',
+      body: JSON.stringify({ code, redirectUri, inviteToken }),
+    });
+    if (!response.ok) {
+      const e = await response.json().catch(() => ({}));
+      // providerError is the short OAuth/AADSTS code. Showing it turns an unactionable
+      // "try again" into something whoever configured the app can look up.
+      throw new Error((e.error || 'Google sign-in failed')
+        + (e.providerError ? ` [${e.providerError}]` : ''));
+    }
+    return api._storePortalSessionToken(await response.json());
+  },
+  exchangeMicrosoftCode: async (code, redirectUri, codeVerifier, inviteToken) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/auth/oauth/microsoft/exchange`, {
+      method: 'POST',
+      body: JSON.stringify({ code, redirectUri, codeVerifier, inviteToken }),
+    });
+    if (!response.ok) {
+      const e = await response.json().catch(() => ({}));
+      // providerError is the short OAuth/AADSTS code. Showing it turns an unactionable
+      // "try again" into something whoever configured the app can look up.
+      throw new Error((e.error || 'Microsoft sign-in failed')
+        + (e.providerError ? ` [${e.providerError}]` : ''));
+    }
+    return api._storePortalSessionToken(await response.json());
+  },
+
   socialLogin: async (provider, providerId, accessToken, email, firstName, lastName, profileData) => {
     const response = await authenticatedFetch(`${API_BASE_URL}/auth/social-login`, {
       method: 'POST',
@@ -616,7 +918,7 @@ const api = {
       body: JSON.stringify({ provider, providerId, accessToken, email, firstName, lastName, profileData })
     });
     if (!response.ok) throw new Error('Failed to login with social account');
-    return response.json();
+    return api._storePortalSessionToken(await response.json());
   },
   socialRegister: async (provider, providerId, accessToken, email, firstName, lastName, profileData) => {
     const response = await authenticatedFetch(`${API_BASE_URL}/auth/social-register`, {
@@ -763,6 +1065,20 @@ const api = {
     const token = sessionStorage.getItem('portalSessionToken');
     return token ? { Authorization: `Bearer ${token}` } : {};
   },
+  // SEC-20: portal authorization-code exchange. The browser holds only a single-use code;
+  // the provider token is redeemed server-side and never enters JavaScript.
+  exchangePortalOAuthCode: async (provider, code, redirectUri, codeVerifier) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/patient-portal/oauth/${provider}/exchange`, {
+      method: 'POST',
+      body: JSON.stringify({ code, redirectUri, codeVerifier }),
+    });
+    if (!response.ok) {
+      const e = await response.json().catch(() => ({}));
+      throw new Error(e.error || 'Sign-in failed');
+    }
+    return response.json();
+  },
+
   patientPortalLogin: async (email, password, provider, providerId, accessToken) => {
     const response = await authenticatedFetch(`${API_BASE_URL}/patient-portal/login`, {
       method: 'POST',
@@ -1508,6 +1824,229 @@ const api = {
     return response.json();
   },
 
+  // Locations (sites)
+  //
+  // The server answers a refused write with { error: <code>, message: <what to do> } —
+  // a site cannot be deleted while history references it, and the primary site cannot be
+  // deleted or deactivated. Surface `message` first so the UI shows the remedy rather
+  // than a generic failure.
+  getLocations: async ({ includeInactive = false, type } = {}) => {
+    const params = new URLSearchParams();
+    if (includeInactive) params.set('includeInactive', 'true');
+    if (type) params.set('type', type);
+    const qs = params.toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/locations${qs ? `?${qs}` : ''}`);
+    if (!response.ok) throw new Error('Failed to fetch locations');
+    return response.json();
+  },
+  getPrimaryLocation: async () => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/locations/primary`);
+    if (response.status === 404) return null; // tenant has no primary site yet
+    if (!response.ok) throw new Error('Failed to fetch primary location');
+    return response.json();
+  },
+  getLocation: async (id) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/locations/${id}`);
+    if (!response.ok) throw new Error('Failed to fetch location');
+    return response.json();
+  },
+  createLocation: async (data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/locations`, {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.message || error.error || 'Failed to create location');
+    }
+    return response.json();
+  },
+  updateLocation: async (id, data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/locations/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.message || error.error || 'Failed to update location');
+    }
+    return response.json();
+  },
+  makeLocationPrimary: async (id) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/locations/${id}/make-primary`, {
+      method: 'POST'
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.message || error.error || 'Failed to set primary location');
+    }
+    return response.json();
+  },
+  deleteLocation: async (id) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/locations/${id}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.message || error.error || 'Failed to delete location');
+    }
+    return response.json();
+  },
+
+  // Practice setup — the specialty configuration wizard.
+  //
+  // getPracticeSetupState is read by the shell on load, not only by the wizard: the
+  // hidden-module list and the terminology overrides come from there. It is readable by
+  // any authenticated user; everything else is admin-only.
+  getPracticeSetupState: async () => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/practice-setup/state`);
+    if (!response.ok) return null; // no tenant, or not configured — the shell carries on
+    return response.json();
+  },
+  savePracticeSetupState: async (data) => api._setupWrite('PUT', '/practice-setup/state', data, 'save setup state'),
+  getSpecialties: async () => api._setupRead('/practice-setup/specialties'),
+  getSpecialtyPacks: async () => api._setupRead('/practice-setup/packs'),
+  getPackFootprint: async (code) => api._setupRead(`/practice-setup/footprint?code=${encodeURIComponent(code)}`),
+  previewSpecialtyPack: async (specialtyCodes) =>
+    api._setupWrite('POST', '/practice-setup/preview', { specialtyCodes }, 'preview the pack'),
+  applySpecialtyPack: async (specialtyCodes, { mode = 'seed', acknowledgeUnreviewed = false } = {}) =>
+    api._setupWrite('POST', '/practice-setup/apply',
+      { specialtyCodes, mode, acknowledgeUnreviewed }, 'apply the pack'),
+  setPinnedModules: async (pinnedModules) =>
+    api._setupWrite('PUT', '/practice-setup/modules', { pinnedModules }, 'update module visibility'),
+  setTerminology: async (terminology) =>
+    api._setupWrite('PUT', '/practice-setup/terminology', { terminology }, 'update terminology'),
+
+  _setupRead: async (path) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}${path}`);
+    if (!response.ok) {
+      const e = await response.json().catch(() => ({}));
+      const err = new Error(e.message || e.error || 'Request failed');
+      err.code = e.error;
+      throw err;
+    }
+    return response.json();
+  },
+  _setupWrite: async (method, path, data, what) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}${path}`, {
+      method, body: JSON.stringify(data),
+    });
+    if (!response.ok) {
+      const e = await response.json().catch(() => ({}));
+      const err = new Error(e.message || e.error || `Failed to ${what}`);
+      err.code = e.error;
+      err.errors = e.errors;
+      err.reviewStatus = e.reviewStatus;
+      throw err;
+    }
+    return response.json();
+  },
+
+  // Medical camps
+  //
+  // The camp API answers a refused action with { error: <code>, message: <what to do> } and,
+  // for a lifecycle change, a `blockers` array naming every outstanding requirement at
+  // once. Surface `message` first; show `blockers` where there is room for a list.
+  getCamps: async ({ status, from, to, locationId } = {}) => {
+    const p = new URLSearchParams();
+    if (status) p.set('status', status);
+    if (from) p.set('from', from);
+    if (to) p.set('to', to);
+    if (locationId) p.set('locationId', locationId);
+    const qs = p.toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/camps${qs ? `?${qs}` : ''}`);
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.message || error.error || 'Failed to fetch camps');
+    }
+    return response.json();
+  },
+  getCamp: async (id) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/camps/${id}`);
+    if (!response.ok) throw new Error('Failed to fetch camp');
+    return response.json();
+  },
+  getCampReadiness: async (id, to) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/camps/${id}/readiness${to ? `?to=${to}` : ''}`);
+    if (!response.ok) throw new Error('Failed to check camp readiness');
+    return response.json();
+  },
+  createCamp: async (data) => api._campWrite('POST', '/camps', data, 'create camp'),
+  updateCamp: async (id, data) => api._campWrite('PUT', `/camps/${id}`, data, 'update camp'),
+  setCampStatus: async (id, status) => api._campWrite('POST', `/camps/${id}/status`, { status }, 'change camp status'),
+  deleteCamp: async (id) => api._campWrite('DELETE', `/camps/${id}`, undefined, 'delete camp'),
+
+  getCampServices: async (id) => api._campRead(`/camps/${id}/services`),
+  addCampService: async (id, data) => api._campWrite('POST', `/camps/${id}/services`, data, 'add service'),
+  removeCampService: async (serviceId) => api._campWrite('DELETE', `/camps/services/${serviceId}`, undefined, 'remove service'),
+
+  getCampStaff: async (id) => api._campRead(`/camps/${id}/staff`),
+  getCampStaffConflicts: async (id, userId) => api._campRead(`/camps/${id}/staff/conflicts?userId=${userId}`),
+  addCampStaff: async (id, data) => api._campWrite('POST', `/camps/${id}/staff`, data, 'roster staff'),
+  removeCampStaff: async (staffId) => api._campWrite('DELETE', `/camps/staff/${staffId}`, undefined, 'remove staff'),
+
+  getCampStations: async (id) => api._campRead(`/camps/${id}/stations`),
+  addCampStation: async (id, data) => api._campWrite('POST', `/camps/${id}/stations`, data, 'add station'),
+  updateCampStation: async (stationId, data) => api._campWrite('PUT', `/camps/stations/${stationId}`, data, 'update station'),
+  removeCampStation: async (stationId) => api._campWrite('DELETE', `/camps/stations/${stationId}`, undefined, 'delete station'),
+
+  getCampAllocations: async (id) => api._campRead(`/camps/${id}/allocations`),
+  getCampCost: async (id) => api._campRead(`/camps/${id}/cost`),
+  issueCampStock: async (id, data) => api._campWrite('POST', `/camps/${id}/allocations`, data, 'issue stock'),
+  reconcileCampStock: async (allocId, data) => api._campWrite('POST', `/camps/allocations/${allocId}/reconcile`, data, 'reconcile stock'),
+
+  getCampBoard: async (id) => api._campRead(`/camps/${id}/board`),
+  getCampStationQueue: async (stationId) => api._campRead(`/camps/stations/${stationId}/queue`),
+  startCampVisit: async (visitId) => api._campWrite('POST', `/camps/visits/${visitId}/start`, {}, 'start visit'),
+  completeCampVisit: async (visitId, data) => api._campWrite('POST', `/camps/visits/${visitId}/complete`, data, 'complete visit'),
+
+  registerCampAttendee: async (data) => api._campWrite('POST', '/camp-registrations', data, 'register attendee'),
+  getCampRegistrations: async (campId, { status, q, promoted } = {}) => {
+    const p = new URLSearchParams({ campId });
+    if (status) p.set('status', status);
+    if (q) p.set('q', q);
+    if (promoted !== undefined) p.set('promoted', String(promoted));
+    return api._campRead(`/camp-registrations?${p.toString()}`);
+  },
+  getCampRegistration: async (id) => api._campRead(`/camp-registrations/${id}`),
+  updateCampRegistration: async (id, data) => api._campWrite('PUT', `/camp-registrations/${id}`, data, 'update registration'),
+  recordCampConsent: async (id, data = {}) => api._campWrite('POST', `/camp-registrations/${id}/consent`, data, 'record consent'),
+  setCampRegistrationStatus: async (id, status) => api._campWrite('POST', `/camp-registrations/${id}/status`, { status }, 'update status'),
+  matchCampRegistration: async (id) => api._campRead(`/camp-registrations/${id}/match`),
+  promoteCampRegistration: async (id, data = {}) => api._campWrite('POST', `/camp-registrations/${id}/promote`, data, 'promote registration'),
+  queueCampAttendee: async (id, stationId) => api._campWrite('POST', `/camp-registrations/${id}/queue`, { stationId }, 'queue attendee'),
+
+  getCampReport: async (campId) => api._campRead(`/camp-reports/${campId}`),
+  // Aggregates only — the server refuses to put attendee data in this response.
+  getCampSponsorReport: async (campId) => api._campRead(`/camp-reports/${campId}/sponsor`),
+
+  _campRead: async (path) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}${path}`);
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      const err = new Error(error.message || error.error || 'Request failed');
+      err.code = error.error;
+      throw err;
+    }
+    return response.json();
+  },
+  _campWrite: async (method, path, data, what) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}${path}`, {
+      method,
+      body: data === undefined ? undefined : JSON.stringify(data),
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      const err = new Error(error.message || error.error || `Failed to ${what}`);
+      err.code = error.error;
+      err.blockers = error.blockers;
+      err.conflicts = error.conflicts;
+      err.references = error.references;
+      throw err;
+    }
+    return response.json();
+  },
+
   // Waitlist
   addToWaitlist: async (data) => {
     const response = await authenticatedFetch(`${API_BASE_URL}/waitlist`, {
@@ -1962,8 +2501,11 @@ const api = {
       method: 'POST'
     });
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Failed to backup to Google Drive' }));
-      throw new Error(errorData.error || 'Failed to backup to Google Drive. Please ensure Google Drive is connected.');
+      const errorData = await response.json().catch(() => ({}));
+      const detail = errorData.details ? `: ${errorData.details}` : '';
+      throw new Error(
+        (errorData.error || 'Failed to backup to Google Drive. Please ensure Google Drive is connected.') + detail
+      );
     }
     return response.json();
   },
@@ -1972,8 +2514,11 @@ const api = {
       method: 'POST'
     });
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ error: 'Failed to backup to OneDrive' }));
-      throw new Error(errorData.error || 'Failed to backup to OneDrive. Please ensure OneDrive is connected.');
+      const errorData = await response.json().catch(() => ({}));
+      const detail = errorData.details ? `: ${errorData.details}` : '';
+      throw new Error(
+        (errorData.error || 'Failed to backup to OneDrive. Please ensure OneDrive is connected.') + detail
+      );
     }
     return response.json();
   },
@@ -1988,6 +2533,55 @@ const api = {
     }
     return response.json();
   },
+  // Which cloud destinations are connected. Used to decide whether to upload
+  // straight away or ask the admin which one to use.
+  getCloudBackupProviders: async () => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/backup/cloud/providers`);
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      const detail = err.details ? `: ${err.details}` : '';
+      throw new Error((err.error || 'Failed to load backup destinations') + detail);
+    }
+    const data = await response.json();
+    return data.providers || [];
+  },
+  backupToCloud: async (provider) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/backup/cloud`, {
+      method: 'POST',
+      body: JSON.stringify({ provider })
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      const detail = err.details ? `: ${err.details}` : '';
+      throw new Error((err.error || 'Backup failed') + detail);
+    }
+    return response.json();
+  },
+  listCloudBackups: async (provider) => {
+    const response = await authenticatedFetch(
+      `${API_BASE_URL}/backup/cloud/list?provider=${encodeURIComponent(provider)}`
+    );
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      const detail = err.details ? `: ${err.details}` : '';
+      throw new Error((err.error || 'Failed to list backups') + detail);
+    }
+    const data = await response.json();
+    return data.backups || [];
+  },
+  restoreFromCloudBackup: async (provider, fileId) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/backup/cloud/restore`, {
+      method: 'POST',
+      body: JSON.stringify({ provider, fileId })
+    });
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      const detail = err.details ? `: ${err.details}` : '';
+      throw new Error((err.error || 'Failed to restore backup') + detail);
+    }
+    return response.json();
+  },
+
   getBackupConfig: async () => {
     const response = await authenticatedFetch(`${API_BASE_URL}/backup/config`);
     if (!response.ok) {
@@ -2202,7 +2796,15 @@ const api = {
         body: JSON.stringify(auditData)
       });
       if (!response.ok) {
-        console.warn('Failed to create audit log:', response.status);
+        // The status alone is not diagnosable: a 503 here means "this schema has no
+        // audit_logs table", "this account has no tenant workspace", or a genuinely
+        // missing migration, and the server says which in the body. Logging only the
+        // number throws that away and sends whoever is debugging back to the server log.
+        const body = await response.json().catch(() => null);
+        console.warn(
+          'Failed to create audit log:', response.status,
+          body ? `${body.error || ''} ${body.message || ''}`.trim() : '(no response body)'
+        );
         return null;
       }
       return response.json();
@@ -3006,12 +3608,20 @@ const api = {
   // Backup & Archive
   getAccountBackups: async () => {
     const response = await authenticatedFetch(`${API_BASE_URL}/accounts/backup`);
-    if (!response.ok) throw new Error('Failed to fetch backups');
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      const detail = err.details ? `: ${err.details}` : '';
+      throw new Error((err.error || 'Failed to fetch backups') + detail);
+    }
     return response.json();
   },
   createAccountBackup: async (data) => {
     const response = await authenticatedFetch(`${API_BASE_URL}/accounts/backup`, { method: 'POST', body: JSON.stringify(data) });
-    if (!response.ok) { const err = await response.json().catch(() => ({})); throw new Error(err.error || 'Backup failed'); }
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({}));
+      const detail = err.details ? `: ${err.details}` : '';
+      throw new Error((err.error || 'Backup failed') + detail);
+    }
     return response.json();
   },
   archiveAccountRecords: async (data) => {
@@ -3182,7 +3792,11 @@ const api = {
   },
   createInventoryBackup: async (data) => {
     const r = await authenticatedFetch(`${API_BASE_URL}/inventory/backup`, { method: 'POST', body: JSON.stringify(data) });
-    if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Backup failed'); }
+    if (!r.ok) {
+      const e = await r.json().catch(() => ({}));
+      const detail = e.details ? `: ${e.details}` : '';
+      throw new Error((e.error || 'Backup failed') + detail);
+    }
     return r.json();
   },
 
@@ -3295,8 +3909,20 @@ const api = {
     return r.json();
   },
 
+  // SEC-15: re-fetch identity instead of persisting the user object in the browser.
+  getCurrentUser: async () => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/auth/me`);
+    if (!r.ok) throw new Error('Failed to fetch current user');
+    return r.json();
+  },
+
   // Token lifecycle helpers — called by LoginPage (store) and App logout (clear)
   storeToken: (token) => {
+    // SEC-15: when the API is same-origin the HttpOnly session cookie carries the session,
+    // so the token is deliberately NOT persisted — nothing for an XSS to steal. It is kept
+    // only in the cross-origin deployment, where a browser blocking third-party cookies
+    // would otherwise be unable to authenticate at all.
+    if (API_IS_SAME_ORIGIN) return;
     try {
       sessionStorage.setItem('token', token);
     } catch (e) {
@@ -3306,8 +3932,281 @@ const api = {
   clearToken: () => {
     try {
       sessionStorage.removeItem('token');
+      sessionStorage.removeItem('portalSessionToken');
     } catch (e) {
       console.error('Failed to clear token:', e);
+    }
+  },
+  // A login response carries portalSessionToken only when the account is a patient with
+  // portal access. Unlike the JWT above this is always persisted, same-origin or not: the
+  // portal's router.param guard reads the Authorization header and nothing else, so there
+  // is no cookie to fall back on. This mirrors what PatientLoginPage already does after a
+  // direct portal login.
+  _storePortalSessionToken: (data) => {
+    if (!data || !data.portalSessionToken) return data;
+    try {
+      sessionStorage.setItem('portalSessionToken', data.portalSessionToken);
+    } catch (e) {
+      console.error('Failed to store portal session token:', e);
+    }
+    return data;
+  },
+  // SEC-16: revoke the session server-side before dropping local state. Bumps the
+  // account's token_version (invalidating this and any other clinician JWT) and clears
+
+  // ── Self-serve signup (public — no auth header) ─────────────────────────────
+  signupPlans: async () => {
+    const r = await fetch(`${API_BASE_URL}/signup/plans`);
+    if (!r.ok) throw new Error('Failed to load plans');
+    return r.json();
+  },
+
+  checkPromoCode: async (code) => {
+    const r = await fetch(`${API_BASE_URL}/signup/promo/${encodeURIComponent(code)}`);
+    if (!r.ok) throw new Error((await r.json().catch(() => ({}))).error || 'Invalid code');
+    return r.json();
+  },
+
+  startSignup: async (payload) => {
+    const r = await fetch(`${API_BASE_URL}/signup`, {
+      method: 'POST',
+      headers: publicPostHeaders(),
+      body: JSON.stringify(payload),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || 'Signup failed');
+    return data;
+  },
+
+  signupStatus: async (intentId) => {
+    const r = await fetch(`${API_BASE_URL}/signup/${intentId}/status`);
+    if (!r.ok) throw new Error('Failed to check signup status');
+    return r.json();
+  },
+
+
+  // ── Subscription plans (tenant-facing) ─────────────────────────────────────
+  getSubscriptionPlans: async () => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/plans`);
+    if (!r.ok) throw new Error('Failed to load plans');
+    return r.json();
+  },
+
+  getCurrentSubscription: async () => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/plans/current`);
+    if (!r.ok) throw new Error('Failed to load your current plan');
+    return r.json();
+  },
+
+  previewPlanChange: async (planId) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/plans/preview/${planId}`);
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d.error || 'Could not price that change');
+    return d;
+  },
+
+  changePlan: async (planId, prorationDate) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/plans/current`, {
+      method: 'PUT',
+      body: JSON.stringify({ plan_id: planId, prorationDate }),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d.error || 'Could not change the plan');
+    return d;
+  },
+
+  // ── Staff invites ──────────────────────────────────────────────────────────
+  lookupInvite: async (token) => {
+    const r = await fetch(`${API_BASE_URL}/invites/lookup/${encodeURIComponent(token)}`);
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || 'This invite is no longer valid.');
+    return data;
+  },
+
+  acceptInvite: async (payload) => {
+    const r = await fetch(`${API_BASE_URL}/invites/accept`, {
+      method: 'POST',
+      headers: publicPostHeaders(),
+      body: JSON.stringify(payload),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || 'Failed to accept invite');
+    return data;
+  },
+
+  listInvites: async () => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/invites`);
+    if (!r.ok) throw new Error('Failed to load invites');
+    return r.json();
+  },
+
+  createInvite: async (payload) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/invites`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || 'Failed to create invite');
+    return data;
+  },
+
+  revokeInvite: async (id) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/invites/${id}`, { method: 'DELETE' });
+    if (!r.ok) throw new Error('Failed to revoke invite');
+    return r.json();
+  },
+
+  // ── Team access: claimed email domains and join requests ──────────────────
+  listDomains: async () => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/team-access/domains`);
+    if (!r.ok) throw new Error('Failed to load domains');
+    return r.json();
+  },
+
+  claimDomain: async (payload) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/team-access/domains`, {
+      method: 'POST', body: JSON.stringify(payload),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || 'Failed to claim domain');
+    return data;
+  },
+
+  verifyDomain: async (id) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/team-access/domains/${id}/verify`, { method: 'POST' });
+    const data = await r.json().catch(() => ({}));
+    // The 400 here is "not published yet", which is ordinary rather than exceptional —
+    // carry the hint through so the panel can show it.
+    if (!r.ok) throw new Error(data.hint ? `${data.error} ${data.hint}` : (data.error || 'Verification failed'));
+    return data;
+  },
+
+  updateDomain: async (id, payload) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/team-access/domains/${id}`, {
+      method: 'PATCH', body: JSON.stringify(payload),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || 'Failed to update domain');
+    return data;
+  },
+
+  removeDomain: async (id) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/team-access/domains/${id}`, { method: 'DELETE' });
+    if (!r.ok) throw new Error('Failed to remove domain');
+    return r.json();
+  },
+
+  listJoinRequests: async () => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/team-access/requests`);
+    if (!r.ok) throw new Error('Failed to load join requests');
+    return r.json();
+  },
+
+  decideJoinRequest: async (id, decision) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/team-access/requests/${id}/${decision}`, {
+      method: 'POST', body: JSON.stringify({}),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || 'Failed to record the decision');
+    return data;
+  },
+
+  getSecurityPolicy: async () => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/team-access/security-policy`);
+    if (!r.ok) throw new Error('Failed to load the security policy');
+    return r.json();
+  },
+
+  updateSecurityPolicy: async (payload) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/team-access/security-policy`, {
+      method: 'PATCH', body: JSON.stringify(payload),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      // The lockout refusal names the accounts at fault; carry that through rather than
+      // reducing it to "failed", which leaves the admin nothing to act on.
+      const who = Array.isArray(data.administratorsWithout) && data.administratorsWithout.length
+        ? ` (${data.administratorsWithout.join(', ')})` : '';
+      throw new Error((data.error || 'Failed to update the security policy') + who);
+    }
+    return data;
+  },
+
+  // ── Two-factor authentication (own account) ───────────────────────────────
+  getMfaStatus: async () => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/auth/mfa/status`);
+    if (!r.ok) throw new Error('Failed to read two-factor status');
+    return r.json();
+  },
+
+  startMfaEnrolment: async () => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/auth/mfa/enroll`, { method: 'POST', body: '{}' });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || 'Failed to start enrolment');
+    return data;
+  },
+
+  confirmMfaEnrolment: async (code) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/auth/mfa/verify`, {
+      method: 'POST', body: JSON.stringify({ code }),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || 'That code is not valid');
+    return data;
+  },
+
+  disableMfa: async (password, code) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/auth/mfa/disable`, {
+      method: 'POST', body: JSON.stringify({ password, code }),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || 'Failed to turn off two-factor authentication');
+    return data;
+  },
+
+  regenerateBackupCodes: async (code) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/auth/mfa/backup-codes`, {
+      method: 'POST', body: JSON.stringify({ code }),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || 'Failed to regenerate recovery codes');
+    return data;
+  },
+
+  // Public — no account yet, so these bypass authenticatedFetch deliberately.
+  lookupJoinDomain: async (email) => {
+    const r = await fetch(`${API_BASE_URL}/team-access/lookup?email=${encodeURIComponent(email)}`);
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || 'Could not check that address');
+    return data;
+  },
+
+  joinPractice: async (payload) => {
+    const r = await fetch(`${API_BASE_URL}/team-access/join`, {
+      method: 'POST',
+      headers: publicPostHeaders(),
+      body: JSON.stringify(payload),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || 'Could not complete signup');
+    return data;
+  },
+
+  // portal sessions. Best-effort: local logout still proceeds if the request fails.
+  logout: async () => {
+    try {
+      await authenticatedFetch(`${API_BASE_URL}/auth/logout`, { method: 'POST' });
+    } catch (e) {
+      console.error('Server-side logout failed (clearing local session anyway):', e);
+    }
+    // If a portal session token is present, revoke it server-side too.
+    try {
+      const portalToken = sessionStorage.getItem('portalSessionToken');
+      if (portalToken) {
+        await api.patientPortalLogout(portalToken);
+      }
+    } catch (e) {
+      console.error('Portal logout failed (clearing local session anyway):', e);
     }
   }
 };

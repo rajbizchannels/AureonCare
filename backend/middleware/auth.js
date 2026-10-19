@@ -1,22 +1,106 @@
 const jwt = require('jsonwebtoken');
+const { resolveTenantForUser } = require('../services/tenantCatalog');
+const { makeTenantDb } = require('../db/requestTenantDb');
+const { getSessionCookie } = require('../utils/authCookies');
 
 const JWT_SECRET = process.env.AC_TK_S;
 const JWT_EXPIRY = '24h';
+// SEC-11: pin the signing/verification algorithm. HS256 is symmetric; pinning it
+// blocks algorithm-confusion attacks (e.g. a forged token declaring alg:"none" or
+// asking the verifier to treat our secret as an RSA public key).
+const JWT_ALGORITHMS = ['HS256'];
 
-if (!JWT_SECRET) {
-  console.warn('[auth] WARNING: AC_TK_S env var is not set — JWT signing will fail');
+// SEC-10: fail fast at startup rather than warning. A missing or weak signing
+// secret is a critical misconfiguration — booting with one would let anyone mint
+// valid tokens. Require at least 32 bytes of entropy (256 bits).
+const MIN_SECRET_BYTES = 32;
+if (!JWT_SECRET || Buffer.byteLength(String(JWT_SECRET), 'utf8') < MIN_SECRET_BYTES) {
+  throw new Error(
+    `[auth] FATAL: AC_TK_S must be set to a strong secret of at least ${MIN_SECRET_BYTES} bytes ` +
+    `(got ${JWT_SECRET ? Buffer.byteLength(String(JWT_SECRET), 'utf8') + ' bytes' : 'unset'}). ` +
+    `Refusing to start with an insecure JWT signing secret.`
+  );
 }
+
+/**
+ * SEC-15: the bearer token may arrive in the Authorization header (existing clients) or
+ * in the HttpOnly session cookie (browser clients, which cannot read it from JS). The
+ * header is preferred so a stale cookie never shadows an explicit token.
+ */
+const extractToken = (req) => {
+  const authHeader = req.headers['authorization'];
+  if (authHeader && authHeader.startsWith('Bearer ')) return authHeader.slice(7);
+  return getSessionCookie(req);
+};
 
 /**
  * Issue a signed JWT for a user record.
  * Call this at login/social-login and include the result in the response.
+ *
+ * The "tv" claim carries the user's current token_version. authenticate re-checks
+ * it against the DB, so bumping token_version (on password change/reset/logout)
+ * invalidates every JWT minted before the bump. Defaults to 0 for freshly created
+ * users whose row was returned without the column.
  */
 const signToken = (user) =>
   jwt.sign(
-    { sub: String(user.id), role: user.role, email: user.email },
+    {
+      sub: String(user.id),
+      role: user.role,
+      email: user.email,
+      tv: user.token_version ?? 0,
+      // SEC-05 (S3): tenant hint. Informational only — the tenant boundary is
+      // re-resolved from the DB on every request (never trusted from the claim).
+      pid: user.practice_id ?? null
+    },
     JWT_SECRET,
-    { expiresIn: JWT_EXPIRY }
+    { expiresIn: JWT_EXPIRY, algorithm: JWT_ALGORITHMS[0] }
   );
+
+/**
+ * SEC-05 (S3): resolve and attach the caller's tenant to the request.
+ * Defensive by design — if the control plane / practice_id column is not yet present
+ * (migrations 063/065 not applied on this environment), it logs once and falls back
+ * to the default 'public' schema rather than failing authentication. Sets
+ * req.user.practiceId and req.tenant = { practiceId, tenantId, schemaName }.
+ * No route consumes req.tenant yet, so this is currently transparent.
+ */
+const attachTenantContext = async (pool, req, userId) => {
+  let schemaName = 'public';
+  try {
+    const t = await resolveTenantForUser(pool, userId);
+    if (t) {
+      if (req.user) req.user.practiceId = t.practiceId;
+      schemaName = t.schemaName || 'public';
+      req.tenant = { practiceId: t.practiceId, tenantId: t.tenantId, schemaName };
+    } else {
+      req.tenant = { practiceId: (req.user && req.user.practiceId) || null, tenantId: null, schemaName };
+    }
+    // Falling back to `public` used to be harmless — it WAS the single default tenant.
+    // Since the SEC-05 cutover it holds no clinical tables, so this fallback guarantees
+    // that every tenant-scoped route will fail with `relation ... does not exist` and
+    // return its own opaque 500. Say so once, here, naming the account, rather than
+    // leaving the cause to be inferred from forty identical errors downstream.
+    // GET /api/auth/tenant-status reports the same thing to the signed-in user.
+    if (schemaName === 'public') {
+      console.warn(
+        `[auth] user ${userId} resolved to the public schema (practice_id=` +
+        `${(req.tenant && req.tenant.practiceId) || 'null'}). It holds no tenant tables, so ` +
+        'tenant-scoped requests for this account will fail — the account is not bound to an active tenant.'
+      );
+    }
+  } catch (err) {
+    console.warn('[auth] tenant resolution unavailable, defaulting to public schema:', err.message);
+    req.tenant = { practiceId: (req.user && req.user.practiceId) || null, tenantId: null, schemaName };
+  }
+  // Per-request tenant-scoped DB handle. Routes adopt `req.db` during the sweep; it is
+  // released when the response ends. Behaviour-preserving for the single default tenant.
+  try {
+    req.db = makeTenantDb(pool, schemaName, req.res);
+  } catch (err) {
+    console.warn('[auth] could not attach tenant db handle:', err.message);
+  }
+};
 
 /**
  * Verify a Bearer JWT and confirm the user is still active in the DB.
@@ -24,16 +108,15 @@ const signToken = (user) =>
  */
 const authenticate = async (req, res, next) => {
   try {
-    const authHeader = req.headers['authorization'];
+    const token = extractToken(req);
 
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    if (!token) {
       return res.status(401).json({ error: 'Authentication required' });
     }
 
-    const token = authHeader.slice(7);
     let payload;
     try {
-      payload = jwt.verify(token, JWT_SECRET);
+      payload = jwt.verify(token, JWT_SECRET, { algorithms: JWT_ALGORITHMS });
     } catch (err) {
       const msg = err.name === 'TokenExpiredError'
         ? 'Token expired, please log in again'
@@ -44,7 +127,11 @@ const authenticate = async (req, res, next) => {
     // Confirm user is still active — catches deactivated accounts after token issue
     const pool = req.app.locals.pool;
     const result = await pool.query(
-      'SELECT id, email, role, first_name, last_name FROM users WHERE id = $1 AND status = $2',
+      `SELECT u.id, u.email, u.role, u.first_name, u.last_name, u.token_version,
+              u.last_activity_at, p.session_idle_minutes
+         FROM users u
+         LEFT JOIN public.practices p ON p.id = u.practice_id
+        WHERE u.id = $1 AND u.status = $2`,
       [payload.sub, 'active']
     );
 
@@ -53,6 +140,34 @@ const authenticate = async (req, res, next) => {
     }
 
     const user = result.rows[0];
+
+    // SEC-09: reject tokens minted before the last revocation (password change/reset/logout).
+    if ((user.token_version ?? 0) !== (payload.tv ?? 0)) {
+      return res.status(401).json({ error: 'Session expired, please log in again' });
+    }
+
+    // Idle timeout, enforced HERE rather than by shortening the JWT's own lifetime, because
+    // the policy is about inactivity: a clinician working continuously should not be thrown
+    // out mid-note, and one who walked away from an unlocked workstation should be. The
+    // check is server-side because a client-side timer protects nobody holding the token.
+    const idleLimit = user.session_idle_minutes;
+    if (idleLimit && user.last_activity_at) {
+      const idleMs = Date.now() - new Date(user.last_activity_at).getTime();
+      if (idleMs > idleLimit * 60 * 1000) {
+        return res.status(401).json({
+          sessionTimedOut: true,
+          error: `Signed out after ${idleLimit} minutes of inactivity. Please log in again.`,
+        });
+      }
+    }
+    // Refresh the activity stamp, but not on every single request — a write per request
+    // would put the whole app behind one row's lock. A minute of granularity is far finer
+    // than any timeout worth setting.
+    if (!user.last_activity_at || Date.now() - new Date(user.last_activity_at).getTime() > 60_000) {
+      pool.query('UPDATE users SET last_activity_at = now() WHERE id = $1', [user.id])
+        .catch((err) => console.error('[auth] could not record activity:', err.message));
+    }
+
     req.user = {
       id: user.id,
       email: user.email,
@@ -60,6 +175,9 @@ const authenticate = async (req, res, next) => {
       firstName: user.first_name,
       lastName: user.last_name
     };
+
+    // SEC-05 (S3): attach tenant context (defensive; transparent until routes adopt it).
+    await attachTenantContext(pool, req, user.id);
 
     next();
   } catch (error) {
@@ -96,17 +214,17 @@ const authorize = (...allowedRoles) => {
  */
 const optionalAuth = async (req, res, next) => {
   try {
-    const authHeader = req.headers['authorization'];
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      const token = authHeader.slice(7);
+    const token = extractToken(req);
+    if (token) {
       try {
-        const payload = jwt.verify(token, JWT_SECRET);
+        const payload = jwt.verify(token, JWT_SECRET, { algorithms: JWT_ALGORITHMS });
         const pool = req.app.locals.pool;
         const result = await pool.query(
-          'SELECT id, email, role, first_name, last_name FROM users WHERE id = $1 AND status = $2',
+          'SELECT id, email, role, first_name, last_name, token_version FROM users WHERE id = $1 AND status = $2',
           [payload.sub, 'active']
         );
-        if (result.rows.length > 0) {
+        // SEC-09: only attach the user when the token has not been revoked.
+        if (result.rows.length > 0 && (result.rows[0].token_version ?? 0) === (payload.tv ?? 0)) {
           const user = result.rows[0];
           req.user = {
             id: user.id,
@@ -115,6 +233,8 @@ const optionalAuth = async (req, res, next) => {
             firstName: user.first_name,
             lastName: user.last_name
           };
+          // SEC-05 (S3): attach tenant context for the authenticated caller.
+          await attachTenantContext(pool, req, user.id);
         }
       } catch (_) {
         // Invalid/expired token in optionalAuth — continue as unauthenticated
@@ -138,15 +258,14 @@ const optionalAuth = async (req, res, next) => {
 const requireAdmin = async (req, res, next) => {
   try {
     if (!req.user) {
-      const authHeader = req.headers['authorization'];
-      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      const token = extractToken(req);
+      if (!token) {
         return res.status(401).json({ error: 'Authentication required' });
       }
 
-      const token = authHeader.slice(7);
       let payload;
       try {
-        payload = jwt.verify(token, JWT_SECRET);
+        payload = jwt.verify(token, JWT_SECRET, { algorithms: JWT_ALGORITHMS });
       } catch (err) {
         const msg = err.name === 'TokenExpiredError'
           ? 'Token expired, please log in again'
@@ -157,7 +276,7 @@ const requireAdmin = async (req, res, next) => {
       // Fetch role from the DB — never rely on the JWT role claim for privilege decisions
       const pool = req.app.locals.pool;
       const result = await pool.query(
-        'SELECT id, email, role FROM users WHERE id = $1 AND status = $2',
+        'SELECT id, email, role, token_version FROM users WHERE id = $1 AND status = $2',
         [payload.sub, 'active']
       );
       if (result.rows.length === 0) {
@@ -165,7 +284,15 @@ const requireAdmin = async (req, res, next) => {
       }
 
       const u = result.rows[0];
+
+      // SEC-09: reject revoked tokens on the standalone path too.
+      if ((u.token_version ?? 0) !== (payload.tv ?? 0)) {
+        return res.status(401).json({ error: 'Session expired, please log in again' });
+      }
+
       req.user = { id: u.id, email: u.email, role: u.role };
+      // SEC-05 (S3): attach tenant context on the standalone path.
+      await attachTenantContext(req.app.locals.pool, req, u.id);
     }
 
     if (req.user.role !== 'admin') {

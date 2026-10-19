@@ -1,9 +1,11 @@
 const express = require('express');
 const router = express.Router();
+const cloudStorage = require('../services/cloudBackupStorage');
 const { authenticate, authorize } = require('../middleware/auth');
 
 // All accounts routes require authentication
 router.use(authenticate);
+router.use(require('../middleware/planEnforcement').enforceActiveBilling); // SEC-05 S11: read-only when subscription past_due/canceled
 
 const toCamelCase = (obj) => {
   if (!obj || typeof obj !== 'object') return obj;
@@ -25,7 +27,7 @@ const toSnakeCase = (str) => str.replace(/[A-Z]/g, (c) => `_${c.toLowerCase()}`)
 // GET /api/accounts
 router.get('/', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { type, active, parent_id, search } = req.query;
     let query = `
       SELECT a.*,
@@ -53,7 +55,7 @@ router.get('/', async (req, res) => {
 // GET /api/accounts/:id
 router.get('/:id', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(`
       SELECT a.*,
         p.account_name AS parent_name,
@@ -74,7 +76,7 @@ router.get('/:id', async (req, res) => {
 // POST /api/accounts
 router.post('/', authorize('admin', 'billing_manager'), async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const {
       accountName, accountType, accountSubtype, parentAccountId,
       description, normalBalance, currency, openingBalance,
@@ -122,7 +124,7 @@ router.post('/', authorize('admin', 'billing_manager'), async (req, res) => {
 // PUT /api/accounts/:id
 router.put('/:id', authorize('admin', 'billing_manager'), async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const existing = await pool.query('SELECT * FROM accounts WHERE id = $1', [req.params.id]);
     if (existing.rows.length === 0) return res.status(404).json({ error: 'Account not found' });
     if (existing.rows[0].is_system && req.user.role !== 'admin') {
@@ -164,7 +166,7 @@ router.put('/:id', authorize('admin', 'billing_manager'), async (req, res) => {
 // DELETE /api/accounts/:id (soft-delete via deactivation)
 router.delete('/:id', authorize('admin'), async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const existing = await pool.query('SELECT * FROM accounts WHERE id = $1', [req.params.id]);
     if (existing.rows.length === 0) return res.status(404).json({ error: 'Account not found' });
     if (existing.rows[0].is_system) return res.status(403).json({ error: 'System accounts cannot be deleted' });
@@ -181,7 +183,7 @@ router.delete('/:id', authorize('admin'), async (req, res) => {
 // GET /api/accounts/:id/transactions — ledger view
 router.get('/:id/transactions', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { from, to, limit = 50, offset = 0 } = req.query;
     let query = `
       SELECT jl.*, je.entry_number, je.entry_date, je.description AS entry_description,
@@ -209,7 +211,7 @@ router.get('/:id/transactions', async (req, res) => {
 
 router.get('/journal/entries', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { status, type, from, to, search, limit = 50, offset = 0 } = req.query;
     let query = `
       SELECT je.*,
@@ -238,7 +240,7 @@ router.get('/journal/entries', async (req, res) => {
 
 router.get('/journal/entries/:id', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const jeResult = await pool.query(`
       SELECT je.*, u.first_name || ' ' || u.last_name AS created_by_name
       FROM account_journal_entries je
@@ -263,10 +265,11 @@ router.get('/journal/entries/:id', async (req, res) => {
 });
 
 router.post('/journal/entries', authorize('admin', 'billing_manager'), async (req, res) => {
-  const pool = req.app.locals.pool;
-  const client = await pool.connect();
+  const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
+  const client = await req.app.locals.pool.connect();
   try {
     await client.query('BEGIN');
+    await client.query(`SET LOCAL search_path TO ${req.tenant && /^[a-z_][a-z0-9_]*$/.test(req.tenant.schemaName || '') ? req.tenant.schemaName : 'public'}, public, control`); // SEC-05
     const { entryDate, description, entryType, referenceType, referenceId, referenceNumber,
       notes, isRecurring, recurringFrequency, nextRecurrence, lines } = req.body;
 
@@ -328,10 +331,11 @@ router.post('/journal/entries', authorize('admin', 'billing_manager'), async (re
 
 // POST /api/accounts/journal/entries/:id/post
 router.post('/journal/entries/:id/post', authorize('admin', 'billing_manager'), async (req, res) => {
-  const pool = req.app.locals.pool;
-  const client = await pool.connect();
+  const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
+  const client = await req.app.locals.pool.connect();
   try {
     await client.query('BEGIN');
+    await client.query(`SET LOCAL search_path TO ${req.tenant && /^[a-z_][a-z0-9_]*$/.test(req.tenant.schemaName || '') ? req.tenant.schemaName : 'public'}, public, control`); // SEC-05
     const je = await client.query('SELECT * FROM account_journal_entries WHERE id = $1', [req.params.id]);
     if (je.rows.length === 0) return res.status(404).json({ error: 'Journal entry not found' });
     if (je.rows[0].status !== 'draft') return res.status(409).json({ error: 'Only draft entries can be posted' });
@@ -368,10 +372,11 @@ router.post('/journal/entries/:id/post', authorize('admin', 'billing_manager'), 
 
 // POST /api/accounts/journal/entries/:id/void
 router.post('/journal/entries/:id/void', authorize('admin'), async (req, res) => {
-  const pool = req.app.locals.pool;
-  const client = await pool.connect();
+  const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
+  const client = await req.app.locals.pool.connect();
   try {
     await client.query('BEGIN');
+    await client.query(`SET LOCAL search_path TO ${req.tenant && /^[a-z_][a-z0-9_]*$/.test(req.tenant.schemaName || '') ? req.tenant.schemaName : 'public'}, public, control`); // SEC-05
     const je = await client.query('SELECT * FROM account_journal_entries WHERE id = $1', [req.params.id]);
     if (je.rows.length === 0) return res.status(404).json({ error: 'Journal entry not found' });
     if (!['draft','posted'].includes(je.rows[0].status)) return res.status(409).json({ error: 'Cannot void this entry' });
@@ -414,7 +419,7 @@ router.post('/journal/entries/:id/void', authorize('admin'), async (req, res) =>
 
 router.get('/receivables', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { status, type, aging_bucket, patient_id, payer_id, from, to, search, limit = 100, offset = 0 } = req.query;
     let query = `
       SELECT ar.*,
@@ -450,7 +455,7 @@ router.get('/receivables', async (req, res) => {
 
 router.post('/receivables', authorize('admin', 'billing_manager'), async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { arType, patientId, payerId, accountId, invoiceId, claimId,
       originalAmount, dueDate, serviceDate, notes } = req.body;
     if (!arType || !originalAmount || !dueDate) {
@@ -472,7 +477,7 @@ router.post('/receivables', authorize('admin', 'billing_manager'), async (req, r
 
 router.put('/receivables/:id', authorize('admin', 'billing_manager'), async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { status, paidAmount, adjustedAmount, writtenOffAmount, agingBucket, agingDays,
       collectionStage, lastContactDate, notes } = req.body;
     const result = await pool.query(`
@@ -509,7 +514,7 @@ router.put('/receivables/:id', authorize('admin', 'billing_manager'), async (req
 
 router.get('/payables', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { status, type, from, to, search, limit = 100, offset = 0 } = req.query;
     let query = `
       SELECT ap.*,
@@ -538,7 +543,7 @@ router.get('/payables', async (req, res) => {
 
 router.post('/payables', authorize('admin', 'billing_manager'), async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { apType, vendorName, vendorReference, accountId, invoiceAmount,
       invoiceDate, dueDate, expenseCategory, department, notes } = req.body;
     if (!apType || !vendorName || !invoiceAmount || !invoiceDate || !dueDate) {
@@ -560,7 +565,7 @@ router.post('/payables', authorize('admin', 'billing_manager'), async (req, res)
 
 router.put('/payables/:id', authorize('admin', 'billing_manager'), async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { status, paidAmount, discountAmount, paymentMethod, paymentReference,
       bankAccount, paymentDate, notes } = req.body;
     let approvedBy = null;
@@ -596,7 +601,7 @@ router.put('/payables/:id', authorize('admin', 'billing_manager'), async (req, r
 
 router.get('/reconciliations', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { status, account_id } = req.query;
     let query = `
       SELECT r.*, a.account_name, a.account_number,
@@ -622,7 +627,7 @@ router.get('/reconciliations', async (req, res) => {
 
 router.post('/reconciliations', authorize('admin', 'billing_manager'), async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { accountId, reconciliationType, periodStart, periodEnd, statementBalance, notes } = req.body;
     if (!accountId || !reconciliationType || !periodStart || !periodEnd || statementBalance === undefined) {
       return res.status(400).json({ error: 'accountId, reconciliationType, periodStart, periodEnd, and statementBalance are required' });
@@ -651,7 +656,7 @@ router.post('/reconciliations', authorize('admin', 'billing_manager'), async (re
 
 router.put('/reconciliations/:id', authorize('admin', 'billing_manager'), async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { status, clearedBalance, outstandingDeposits, outstandingChecks, notes } = req.body;
     let completedAt = null; let completedBy = null;
     if (status === 'completed' || status === 'discrepancy') {
@@ -686,7 +691,7 @@ router.put('/reconciliations/:id', authorize('admin', 'billing_manager'), async 
 
 router.get('/statements', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { status, type, patient_id, payer_id } = req.query;
     let query = `
       SELECT s.*,
@@ -714,10 +719,11 @@ router.get('/statements', async (req, res) => {
 });
 
 router.post('/statements', authorize('admin', 'billing_manager', 'receptionist'), async (req, res) => {
-  const pool = req.app.locals.pool;
-  const client = await pool.connect();
+  const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
+  const client = await req.app.locals.pool.connect();
   try {
     await client.query('BEGIN');
+    await client.query(`SET LOCAL search_path TO ${req.tenant && /^[a-z_][a-z0-9_]*$/.test(req.tenant.schemaName || '') ? req.tenant.schemaName : 'public'}, public, control`); // SEC-05
     const { statementType, patientId, payerId, recipientName, recipientEmail,
       statementDate, periodStart, periodEnd, dueDate,
       previousBalance, charges, payments, adjustments, notes, items } = req.body;
@@ -761,7 +767,7 @@ router.post('/statements', authorize('admin', 'billing_manager', 'receptionist')
 
 router.put('/statements/:id/send', authorize('admin', 'billing_manager', 'receptionist'), async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(
       `UPDATE account_statements SET status='sent', sent_at=NOW() WHERE id=$1 RETURNING *`,
       [req.params.id]
@@ -781,7 +787,7 @@ router.put('/statements/:id/send', authorize('admin', 'billing_manager', 'recept
 // Trial Balance
 router.get('/reports/trial-balance', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { as_of_date } = req.query;
     const result = await pool.query(`
       SELECT a.account_number, a.account_name, a.account_type, a.normal_balance,
@@ -805,7 +811,7 @@ router.get('/reports/trial-balance', async (req, res) => {
 // Income Statement (P&L)
 router.get('/reports/income-statement', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { from = new Date(new Date().getFullYear(), 0, 1).toISOString().split('T')[0], to = new Date().toISOString().split('T')[0] } = req.query;
     const result = await pool.query(`
       SELECT a.account_number, a.account_name, a.account_type, a.account_subtype, a.normal_balance,
@@ -841,7 +847,7 @@ router.get('/reports/income-statement', async (req, res) => {
 // Balance Sheet
 router.get('/reports/balance-sheet', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(`
       SELECT account_number, account_name, account_type, account_subtype, normal_balance, current_balance
       FROM accounts
@@ -870,7 +876,7 @@ router.get('/reports/balance-sheet', async (req, res) => {
 // AR Aging Report
 router.get('/reports/ar-aging', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(`
       SELECT ar.*,
         p.first_name || ' ' || p.last_name AS patient_name,
@@ -906,7 +912,7 @@ router.get('/reports/ar-aging', async (req, res) => {
 // AP Aging Report
 router.get('/reports/ap-aging', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(`
       SELECT ap.*, CURRENT_DATE - ap.due_date AS days_overdue
       FROM account_payables ap
@@ -925,7 +931,7 @@ router.get('/reports/ap-aging', async (req, res) => {
 // Snapshot AR Aging
 router.post('/reports/ar-aging/snapshot', authorize('admin', 'billing_manager'), async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { snapshotType = 'combined' } = req.body;
     const aging = await pool.query(`
       SELECT CURRENT_DATE - ar.due_date AS days_overdue, ar.balance_due
@@ -961,7 +967,7 @@ router.post('/reports/ar-aging/snapshot', authorize('admin', 'billing_manager'),
 // Dashboard Stats
 router.get('/reports/dashboard', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const [ar, ap, je, accts] = await Promise.all([
       pool.query(`SELECT COUNT(*) AS count, COALESCE(SUM(balance_due),0) AS total, COALESCE(SUM(CASE WHEN status='open' THEN balance_due END),0) AS open_ar FROM account_receivables WHERE status NOT IN ('paid','written_off')`),
       pool.query(`SELECT COUNT(*) AS count, COALESCE(SUM(balance_due),0) AS total FROM account_payables WHERE status NOT IN ('paid','voided')`),
@@ -991,7 +997,7 @@ router.get('/reports/dashboard', async (req, res) => {
 
 router.get('/rbac/permissions', authorize('admin', 'billing_manager'), async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(`
       SELECT arp.*, u.first_name || ' ' || u.last_name AS updated_by_name
       FROM account_role_permissions arp
@@ -1007,7 +1013,7 @@ router.get('/rbac/permissions', authorize('admin', 'billing_manager'), async (re
 
 router.put('/rbac/permissions', authorize('admin'), async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { roleName, resource, canView, canCreate, canEdit, canDelete, canApprove, canExport } = req.body;
     if (!roleName || !resource) return res.status(400).json({ error: 'roleName and resource are required' });
     const result = await pool.query(`
@@ -1031,7 +1037,7 @@ router.put('/rbac/permissions', authorize('admin'), async (req, res) => {
 
 router.get('/backup', authorize('admin'), async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(`
       SELECT b.*, u.first_name || ' ' || u.last_name AS created_by_name
       FROM account_backups b LEFT JOIN users u ON b.created_by = u.id
@@ -1039,16 +1045,22 @@ router.get('/backup', authorize('admin'), async (req, res) => {
     `);
     res.json(result.rows.map(toCamelCase));
   } catch (err) {
-    res.status(500).json({ error: 'Failed to fetch backups' });
+    // Logged and returned: this handler used to swallow the error entirely,
+    // so a failure left nothing in the server logs and nothing for the client
+    // to show. A missing account_backups table (migration 053 not applied)
+    // looks identical to any other fault without this.
+    console.error('Error fetching account backups:', err);
+    res.status(500).json({ error: 'Failed to fetch backups', details: err.message });
   }
 });
 
 router.post('/backup', authorize('admin'), async (req, res) => {
-  const pool = req.app.locals.pool;
+  const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
   const { backupType = 'full', periodStart, periodEnd } = req.body;
-  const client = await pool.connect();
+  const client = await req.app.locals.pool.connect();
   try {
     await client.query('BEGIN');
+    await client.query(`SET LOCAL search_path TO ${req.tenant && /^[a-z_][a-z0-9_]*$/.test(req.tenant.schemaName || '') ? req.tenant.schemaName : 'public'}, public, control`); // SEC-05
     const backupRecord = await client.query(`
       INSERT INTO account_backups (backup_type, status, period_start, period_end, started_at, created_by)
       VALUES ($1,'running',$2,$3,NOW(),$4) RETURNING *
@@ -1095,11 +1107,28 @@ router.post('/backup', authorize('admin'), async (req, res) => {
     `, [fileName, fileSizeBytes, recordCount, backupId]);
     await client.query('COMMIT');
 
-    // Return backup data directly (in production, store to S3/GCS)
+    // Optionally push a copy to a connected cloud provider. Failing to upload
+    // must not lose the backup the caller just paid for, so the payload is
+    // still returned and the problem reported alongside it.
+    let cloud = null;
+    let cloudError = null;
+    if (destination && cloudStorage.isSupported(destination)) {
+      try {
+        // backup_provider_settings is per-tenant, so the connected provider must be looked
+        // up through this request's schema — the raw pool reads a different one.
+        cloud = await cloudStorage.uploadBackup(req.db || pool, destination, fileName, backupData);
+      } catch (uploadErr) {
+        console.error(`Accounts backup upload to ${destination} failed:`, uploadErr);
+        cloudError = uploadErr.message;
+      }
+    }
+
     res.status(201).json({
       ...toCamelCase(backupRecord.rows[0]),
       fileName, fileSizeBytes, recordCount,
       status: 'completed',
+      cloud,
+      cloudError,
       data: backupData
     });
   } catch (err) {
@@ -1118,7 +1147,7 @@ router.post('/backup', authorize('admin'), async (req, res) => {
 
 router.post('/archive', authorize('admin'), async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { cutoffDate, archiveType = 'journal_entries' } = req.body;
     if (!cutoffDate) return res.status(400).json({ error: 'cutoffDate is required' });
 

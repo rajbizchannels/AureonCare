@@ -1,0 +1,19 @@
+1
+00:00:05,833 --> 00:00:09,320
+Where did the other ten go?
+
+2
+00:00:09,320 --> 00:00:12,316
+Scheduled, no-shows, and the rate between them.
+
+3
+00:00:12,316 --> 00:00:16,309
+Ninety days, because one bad week proves nothing.
+
+4
+00:00:16,309 --> 00:00:20,463
+Late cancellations count too. The slot is gone either way.
+
+5
+00:00:20,463 --> 00:00:22,866
+And the detail names who, and when.

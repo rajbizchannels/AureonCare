@@ -7,6 +7,7 @@ import NewHealthcareOfferingForm from '../components/forms/NewHealthcareOffering
 import { useAudit } from '../hooks/useAudit';
 import { useShellTab } from '../hooks/useShellTab';
 import { FORM_TEMPLATES } from '../data/formTemplates';
+import ThemedSelect from '../components/forms/ThemedSelect';
 import {
   Package,
   FolderTree,
@@ -473,20 +474,16 @@ const OfferingManagementView = ({ activeTab: shellTab, onTabChange }) => {
             </div>
 
             {(activeTab === 'offerings' || activeTab === 'packages') && (
-              <select
+              <ThemedSelect
+                theme={theme}
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
-                className={`px-4 py-2 border rounded-lg ${
-                  theme === 'dark'
-                    ? 'bg-gray-800 border-gray-700 text-white'
-                    : 'bg-white border-gray-300 text-gray-900'
-                }`}
               >
                 <option value="all">All Categories</option>
                 {categories.map(cat => (
                   <option key={cat.id} value={cat.id}>{cat.name}</option>
                 ))}
-              </select>
+              </ThemedSelect>
             )}
 
             <button
@@ -1205,20 +1202,16 @@ const TextAreaField = ({ label, value, onChange, theme }) => (
 const SelectField = ({ label, value, onChange, options, theme }) => (
   <div>
     <label className="block text-sm font-medium mb-1">{label}</label>
-    <select
+    <ThemedSelect
+      theme={theme}
       value={value || ''}
       onChange={(e) => onChange(e.target.value)}
-      className={`w-full px-3 py-2 border rounded-lg ${
-        theme === 'dark'
-          ? 'bg-gray-700 border-gray-600 text-white'
-          : 'bg-white border-gray-300 text-gray-900'
-      }`}
     >
       <option value="">Select...</option>
       {options.map(opt => (
         <option key={opt.value} value={opt.value}>{opt.label}</option>
       ))}
-    </select>
+    </ThemedSelect>
   </div>
 );
 

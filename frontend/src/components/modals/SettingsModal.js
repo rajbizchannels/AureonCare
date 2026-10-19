@@ -3,6 +3,7 @@ import { X, Zap, Mail, MessageCircle } from 'lucide-react';
 import { getTranslations } from '../../config/translations';
 import ConfirmationModal from './ConfirmationModal';
 import { useAudit } from '../../hooks/useAudit';
+import ThemedSelect from '../../components/forms/ThemedSelect';
 
 const SettingsModal = ({
   theme,
@@ -353,11 +354,13 @@ const SettingsModal = ({
                       <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.sessionTimeout}</p>
                       <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.autoLogout}</p>
                     </div>
-                    <select className={`px-4 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}>
+                    <ThemedSelect
+                      theme={theme}
+                      focusClass="focus:border-cyan-500">
                       <option value="15">{t.fifteenMinutes}</option>
                       <option value="30" defaultValue>{t.thirtyMinutes}</option>
                       <option value="60">{t.oneHour}</option>
-                    </select>
+                    </ThemedSelect>
                   </div>
                 </div>
               </div>

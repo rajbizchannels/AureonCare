@@ -181,7 +181,7 @@ npm audit --audit-level=high --prefix frontend
     "severity": "high",
     "justification": "No patch available. Affected code path not reachable in production due to ...",
     "expires": "2026-06-15",
-    "approved_by": "engineer@aureoncare.com",
+    "approved_by": "engineer@aureoncare.tech",
     "approved_date": "2026-03-15"
   }
 ]

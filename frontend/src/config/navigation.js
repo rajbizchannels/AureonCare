@@ -4,6 +4,7 @@ import {
   CalendarDays,
   Calendar,
   List,
+  ListOrdered,
   Clock,
   Stethoscope,
   CalendarClock,
@@ -15,6 +16,7 @@ import {
   ClipboardCheck,
   History,
   UserCircle,
+  MessageSquare,
   HeartPulse,
   Video,
   Pill,
@@ -37,8 +39,10 @@ import {
   ShoppingCart,
   Truck,
   Tag,
+  MapPin,
   Megaphone,
   Send,
+  Tent,
   Sparkles,
   BarChart3,
   Settings,
@@ -140,6 +144,48 @@ export const getNavigation = (t = {}) => [
         ],
       },
       {
+        id: 'scheduling.camps',
+        label: t.camps || 'Medical Camps',
+        items: [
+          {
+            id: 'scheduling.campsPlan',
+            label: t.campTabPlan || 'Camp Planning',
+            description: t.campsPlanDescription || 'Venue, services, staff, stations and supplies',
+            icon: Tent,
+            module: 'camps',
+            tab: 'plan',
+            access: 'camps',
+          },
+          {
+            id: 'scheduling.campsDesk',
+            label: t.campTabDesk || 'Registration Desk',
+            description: t.campsDeskDescription || 'Fast walk-in capture and queue tokens',
+            icon: UserCircle,
+            module: 'camps',
+            tab: 'desk',
+            access: 'camps',
+          },
+          {
+            id: 'scheduling.campsBoard',
+            label: t.campTabBoard || 'Station Board',
+            description: t.campsBoardDescription || 'Live queues and waiting times per station',
+            icon: ListOrdered,
+            module: 'camps',
+            tab: 'board',
+            access: 'camps',
+          },
+          {
+            id: 'scheduling.campsReport',
+            label: t.campTabReport || 'Camp Outcomes',
+            description: t.campsReportDescription || 'Throughput, referrals and the sponsor report',
+            icon: BarChart3,
+            module: 'camps',
+            tab: 'report',
+            access: 'camps',
+          },
+        ],
+      },
+      {
         id: 'scheduling.providers',
         label: t.providers || 'Providers',
         items: [
@@ -186,14 +232,6 @@ export const getNavigation = (t = {}) => [
             description: t.ehrDescription || 'Charts, demographics and history',
             icon: FileText,
             module: 'ehr',
-          },
-          {
-            id: 'patients.diagnosis',
-            label: t.diagnoses || 'Diagnoses',
-            description: t.diagnosesDescription || 'Encounter diagnoses and coding',
-            icon: Activity,
-            module: 'patientDiagnosis',
-            access: 'ehr',
           },
           {
             id: 'patients.history',
@@ -248,6 +286,16 @@ export const getNavigation = (t = {}) => [
         label: t.engagement || 'Engagement',
         items: [
           {
+            // Secure messaging spans care-team and patient conversations, so it
+            // sits in Engagement next to the portal rather than under Clinical:
+            // the thread list is the same inbox either way.
+            id: 'patients.messages',
+            label: t.messages || 'Messages',
+            description: t.messagesDescription || 'Secure conversations with colleagues and patients',
+            icon: MessageSquare,
+            module: 'messages',
+          },
+          {
             id: 'patients.portal',
             label: t.patientPortal || 'Patient Portal',
             description: t.patientPortalNavDescription || 'What the patient sees',
@@ -290,6 +338,13 @@ export const getNavigation = (t = {}) => [
                 module: 'patientPortal',
                 tab: 'forms',
               },
+              {
+                id: 'patients.portalMessages',
+                label: t.messages || 'Messages',
+                icon: MessageSquare,
+                module: 'patientPortal',
+                tab: 'messages',
+              },
             ],
           },
         ],
@@ -314,6 +369,16 @@ export const getNavigation = (t = {}) => [
             description: t.telehealthDescription || 'Virtual visits and sessions',
             icon: Video,
             module: 'telehealth',
+          },
+          {
+            // Coding an encounter is clinical work, not a way to look a patient
+            // up — under Patients it read as a step towards choosing one.
+            id: 'clinical.diagnosis',
+            label: t.diagnoses || 'Diagnoses',
+            description: t.diagnosesDescription || 'Encounter diagnoses and coding',
+            icon: Activity,
+            module: 'patientDiagnosis',
+            access: 'ehr',
           },
         ],
       },
@@ -688,6 +753,22 @@ export const getNavigation = (t = {}) => [
             icon: Building2,
             module: 'admin',
             tab: ADMIN_TABS.CLINIC,
+            access: 'adminPanel',
+          },
+          {
+            id: 'settings.practiceSetup',
+            label: t.setupTitle || 'Practice Setup',
+            description: t.setupNavDescription || 'Specialty, starter services, forms and terminology',
+            icon: Sparkles,
+            module: 'practiceSetup',
+            access: 'adminPanel',
+          },
+          {
+            id: 'settings.locations',
+            label: t.locations || 'Locations',
+            icon: MapPin,
+            module: 'admin',
+            tab: ADMIN_TABS.LOCATIONS,
             access: 'adminPanel',
           },
           {

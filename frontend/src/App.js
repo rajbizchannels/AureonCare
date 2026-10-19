@@ -14,9 +14,9 @@ import { googleOAuthConfig, microsoftOAuthConfig } from './config/oauthConfig';
 import api from './api/apiService';
 
 // Config
-import { getTranslations } from './config/translations';
+import { getTranslations, applyTerminology } from './config/translations';
 import { getModules } from './config/modules';
-import { hasAccess } from './config/planFeatures';
+import { hasAccess, isModuleVisible } from './config/planFeatures';
 import {
   getNavigation,
   getPatientNavigation,
@@ -51,8 +51,12 @@ import LaboratoryManagementView from './views/LaboratoryManagementView';
 import ClinicalServicesView from './views/ClinicalServicesView';
 import WaitlistManagementView from './views/WaitlistManagementView';
 import FormManagementView from './views/FormManagementView';
+import MessagesView from './views/MessagesView';
 import AccountsView from './views/AccountsView';
 import InventoryView from './views/InventoryView';
+import CampsManagementView from './views/CampsManagementView';
+import PracticeSetupWizardView from './views/PracticeSetupWizardView';
+import usePracticeSetup from './hooks/usePracticeSetup';
 
 // Public pages
 import PublicBookingPage from './components/scheduling/PublicBookingPage';
@@ -60,11 +64,14 @@ import PublicBookingPage from './components/scheduling/PublicBookingPage';
 // Modals
 import LoginPage from './components/modals/LoginPage';
 import PatientLoginPage from './components/modals/PatientLoginPage';
+import SignupPage from './components/modals/SignupPage';
+import SignupCompletePage from './components/modals/SignupCompletePage';
+import AcceptInvitePage from './components/modals/AcceptInvitePage';
+import JoinPracticePage from './components/modals/JoinPracticePage';
 import RegisterPage from './components/modals/RegisterPage';
 import ForgotPasswordModal from './components/modals/ForgotPasswordModal';
 import ViewEditModal from './components/modals/ViewEditModal';
 import UserProfileModal from './components/modals/UserProfileModal';
-import SettingsModal from './components/modals/SettingsModal';
 
 // Forms
 import NewAppointmentForm from './components/forms/NewAppointmentForm';
@@ -178,13 +185,25 @@ function App() {
     clearAllNotifications
   } = useApp();
 
-  // Get translations and modules
-  const t = getTranslations(language);
+  // The practice's specialty configuration: what the navigation hides, and what the
+  // labels say. Fails quiet — an unconfigured practice gets the generic product.
+  const { setup: practiceSetup, reload: reloadPracticeSetup, shouldOfferWizard } = usePracticeSetup(user);
+  // Dismissed for this session only. Pressing "Skip for now" INSIDE the wizard is what
+  // records the decision on the server; waving the banner away should not.
+  const [wizardDismissed, setWizardDismissed] = React.useState(false);
+
+  // Get translations and modules. Terminology overrides resolve as
+  // packOverride ?? translations[locale][key], so a dental practice reads "Chair Visit"
+  // where the product says "Appointment" without forking the locale files.
+  const t = applyTerminology(getTranslations(language), practiceSetup && practiceSetup.terminology);
   const allModules = getModules(t);
-  // Check both plan-based and role-based access
+  // Plan tier and role decide what this practice MAY see; the specialty pack only decides
+  // what it sees by DEFAULT, and only ever subtracts. hasModuleAccess stays the
+  // entitlement question — anything gating a capability must keep using it.
   const hasModuleAccess = (moduleId) => hasAccess(planTier, moduleId, user);
-  // Filter modules based on user's role and plan permissions
-  const modules = allModules.filter(module => hasModuleAccess(module.id));
+  const modules = allModules.filter(
+    (module) => isModuleVisible(planTier, module.id, user, practiceSetup)
+  );
 
   // Local state for patient history
   const [selectedPatient, setSelectedPatient] = React.useState(null);
@@ -238,6 +257,37 @@ function App() {
     }
   }, [currentModule, showForm]);
 
+  // ── Unread messages badge ─────────────────────────────────────────────────
+  // Polled, since no websocket server is wired up. Sixty seconds is slower
+  // than the messaging view's own refresh: the badge only has to be roughly
+  // right, and whoever is actually reading a thread already sees it live.
+  const [unreadMessages, setUnreadMessages] = React.useState(0);
+
+  React.useEffect(() => {
+    if (!isAuthenticated) {
+      setUnreadMessages(0);
+      return undefined;
+    }
+    let cancelled = false;
+    const refresh = async () => {
+      try {
+        const count = await api.getUnreadMessageCount();
+        if (!cancelled) setUnreadMessages(count);
+      } catch {
+        // A stale badge is not worth a toast on every screen in the app.
+      }
+    };
+    refresh();
+    const timer = setInterval(refresh, 60000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+    // currentModule is a dependency so the badge re-checks on navigation:
+    // leaving the messages view should clear it straight away rather than
+    // leave a stale count sitting there for the rest of the minute.
+  }, [isAuthenticated, currentModule]);
+
   // ── App-shell navigation ──────────────────────────────────────────────────
   // The shell tracks which sub-module (tab) of a module is on screen. It is
   // stored together with the module it belongs to so that navigating straight
@@ -265,6 +315,23 @@ function App() {
 
   // Selects a sub-module tab from inside a view, keeping the shell in sync.
   const selectModuleTab = (moduleId, tab) => setNavSelection({ module: moduleId, tab });
+
+  // A patient's portal owns its own tab state — the shell does not drive it,
+  // because their nav group holds a single destination. So asking it to open a
+  // particular tab from outside (the header's Messages icon) is a request it
+  // watches, carrying a nonce so clicking twice re-opens rather than no-ops.
+  const [portalTabRequest, setPortalTabRequest] = React.useState(null);
+
+  const canMessage = isPatient || hasModuleAccess('messages');
+
+  const goToMessages = () => {
+    if (isPatient) {
+      handleSelectNavItem({ module: 'patientPortal' });
+      setPortalTabRequest({ tab: 'messages', nonce: Date.now() });
+    } else {
+      handleSelectNavItem({ module: 'messages' });
+    }
+  };
 
   const handleSelectNavItem = (item) => {
     // Grouping-only branches (a report category, say) have nowhere to go —
@@ -333,6 +400,26 @@ function App() {
     return match ? decodeURIComponent(match[1]) : null;
   }, []);
   const [showBookingLogin, setShowBookingLogin] = React.useState(false);
+
+  // Public self-serve routes. Like /book/<slug> these are served before the auth gate,
+  // because the whole point is that nobody has an account yet.
+  // State rather than a memo: these routes are checked before the auth gate, so once one
+  // of them has signed the visitor in (accepting an invite with Google returns a session)
+  // it has to be able to stand down and let the app render. A memo with no dependencies
+  // never recomputes, and the invitee would stay stuck on the invite page.
+  const [publicRoute, setPublicRoute] = React.useState(() => {
+    const path = window.location.pathname;
+    const params = new URLSearchParams(window.location.search);
+    if (/^\/signup\/complete\/?$/.test(path)) return { kind: 'signupComplete', intentId: params.get('intent') };
+    if (/^\/signup\/?$/.test(path)) return { kind: 'signup' };
+    if (/^\/accept-invite\/?$/.test(path) && params.get('token')) {
+      return { kind: 'acceptInvite', token: params.get('token') };
+    }
+    if (/^\/join\/?$/.test(path)) return { kind: 'join' };
+    return null;
+  });
+  const [showSignup, setShowSignup] = React.useState(false);
+  const goToSignIn = React.useCallback(() => { window.location.assign('/'); }, []);
 
   // Check if URL is patient login page
   const isPatientLoginUrl = React.useMemo(() => {
@@ -529,6 +616,30 @@ function App() {
             currency={currency}
           />
         );
+      case 'practiceSetup':
+        return (
+          <PracticeSetupWizardView
+            theme={theme}
+            t={t}
+            api={api}
+            user={user}
+            addNotification={addNotification}
+            onApplied={reloadPracticeSetup}
+            onClose={() => setCurrentModule('dashboard')}
+          />
+        );
+      case 'camps':
+        return (
+          <CampsManagementView
+            theme={theme}
+            t={t}
+            api={api}
+            user={user}
+            addNotification={addNotification}
+            activeTab={activeTab}
+            onTabChange={(tab) => selectModuleTab('camps', tab)}
+          />
+        );
       case 'reports':
         return (
           <ReportsView
@@ -592,6 +703,16 @@ function App() {
             setCurrentModule={setCurrentModule}
           />
         );
+      case 'messages':
+        return (
+          <MessagesView
+            theme={theme}
+            api={api}
+            addNotification={addNotification}
+            user={user}
+            t={t}
+          />
+        );
       case 'waitlist':
         return (
           <WaitlistManagementView
@@ -609,6 +730,8 @@ function App() {
               theme={theme}
               activeTab={isPatient ? undefined : activeTab || 'profile'}
               onTabChange={isPatient ? undefined : (tab) => selectModuleTab('patientPortal', tab)}
+              // Only meaningful for patients, whose portal owns its own tabs.
+              requestedTab={isPatient ? portalTabRequest : null}
               api={api}
               addNotification={addNotification}
               user={user}
@@ -622,6 +745,9 @@ function App() {
             activeTab={activeTab || 'clinic'}
             onTabChange={(tab) => selectModuleTab('admin', tab)}
             t={t}
+            // Needed for Intl formatting (dates, number grouping) in confirmation copy —
+            // the browser default does not necessarily match the language on screen.
+            language={language}
             users={users}
             setUsers={setUsers}
             setShowForm={handleSetShowForm}
@@ -699,6 +825,46 @@ function App() {
     }
   };
 
+  // ── Public self-serve pages ────────────────────────────────────────────────
+  if (publicRoute?.kind === 'signup') {
+    return <SignupPage theme={theme} onSignIn={goToSignIn} onBack={goToSignIn} />;
+  }
+  if (publicRoute?.kind === 'signupComplete') {
+    return <SignupCompletePage theme={theme} intentId={publicRoute.intentId} onSignIn={goToSignIn} />;
+  }
+  if (publicRoute?.kind === 'join') {
+    return <JoinPracticePage theme={theme} api={api} onSignIn={goToSignIn} />;
+  }
+  if (publicRoute?.kind === 'acceptInvite') {
+    return (
+      <AcceptInvitePage
+        theme={theme}
+        token={publicRoute.token}
+        api={api}
+        addNotification={addNotification}
+        onAccepted={goToSignIn}
+        // Accepting an invite with Google already returns a signed session, so the invitee
+        // goes straight into the app rather than being bounced to a sign-in page to prove
+        // who they are a second time. The URL is reset so a reload does not re-open the
+        // (now redeemed) invite.
+        onAuthenticated={(u, t) => {
+          api.storeToken(t);
+          setUser(u);
+          setIsAuthenticated(true);
+          // Drop the invite route and its token from the URL — it has been redeemed, so a
+          // reload must not try to open it again.
+          window.history.replaceState({}, '', '/');
+          setPublicRoute(null);
+        }}
+        onSignIn={goToSignIn}
+      />
+    );
+  }
+  // Reached from the "Create a practice" link on the sign-in page, without a URL change.
+  if (showSignup && !isAuthenticated) {
+    return <SignupPage theme={theme} onSignIn={() => setShowSignup(false)} onBack={() => setShowSignup(false)} />;
+  }
+
   // ── Public booking page ────────────────────────────────────────────────────
   // Open to anyone with the link. A patient may sign in from here to have their
   // details filled in; signing in happens in-place, so the session survives.
@@ -764,6 +930,7 @@ function App() {
           />
         ) : (
           <LoginPage
+            onCreatePractice={() => setShowSignup(true)}
             theme={theme}
             setTheme={setTheme}
             api={api}
@@ -828,12 +995,12 @@ function App() {
         topBar={{
           user,
           notificationCount: notifications.length,
+          messageCount: canMessage ? unreadMessages : 0,
           onLogoClick: () => handleSelectNavItem({ module: user?.role === 'patient' ? 'patientPortal' : 'dashboard' }),
           onSearch: () => setShowSearch(!showSearch),
+          onMessages: canMessage ? goToMessages : null,
           onNotifications: () => setShowNotifications(!showNotifications),
           onHelp: () => setShowHelpDrawer(!showHelpDrawer),
-          onAssistant: () => setShowAIAssistant(!showAIAssistant),
-          onSettings: () => handleSetShowForm('settings'),
           onProfile: () => {
             // Patients manage their profile from the portal's profile tab
             if (user?.role !== 'patient') handleSetShowForm('userProfile');
@@ -1001,6 +1168,35 @@ function App() {
               t={t}
               currency={currency}
             />
+          </div>
+        )}
+
+        {/* First-run offer. Non-blocking by design: the wizard is an accelerator, and a
+            practice that ignores it gets the ordinary generic product. */}
+        {shouldOfferWizard && !wizardDismissed && activeModule !== 'practiceSetup' && (
+          <div className={`mb-4 p-4 rounded-lg flex items-start justify-between gap-4 flex-wrap ${
+            theme === 'dark' ? 'bg-blue-900/30 text-blue-100' : 'bg-blue-50 text-blue-900'}`}>
+            <div>
+              <p className="font-medium">{t.setupOfferTitle || 'Set this practice up for your specialty'}</p>
+              <p className="text-sm mt-1">
+                {t.setupOfferBody || 'Pick your specialty and we will create the services, appointment types and forms it needs. Takes a couple of minutes, and nothing is written until you confirm.'}
+              </p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={() => navigateToModule('practiceSetup')}
+                className="px-3 py-2 rounded-lg text-sm text-white bg-blue-600 hover:bg-blue-700"
+              >
+                {t.setupOfferStart || 'Set up now'}
+              </button>
+              <button
+                onClick={() => setWizardDismissed(true)}
+                className={`px-3 py-2 rounded-lg text-sm ${
+                  theme === 'dark' ? 'bg-gray-700 hover:bg-gray-600' : 'bg-white hover:bg-gray-100'}`}
+              >
+                {t.setupOfferLater || 'Not now'}
+              </button>
+            </div>
           </div>
         )}
 
@@ -1299,27 +1495,6 @@ function App() {
             setShowOnboarding(false);
             localStorage.setItem(`onboarding_${user.role}_complete`, 'true');
           }}
-        />
-      )}
-
-      {/* Settings Modal */}
-      {showForm === 'settings' && (
-        <SettingsModal
-          theme={theme}
-          user={user}
-          users={users}
-          language={language}
-          onClose={() => setShowForm(null)}
-          setCurrentView={setCurrentView}
-          updateUserPreferences={updateUserPreferences}
-          setTheme={setTheme}
-          setLanguage={setLanguage}
-          setShowForm={handleSetShowForm}
-          setEditingItem={handleSetEditingItem}
-          setUsers={setUsers}
-          setCurrentModule={setCurrentModule}
-          api={api}
-          addNotification={addNotification}
         />
       )}
 

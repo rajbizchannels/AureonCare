@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useCallback, useState, useEffect, useRef } from 'react';
 import { Search, X, Shield } from 'lucide-react';
 
 /**
@@ -70,13 +70,19 @@ const MedicalCodeMultiSelect = ({
   const searchTimeoutRef = useRef(null);
 
   // Get the search term (last term after last comma)
-  const getSearchTerm = () => {
+  const getSearchTerm = useCallback(() => {
     const parts = inputValue.split(',');
     return parts[parts.length - 1].trim();
-  };
+  }, [inputValue]);
 
-  // Search for codes
-  const searchCodes = async (query) => {
+  // The selected set only matters as a list of codes to exclude, and a parent
+  // that rebuilds `value` on every render must not restart the debounce.
+  const selectedKey = value.map(v => v.code).join(',');
+
+  // Search for codes. Declared with useCallback ABOVE the effect that lists it:
+  // a const referenced from a dependency array is still in its temporal dead
+  // zone if it is declared below.
+  const searchCodes = useCallback(async (query) => {
     if (!query || query.length < 2) {
       setSearchResults([]);
       return;
@@ -84,14 +90,13 @@ const MedicalCodeMultiSelect = ({
 
     setIsLoading(true);
     try {
-      const response = await fetch(
-        `${api.baseURL || 'http://localhost:3001/api'}/medical-codes/search?query=${encodeURIComponent(query)}&type=${codeType}`
-      );
-      const data = await response.json();
+      // Goes through apiService so the request carries the bearer token —
+      // /api/medical-codes is authenticated, and a bare fetch just gets a 401.
+      const data = await api.searchMedicalCodes(query, codeType);
 
-      // Filter out already selected codes
-      const selectedCodes = value.map(v => v.code.toUpperCase());
-      const filtered = data.filter(item => !selectedCodes.includes(item.code.toUpperCase()));
+      const selectedCodes = selectedKey ? selectedKey.toUpperCase().split(',') : [];
+      const filtered = (Array.isArray(data) ? data : [])
+        .filter(item => !selectedCodes.includes(item.code.toUpperCase()));
 
       setSearchResults(filtered);
     } catch (error) {
@@ -100,7 +105,7 @@ const MedicalCodeMultiSelect = ({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [api, codeType, selectedKey]);
 
   // Debounced search
   useEffect(() => {
@@ -116,7 +121,9 @@ const MedicalCodeMultiSelect = ({
         setIsDropdownOpen(true);
       }, 300);
     } else {
-      setSearchResults([]);
+      // Only write state when there is something to clear — an unconditional
+      // set installs a new array reference and re-runs this effect forever.
+      setSearchResults(prev => (prev.length ? [] : prev));
       setIsDropdownOpen(false);
     }
 
@@ -125,7 +132,7 @@ const MedicalCodeMultiSelect = ({
         clearTimeout(searchTimeoutRef.current);
       }
     };
-  }, [getSearchTerm, inputValue, searchCodes]);
+  }, [getSearchTerm, searchCodes]);
 
   // Reset highlighted index when results change
   useEffect(() => {

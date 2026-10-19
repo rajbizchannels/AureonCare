@@ -1,0 +1,19 @@
+1
+00:00:02,421 --> 00:00:04,242
+Everyone takes backups.
+
+2
+00:00:04,242 --> 00:00:06,550
+Far fewer have ever put one back.
+
+3
+00:00:06,550 --> 00:00:08,576
+Hand it a backup file.
+
+4
+00:00:08,576 --> 00:00:12,295
+And it tells you what came back.
+
+5
+00:00:12,295 --> 00:00:14,697
+No ticket. No waiting on someone else.

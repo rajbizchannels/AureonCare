@@ -1,6 +1,8 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
 const { authenticate } = require('../middleware/auth');
+const { makeTenantDb } = require('../db/requestTenantDb');
+const { microsoftClientId, googleClientId } = require('../utils/oauthClientIds');
 const router = express.Router();
 const crypto = require('crypto');
 const axios = require('axios');
@@ -28,8 +30,16 @@ router.use((req, res, next) => {
  * "Invalid or expired state". Signing it keeps the CSRF guarantee without
  * shared storage.
  */
-const signOAuthState = (providerType, userId) =>
-  jwt.sign({ providerType, uid: String(userId) }, JWT_SECRET, { expiresIn: '10m' });
+// SEC-05: the state also carries the TENANT the flow started in. The provider redirects
+// back to an unauthenticated callback with no session, so without this the callback
+// cannot know which tenant schema to write the tokens into. The value is inside the
+// signed token, so a caller cannot tamper with it to target another tenant.
+const signOAuthState = (providerType, userId, tenantId) =>
+  jwt.sign(
+    { providerType, uid: String(userId), tid: tenantId ? String(tenantId) : null },
+    JWT_SECRET,
+    { expiresIn: '10m' }
+  );
 
 const verifyOAuthState = (state, providerType) => {
   try {
@@ -134,8 +144,29 @@ function getBaseUrl(req) {
   if (process.env.AC_BE_URL) {
     return process.env.AC_BE_URL.replace(/\/+$/, '');
   }
+  // Host-header injection: x-forwarded-host / host are supplied by the client and are
+  // only trustworthy if a proxy overwrites them. This value becomes the OAuth
+  // redirect_uri, so a forged host aims the provider's redirect elsewhere. Providers
+  // reject redirect URIs that are not registered, which limits the impact, but the
+  // correct fix is to pin the value: set AC_BE_URL in every deployed environment.
+  // AC_TRUSTED_HOSTS (comma-separated) additionally constrains the derived host.
   const protocol = req.get('x-forwarded-proto') || req.protocol;
   const host = req.get('x-forwarded-host') || req.get('host');
+
+  const allowlist = (process.env.AC_TRUSTED_HOSTS || '')
+    .split(',').map((h) => h.trim().toLowerCase()).filter(Boolean);
+  if (allowlist.length > 0 && !allowlist.includes(String(host).toLowerCase())) {
+    throw Object.assign(
+      new Error(`Refusing to build a callback URL for untrusted host "${host}".`),
+      { statusCode: 400 }
+    );
+  }
+  if (allowlist.length === 0) {
+    console.warn(
+      `[integrationOAuth] AC_BE_URL is not set — deriving the OAuth callback from the ` +
+      `client-supplied host "${host}". Set AC_BE_URL (or AC_TRUSTED_HOSTS) to pin it.`
+    );
+  }
   return `${protocol}://${host}`;
 }
 
@@ -159,6 +190,27 @@ const PROVIDER_ENV_MAP = {
 };
 
 function resolveProviderEnv(key) {
+  // Client ids resolve through the shared helper so this file, oauthExchange and
+  // cloudBackupStorage cannot disagree about which app registration we are. They did:
+  // sign-in read AC_MS_CID while this read REACT_APP_MS_CID, so two names holding
+  // different values sent each flow to a different app.
+  if (key === 'ONEDRIVE_CLIENT_ID' || key === 'MICROSOFT_TEAMS_CLIENT_ID'
+      || key === 'TEAMS_CLIENT_ID') {
+    return microsoftClientId() || process.env[key] || null;
+  }
+  // Drive genuinely shares the sign-in client — .env.example says so, and it only ever
+  // read AC_GG_CID/REACT_APP_GG_CID.
+  if (key === 'GOOGLE_DRIVE_CLIENT_ID') {
+    return googleClientId() || process.env[key] || null;
+  }
+  // Meet does NOT. It has its own pair, AC_GM_CID / AC_GM_CSK, and always did — so its own
+  // id must win. Folding it into the shared helper took the id from the sign-in client
+  // while the secret still came from AC_GM_CSK, and Google rejects a mismatched pair with
+  // invalid_client. Consolidating names that pointed at ONE client was right; forcing two
+  // genuinely different clients together was not.
+  if (key === 'GOOGLE_MEET_CLIENT_ID') {
+    return process.env.AC_GM_CID || googleClientId() || process.env[key] || null;
+  }
   const mappedKey = PROVIDER_ENV_MAP[key];
   if (mappedKey) {
     // Try the canonical abbreviated var first, then the legacy full-name var
@@ -172,23 +224,66 @@ function resolveProviderEnv(key) {
  * Env vars (AC_ZM_CID, etc.) take precedence over DB values so that
  * updating credentials after Marketplace approval takes effect immediately.
  */
-function resolveClientCredentials(providerType, dbRow) {
-  const prefix = providerType.toUpperCase();
-  const envPrefixes = providerType === 'microsoft_teams'
-    ? ['TEAMS', prefix]
-    : [prefix];
+/**
+ * The environment variables that hold each provider's OAuth client, as PAIRS.
+ *
+ * An id and a secret are one credential. Resolving them independently is what produced
+ * `invalid_client` on Google Meet: with AC_GM_CID unset, the id fell through to the
+ * sign-in client while the secret still came from AC_GM_CSK, so the two halves belonged to
+ * different OAuth clients — and both reported as coming from "env", which is true and
+ * useless. There is no cross-provider fallback for an id here; a provider whose own id
+ * variable is unset is reported as unset rather than silently lent someone else's.
+ *
+ * Where two names appear for an id, they are two names for the SAME client (the
+ * REACT_APP_-prefixed one is what the browser authorises with, so it wins).
+ */
+const PROVIDER_CREDENTIALS = {
+  zoom:            { id: ['AC_ZM_CID'],                       secret: ['AC_ZM_CSK'] },
+  google_meet:     { id: ['AC_GM_CID'],                       secret: ['AC_GM_CSK'] },
+  webex:           { id: ['AC_WBX_CID'],                      secret: ['AC_WBX_CSK'] },
+  microsoft_teams: { id: ['REACT_APP_MS_CID', 'AC_MS_CID'],   secret: ['AC_MS_CSK'] },
+  onedrive:        { id: ['REACT_APP_MS_CID', 'AC_MS_CID'],   secret: ['AC_OD_CSK'] },
+  google_drive:    { id: ['REACT_APP_GG_CID', 'AC_GG_CID'],   secret: ['AC_GD_CSK'] },
+};
 
-  let envClientId = null;
-  let envClientSecret = null;
-  for (const ep of envPrefixes) {
-    envClientId = envClientId || resolveProviderEnv(`${ep}_CLIENT_ID`) || null;
-    envClientSecret = envClientSecret || resolveProviderEnv(`${ep}_CLIENT_SECRET`) || null;
+/** First variable in the list that holds a value, with the name that supplied it. */
+function firstEnv(names) {
+  for (const n of names || []) {
+    const v = process.env[n];
+    if (v && String(v).trim()) return { value: String(v).trim(), from: n };
+  }
+  return { value: null, from: null };
+}
+
+function resolveClientCredentials(providerType, dbRow) {
+  const spec = PROVIDER_CREDENTIALS[providerType];
+  const prefix = providerType.toUpperCase();
+
+  const envId = spec ? firstEnv(spec.id) : { value: null, from: null };
+  const envSecret = spec ? firstEnv(spec.secret) : { value: null, from: null };
+
+  const client_id = envId.value || dbRow?.client_id || null;
+  const client_secret = envSecret.value || dbRow?.client_secret || null;
+
+  // SEC-05: the DB columns are DEPRECATED — the OAuth client id/secret are global and
+  // belong in the environment, not duplicated into every tenant's settings row. The
+  // fallback is retained so an environment that has not set its env vars yet keeps
+  // working, but it is reported so it gets fixed, then cleared with
+  // scripts/deprecate-oauth-credentials.js.
+  if (!envSecret.value && dbRow?.client_secret) {
+    console.warn(
+      `[integrationOAuth] DEPRECATED: using database-stored client_secret for "${providerType}". ` +
+      `Set ${(spec ? spec.id[0] : prefix + '_CLIENT_ID')} / ${(spec ? spec.secret[0] : prefix + '_CLIENT_SECRET')} ` +
+      `in the environment, then run scripts/deprecate-oauth-credentials.js to clear the stored copy.`
+    );
   }
 
-  const client_id = envClientId || dbRow?.client_id || null;
-  const client_secret = envClientSecret || dbRow?.client_secret || null;
+  // Name the actual VARIABLE behind each half, never its value. "env" alone could not
+  // distinguish a matched pair from two halves of different clients.
+  const idSource = envId.from || (dbRow?.client_id ? 'database' : `unset (${spec ? spec.id.join(' or ') : '?'})`);
+  const secretSource = envSecret.from || (dbRow?.client_secret ? 'database' : `unset (${spec ? spec.secret.join(' or ') : '?'})`);
 
-  return { client_id, client_secret };
+  return { client_id, client_secret, idSource, secretSource };
 }
 
 const OAUTH_CONFIGS = {
@@ -217,8 +312,14 @@ const OAUTH_CONFIGS = {
     scope: 'meeting:schedules_write meeting:schedules_read',
   },
   microsoft_teams: {
-    authUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/authorize',
-    tokenUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
+    // /organizations, not /common: OnlineMeetings.ReadWrite is a work/school
+    // permission that does not exist for personal Microsoft accounts. Under
+    // /common a personal account can authorize, and Microsoft then issues a
+    // token carrying only User.Read -- the Teams scope is dropped silently and
+    // the connection looks successful until the first meeting fails. Limiting
+    // the authority rejects those accounts at sign-in with a clear message.
+    authUrl: 'https://login.microsoftonline.com/organizations/oauth2/v2.0/authorize',
+    tokenUrl: 'https://login.microsoftonline.com/organizations/oauth2/v2.0/token',
     scope: 'https://graph.microsoft.com/OnlineMeetings.ReadWrite https://graph.microsoft.com/User.Read offline_access',
   },
   google_drive: {
@@ -268,40 +369,15 @@ router.get('/:providerType/initiate', async (req, res) => {
       });
     }
 
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped (OAuth callback falls back to default tenant)
     const info = getTableInfo(providerType);
     if (!info) return res.status(400).json({ error: 'Invalid provider type' });
 
     // Ensure table exists
     if (info.table === 'telehealth_provider_settings') {
-      await pool.query(`
-        CREATE TABLE IF NOT EXISTS telehealth_provider_settings (
-          id SERIAL PRIMARY KEY,
-          provider_type VARCHAR(50) UNIQUE NOT NULL,
-          is_enabled BOOLEAN DEFAULT false,
-          client_id TEXT, client_secret TEXT,
-          access_token TEXT, refresh_token TEXT,
-          token_type VARCHAR(50) DEFAULT 'Bearer',
-          token_scope TEXT, token_expires_at BIGINT,
-          account_id VARCHAR(255), zoom_user_id VARCHAR(255), zoom_user_email VARCHAR(255),
-          api_key TEXT, api_secret TEXT, webhook_secret TEXT,
-          settings JSONB DEFAULT '{}'::jsonb,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-      `);
+      // SEC-05: table/column creation moved to migrations (see migrations/tenant/001 and 072).
     } else if (info.table === 'backup_provider_settings') {
-      await pool.query(`
-        CREATE TABLE IF NOT EXISTS backup_provider_settings (
-          id SERIAL PRIMARY KEY,
-          provider_type VARCHAR(50) UNIQUE NOT NULL,
-          is_enabled BOOLEAN DEFAULT false,
-          client_id VARCHAR(255), client_secret VARCHAR(255),
-          settings JSONB DEFAULT '{}'::jsonb,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-      `);
+      // SEC-05: table/column creation moved to migrations (see migrations/tenant/001 and 072).
     }
 
     // Fetch DB row (may be empty)
@@ -312,40 +388,35 @@ router.get('/:providerType/initiate', async (req, res) => {
     const dbRow = result.rows[0] || null;
 
     // Resolve credentials (DB → env vars)
-    const { client_id, client_secret } = resolveClientCredentials(providerType, dbRow);
+    const { client_id, client_secret, idSource, secretSource } =
+      resolveClientCredentials(providerType, dbRow);
 
     if (!client_id || !client_secret) {
+      // The hint used to name variables that do not exist (GOOGLE_MEET_CLIENT_ID rather
+      // than AC_GM_CID), sending whoever read it to set the wrong thing. idSource and
+      // secretSource carry the real names.
       return res.status(400).json({
         error: 'Provider not configured',
         needsEnvSetup: true,
-        hint: `Set ${providerType.toUpperCase()}_CLIENT_ID and ${providerType.toUpperCase()}_CLIENT_SECRET environment variables on the server.`,
+        hint: `Client id: ${idSource}. Client secret: ${secretSource}.`,
       });
     }
 
-    // Sync DB with resolved credentials (env vars may have changed after
-    // Marketplace approval, or DB row may not exist yet).
+    // SEC-05: the OAuth client id/secret are GLOBAL (one app registration per provider)
+    // and live in the environment. They are deliberately no longer written back into the
+    // per-tenant settings row — that copied the same secret into every tenant schema.
+    // Only the per-practice account and its tokens belong in tenant data. Ensure the row
+    // exists (for enablement + tokens) without persisting any credential.
     if (!dbRow) {
       await pool.query(
-        `INSERT INTO ${info.table} (${info.field}, client_id, client_secret, is_enabled)
-         VALUES ($1, $2, $3, false)
-         ON CONFLICT (${info.field}) DO UPDATE SET
-           client_id = EXCLUDED.client_id,
-           client_secret = EXCLUDED.client_secret,
-           updated_at = CURRENT_TIMESTAMP`,
-        [providerType, client_id, client_secret]
-      );
-    } else if (dbRow.client_id !== client_id || dbRow.client_secret !== client_secret) {
-      await pool.query(
-        `UPDATE ${info.table}
-         SET client_id = $1,
-             client_secret = $2,
-             updated_at = CURRENT_TIMESTAMP
-         WHERE ${info.field} = $3`,
-        [client_id, client_secret, providerType]
+        `INSERT INTO ${info.table} (${info.field}, is_enabled)
+         VALUES ($1, false)
+         ON CONFLICT (${info.field}) DO NOTHING`,
+        [providerType]
       );
     }
 
-    const state = signOAuthState(providerType, req.user.id);
+    const state = signOAuthState(providerType, req.user.id, req.tenant && req.tenant.tenantId);
     const redirectUri = `${getBaseUrl(req)}/api/integrations/oauth/${providerType}/callback`;
 
     // Build authorization URL
@@ -358,6 +429,15 @@ router.get('/:providerType/initiate', async (req, res) => {
 
     if (['google_meet', 'google_drive'].includes(providerType)) {
       authUrl.searchParams.append('access_type', 'offline');
+      authUrl.searchParams.append('prompt', 'consent');
+    }
+
+    // Microsoft reuses an existing consent grant unless re-consent is forced,
+    // and issues a token carrying only the scopes consented to at that time.
+    // Adding a permission in Azure does not retroactively widen a grant, so
+    // without this a disconnect/reconnect returns a token still missing the
+    // new scope and the provider's scope check keeps failing.
+    if (['microsoft_teams', 'onedrive'].includes(providerType)) {
       authUrl.searchParams.append('prompt', 'consent');
     }
 
@@ -383,12 +463,26 @@ router.get('/:providerType/callback', async (req, res) => {
     }
 
     // The signed state is what authorises this unauthenticated callback.
-    if (!verifyOAuthState(state, providerType)) {
+    const stateClaims = verifyOAuthState(state, providerType);
+    if (!stateClaims) {
       return sendOAuthResult(res, false, providerType, 'Invalid or expired state. Please try again.');
     }
 
     const config = OAUTH_CONFIGS[providerType];
-    const pool = req.app.locals.pool;
+    // SEC-05: resolve the tenant from the SIGNED state (never from a query parameter) so
+    // the provider's tokens are written into the schema the flow actually started in.
+    // Falls back to the default tenant for states minted before this claim existed.
+    const basePool = req.app.locals.pool;
+    let callbackDb = null;
+    if (stateClaims.tid) {
+      try {
+        const t = await basePool.query('SELECT schema_name FROM control.tenants WHERE id = $1', [stateClaims.tid]);
+        if (t.rows[0]?.schema_name) callbackDb = makeTenantDb(basePool, t.rows[0].schema_name, res);
+      } catch (e) {
+        console.warn('[integrationOAuth] tenant lookup failed for callback state:', e.message);
+      }
+    }
+    const pool = callbackDb || req.db || basePool;
     const info = getTableInfo(providerType);
 
     // Fetch existing DB row for client credentials
@@ -397,10 +491,14 @@ router.get('/:providerType/callback', async (req, res) => {
       [providerType]
     );
     const dbRow = result.rows[0] || null;
-    const { client_id, client_secret } = resolveClientCredentials(providerType, dbRow);
+    const { client_id, client_secret, idSource, secretSource } = resolveClientCredentials(providerType, dbRow);
 
     if (!client_id || !client_secret) {
-      return sendOAuthResult(res, false, providerType, 'Provider not configured — missing Client ID or Secret on the server.');
+      // Name the variable that is missing rather than the category. With the pairwise
+      // resolution above this is now reachable where it previously borrowed another
+      // provider's id and failed later as invalid_client instead.
+      return sendOAuthResult(res, false, providerType,
+        `Provider not configured — id from ${idSource}, secret from ${secretSource}.`);
     }
 
     const redirectUri = `${getBaseUrl(req)}/api/integrations/oauth/${providerType}/callback`;
@@ -428,8 +526,16 @@ router.get('/:providerType/callback', async (req, res) => {
         tokenType: tokens.token_type,
       });
     } catch (tokenError) {
-      console.error('Token exchange error:', tokenError.response?.data || tokenError.message);
-      return sendOAuthResult(res, false, providerType, 'Token exchange failed — check your Client Secret and Redirect URL.');
+      const detail = tokenError.response?.data;
+      console.error('Token exchange error:', detail || tokenError.message);
+      // Name the provider's own error. "check your Client Secret and Redirect URL" is the
+      // same sentence for a mismatched client, a wrong secret and an unregistered redirect,
+      // and the one fact that separates them went only to the log.
+      const code = detail && (detail.error || detail.error_description);
+      const where = `id from ${idSource}, secret from ${secretSource}`;
+      return sendOAuthResult(res, false, providerType,
+        'Token exchange failed — check your Client Secret and Redirect URL.'
+        + (code ? ` [${String(code).slice(0, 120)} | ${where}]` : ` [${where}]`));
     }
 
     const expiresAt = tokens.expires_in ? Date.now() + tokens.expires_in * 1000 : null;
@@ -554,7 +660,7 @@ router.get('/:providerType/callback', async (req, res) => {
 router.get('/:providerType/status', async (req, res) => {
   try {
     const { providerType } = req.params;
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped (OAuth callback falls back to default tenant)
     const info = getTableInfo(providerType);
 
     if (!info) return res.status(400).json({ error: 'Unknown provider type' });
@@ -633,7 +739,7 @@ router.get('/:providerType/redirect-url', (req, res) => {
 router.get('/:providerType/credentials', async (req, res) => {
   try {
     const { providerType } = req.params;
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped (OAuth callback falls back to default tenant)
     const info = getTableInfo(providerType);
 
     if (!info) return res.status(400).json({ error: 'Unknown provider type' });
@@ -678,53 +784,17 @@ router.post('/:providerType/credentials', async (req, res) => {
       return res.status(400).json({ error: 'client_id and client_secret are required' });
     }
 
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped (OAuth callback falls back to default tenant)
     const info = getTableInfo(providerType);
     if (!info) return res.status(400).json({ error: 'Unknown provider type' });
 
     // Ensure table exists
     if (info.table === 'telehealth_provider_settings') {
-      await pool.query(`
-        CREATE TABLE IF NOT EXISTS telehealth_provider_settings (
-          id SERIAL PRIMARY KEY,
-          provider_type VARCHAR(50) UNIQUE NOT NULL,
-          is_enabled BOOLEAN DEFAULT false,
-          client_id TEXT, client_secret TEXT,
-          access_token TEXT, refresh_token TEXT,
-          token_type VARCHAR(50) DEFAULT 'Bearer',
-          token_scope TEXT, token_expires_at BIGINT,
-          account_id VARCHAR(255), zoom_user_id VARCHAR(255), zoom_user_email VARCHAR(255),
-          api_key TEXT, api_secret TEXT, webhook_secret TEXT,
-          settings JSONB DEFAULT '{}'::jsonb,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-      `);
+      // SEC-05: table/column creation moved to migrations (see migrations/tenant/001 and 072).
     } else if (info.table === 'backup_provider_settings') {
-      await pool.query(`
-        CREATE TABLE IF NOT EXISTS backup_provider_settings (
-          id SERIAL PRIMARY KEY,
-          provider_type VARCHAR(50) UNIQUE NOT NULL,
-          is_enabled BOOLEAN DEFAULT false,
-          client_id VARCHAR(255), client_secret VARCHAR(255),
-          settings JSONB DEFAULT '{}'::jsonb,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-      `);
+      // SEC-05: table/column creation moved to migrations (see migrations/tenant/001 and 072).
     } else if (info.table === 'vendor_integration_settings') {
-      await pool.query(`
-        CREATE TABLE IF NOT EXISTS vendor_integration_settings (
-          id SERIAL PRIMARY KEY,
-          vendor_type VARCHAR(50) UNIQUE NOT NULL,
-          is_enabled BOOLEAN DEFAULT false,
-          client_id VARCHAR(255), client_secret VARCHAR(255),
-          api_key VARCHAR(255),
-          settings JSONB DEFAULT '{}'::jsonb,
-          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )
-      `);
+      // SEC-05: table/column creation moved to migrations (see migrations/tenant/001 and 072).
     }
 
     // Upsert
@@ -761,7 +831,7 @@ router.post('/:providerType/refresh', async (req, res) => {
   try {
     const { providerType } = req.params;
     const config = OAUTH_CONFIGS[providerType];
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped (OAuth callback falls back to default tenant)
     const info = getTableInfo(providerType);
 
     const result = await pool.query(
@@ -855,7 +925,7 @@ router.post('/:providerType/refresh', async (req, res) => {
 router.delete('/:providerType', async (req, res) => {
   try {
     const { providerType } = req.params;
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped (OAuth callback falls back to default tenant)
     const info = getTableInfo(providerType);
     if (!info) return res.status(400).json({ error: 'Unknown provider type' });
 

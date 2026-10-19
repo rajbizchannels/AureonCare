@@ -160,12 +160,12 @@ cp .env.example .env
 Edit `frontend/.env`:
 
 ```env
-REACT_APP_API_URL=http://localhost:3000/api
+REACT_APP_SVC_URL=http://localhost:3000/api
 
 # OAuth Credentials
-REACT_APP_GOOGLE_CLIENT_ID=your_google_client_id_here
-REACT_APP_MICROSOFT_CLIENT_ID=your_microsoft_client_id_here
-REACT_APP_FACEBOOK_APP_ID=your_facebook_app_id_here
+REACT_APP_GG_CID=your_google_client_id_here
+REACT_APP_MS_CID=your_microsoft_client_id_here
+REACT_APP_FB_AID=your_facebook_app_id_here
 
 # Redirect URI
 REACT_APP_REDIRECT_URI=http://localhost:3001
@@ -268,7 +268,7 @@ After running migrations, you can create a test user:
 -- Run in psql
 INSERT INTO users (email, password, first_name, last_name, role, plan_tier)
 VALUES (
-  'admin@aureoncare.com',
+  'admin@aureoncare.tech',
   '$2a$10$YourHashedPasswordHere',  -- Use bcrypt to hash
   'Admin',
   'User',
@@ -282,7 +282,7 @@ Or use the registration endpoint:
 curl -X POST http://localhost:3000/api/auth/register \
   -H "Content-Type: application/json" \
   -d '{
-    "email": "admin@aureoncare.com",
+    "email": "admin@aureoncare.tech",
     "password": "securepassword123",
     "firstName": "Admin",
     "lastName": "User",
@@ -412,10 +412,10 @@ JWT_SECRET=long-random-secure-string
 
 **Frontend:**
 ```env
-REACT_APP_API_URL=https://api.yourdomain.com/api
-REACT_APP_GOOGLE_CLIENT_ID=production-google-client-id
-REACT_APP_MICROSOFT_CLIENT_ID=production-microsoft-client-id
-REACT_APP_FACEBOOK_APP_ID=production-facebook-app-id
+REACT_APP_SVC_URL=https://api.yourdomain.com/api
+REACT_APP_GG_CID=production-google-client-id
+REACT_APP_MS_CID=production-microsoft-client-id
+REACT_APP_FB_AID=production-facebook-app-id
 REACT_APP_REDIRECT_URI=https://app.yourdomain.com
 ```
 

@@ -1,0 +1,51 @@
+1
+00:00:04,525 --> 00:00:12,525
+Connect a video provider — Settings ▸ Telehealth Setup — Connect one account for the clinic, and every provider can start a visit.
+
+2
+00:00:17,902 --> 00:00:26,245
+Settings ▸ Telehealth Setup holds the clinic’s video account. Connect it once, and every provider uses it.
+
+3
+00:00:26,245 --> 00:00:34,409
+Four providers are supported: Google Meet, Zoom, Cisco Webex and Microsoft Teams.
+
+4
+00:00:34,409 --> 00:00:44,711
+Connecting is an OAuth sign-in: you approve it in the provider’s own window and no password is ever stored here.
+
+5
+00:00:44,711 --> 00:00:55,648
+Google Meet is already connected on this clinic — you can see the account it is connected as.
+
+6
+00:00:55,648 --> 00:01:01,468
+Test Connection proves the token still works before a patient is waiting on it.
+
+7
+00:01:01,468 --> 00:01:07,945
+If a token has expired, Reconnect re-runs the sign-in — nothing else needs changing.
+
+8
+00:01:07,945 --> 00:01:15,887
+The switch on the right makes it the active provider. An account that is not connected cannot be switched on.
+
+9
+00:01:15,887 --> 00:01:28,686
+That is deliberate: it stops a half-configured provider from becoming the one your visits depend on.
+
+10
+00:01:28,686 --> 00:01:35,809
+And this is the payoff. Every telehealth appointment now gets a join link from that account.
+
+11
+00:01:35,809 --> 00:01:43,320
+Provider and patient both open the same link. Change the provider here and every future visit follows.
+
+12
+00:01:44,729 --> 00:01:57,029
+What you just did
+
+13
+00:01:57,695 --> 00:02:06,695
+Health | Efficiency | Growth — More in the Getting Started series — the next video is linked on screen.

@@ -1,0 +1,43 @@
+1
+00:00:00,081 --> 00:00:05,691
+Chart it before the next patient sits down. — Clock on screen. Nothing cut out.
+
+2
+00:00:10,188 --> 00:00:16,587
+One record. The note, the script and the order are tabs of it.
+
+3
+00:00:16,587 --> 00:00:24,459
+Findings go in once.
+
+4
+00:00:24,459 --> 00:00:31,951
+Same record. No new system.
+
+5
+00:00:31,951 --> 00:00:40,463
+Medications are searched, not typed.
+
+6
+00:00:40,463 --> 00:00:44,138
+Sent, and it lands on the chart.
+
+7
+00:00:44,138 --> 00:00:51,502
+And the lab order, from the same place.
+
+8
+00:00:51,503 --> 00:00:58,483
+Ordered by code, so the lab and the claim describe the same test.
+
+9
+00:00:58,483 --> 00:01:06,748
+And who gets the result when it lands.
+
+10
+00:01:06,748 --> 00:01:12,522
+The result files itself back to this chart. Nobody scans anything.
+
+11
+00:01:13,455 --> 00:01:19,175
+One record. One pass. — Note, prescription and order — without leaving the chart.

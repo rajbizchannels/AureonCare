@@ -192,6 +192,7 @@ export const SUBSCRIPTION_PLANS = [
 // Admin Panel Tabs Configuration
 export const ADMIN_TABS = {
   CLINIC: 'clinic',
+  LOCATIONS: 'locations',
   USERS: 'users',
   ROLES: 'roles',
   PLANS: 'plans',

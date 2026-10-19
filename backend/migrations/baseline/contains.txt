@@ -1,0 +1,77 @@
+# Migrations already represented in baseline/000_baseline.sql.
+#
+# The baseline is a pg_dump snapshot taken partway through the numbered series. Replaying
+# the files below on top of it is not merely redundant, it is destructive: several of them
+# (001_update_users_table, 014_create_rbac_and_plans, 024_create_appointments_table,
+# 025_merge_providers_id_with_user_id) begin with DROP TABLE ... CASCADE and rebuild the
+# table in its old integer-keyed shape, discarding everything the snapshot holds. Others
+# re-add triggers and indexes that already exist, or alter columns that have since been
+# rewritten. That is why the historical chain cannot simply be replayed from empty.
+#
+# This is a SKIP list, derived by diffing every pre-063 migration against the objects the
+# baseline already contains. A migration is listed here only if the baseline holds its
+# result. Files NOT listed -- including every future migration -- always run.
+#
+# On a fresh install the runner records these as applied without executing them. On an
+# existing database `--adopt` records every file, so this list is not consulted there.
+
+001_create_role_permissions.sql
+001_update_users_table.sql
+002_alter_users_add_names.sql
+002_update_tasks_table.sql
+003_add_password_fields.sql
+003_add_user_status.sql
+004_create_payments_table.sql
+005_create_prescriptions_diagnosis_tables.sql
+005_create_prescriptions_diagnosis_tables_uuid.sql
+006_remove_name_add_medical_attributes.sql
+006_remove_name_add_medical_attributes_uuid.sql
+007_link_users_patients.sql
+007_link_users_patients_uuid.sql
+008_add_user_id_to_providers_patients.sql
+009_fix_appointments_provider_fkey.sql
+010_add_status_to_users.sql
+011_fix_providers_id_sequence.sql
+012_add_first_last_name_to_users.sql
+013_support_multiple_user_roles.sql
+014_create_rbac_and_plans.sql
+015_add_eprescribing_pharmacy_network.sql
+015_medications_sample_data.sql
+016_fix_patients_address_column.sql
+017_create_scheduling_system.sql
+017a_create_appointment_types.sql
+017b_create_appointment_waitlist.sql
+018_create_healthcare_offerings.sql
+019_add_offering_permissions.sql
+020_convert_payments_to_uuid.sql
+021_convert_users_to_uuid.sql
+022_convert_patients_providers_to_uuid.sql
+023_merge_patient_id_with_user_id.sql
+024_create_appointments_table.sql
+025_merge_providers_id_with_user_id.sql
+026_add_user_id_to_notifications.sql
+027_create_medical_codes_table.sql
+028_seed_medical_codes.sql
+029_add_license_specialty_to_users.sql
+030_comprehensive_medical_codes.sql
+031_create_insurance_payers.sql
+032_add_insurance_payer_to_patients.sql
+033_add_vendor_integrations.sql
+034_add_diagnosis_link_to_prescriptions.sql
+035_add_fhir_tracking.sql
+035_create_preapprovals_table.sql
+036_create_payment_postings_table.sql
+037_create_denials_table.sql
+038_create_claim_submissions_table.sql
+039_create_patient_intake_forms.sql
+040_create_audit_logs_table.sql
+041_create_archives_table.sql
+043_create_archive_rules_table.sql
+044_add_address_fields_to_patients.sql
+044_add_soap_notes_to_diagnosis.sql
+045_remove_notes_from_diagnosis.sql
+046_remove_description_from_diagnosis.sql
+048_add_zoom_oauth_columns.sql
+049_add_meeting_url_to_appointments.sql
+049_add_patient_telehealth_preference.sql
+050_create_social_auth_table.sql

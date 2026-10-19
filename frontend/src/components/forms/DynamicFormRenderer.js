@@ -1,12 +1,27 @@
 import React, { useState, useCallback } from 'react';
 import { ChevronDown, Info, AlertCircle } from 'lucide-react';
 import SignatureCapture from './SignatureCapture';
+import ThemedSelect from './ThemedSelect';
 
 // ============================================================================
 // DYNAMIC FORM RENDERER
 // Renders a form from a JSON field schema definition
 // Supports: conditional fields, multi-language, role-based visibility, eSignature
 // ============================================================================
+
+// Every field type this component can actually draw. The dispatch in renderField is a
+// chain of `field.type === ...` with no else, so a type that is not in this list used to
+// render as a LABEL WITH NO INPUT — silently. That is how 18 fields across 10 seed
+// templates (including the HIPAA authorisation and release-of-information forms) ended up
+// unanswerable: the seed data said `checkbox_group` where this file says `checkboxes`.
+//
+// Keep this list in step with DynamicFormBuilder's FIELD_TYPES and with
+// backend/utils/specialtyPackSchema.js — all three must agree, and a test in
+// backend/test/specialty/packs.test.js fails if they drift apart.
+const SUPPORTED_FIELD_TYPES = [
+  'text', 'textarea', 'select', 'radio', 'checkbox', 'checkboxes', 'date', 'number',
+  'email', 'phone', 'scale', 'signature', 'heading', 'paragraph',
+];
 
 const DynamicFormRenderer = ({
   fields = [],
@@ -69,6 +84,23 @@ const DynamicFormRenderer = ({
 
   const renderField = (field) => {
     if (!isVisible(field)) return null;
+
+    // An unknown type is a defect in the template, not something to swallow. Show it, so
+    // whoever is looking at the form can see a question exists and cannot be answered.
+    if (!SUPPORTED_FIELD_TYPES.includes(field.type)) {
+      return (
+        <div key={field.id} className="col-span-2">
+          <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-50 text-amber-900 text-xs">
+            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+            <span>
+              <strong>{getLabel(field)}</strong> cannot be shown: this form asks for a
+              &ldquo;{String(field.type)}&rdquo; field, which this version does not support.
+              Please ask your practice to update the form.
+            </span>
+          </div>
+        </div>
+      );
+    }
 
     const value = formData[field.id] !== undefined ? formData[field.id] : '';
     const error = errors[field.id];
@@ -178,22 +210,21 @@ const DynamicFormRenderer = ({
         )}
 
         {field.type === 'select' && (
-          <div className="relative">
-            <select
-              value={value}
-              onChange={e => handleChange(field.id, e.target.value)}
-              disabled={readOnly}
-              className={`${baseInput} appearance-none pr-8 ${error ? 'border-red-500' : ''}`}
-            >
-              <option value="">{field.placeholder || 'Select...'}</option>
-              {(field.options || []).map(opt => (
-                <option key={typeof opt === 'string' ? opt : opt.value} value={typeof opt === 'string' ? opt : opt.value}>
-                  {typeof opt === 'string' ? opt : opt.label}
-                </option>
-              ))}
-            </select>
-            <ChevronDown className={`absolute right-2 top-2.5 w-4 h-4 pointer-events-none ${dark ? 'text-slate-400' : 'text-gray-400'}`} />
-          </div>
+          /* ThemedSelect draws its own chevron. */
+          <ThemedSelect
+            theme={theme}
+            className={`${error ? 'border-red-500' : ''}`}
+            value={value}
+            onChange={e => handleChange(field.id, e.target.value)}
+            disabled={readOnly}
+          >
+            <option value="">{field.placeholder || 'Select...'}</option>
+            {(field.options || []).map(opt => (
+              <option key={typeof opt === 'string' ? opt : opt.value} value={typeof opt === 'string' ? opt : opt.value}>
+                {typeof opt === 'string' ? opt : opt.label}
+              </option>
+            ))}
+          </ThemedSelect>
         )}
 
         {field.type === 'radio' && (

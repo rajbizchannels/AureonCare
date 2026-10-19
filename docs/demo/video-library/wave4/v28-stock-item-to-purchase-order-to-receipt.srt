@@ -1,0 +1,59 @@
+1
+00:00:03,755 --> 00:00:12,885
+Stock: item to purchase order to receipt — Operations ▸ Inventory — Set a reorder level once, and the shelf tells you when to order.
+
+2
+00:00:18,284 --> 00:00:25,979
+Operations ▸ Inventory opens on the numbers that matter: total value, what is low, what is about to expire.
+
+3
+00:00:25,979 --> 00:00:44,203
+Low Stock Alerts is the working list — two items are below the level someone set for them.
+
+4
+00:00:44,203 --> 00:00:52,886
+An item needs a name, a type and the unit you actually count it in — boxes, vials, doses.
+
+5
+00:00:52,886 --> 00:01:03,155
+A category groups it on the overview, and a supplier is who the purchase order goes to.
+
+6
+00:01:03,155 --> 00:01:08,760
+The reorder level is the one setting that earns its keep — it is what turns a count into an alert.
+
+7
+00:01:08,760 --> 00:01:31,904
+Set it to what you get through between deliveries, plus a little. Too low and you find out by running out.
+
+8
+00:01:31,904 --> 00:01:42,931
+Every change is a movement: dispensed, received, adjusted after a count, or written off when it expires.
+
+9
+00:01:42,931 --> 00:01:53,639
+The stock drops, and the reason stays attached to it. That is what makes a count worth trusting.
+
+10
+00:01:53,639 --> 00:02:04,092
+Purchase Orders is what you send a supplier. This one is pending — raised against the low flu-vaccine stock.
+
+11
+00:02:04,092 --> 00:02:13,597
+Approving is the sign-off. Nothing has arrived yet, and the stock has not moved.
+
+12
+00:02:13,597 --> 00:02:24,170
+Receiving is what raises the stock — one action, and every line on the order lands on the shelf.
+
+13
+00:02:24,170 --> 00:02:32,041
+Back on the overview the levels have moved and the alert has cleared. Item, order, receipt — that is the whole loop.
+
+14
+00:02:32,501 --> 00:02:45,601
+What you just did
+
+15
+00:02:46,253 --> 00:02:55,253
+Health | Efficiency | Growth — More in the Getting Started series — the next video is linked on screen.

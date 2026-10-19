@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import Toggle from '../Toggle';
 import ConfirmationModal from '../modals/ConfirmationModal';
+import ThemedSelect from '../../components/forms/ThemedSelect';
 
 /**
  * ArchiveManagementTab - Comprehensive archive management for AdminPanel
@@ -985,20 +986,17 @@ const ArchiveManagementTab = ({ theme, api, addNotification }) => {
                     <label className="block text-sm font-medium mb-2">
                       Schedule Type *
                     </label>
-                    <select
+                    <ThemedSelect
+                      theme={theme}
+                      focusClass="focus:ring-2 focus:ring-purple-500"
                       value={ruleForm.scheduleType}
                       onChange={(e) => setRuleForm({ ...ruleForm, scheduleType: e.target.value })}
-                      className={`w-full px-4 py-2 rounded-lg ${
-                        theme === 'dark'
-                          ? 'bg-gray-700 border-gray-600'
-                          : 'bg-white border-gray-300'
-                      } border focus:ring-2 focus:ring-purple-500`}
                     >
                       <option value="daily">Daily</option>
                       <option value="weekly">Weekly</option>
                       <option value="monthly">Monthly</option>
                       <option value="custom">Custom (Cron)</option>
-                    </select>
+                    </ThemedSelect>
                   </div>
 
                   {/* Schedule Time */}
@@ -1025,14 +1023,11 @@ const ArchiveManagementTab = ({ theme, api, addNotification }) => {
                     <label className="block text-sm font-medium mb-2">
                       Day of Week *
                     </label>
-                    <select
+                    <ThemedSelect
+                      theme={theme}
+                      focusClass="focus:ring-2 focus:ring-purple-500"
                       value={ruleForm.scheduleDayOfWeek}
                       onChange={(e) => setRuleForm({ ...ruleForm, scheduleDayOfWeek: parseInt(e.target.value) })}
-                      className={`w-full px-4 py-2 rounded-lg ${
-                        theme === 'dark'
-                          ? 'bg-gray-700 border-gray-600'
-                          : 'bg-white border-gray-300'
-                      } border focus:ring-2 focus:ring-purple-500`}
                     >
                       <option value="0">Sunday</option>
                       <option value="1">Monday</option>
@@ -1041,7 +1036,7 @@ const ArchiveManagementTab = ({ theme, api, addNotification }) => {
                       <option value="4">Thursday</option>
                       <option value="5">Friday</option>
                       <option value="6">Saturday</option>
-                    </select>
+                    </ThemedSelect>
                   </div>
                 )}
 

@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from 'react';
+import ThemedSelect from './ThemedSelect';
 import {
   Plus, Trash2, GripVertical, ChevronDown, ChevronUp, Copy, Eye, EyeOff,
   Type, AlignLeft, List, CheckSquare, Calendar, Hash, Mail, Phone, PenLine, Heading, FileText
@@ -263,30 +264,30 @@ const DynamicFormBuilder = ({
                   {/* Conditional logic */}
                   <div className="col-span-2">
                     <label className={labelCls}>Conditional Visibility</label>
-                    <select
+                    <ThemedSelect
+                      theme={theme}
                       value={field.conditional ? field.conditional.field : ''}
                       onChange={e => {
                         if (!e.target.value) updateField(field.id, { conditional: null });
                         else updateField(field.id, { conditional: { field: e.target.value, operator: 'equals', value: '' } });
                       }}
-                      className={inputCls}
                     >
                       <option value="">Always visible</option>
                       {fields.filter(f => f.id !== field.id && !['heading', 'paragraph', 'signature'].includes(f.type)).map(f => (
                         <option key={f.id} value={f.id}>{f.label}</option>
                       ))}
-                    </select>
+                    </ThemedSelect>
                     {field.conditional && (
                       <div className="grid grid-cols-2 gap-2 mt-2">
-                        <select
+                        <ThemedSelect
+                          theme={theme}
                           value={field.conditional.operator}
                           onChange={e => updateField(field.id, { conditional: { ...field.conditional, operator: e.target.value } })}
-                          className={inputCls}
                         >
                           {['equals', 'not_equals', 'contains', 'not_empty', 'is_empty', 'gt', 'lt'].map(op => (
                             <option key={op} value={op}>{op.replace(/_/g, ' ')}</option>
                           ))}
-                        </select>
+                        </ThemedSelect>
                         <input
                           type="text"
                           value={field.conditional.value}

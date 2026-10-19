@@ -3,9 +3,9 @@ import { ArrowLeft, FileText, ChevronDown, ChevronRight, Shield, Users, CreditCa
 
 const EFFECTIVE_DATE = 'February 28, 2026';
 const LAST_UPDATED = 'February 28, 2026';
-const CONTACT_EMAIL = 'legal@aureoncare.com';
+const CONTACT_EMAIL = 'legal@aureoncare.tech';
 const CONTACT_ADDRESS = 'AureonCare, Inc., Legal Department, 97816 Lohr am Main, BY, Germany';
-const SUPPORT_EMAIL = 'support@aureoncare.com';
+const SUPPORT_EMAIL = 'support@aureoncare.tech';
 const GOVERNING_STATE = 'California';
 const GOVERNING_COUNTRY = 'United States';
 

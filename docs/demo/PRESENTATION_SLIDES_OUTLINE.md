@@ -608,9 +608,9 @@ Why AureonCare?
    Enterprise-wide deployment with training and support
 
 **Contact:**
-- 📧 Email: sales@aureoncare.com
+- 📧 Email: sales@aureoncare.tech
 - 📞 Phone: [Your Phone]
-- 🌐 Website: www.aureoncare.com
+- 🌐 Website: www.aureoncare.tech
 
 ### Closing Statement (Large Text)
 **"One Platform. One Patient Record. End-to-End Care."**

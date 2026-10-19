@@ -165,6 +165,14 @@ const RCMView = ({
     }
   }, [api, addNotification]);
 
+  // Load on mount. Without this the module only ever populated as a side effect
+  // of saving something, so opening Pre-Authorizations, Denials, Payment
+  // Postings, Quotes & Invoices or Insurance Payers showed an empty list on a
+  // fresh visit — including the payer dropdowns those forms depend on.
+  useEffect(() => {
+    fetchRCMData();
+  }, [fetchRCMData]);
+
   // Filter functions
   const filteredClaims = claims.filter(claim => {
     if (!claimSearch) return true;
@@ -455,7 +463,9 @@ const RCMView = ({
       </div>
 
       {/* Inline Pre-Authorization Form - Between Search and List */}
-      {showPreapprovalForm && (
+      {/* Tab-guarded like every other inline form here: without it the request
+          form stayed on screen after switching to another tab. */}
+      {activeTab === 'preapprovals' && showPreapprovalForm && (
         <div className={`mb-4 p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-white border-gray-300'}`}>
           <NewPreapprovalForm
             theme={theme}
@@ -1901,23 +1911,9 @@ const RCMView = ({
         </div>
       )}
 
-      {activeTab === 'preapprovals' && showPreapprovalForm && (
-        <div className={`p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-white border-gray-300'}`}>
-          <NewPreapprovalForm
-            theme={theme}
-            api={api}
-            patients={patients}
-            onClose={() => setShowPreapprovalForm(false)}
-            onSuccess={(newPreapproval) => {
-              setShowPreapprovalForm(false);
-              setPreapprovals([...preapprovals, newPreapproval]);
-              addNotification('success', t.preauthorizationCreated || 'Pre-authorization request created successfully');
-            }}
-            addNotification={addNotification}
-            t={t}
-          />
-        </div>
-      )}
+      {/* The pre-authorization form is rendered above, between the search and
+          the list. A second copy here put two identical forms on the page at
+          the same time whenever the request form was open. */}
 
       {activeTab === 'payments' && showPaymentForm && (
         <div className={`p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-white border-gray-300'}`}>
@@ -1961,7 +1957,10 @@ const RCMView = ({
             onClose={() => setShowPaymentPostingForm(false)}
             onSuccess={(newPosting) => {
               setShowPaymentPostingForm(false);
-              setPaymentPostings([...paymentPostings, newPosting]);
+              // Guarded: an undefined entry here reaches the table's filter and
+              // takes the whole view down with it. fetchRCMData refreshes the
+              // list regardless, so skipping the optimistic append is safe.
+              if (newPosting) setPaymentPostings([...paymentPostings, newPosting]);
               fetchRCMData(); // Refresh data
               addNotification('success', 'Payment posting created successfully');
             }}
@@ -1981,7 +1980,7 @@ const RCMView = ({
             onClose={() => setShowDenialForm(false)}
             onSuccess={(newDenial) => {
               setShowDenialForm(false);
-              setDenials([...denials, newDenial]);
+              if (newDenial) setDenials([...denials, newDenial]);
               fetchRCMData(); // Refresh data
               addNotification('success', 'Denial created successfully');
             }}

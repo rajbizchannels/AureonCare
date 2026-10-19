@@ -6670,6 +6670,13 @@ Re-running:
 - Publicly accessible documentation website
 - Context-aware AI-powered help assistant
 
+**Version 1.5** - October 2026 - Updated with:
+- Locations: multiple sites per practice, with one primary site
+- Medical Camps: planning, staffing conflicts, registration desk with queue tokens,
+  station board, consent gate, stock reconciliation, and an aggregates-only sponsor report
+- Practice Setup: specialty configuration wizard with previewed changes, protection for
+  your own edits, multi-specialty merging and per-practice terminology
+
 **Version 1.1** - December 2025 - Updated with:
 - Waitlist management integration into Practice Management
 - Advanced lab order system with CPT multiselect

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import ThemedSelect from '../../components/forms/ThemedSelect';
 import {
   FileText,
   Search,
@@ -375,14 +376,10 @@ const AuditLogsTab = ({ theme, api, addNotification }) => {
               <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
                 Action Type
               </label>
-              <select
+              <ThemedSelect
+                theme={theme}
                 value={filters.action_type}
                 onChange={(e) => handleFilterChange('action_type', e.target.value)}
-                className={`w-full px-3 py-2 border rounded-lg ${
-                  theme === 'dark'
-                    ? 'bg-slate-900 border-slate-600 text-white'
-                    : 'bg-white border-gray-300 text-gray-900'
-                }`}
               >
                 <option value="">All Actions</option>
                 <option value="view">View</option>
@@ -392,27 +389,23 @@ const AuditLogsTab = ({ theme, api, addNotification }) => {
                 <option value="submit">Submit</option>
                 <option value="open">Open</option>
                 <option value="close">Close</option>
-              </select>
+              </ThemedSelect>
             </div>
 
             <div>
               <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
                 Resource Type
               </label>
-              <select
+              <ThemedSelect
+                theme={theme}
                 value={filters.resource_type}
                 onChange={(e) => handleFilterChange('resource_type', e.target.value)}
-                className={`w-full px-3 py-2 border rounded-lg ${
-                  theme === 'dark'
-                    ? 'bg-slate-900 border-slate-600 text-white'
-                    : 'bg-white border-gray-300 text-gray-900'
-                }`}
               >
                 <option value="">All Types</option>
                 <option value="form">Form</option>
                 <option value="modal">Modal</option>
                 <option value="view">View</option>
-              </select>
+              </ThemedSelect>
             </div>
 
             <div>
@@ -436,14 +429,10 @@ const AuditLogsTab = ({ theme, api, addNotification }) => {
               <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
                 Module
               </label>
-              <select
+              <ThemedSelect
+                theme={theme}
                 value={filters.module}
                 onChange={(e) => handleFilterChange('module', e.target.value)}
-                className={`w-full px-3 py-2 border rounded-lg ${
-                  theme === 'dark'
-                    ? 'bg-slate-900 border-slate-600 text-white'
-                    : 'bg-white border-gray-300 text-gray-900'
-                }`}
               >
                 <option value="">All Modules</option>
                 <option value="practiceManagement">Practice Management</option>
@@ -458,7 +447,7 @@ const AuditLogsTab = ({ theme, api, addNotification }) => {
                 <option value="integrations">Integrations</option>
                 <option value="patientPortal">Patient Portal</option>
                 <option value="admin">Admin</option>
-              </select>
+              </ThemedSelect>
             </div>
 
             <div>
@@ -497,20 +486,16 @@ const AuditLogsTab = ({ theme, api, addNotification }) => {
               <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
                 Status
               </label>
-              <select
+              <ThemedSelect
+                theme={theme}
                 value={filters.status}
                 onChange={(e) => handleFilterChange('status', e.target.value)}
-                className={`w-full px-3 py-2 border rounded-lg ${
-                  theme === 'dark'
-                    ? 'bg-slate-900 border-slate-600 text-white'
-                    : 'bg-white border-gray-300 text-gray-900'
-                }`}
               >
                 <option value="">All Statuses</option>
                 <option value="success">Success</option>
                 <option value="error">Error</option>
                 <option value="warning">Warning</option>
-              </select>
+              </ThemedSelect>
             </div>
 
             <div className="flex items-end">

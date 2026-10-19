@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { authenticate, authorize, optionalAuth } = require('../middleware/auth');
+const { rosteredCampWindows } = require('../services/camps');
 
 // ============================================================================
 // DOCTOR AVAILABILITY ROUTES
@@ -13,7 +14,7 @@ const { authenticate, authorize, optionalAuth } = require('../middleware/auth');
  */
 router.get('/availability/:providerId', optionalAuth, async (req, res) => {
     try {
-        const pool = req.app.locals.pool;
+        const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
         const { providerId } = req.params;
 
         const result = await pool.query(
@@ -38,7 +39,7 @@ router.get('/availability/:providerId', optionalAuth, async (req, res) => {
  */
 router.post('/availability', authenticate, authorize('admin', 'receptionist', 'doctor'), async (req, res) => {
     try {
-        const pool = req.app.locals.pool;
+        const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
         const { providerId, dayOfWeek, startTime, endTime, timezone, isAvailable } = req.body;
 
         // Validation
@@ -72,7 +73,7 @@ router.post('/availability', authenticate, authorize('admin', 'receptionist', 'd
  */
 router.put('/availability/:id', authenticate, authorize('admin', 'receptionist', 'doctor'), async (req, res) => {
     try {
-        const pool = req.app.locals.pool;
+        const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
         const { id } = req.params;
         const { dayOfWeek, startTime, endTime, timezone, isAvailable } = req.body;
 
@@ -107,7 +108,7 @@ router.put('/availability/:id', authenticate, authorize('admin', 'receptionist',
  */
 router.delete('/availability/:id', authenticate, authorize('admin', 'receptionist', 'doctor'), async (req, res) => {
     try {
-        const pool = req.app.locals.pool;
+        const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
         const { id } = req.params;
 
         const result = await pool.query(
@@ -133,8 +134,8 @@ router.delete('/availability/:id', authenticate, authorize('admin', 'receptionis
  * Requires authentication - only admin/receptionist/doctor can bulk update availability
  */
 router.post('/availability/bulk', authenticate, authorize('admin', 'receptionist', 'doctor'), async (req, res) => {
-    const pool = req.app.locals.pool;
-    const client = await pool.connect();
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
+    const client = await req.app.locals.pool.connect();
     try {
         const { providerId, schedules } = req.body;
 
@@ -143,6 +144,7 @@ router.post('/availability/bulk', authenticate, authorize('admin', 'receptionist
         }
 
         await client.query('BEGIN');
+    await client.query(`SET LOCAL search_path TO ${req.tenant && /^[a-z_][a-z0-9_]*$/.test(req.tenant.schemaName || '') ? req.tenant.schemaName : 'public'}, public, control`); // SEC-05
 
         // Delete existing schedules for this provider
         await client.query('DELETE FROM doctor_availability WHERE provider_id = $1', [providerId]);
@@ -185,7 +187,7 @@ router.post('/availability/bulk', authenticate, authorize('admin', 'receptionist
  */
 router.get('/time-off/:providerId', optionalAuth, async (req, res) => {
     try {
-        const pool = req.app.locals.pool;
+        const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
         const { providerId } = req.params;
 
         const result = await pool.query(
@@ -210,7 +212,7 @@ router.get('/time-off/:providerId', optionalAuth, async (req, res) => {
  */
 router.post('/time-off', authenticate, authorize('admin', 'receptionist', 'doctor'), async (req, res) => {
     try {
-        const pool = req.app.locals.pool;
+        const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
         const { providerId, startDate, endDate, reason, isRecurring, recurrenceRule } = req.body;
 
         if (!providerId || !startDate || !endDate) {
@@ -239,7 +241,7 @@ router.post('/time-off', authenticate, authorize('admin', 'receptionist', 'docto
  */
 router.put('/time-off/:id', authenticate, authorize('admin', 'receptionist', 'doctor'), async (req, res) => {
     try {
-        const pool = req.app.locals.pool;
+        const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
         const { id } = req.params;
         const { startDate, endDate, reason, isRecurring, recurrenceRule } = req.body;
 
@@ -274,7 +276,7 @@ router.put('/time-off/:id', authenticate, authorize('admin', 'receptionist', 'do
  */
 router.delete('/time-off/:id', authenticate, authorize('admin', 'receptionist', 'doctor'), async (req, res) => {
     try {
-        const pool = req.app.locals.pool;
+        const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
         const { id } = req.params;
 
         const result = await pool.query(
@@ -304,7 +306,7 @@ router.delete('/time-off/:id', authenticate, authorize('admin', 'receptionist', 
  */
 router.get('/appointment-types/:providerId', optionalAuth, async (req, res) => {
     try {
-        const pool = req.app.locals.pool;
+        const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
         const { providerId } = req.params;
 
         const result = await pool.query(
@@ -329,7 +331,7 @@ router.get('/appointment-types/:providerId', optionalAuth, async (req, res) => {
  */
 router.get('/appointment-types', optionalAuth, async (req, res) => {
     try {
-        const pool = req.app.locals.pool;
+        const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
         const result = await pool.query(
             `SELECT * FROM appointment_type_config
              WHERE is_active = true
@@ -350,7 +352,7 @@ router.get('/appointment-types', optionalAuth, async (req, res) => {
  */
 router.post('/appointment-types', authenticate, authorize('admin', 'receptionist', 'doctor'), async (req, res) => {
     try {
-        const pool = req.app.locals.pool;
+        const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
         const {
             providerId,
             name,
@@ -402,7 +404,7 @@ router.post('/appointment-types', authenticate, authorize('admin', 'receptionist
  */
 router.put('/appointment-types/:id', authenticate, authorize('admin', 'receptionist', 'doctor'), async (req, res) => {
     try {
-        const pool = req.app.locals.pool;
+        const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
         const { id } = req.params;
         const {
             name,
@@ -465,7 +467,7 @@ router.put('/appointment-types/:id', authenticate, authorize('admin', 'reception
  */
 router.delete('/appointment-types/:id', authenticate, authorize('admin'), async (req, res) => {
     try {
-        const pool = req.app.locals.pool;
+        const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
         const { id } = req.params;
 
         const result = await pool.query(
@@ -495,7 +497,7 @@ router.delete('/appointment-types/:id', authenticate, authorize('admin'), async 
  */
 router.get('/booking-config/:providerId', optionalAuth, async (req, res) => {
     try {
-        const pool = req.app.locals.pool;
+        const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
         const { providerId } = req.params;
 
         const result = await pool.query(
@@ -521,7 +523,7 @@ router.get('/booking-config/:providerId', optionalAuth, async (req, res) => {
  */
 router.get('/booking-config/slug/:slug', async (req, res) => {
     try {
-        const pool = req.app.locals.pool;
+        const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
         const { slug } = req.params;
 
         const result = await pool.query(
@@ -563,7 +565,7 @@ router.get('/booking-config/slug/:slug', async (req, res) => {
  */
 router.post('/booking-config', authenticate, authorize('admin', 'receptionist', 'doctor'), async (req, res) => {
     try {
-        const pool = req.app.locals.pool;
+        const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
         const {
             providerId,
             bookingUrlSlug,
@@ -632,7 +634,7 @@ router.post('/booking-config', authenticate, authorize('admin', 'receptionist', 
  */
 router.put('/booking-config/:providerId', authenticate, authorize('admin', 'receptionist', 'doctor'), async (req, res) => {
     try {
-        const pool = req.app.locals.pool;
+        const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
         const { providerId } = req.params;
         const {
             bookingUrlSlug,
@@ -716,9 +718,16 @@ router.put('/booking-config/:providerId', authenticate, authorize('admin', 'rece
  * Query params: date (YYYY-MM-DD), appointmentTypeId, timezone
  * No authentication required - public endpoint for booking
  */
-router.get('/slots/:providerId', async (req, res) => {
+// NOTE: optionalAuth added with the camps work. Without any auth middleware this handler
+// never got req.db, so since the SEC-05 cutover moved the tenant tables out of `public` it
+// was querying doctor_availability / provider_booking_config through a public-pinned pool
+// and failing with 42P01 for every tenant. optionalAuth resolves the tenant (and attaches
+// req.db) for a signed-in caller while still letting the endpoint answer anonymously.
+// The genuinely anonymous path remains unresolved — a public booking page needs tenant
+// routing of its own (see services/portalRouting.js); that is a separate fix.
+router.get('/slots/:providerId', optionalAuth, async (req, res) => {
     try {
-        const pool = req.app.locals.pool;
+        const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
         const { providerId } = req.params;
         const { date, appointmentTypeId, timezone = 'UTC' } = req.query;
 
@@ -790,6 +799,21 @@ router.get('/slots/:providerId', async (req, res) => {
              AND end_date >= $2::timestamp`,
             [providerId, date]
         );
+
+        // A provider rostered to a medical camp is away from the practice for the camp's
+        // whole window, so those hours must not be offered here. Shaped like a time-off row
+        // and appended to the same list, so the blocking logic below stays single-path.
+        const campWindows = await rosteredCampWindows(
+            pool, providerId, date, `${date} 23:59:59`
+        ).catch((e) => {
+            // A tenant that has not yet run tenant/006 has no camp tables; absent camps
+            // must not take the whole slot endpoint down.
+            if (e.code !== '42P01') throw e;
+            return [];
+        });
+        timeOffResult.rows.push(...campWindows.map((c) => ({
+            start_date: c.start_date, end_date: c.end_date,
+        })));
 
         // Generate time slots
         const slots = [];
@@ -879,9 +903,9 @@ router.get('/slots/:providerId', async (req, res) => {
  * Query params: startDate, endDate, appointmentTypeId
  * No authentication required - public endpoint for booking
  */
-router.get('/available-dates/:providerId', async (req, res) => {
+router.get('/available-dates/:providerId', optionalAuth, async (req, res) => {
     try {
-        const pool = req.app.locals.pool;
+        const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
         const { providerId } = req.params;
         const { startDate, endDate, appointmentTypeId } = req.query;
 
@@ -912,8 +936,18 @@ router.get('/available-dates/:providerId', async (req, res) => {
             [providerId, endDate, startDate]
         );
 
+        // Camp days are not bookable at the practice either — see /slots. Without this the
+        // date picker would offer a camp day and then show no slots on it.
+        // End of the last day, not its midnight: a camp running 09:00-17:00 on the final
+        // day of the range would otherwise fall outside `starts_at <= endDate`.
+        const campWindows = await rosteredCampWindows(pool, providerId, startDate, `${endDate} 23:59:59`)
+            .catch((e) => {
+                if (e.code !== '42P01') throw e; // tenant/006 not applied yet
+                return [];
+            });
+
         const timeOffDates = new Set();
-        timeOffResult.rows.forEach(timeOff => {
+        [...timeOffResult.rows, ...campWindows].forEach(timeOff => {
             const start = new Date(timeOff.start_date);
             const end = new Date(timeOff.end_date);
             for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
@@ -955,7 +989,7 @@ router.get('/available-dates/:providerId', async (req, res) => {
  */
 router.post('/check-availability', async (req, res) => {
     try {
-        const pool = req.app.locals.pool;
+        const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
         const { providerId, startTime, endTime } = req.body;
 
         if (!providerId || !startTime || !endTime) {
@@ -985,8 +1019,8 @@ router.post('/check-availability', async (req, res) => {
  * Body: { providerId, patientInfo, startTime, appointmentTypeId, customFormData }
  */
 router.post('/book', async (req, res) => {
-    const pool = req.app.locals.pool;
-    const client = await pool.connect();
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
+    const client = await req.app.locals.pool.connect();
     try {
         const {
             providerId,
@@ -1002,6 +1036,7 @@ router.post('/book', async (req, res) => {
         }
 
         await client.query('BEGIN');
+    await client.query(`SET LOCAL search_path TO ${req.tenant && /^[a-z_][a-z0-9_]*$/.test(req.tenant.schemaName || '') ? req.tenant.schemaName : 'public'}, public, control`); // SEC-05
 
         // Get appointment type
         const typeResult = await client.query(
@@ -1132,7 +1167,7 @@ router.post('/book', async (req, res) => {
  */
 router.post('/cancel/:appointmentId', async (req, res) => {
     try {
-        const pool = req.app.locals.pool;
+        const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
         const { appointmentId } = req.params;
         const { cancellationReason, cancelledBy } = req.body;
 
@@ -1215,8 +1250,8 @@ router.post('/cancel/:appointmentId', async (req, res) => {
  * Body: { newStartTime, reason }
  */
 router.post('/reschedule/:appointmentId', async (req, res) => {
-    const pool = req.app.locals.pool;
-    const client = await pool.connect();
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
+    const client = await req.app.locals.pool.connect();
     try {
         const { appointmentId } = req.params;
         const { newStartTime, reason } = req.body;
@@ -1226,6 +1261,7 @@ router.post('/reschedule/:appointmentId', async (req, res) => {
         }
 
         await client.query('BEGIN');
+    await client.query(`SET LOCAL search_path TO ${req.tenant && /^[a-z_][a-z0-9_]*$/.test(req.tenant.schemaName || '') ? req.tenant.schemaName : 'public'}, public, control`); // SEC-05
 
         // Get appointment
         const appointmentResult = await client.query(

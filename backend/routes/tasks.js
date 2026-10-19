@@ -2,6 +2,7 @@ const express = require('express');
 const { authenticate } = require('../middleware/auth');
 const router = express.Router();
 router.use(authenticate);
+router.use(require('../middleware/planEnforcement').enforceActiveBilling); // SEC-05 S11: read-only when subscription past_due/canceled
 const notificationService = require('../services/notificationService');
 
 // Helper function to convert snake_case to camelCase
@@ -17,7 +18,7 @@ const toCamelCase = (obj) => {
 // Get all tasks
 router.get('/', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(`
       SELECT * FROM tasks
       ORDER BY
@@ -41,7 +42,7 @@ router.post('/', async (req, res) => {
   const { title, priority, dueDate, status, description } = req.body;
 
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(
       `INSERT INTO tasks (title, priority, due_date, status, description, created_at)
        VALUES ($1, $2, $3, $4, $5, NOW())
@@ -64,7 +65,7 @@ router.put('/:id', async (req, res) => {
   const { title, priority, dueDate, status, description } = req.body;
 
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(
       `UPDATE tasks
        SET title = COALESCE($1, title),
@@ -98,7 +99,7 @@ router.put('/:id', async (req, res) => {
 // Delete task
 router.delete('/:id', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(
       'DELETE FROM tasks WHERE id = $1 RETURNING *',
       [req.params.id]

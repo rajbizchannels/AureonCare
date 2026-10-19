@@ -1,0 +1,6 @@
+0:00 Introduction
+0:14 The pre-auth queue
+0:41 Making the request
+1:02 Justifying it
+1:40 Tracking the decision
+2:18 Recap

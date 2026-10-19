@@ -2,12 +2,13 @@ const express = require('express');
 const { authenticate } = require('../middleware/auth');
 const router = express.Router();
 router.use(authenticate);
+router.use(require('../middleware/planEnforcement').enforceActiveBilling); // SEC-05 S11: read-only when subscription past_due/canceled
 
 // ==================== SERVICE CATEGORIES ====================
 
 // Get all service categories
 router.get('/categories', async (req, res) => {
-  const pool = req.app.locals.pool;
+  const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
   try {
     const result = await pool.query(`
       SELECT sc.*,
@@ -26,7 +27,7 @@ router.get('/categories', async (req, res) => {
 
 // Get single category
 router.get('/categories/:id', async (req, res) => {
-  const pool = req.app.locals.pool;
+  const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
   const { id } = req.params;
   try {
     const result = await pool.query(
@@ -45,7 +46,7 @@ router.get('/categories/:id', async (req, res) => {
 
 // Create service category
 router.post('/categories', async (req, res) => {
-  const pool = req.app.locals.pool;
+  const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
   const { name, description, icon, color, display_order, is_active } = req.body;
 
   if (!name) {
@@ -68,14 +69,17 @@ router.post('/categories', async (req, res) => {
 
 // Update service category
 router.put('/categories/:id', async (req, res) => {
-  const pool = req.app.locals.pool;
+  const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
   const { id } = req.params;
   const { name, description, icon, color, display_order, is_active } = req.body;
 
   try {
     const result = await pool.query(
       `UPDATE service_categories
-       SET name = COALESCE($1, name),
+       SET -- A user edit makes this row the practice's own: a pack upgrade must never
+           -- overwrite it afterwards (tenant/007, services/specialtyPack.js).
+           is_customised = true,
+           name = COALESCE($1, name),
            description = COALESCE($2, description),
            icon = COALESCE($3, icon),
            color = COALESCE($4, color),
@@ -98,7 +102,7 @@ router.put('/categories/:id', async (req, res) => {
 
 // Delete service category
 router.delete('/categories/:id', async (req, res) => {
-  const pool = req.app.locals.pool;
+  const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
   const { id } = req.params;
 
   try {
@@ -133,7 +137,7 @@ router.delete('/categories/:id', async (req, res) => {
 
 // Get all offerings with filtering and search
 router.get('/', async (req, res) => {
-  const pool = req.app.locals.pool;
+  const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
   const {
     category_id,
     is_active,
@@ -243,7 +247,7 @@ router.get('/', async (req, res) => {
 
 // Get single offering with full details
 router.get('/:id', async (req, res) => {
-  const pool = req.app.locals.pool;
+  const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
   const { id } = req.params;
 
   try {
@@ -315,7 +319,7 @@ router.get('/:id', async (req, res) => {
 
 // Create healthcare offering
 router.post('/', async (req, res) => {
-  const pool = req.app.locals.pool;
+  const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
   const {
     name,
     description,
@@ -386,7 +390,13 @@ router.post('/', async (req, res) => {
         min_age, max_age, gender_restriction || 'any',
         contraindications, prerequisites, allowed_provider_specializations,
         image_url, video_url, brochure_url,
-        _consent_form_required || false, _consent_form_url || _consent_form_id,
+        // consent_form_url and consent_form_id are TWO columns and need two values. This
+        // list supplied 28 values for 29 placeholders, so every POST /api/offerings failed
+        // outright with `bind message supplies 28 parameters, but prepared statement
+        // requires 29` — creating an offering through the API never worked. The old
+        // `_consent_form_url || _consent_form_id` also meant consent_form_id was never
+        // populated, so an offering could not reference its consent form at all.
+        _consent_form_required || false, _consent_form_url || null, _consent_form_id || null,
         seo_title, seo_description, seo_keywords, created_by
       ]
     );
@@ -429,7 +439,7 @@ const CAMEL_TO_SNAKE = {
 
 // Update healthcare offering
 router.put('/:id', async (req, res) => {
-  const pool = req.app.locals.pool;
+  const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
   const { id } = req.params;
 
   // Normalize camelCase keys to snake_case
@@ -453,8 +463,11 @@ router.put('/:id', async (req, res) => {
     const setClause = fields.map((field, index) => `${field} = $${index + 2}`).join(', ');
     const values = [id, ...fields.map(field => updates[field])];
 
+    // is_customised is appended rather than being one of `fields`, so it is set by the
+    // edit itself and cannot be spoofed through the request body. The view_count bump
+    // further up deliberately does NOT stamp: reading an offering is not customising it.
     const result = await pool.query(
-      `UPDATE healthcare_offerings SET ${setClause} WHERE id = $1 RETURNING *`,
+      `UPDATE healthcare_offerings SET ${setClause}, is_customised = true WHERE id = $1 RETURNING *`,
       values
     );
 
@@ -471,7 +484,7 @@ router.put('/:id', async (req, res) => {
 
 // Delete healthcare offering
 router.delete('/:id', async (req, res) => {
-  const pool = req.app.locals.pool;
+  const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
   const { id } = req.params;
 
   try {
@@ -507,7 +520,7 @@ router.delete('/:id', async (req, res) => {
 
 // Get pricing for an offering
 router.get('/:id/pricing', async (req, res) => {
-  const pool = req.app.locals.pool;
+  const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
   const { id } = req.params;
 
   try {
@@ -524,7 +537,7 @@ router.get('/:id/pricing', async (req, res) => {
 
 // Add pricing option to offering
 router.post('/:id/pricing', async (req, res) => {
-  const pool = req.app.locals.pool;
+  const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
   const { id } = req.params;
   const {
     pricing_type,
@@ -571,7 +584,7 @@ router.post('/:id/pricing', async (req, res) => {
 
 // Update pricing option
 router.put('/pricing/:pricing_id', async (req, res) => {
-  const pool = req.app.locals.pool;
+  const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
   const { pricing_id } = req.params;
   const updates = req.body;
 
@@ -620,7 +633,7 @@ router.put('/pricing/:pricing_id', async (req, res) => {
 
 // Delete pricing option
 router.delete('/pricing/:pricing_id', async (req, res) => {
-  const pool = req.app.locals.pool;
+  const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
   const { pricing_id } = req.params;
 
   try {
@@ -644,7 +657,7 @@ router.delete('/pricing/:pricing_id', async (req, res) => {
 
 // Get all packages
 router.get('/packages/all', async (req, res) => {
-  const pool = req.app.locals.pool;
+  const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
   const { is_active, is_featured, category_id, package_type } = req.query;
 
   try {
@@ -707,7 +720,7 @@ router.get('/packages/all', async (req, res) => {
 
 // Get single package
 router.get('/packages/:id', async (req, res) => {
-  const pool = req.app.locals.pool;
+  const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
   const { id } = req.params;
 
   try {
@@ -751,7 +764,7 @@ router.get('/packages/:id', async (req, res) => {
 
 // Create package
 router.post('/packages', async (req, res) => {
-  const pool = req.app.locals.pool;
+  const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
   const {
     name,
     description,
@@ -777,10 +790,11 @@ router.post('/packages', async (req, res) => {
     return res.status(400).json({ error: 'Package name and base price are required' });
   }
 
-  const client = await pool.connect();
+  const client = await req.app.locals.pool.connect();
 
   try {
     await client.query('BEGIN');
+    await client.query(`SET LOCAL search_path TO ${req.tenant && /^[a-z_][a-z0-9_]*$/.test(req.tenant.schemaName || '') ? req.tenant.schemaName : 'public'}, public, control`); // SEC-05
 
     const discount = discount_percentage || 0;
     const final_price = base_price - (base_price * discount / 100);
@@ -829,7 +843,7 @@ router.post('/packages', async (req, res) => {
 
 // Update package
 router.put('/packages/:id', async (req, res) => {
-  const pool = req.app.locals.pool;
+  const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
   const { id } = req.params;
   const updates = req.body;
 
@@ -857,10 +871,11 @@ router.put('/packages/:id', async (req, res) => {
       return res.status(400).json({ error: 'No valid fields to update' });
     }
 
-    const client = await pool.connect();
+    const client = await req.app.locals.pool.connect();
 
     try {
       await client.query('BEGIN');
+    await client.query(`SET LOCAL search_path TO ${req.tenant && /^[a-z_][a-z0-9_]*$/.test(req.tenant.schemaName || '') ? req.tenant.schemaName : 'public'}, public, control`); // SEC-05
 
       // Update package
       if (fields.length > 0) {
@@ -913,7 +928,7 @@ router.put('/packages/:id', async (req, res) => {
 
 // Delete package
 router.delete('/packages/:id', async (req, res) => {
-  const pool = req.app.locals.pool;
+  const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
   const { id } = req.params;
 
   try {
@@ -937,7 +952,7 @@ router.delete('/packages/:id', async (req, res) => {
 
 // Get patient enrollments
 router.get('/enrollments/patient/:patient_id', async (req, res) => {
-  const pool = req.app.locals.pool;
+  const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
   const { patient_id } = req.params;
 
   try {
@@ -965,7 +980,7 @@ router.get('/enrollments/patient/:patient_id', async (req, res) => {
 
 // Create enrollment
 router.post('/enrollments', async (req, res) => {
-  const pool = req.app.locals.pool;
+  const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
   const {
     patient_id,
     package_id,
@@ -1021,7 +1036,7 @@ router.post('/enrollments', async (req, res) => {
 
 // Update enrollment
 router.put('/enrollments/:id', async (req, res) => {
-  const pool = req.app.locals.pool;
+  const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
   const { id } = req.params;
   const updates = req.body;
 
@@ -1077,7 +1092,7 @@ router.put('/enrollments/:id', async (req, res) => {
 
 // Get reviews for an offering
 router.get('/:id/reviews', async (req, res) => {
-  const pool = req.app.locals.pool;
+  const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
   const { id } = req.params;
   const { is_approved } = req.query;
 
@@ -1109,7 +1124,7 @@ router.get('/:id/reviews', async (req, res) => {
 
 // Create review
 router.post('/:id/reviews', async (req, res) => {
-  const pool = req.app.locals.pool;
+  const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
   const { id } = req.params;
   const { patient_id, appointment_id, rating, review_text } = req.body;
 
@@ -1141,7 +1156,7 @@ router.post('/:id/reviews', async (req, res) => {
 
 // Moderate review (approve/feature)
 router.put('/reviews/:review_id/moderate', async (req, res) => {
-  const pool = req.app.locals.pool;
+  const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
   const { review_id } = req.params;
   const { is_approved, is_featured, moderated_by } = req.body;
 
@@ -1172,7 +1187,7 @@ router.put('/reviews/:review_id/moderate', async (req, res) => {
 
 // Get all promotions
 router.get('/promotions/all', async (req, res) => {
-  const pool = req.app.locals.pool;
+  const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
   const { is_active } = req.query;
 
   try {
@@ -1196,7 +1211,7 @@ router.get('/promotions/all', async (req, res) => {
 
 // Validate promo code
 router.post('/promotions/validate', async (req, res) => {
-  const pool = req.app.locals.pool;
+  const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
   const { promo_code, patient_id, offering_ids, package_ids } = req.body;
 
   if (!promo_code) {
@@ -1259,7 +1274,7 @@ router.post('/promotions/validate', async (req, res) => {
 
 // Create promotion
 router.post('/promotions', async (req, res) => {
-  const pool = req.app.locals.pool;
+  const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
   const {
     name,
     description,
@@ -1313,7 +1328,7 @@ router.post('/promotions', async (req, res) => {
 
 // Update promotion
 router.put('/promotions/:id', async (req, res) => {
-  const pool = req.app.locals.pool;
+  const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
   const { id } = req.params;
   const updates = req.body;
 
@@ -1347,25 +1362,12 @@ router.put('/promotions/:id', async (req, res) => {
 
 // ==================== OFFERING → FORM LINKS ====================
 
-const ENSURE_OFFERING_FORM_LINKS = `
-  CREATE TABLE IF NOT EXISTS offering_form_links (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    offering_id UUID NOT NULL REFERENCES healthcare_offerings(id) ON DELETE CASCADE,
-    form_template_id TEXT NOT NULL,
-    form_template_name VARCHAR(255),
-    trigger_on VARCHAR(50) DEFAULT 'order',
-    is_active BOOLEAN DEFAULT true,
-    created_by UUID,
-    created_at TIMESTAMP DEFAULT NOW(),
-    UNIQUE(offering_id, form_template_id)
-  );
-`;
+// SEC-05: table/column creation moved to migrations (see migrations/tenant/001 and 072).
 
 // GET /api/offerings/:id/forms
 router.get('/:id/forms', async (req, res) => {
-  const pool = req.app.locals.pool;
+  const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
   try {
-    await pool.query(ENSURE_OFFERING_FORM_LINKS);
     const result = await pool.query(
       'SELECT * FROM offering_form_links WHERE offering_id = $1 AND is_active = true ORDER BY created_at',
       [req.params.id]
@@ -1379,11 +1381,10 @@ router.get('/:id/forms', async (req, res) => {
 
 // POST /api/offerings/:id/forms
 router.post('/:id/forms', async (req, res) => {
-  const pool = req.app.locals.pool;
+  const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
   const { form_template_id, form_template_name, trigger_on } = req.body;
   const actorId = req.headers['x-user-id'];
   try {
-    await pool.query(ENSURE_OFFERING_FORM_LINKS);
     const result = await pool.query(
       `INSERT INTO offering_form_links (offering_id, form_template_id, form_template_name, trigger_on, created_by)
        VALUES ($1, $2, $3, $4, $5)
@@ -1400,9 +1401,8 @@ router.post('/:id/forms', async (req, res) => {
 
 // DELETE /api/offerings/:id/forms/:formTemplateId
 router.delete('/:id/forms/:formTemplateId', async (req, res) => {
-  const pool = req.app.locals.pool;
+  const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
   try {
-    await pool.query(ENSURE_OFFERING_FORM_LINKS);
     await pool.query(
       'DELETE FROM offering_form_links WHERE offering_id = $1 AND form_template_id = $2',
       [req.params.id, req.params.formTemplateId]
@@ -1418,7 +1418,7 @@ router.delete('/:id/forms/:formTemplateId', async (req, res) => {
 
 // Get offering statistics
 router.get('/statistics/overview', async (req, res) => {
-  const pool = req.app.locals.pool;
+  const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
 
   try {
     const stats = await pool.query(`

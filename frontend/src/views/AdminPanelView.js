@@ -16,7 +16,7 @@
  * - Implement React Query for better API state management
  */
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import PropTypes from 'prop-types';
 import {
   Settings,
@@ -62,22 +62,25 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
+import InviteStaffPanel from '../components/InviteStaffPanel';
+import TeamAccessPanel from '../components/TeamAccessPanel';
+import SubscriptionPlansPanel from '../components/SubscriptionPlansPanel';
 import CredentialModal from '../components/modals/CredentialModal';
+import BackupDestinationModal from '../components/modals/BackupDestinationModal';
 import { useAudit } from '../hooks/useAudit';
 import IntegrationCard from '../components/IntegrationCard';
 import AuditLogsTab from '../components/admin/AuditLogsTab';
 import ArchiveManagementTab from '../components/admin/ArchiveManagementTab';
+import LocationsTab from '../components/admin/LocationsTab';
 import { useClinicSettings } from '../hooks/useClinicSettings';
 import { apiFetch } from '../api/apiService';
 import { useShellTab } from '../hooks/useShellTab';
 import {
   USER_ROLES,
   USER_STATUS,
-  PLAN_IDS,
   DEFAULT_APPOINTMENT_SETTINGS,
   DEFAULT_WORKING_HOURS,
   DEFAULT_ROLE_PERMISSIONS,
-  SUBSCRIPTION_PLANS,
   ADMIN_TABS,
   TELEHEALTH_PROVIDERS,
   VENDOR_TYPES,
@@ -94,6 +97,7 @@ import {
   validateOptionalEmail,
 } from '../utils/validators';
 import { hasPermission, isAdmin } from '../utils/rolePermissions';
+import ThemedSelect from '../components/forms/ThemedSelect';
 
 /**
  * ZoomSetupGuide — admin-only collapsible guide for configuring
@@ -308,10 +312,11 @@ const AdminPanelView = ({
   addNotification,
   setCurrentModule = () => {},
   t = {},
+  language = 'en',
   onCurrencyChange,
 }) => {
   // ==================== CONTEXT ====================
-  const { setPlanTier, updateUserPreferences, planTier, user } = useApp();
+  const { updateUserPreferences, user } = useApp();
 
   // ==================== STATE ====================
   const [activeTab, setActiveTab, tabsInShell] = useShellTab(shellTab, onTabChange, ADMIN_TABS.CLINIC);
@@ -334,6 +339,10 @@ const AdminPanelView = ({
     oneDrive: false,
   });
   const [restoreLoading, setRestoreLoading] = useState(false);
+  // Cloud destinations that are actually connected. Drives whether a backup
+  // uploads straight away or asks the admin to choose.
+  const [cloudProviders, setCloudProviders] = useState([]);
+  const [destinationModal, setDestinationModal] = useState({ isOpen: false, mode: 'backup', title: '' });
   const [backupConfig, setBackupConfig] = useState({
     googleDrive: { configured: false },
     oneDrive: { configured: false },
@@ -371,7 +380,6 @@ const AdminPanelView = ({
   const [invBackups, setInvBackups] = useState([]);
   const [invBackupLoading, setInvBackupLoading] = useState(false);
 
-  const [currentPlan, setCurrentPlan] = useState(planTier || PLAN_IDS.PROFESSIONAL);
 
   // Integration settings: status + connection info (never raw tokens)
   const [telehealthStatus, setTelehealthStatus] = useState({
@@ -458,6 +466,8 @@ const AdminPanelView = ({
   // User form inline state
   const [showUserForm, setShowUserForm] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
+  // Only relevant while editing — a new user always needs a password.
+  const [showPasswordFields, setShowPasswordFields] = useState(false);
   const [userFormData, setUserFormData] = useState({
     firstName: '',
     lastName: '',
@@ -505,9 +515,12 @@ const AdminPanelView = ({
   const tabs = useMemo(
     () => [
       { id: ADMIN_TABS.CLINIC, label: t.clinicSettings || 'Clinic Settings', icon: Building2 },
+      { id: ADMIN_TABS.LOCATIONS, label: t.locations || 'Locations', icon: MapPin },
       { id: ADMIN_TABS.USERS, label: t.userManagement || 'User Management', icon: Users },
       { id: ADMIN_TABS.ROLES, label: t.rolesPermissions || 'Roles & Permissions', icon: Shield },
-      { id: ADMIN_TABS.PLANS, label: t.subscriptionPlans || 'Subscription Plans', icon: CreditCard },
+      // Billing is admin-only. The API enforces this too (authorize('admin') on
+      // PUT /api/plans/current); hiding the tab stops non-admins reaching a 403.
+      ...(isAdmin(user) ? [{ id: ADMIN_TABS.PLANS, label: t.subscriptionPlans || 'Subscription Plans', icon: CreditCard }] : []),
       { id: ADMIN_TABS.TELEHEALTH, label: t.integrations || 'Integrations', icon: Video },
       { id: ADMIN_TABS.HOURS, label: t.workingHours || 'Working Hours', icon: Clock },
       { id: ADMIN_TABS.APPOINTMENTS, label: t.appointmentSettings || 'Appointment Settings', icon: Settings },
@@ -515,7 +528,7 @@ const AdminPanelView = ({
       { id: ADMIN_TABS.ARCHIVE, label: 'Archive Management', icon: Archive },
       { id: ADMIN_TABS.AUDIT, label: 'Audit Logs', icon: FileText },
     ],
-    [t]
+    [t, user]
   );
 
   /**
@@ -559,14 +572,6 @@ const AdminPanelView = ({
     });
   }, [logViewAccess]);
 
-  /**
-   * Sync currentPlan with planTier from context
-   */
-  useEffect(() => {
-    if (planTier) {
-      setCurrentPlan(planTier);
-    }
-  }, [planTier]);
 
   /**
    * Load backup configuration on mount
@@ -1793,6 +1798,115 @@ const AdminPanelView = ({
   }, [api, addNotification]);
 
   /**
+   * Load which cloud destinations are connected, so the backup and restore
+   * actions know whether there is a choice to offer.
+   */
+  const loadCloudProviders = useCallback(async () => {
+    try {
+      setCloudProviders(await api.getCloudBackupProviders());
+    } catch (error) {
+      console.error('Error loading cloud backup destinations:', error);
+      setCloudProviders([]);
+    }
+  }, [api]);
+
+  useEffect(() => {
+    loadCloudProviders();
+  }, [loadCloudProviders]);
+
+  /**
+   * Upload a full system backup to a chosen provider.
+   */
+  const runCloudBackup = useCallback(async (provider) => {
+    const label = cloudProviders.find(p => p.provider === provider)?.label || provider;
+    const key = provider === 'google_drive' ? 'googleDrive' : 'oneDrive';
+    try {
+      setBackupLoading((prev) => ({ ...prev, [key]: true }));
+      await addNotification('info', `Starting ${label} backup...`);
+      await api.backupToCloud(provider);
+      setLastBackup((prev) => ({ ...prev, [key]: new Date().toISOString() }));
+      setBackupSuccessModal({
+        isOpen: true,
+        type: label,
+        message: `Your complete system backup has been uploaded to ${label}.`,
+      });
+    } catch (error) {
+      console.error(`Error backing up to ${provider}:`, error);
+      await addNotification('alert', error.message || `Failed to backup to ${label}`);
+    } finally {
+      setBackupLoading((prev) => ({ ...prev, [key]: false }));
+    }
+  }, [api, addNotification, cloudProviders]);
+
+  /**
+   * Resolve where a backup should be copied to.
+   *
+   * Asks only when there is a real choice: with both providers connected the
+   * admin picks, with one it is used without interrupting them, and with none
+   * the backup stays local. Resolves to a provider id, or null for local only,
+   * or 'cancel' if the admin dismissed the dialog.
+   */
+  const destinationResolver = useRef(null);
+
+  const pickCloudDestination = useCallback((title) => new Promise((resolve) => {
+    if (cloudProviders.length === 0) { resolve(null); return; }
+    if (cloudProviders.length === 1) { resolve(cloudProviders[0].provider); return; }
+    destinationResolver.current = resolve;
+    setDestinationModal({ isOpen: true, mode: 'backup', title });
+  }), [cloudProviders]);
+
+  const closeDestinationModal = useCallback((choice) => {
+    setDestinationModal({ isOpen: false, mode: 'backup', title: '' });
+    const resolve = destinationResolver.current;
+    destinationResolver.current = null;
+    if (resolve) resolve(choice);
+  }, []);
+
+  /**
+   * Restore straight from a backup held on a connected provider.
+   */
+  const handleRestoreFromCloud = useCallback(() => {
+    if (cloudProviders.length === 0) {
+      addNotification('alert', 'No cloud destination is connected. Connect Google Drive or OneDrive first.');
+      return;
+    }
+    setDestinationModal({ isOpen: true, mode: 'restore', title: 'Restore from' });
+  }, [cloudProviders, addNotification]);
+
+  /**
+   * Actually perform the restore. Only ever reached after the confirmation below —
+   * a restore clears this practice's tables and reloads them from the file, so anything
+   * recorded since that backup was taken is lost, and there is no undo.
+   */
+  const performCloudRestore = useCallback(async (provider, fileId) => {
+    try {
+      setRestoreLoading(true);
+      await addNotification('info', 'Starting data restore...');
+      const result = await api.restoreFromCloudBackup(provider, fileId);
+      setRestoreSuccessModal({ isOpen: true, details: result });
+    } catch (error) {
+      console.error('Error restoring from cloud backup:', error);
+      await addNotification('alert', error.message || 'Failed to restore backup');
+    } finally {
+      setRestoreLoading(false);
+    }
+  }, [api, addNotification]);
+
+  const runCloudRestore = useCallback((provider, fileId) => {
+    setDestinationModal({ isOpen: false, mode: 'backup', title: '' });
+    setConfirmModalConfig({
+      title: t.restoreBackupTitle || 'Restore from backup?',
+      message: t.confirmRestoreBackup
+        || 'This replaces your practice\'s current data with the contents of the backup. '
+           + 'Anything recorded since the backup was taken will be lost, and this cannot be '
+           + 'undone. Continue?',
+      confirmText: t.restoreAndOverwrite || 'Restore and overwrite',
+      onConfirm: () => performCloudRestore(provider, fileId),
+    });
+    setShowConfirmModal(true);
+  }, [performCloudRestore, t]);
+
+  /**
    * Google Drive backup
    */
   const handleGoogleDriveBackup = useCallback(async () => {
@@ -1880,21 +1994,11 @@ const AdminPanelView = ({
   /**
    * Restore from backup file
    */
-  const handleRestoreBackup = useCallback(
-    async (event) => {
-      const file = event.target.files[0];
-      if (!file) return;
-
+  const performFileRestore = useCallback(
+    async (backupData) => {
       try {
         setRestoreLoading(true);
         await addNotification('info', 'Starting data restore...');
-
-        const fileContent = await file.text();
-        const backupData = safeJSONParse(fileContent);
-
-        if (!backupData) {
-          throw new Error('Invalid backup file format');
-        }
 
         const result = await api.restoreBackup(backupData);
 
@@ -1907,11 +2011,62 @@ const AdminPanelView = ({
         await addNotification('alert', error.message || 'Failed to restore backup');
       } finally {
         setRestoreLoading(false);
-        event.target.value = ''; // Clear file input
       }
     },
     [api, addNotification]
   );
+
+  const handleRestoreBackup = useCallback(
+    async (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      // Parse BEFORE asking. A malformed file should be rejected outright rather than
+      // after the admin has confirmed something destructive, and the row counts make the
+      // confirmation concrete instead of generic.
+      let backupData;
+      try {
+        backupData = safeJSONParse(await file.text());
+      } catch (error) {
+        backupData = null;
+      }
+      event.target.value = ''; // let the same file be chosen again after a cancel
+      if (!backupData || !backupData.data) {
+        await addNotification('alert', t.invalidBackupFile || 'That file is not a valid backup.');
+        return;
+      }
+
+      const tableCount = Object.keys(backupData.data).length;
+      const rowCount = Object.values(backupData.data)
+        .reduce((sum, rows) => sum + (Array.isArray(rows) ? rows.length : 0), 0);
+      // Dates and thousands separators differ by locale, so format with the active one
+      // rather than assuming the browser default matches the language on screen.
+      const takenAt = backupData.timestamp
+        ? new Date(backupData.timestamp).toLocaleString(language)
+        : '—';
+
+      // The detail string is a template rather than assembled here: word order around the
+      // numbers differs between languages, so building it by concatenation only ever reads
+      // correctly in English.
+      const detail = (t.confirmRestoreBackupDetail
+        || 'This backup was taken on {date} and contains {records} records across {tables} '
+           + 'tables. Restoring replaces your practice\'s current data with it — anything '
+           + 'recorded since then will be lost, and this cannot be undone. Continue?')
+        .replace('{date}', takenAt)
+        .replace('{records}', rowCount.toLocaleString(language))
+        .replace('{tables}', tableCount.toLocaleString(language));
+
+      setConfirmModalConfig({
+        title: t.restoreBackupTitle || 'Restore from backup?',
+        message: detail,
+        confirmText: t.restoreAndOverwrite || 'Restore and overwrite',
+        onConfirm: () => performFileRestore(backupData),
+      });
+      setShowConfirmModal(true);
+    },
+    [addNotification, performFileRestore, t, language]
+  );
+
 
   /**
    * Custom role form submission
@@ -2120,12 +2275,11 @@ const AdminPanelView = ({
           <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
             Currency
           </label>
-          <select
+          <ThemedSelect
+            theme={theme}
+            focusClass="focus:ring-2 focus:ring-blue-500"
             value={clinicSettings.currency || 'USD'}
             onChange={(e) => updateClinicSetting('currency', e.target.value)}
-            className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-              theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-gray-300 text-gray-900'
-            }`}
           >
             {[
               { code: 'USD', label: 'USD – US Dollar ($)' },
@@ -2149,7 +2303,7 @@ const AdminPanelView = ({
               { code: 'BDT', label: 'BDT – Bangladeshi Taka (৳)' },
               { code: 'KES', label: 'KES – Kenyan Shilling (KSh)' },
             ].map(c => <option key={c.code} value={c.code}>{c.label}</option>)}
-          </select>
+          </ThemedSelect>
         </div>
       </div>
 
@@ -2216,6 +2370,7 @@ const AdminPanelView = ({
       });
     }
     setUserFormErrors({});
+    setShowPasswordFields(false);
   }, [showUserForm, editingUser]);
 
   const validateUserForm = () => {
@@ -2311,6 +2466,7 @@ const AdminPanelView = ({
       confirmPassword: '',
     });
     setUserFormErrors({});
+    setShowPasswordFields(false);
   };
 
   // ==================== RENDER FUNCTIONS ====================
@@ -2321,6 +2477,13 @@ const AdminPanelView = ({
    */
   const renderUserManagementTab = () => (
     <div className="space-y-6">
+
+      {/* Self-service onboarding: an admin adds colleagues without any operator action. */}
+      <InviteStaffPanel theme={theme} api={api} addNotification={addNotification} />
+
+      {/* The other half: colleagues who sign themselves up from a verified email domain,
+          and the queue of people waiting to be let in. */}
+      <TeamAccessPanel theme={theme} api={api} addNotification={addNotification} />
 
       {/* ── My Preferences Card ─────────────────────────────── */}
       <div className={`rounded-xl border p-5 ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-gray-200'}`}>
@@ -2774,12 +2937,12 @@ const AdminPanelView = ({
                 </label>
                 <div className="relative">
                   <Globe className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-400'}`} />
-                  <select
+                  <ThemedSelect
+                    theme={theme}
+                    focusClass="focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="pl-10"
                     value={userFormData.country}
                     onChange={(e) => handleUserFormChange('country', e.target.value)}
-                    className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                      theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-gray-300 text-gray-900'
-                    }`}
                   >
                     <option value="">Select</option>
                     <option value="US">US</option>
@@ -2788,7 +2951,7 @@ const AdminPanelView = ({
                     <option value="AU">Australia</option>
                     <option value="DE">Germany</option>
                     <option value="FR">France</option>
-                  </select>
+                  </ThemedSelect>
                 </div>
               </div>
 
@@ -2798,19 +2961,19 @@ const AdminPanelView = ({
                 </label>
                 <div className="relative">
                   <Clock className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-400'}`} />
-                  <select
+                  <ThemedSelect
+                    theme={theme}
+                    focusClass="focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="pl-10"
                     value={userFormData.timezone}
                     onChange={(e) => handleUserFormChange('timezone', e.target.value)}
-                    className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                      theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-gray-300 text-gray-900'
-                    }`}
                   >
                     <option value="">Select</option>
                     <option value="America/New_York">ET</option>
                     <option value="America/Chicago">CT</option>
                     <option value="America/Denver">MT</option>
                     <option value="America/Los_Angeles">PT</option>
-                  </select>
+                  </ThemedSelect>
                 </div>
               </div>
 
@@ -2820,12 +2983,12 @@ const AdminPanelView = ({
                 </label>
                 <div className="relative">
                   <Languages className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-400'}`} />
-                  <select
+                  <ThemedSelect
+                    theme={theme}
+                    focusClass="focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="pl-10"
                     value={userFormData.language}
                     onChange={(e) => handleUserFormChange('language', e.target.value)}
-                    className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                      theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-gray-300 text-gray-900'
-                    }`}
                   >
                     <option value="">Select</option>
                     <option value="en">English</option>
@@ -2833,7 +2996,7 @@ const AdminPanelView = ({
                     <option value="fr">Français</option>
                     <option value="de">Deutsch</option>
                     <option value="ar">العربية</option>
-                  </select>
+                  </ThemedSelect>
                 </div>
               </div>
             </div>
@@ -2845,22 +3008,39 @@ const AdminPanelView = ({
               </label>
               <div className="relative">
                 <Shield className={`absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-400'}`} />
-                <select
+                <ThemedSelect
+                  theme={theme}
+                  focusClass="focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="pl-10"
                   value={userFormData.role}
                   onChange={(e) => handleUserFormChange('role', e.target.value)}
-                  className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                    theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-gray-300 text-gray-900'
-                  }`}
                 >
                   <option value="admin">Admin</option>
                   <option value="doctor">Doctor</option>
                   <option value="staff">Staff</option>
                   <option value="patient">Patient</option>
-                </select>
+                </ThemedSelect>
               </div>
             </div>
 
+            {/* Editing a user — a role or detail change is not a password
+                change, so the credential fields stay out of the way until an
+                admin asks for them. */}
+            {editingUser && !showPasswordFields && (
+              <button
+                type="button"
+                onClick={() => setShowPasswordFields(true)}
+                className={`flex items-center gap-2 text-sm font-medium transition-colors ${
+                  theme === 'dark' ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'
+                }`}
+              >
+                <Lock className="w-4 h-4" />
+                {t.setNewPassword || 'Set a new password'}
+              </button>
+            )}
+
             {/* Password fields */}
+            {(!editingUser || showPasswordFields) && (
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
@@ -2903,6 +3083,7 @@ const AdminPanelView = ({
                 </div>
               )}
             </div>
+            )}
 
             {/* Actions */}
             <div className="flex gap-3 pt-4">
@@ -3155,6 +3336,9 @@ const AdminPanelView = ({
       providerType: 'microsoft_teams',
       displayName: 'Microsoft Teams',
       description: 'Microsoft 365 video conferencing & collaboration',
+      // Meeting creation needs the OnlineMeetings.ReadWrite Graph permission,
+      // which Microsoft only issues to work and school accounts.
+      accountNote: 'Requires a Microsoft 365 work or school account with a Teams licence. Personal Microsoft accounts (outlook.com, hotmail.com, live.com) cannot be used.',
       iconBg: 'bg-purple-500/10',
       iconColor: 'text-purple-500',
       gradientFrom: 'from-purple-500',
@@ -3189,6 +3373,22 @@ const AdminPanelView = ({
                 <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                   {cfg.description}
                 </p>
+                {cfg.accountNote && (
+                  <div className={`flex items-start gap-2 mt-2 px-3 py-2 rounded-md border ${
+                    theme === 'dark'
+                      ? 'bg-amber-500/10 border-amber-500/30'
+                      : 'bg-amber-50 border-amber-200'
+                  }`}>
+                    <Building2 className={`w-4 h-4 flex-shrink-0 mt-0.5 ${
+                      theme === 'dark' ? 'text-amber-400' : 'text-amber-600'
+                    }`} />
+                    <p className={`text-xs leading-relaxed ${
+                      theme === 'dark' ? 'text-amber-300' : 'text-amber-800'
+                    }`}>
+                      {cfg.accountNote}
+                    </p>
+                  </div>
+                )}
                 {status.has_tokens ? (
                   <div className="flex items-center gap-2 mt-2">
                     <CheckCircle className="w-4 h-4 text-green-500" />
@@ -4113,101 +4313,12 @@ const AdminPanelView = ({
    * Render Subscription Plans Tab
    * TODO: Extract to separate component SubscriptionPlansTab.js
    */
+  // Real plans from the API, the practice's own subscription, and a Stripe-priced
+  // proration preview before any change is committed.
   const renderSubscriptionPlansTab = () => (
-    <div className="space-y-6">
-      <h2 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-        Subscription Plans
-      </h2>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {SUBSCRIPTION_PLANS.map((plan) => (
-          <div
-            key={plan.id}
-            className={`border rounded-lg p-6 ${
-              currentPlan === plan.id
-                ? theme === 'dark'
-                  ? 'border-blue-500 bg-blue-500/10'
-                  : 'border-blue-500 bg-blue-50'
-                : theme === 'dark'
-                ? 'border-slate-700 bg-slate-800'
-                : 'border-gray-300 bg-white'
-            } ${plan.popular ? 'relative' : ''}`}
-          >
-            {plan.popular && (
-              <div className="absolute -top-3 left-1/2 transform -translate-x-1/2">
-                <span className="bg-purple-500 text-white px-3 py-1 rounded-full text-xs font-semibold">
-                  Popular
-                </span>
-              </div>
-            )}
-
-            <div className="text-center">
-              <h3 className={`text-xl font-bold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                {plan.name}
-              </h3>
-              <div className="mb-4">
-                <span className={`text-4xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                  ${plan.price}
-                </span>
-                <span className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                  /{plan.billing}
-                </span>
-              </div>
-
-              <div className={`text-sm mb-4 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                <p>Up to {plan.maxUsers === -1 ? 'Unlimited' : plan.maxUsers} users</p>
-                <p>Up to {plan.maxPatients === -1 ? 'Unlimited' : plan.maxPatients} patients</p>
-              </div>
-
-              <ul className="space-y-2 mb-6">
-                {Object.entries(plan.features).map(([feature, enabled]) => (
-                  <li
-                    key={feature}
-                    className={`flex items-center justify-center gap-2 text-sm ${
-                      enabled
-                        ? theme === 'dark'
-                          ? 'text-green-400'
-                          : 'text-green-600'
-                        : theme === 'dark'
-                        ? 'text-slate-600'
-                        : 'text-gray-400'
-                    }`}
-                  >
-                    {enabled ? <Check className="w-4 h-4" /> : <span className="w-4 h-4">-</span>}
-                    <span className="capitalize">{feature.replace(/([A-Z])/g, ' $1').trim()}</span>
-                  </li>
-                ))}
-              </ul>
-
-              <button
-                onClick={() => {
-                  setCurrentPlan(plan.id);
-                  setPlanTier(plan.id);
-                  updateUserPreferences({ planTier: plan.id });
-                  addNotification('success', `Switched to ${plan.name}`);
-                }}
-                disabled={currentPlan === plan.id}
-                className={`w-full px-4 py-2 rounded-lg font-medium transition-colors ${
-                  currentPlan === plan.id
-                    ? theme === 'dark'
-                      ? 'bg-slate-700 text-slate-500 cursor-not-allowed'
-                      : 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                    : 'bg-blue-500 hover:bg-blue-600 text-white'
-                }`}
-              >
-                {currentPlan === plan.id ? 'Current Plan' : 'Select Plan'}
-              </button>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
+    <SubscriptionPlansPanel theme={theme} api={api} addNotification={addNotification} />
   );
 
-  /**
-   * Render Working Hours Tab
-   * TODO: Extract to separate component WorkingHoursTab.js
-   */
   const renderWorkingHoursTab = () => (
     <div className="space-y-6">
       <h2 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
@@ -4553,6 +4664,26 @@ const AdminPanelView = ({
             </p>
           </div>
 
+          {cloudProviders.length > 0 && (
+            <div className="mb-4">
+              <button
+                type="button"
+                onClick={handleRestoreFromCloud}
+                disabled={restoreLoading}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-60 ${
+                  theme === 'dark'
+                    ? 'bg-cyan-600 hover:bg-cyan-700 text-white'
+                    : 'bg-cyan-500 hover:bg-cyan-600 text-white'
+                }`}
+              >
+                Restore from {cloudProviders.length === 1 ? cloudProviders[0].label : 'cloud backup'}
+              </button>
+              <p className={`text-xs mt-2 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
+                Or upload a backup file from this computer:
+              </p>
+            </div>
+          )}
+
           <input
             type="file"
             accept=".json"
@@ -4600,14 +4731,25 @@ const AdminPanelView = ({
               onClick={async () => {
                 setAcctBackupLoading(true);
                 try {
+                  const destination = await pickCloudDestination(`Where should the ${b.label} backup go?`);
+                  if (destination === 'cancel') { setAcctBackupLoading(false); return; }
                   addNotification('info', `Starting ${b.label} backup…`);
-                  const result = await api.createAccountBackup({ backupType: b.type });
+                  const result = await api.createAccountBackup({
+                    backupType: b.type,
+                    destination: destination || undefined,
+                  });
                   setAcctBackups(prev => [result, ...prev]);
                   const blob = new Blob([JSON.stringify(result.data, null, 2)], { type: 'application/json' });
                   const url = URL.createObjectURL(blob);
                   const a = document.createElement('a'); a.href = url; a.download = result.fileName; a.click();
                   URL.revokeObjectURL(url);
-                  addNotification('success', `Backup complete: ${result.recordCount} records`);
+                  if (result.cloudError) {
+                    addNotification('alert', `Saved locally, but the upload failed: ${result.cloudError}`);
+                  } else {
+                    addNotification('success', result.cloud
+                      ? `Backup complete: ${result.recordCount} records, copied to ${result.cloud.label}`
+                      : `Backup complete: ${result.recordCount} records`);
+                  }
                 } catch (err) {
                   addNotification('error', err.message || 'Accounts backup failed');
                 } finally { setAcctBackupLoading(false); }
@@ -4680,14 +4822,25 @@ const AdminPanelView = ({
               onClick={async () => {
                 setInvBackupLoading(true);
                 try {
+                  const destination = await pickCloudDestination(`Where should the ${b.label} backup go?`);
+                  if (destination === 'cancel') { setInvBackupLoading(false); return; }
                   addNotification('info', `Starting ${b.label} backup…`);
-                  const result = await api.createInventoryBackup({ backupType: b.type });
+                  const result = await api.createInventoryBackup({
+                    backupType: b.type,
+                    destination: destination || undefined,
+                  });
                   setInvBackups(prev => [result, ...prev]);
                   const blob = new Blob([JSON.stringify(result.data || result, null, 2)], { type: 'application/json' });
                   const url = URL.createObjectURL(blob);
                   const a = document.createElement('a'); a.href = url; a.download = result.fileName || `inventory_backup_${b.type}.json`; a.click();
                   URL.revokeObjectURL(url);
-                  addNotification('success', `Backup complete: ${result.totalRecords || '?'} records`);
+                  if (result.cloudError) {
+                    addNotification('alert', `Saved locally, but the upload failed: ${result.cloudError}`);
+                  } else {
+                    addNotification('success', result.cloud
+                      ? `Backup complete: ${result.totalRecords || '?'} records, copied to ${result.cloud.label}`
+                      : `Backup complete: ${result.totalRecords || '?'} records`);
+                  }
                 } catch (err) {
                   addNotification('error', err.message || 'Inventory backup failed');
                 } finally { setInvBackupLoading(false); }
@@ -4779,6 +4932,9 @@ const AdminPanelView = ({
         {/* Tab Content */}
         <div>
           {activeTab === ADMIN_TABS.CLINIC && renderClinicSettingsTab()}
+          {activeTab === ADMIN_TABS.LOCATIONS && (
+            <LocationsTab theme={theme} t={t} api={api} addNotification={addNotification} />
+          )}
           {activeTab === ADMIN_TABS.USERS && renderUserManagementTab()}
           {activeTab === ADMIN_TABS.ROLES && renderRolesPermissionsTab()}
           {activeTab === ADMIN_TABS.PLANS && renderSubscriptionPlansTab()}
@@ -4848,6 +5004,28 @@ const AdminPanelView = ({
       />
 
       {/* Credential Modal */}
+      <BackupDestinationModal
+        isOpen={destinationModal.isOpen}
+        mode={destinationModal.mode}
+        title={destinationModal.title}
+        providers={cloudProviders}
+        theme={theme}
+        allowLocal
+        busy={restoreLoading}
+        listBackups={(provider) => api.listCloudBackups(provider)}
+        onSelect={(provider) => {
+          // A pending picker means some caller is awaiting the choice; without
+          // one this is the standalone system backup.
+          if (destinationResolver.current) closeDestinationModal(provider === 'local' ? null : provider);
+          else { setDestinationModal({ isOpen: false, mode: 'backup', title: '' }); runCloudBackup(provider); }
+        }}
+        onSelectBackup={runCloudRestore}
+        onClose={() => {
+          if (destinationResolver.current) closeDestinationModal('cancel');
+          else setDestinationModal({ isOpen: false, mode: 'backup', title: '' });
+        }}
+      />
+
       <CredentialModal
         isOpen={showCredentialModal}
         onClose={() => {
@@ -4884,7 +5062,9 @@ const AdminPanelView = ({
         title={confirmModalConfig.title}
         message={confirmModalConfig.message}
         type="warning"
-        confirmText="Confirm"
+        // A destructive action should not offer the same neutral "Confirm" as every other
+        // prompt — the button ought to say what it will do.
+        confirmText={confirmModalConfig.confirmText || 'Confirm'}
         showCancel={true}
       />
 
@@ -4950,6 +5130,7 @@ AdminPanelView.propTypes = {
   addNotification: PropTypes.func.isRequired,
   setCurrentModule: PropTypes.func,
   t: PropTypes.object,
+  language: PropTypes.string,
 };
 
 export default React.memo(AdminPanelView);

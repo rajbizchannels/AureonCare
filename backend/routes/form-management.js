@@ -1,142 +1,18 @@
 const express = require('express');
 const { authenticate } = require('../middleware/auth');
+const { loadAttachment, sendAttachment } = require('../utils/filedDocuments');
 const router = express.Router();
 router.use(authenticate);
+router.use(require('../middleware/planEnforcement').enforceActiveBilling); // SEC-05 S11: read-only when subscription past_due/canceled
 
 // ============================================================================
 // HELPER: Run SQL to init tables if they don't exist
 // ============================================================================
-async function ensureTables(pool) {
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS form_categories (
-      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      name VARCHAR(100) NOT NULL,
-      slug VARCHAR(100) NOT NULL UNIQUE,
-      description TEXT,
-      color VARCHAR(50),
-      icon VARCHAR(50),
-      parent_id UUID REFERENCES form_categories(id),
-      sort_order INTEGER DEFAULT 0,
-      is_active BOOLEAN DEFAULT true,
-      created_at TIMESTAMP DEFAULT NOW(),
-      updated_at TIMESTAMP DEFAULT NOW()
-    );
-    CREATE TABLE IF NOT EXISTS form_templates (
-      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      name VARCHAR(255) NOT NULL,
-      slug VARCHAR(255) UNIQUE,
-      description TEXT,
-      category_id UUID REFERENCES form_categories(id),
-      category_slug VARCHAR(100),
-      subcategory VARCHAR(100),
-      template_type VARCHAR(100),
-      is_system_template BOOLEAN DEFAULT false,
-      is_active BOOLEAN DEFAULT true,
-      version VARCHAR(20) DEFAULT '1.0',
-      version_number INTEGER DEFAULT 1,
-      fields JSONB DEFAULT '[]'::jsonb,
-      settings JSONB DEFAULT '{}'::jsonb,
-      fhir_questionnaire JSONB,
-      role_visibility JSONB DEFAULT '["admin","provider","staff","patient"]'::jsonb,
-      require_signature BOOLEAN DEFAULT false,
-      require_witness BOOLEAN DEFAULT false,
-      allow_pdf_export BOOLEAN DEFAULT true,
-      languages JSONB DEFAULT '["en"]'::jsonb,
-      translations JSONB DEFAULT '{}'::jsonb,
-      tags JSONB DEFAULT '[]'::jsonb,
-      intake_flow_eligible BOOLEAN DEFAULT true,
-      specialty VARCHAR(100),
-      compliance_tags JSONB DEFAULT '[]'::jsonb,
-      created_by UUID,
-      updated_by UUID,
-      created_at TIMESTAMP DEFAULT NOW(),
-      updated_at TIMESTAMP DEFAULT NOW()
-    );
-    CREATE TABLE IF NOT EXISTS form_template_versions (
-      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      template_id UUID NOT NULL REFERENCES form_templates(id) ON DELETE CASCADE,
-      version VARCHAR(20) NOT NULL,
-      version_number INTEGER NOT NULL,
-      fields JSONB DEFAULT '[]'::jsonb,
-      settings JSONB DEFAULT '{}'::jsonb,
-      fhir_questionnaire JSONB,
-      change_summary TEXT,
-      changed_by UUID,
-      is_published BOOLEAN DEFAULT false,
-      published_at TIMESTAMP,
-      created_at TIMESTAMP DEFAULT NOW()
-    );
-    CREATE TABLE IF NOT EXISTS form_submissions (
-      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      template_id UUID REFERENCES form_templates(id),
-      template_name VARCHAR(255),
-      template_version VARCHAR(20),
-      patient_id UUID,
-      appointment_id UUID,
-      intake_flow_id UUID,
-      submitted_by UUID,
-      submitted_by_role VARCHAR(50),
-      form_data JSONB DEFAULT '{}'::jsonb,
-      status VARCHAR(50) DEFAULT 'draft',
-      language VARCHAR(10) DEFAULT 'en',
-      ip_address INET,
-      user_agent TEXT,
-      submitted_at TIMESTAMP,
-      reviewed_by UUID,
-      reviewed_at TIMESTAMP,
-      reviewer_notes TEXT,
-      expires_at TIMESTAMP,
-      is_signed BOOLEAN DEFAULT false,
-      fhir_response JSONB,
-      metadata JSONB DEFAULT '{}'::jsonb,
-      created_at TIMESTAMP DEFAULT NOW(),
-      updated_at TIMESTAMP DEFAULT NOW()
-    );
-    CREATE TABLE IF NOT EXISTS form_signatures (
-      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      submission_id UUID NOT NULL REFERENCES form_submissions(id) ON DELETE CASCADE,
-      signer_name VARCHAR(255) NOT NULL,
-      signer_role VARCHAR(100),
-      signer_user_id UUID,
-      signature_data TEXT NOT NULL,
-      signature_type VARCHAR(50) DEFAULT 'drawn',
-      is_witness BOOLEAN DEFAULT false,
-      relation VARCHAR(100),
-      ip_address INET,
-      user_agent TEXT,
-      signed_at TIMESTAMP DEFAULT NOW(),
-      created_at TIMESTAMP DEFAULT NOW()
-    );
-    CREATE TABLE IF NOT EXISTS form_audit_logs (
-      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      resource_type VARCHAR(50) NOT NULL,
-      resource_id UUID NOT NULL,
-      action VARCHAR(100) NOT NULL,
-      actor_id UUID,
-      actor_role VARCHAR(50),
-      actor_name VARCHAR(255),
-      patient_id UUID,
-      previous_state JSONB,
-      new_state JSONB,
-      change_details JSONB,
-      ip_address INET,
-      user_agent TEXT,
-      session_id VARCHAR(255),
-      notes TEXT,
-      created_at TIMESTAMP DEFAULT NOW()
-    );
-    CREATE TABLE IF NOT EXISTS intake_flow_templates (
-      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      flow_id UUID NOT NULL,
-      template_id UUID NOT NULL REFERENCES form_templates(id),
-      step_order INTEGER NOT NULL DEFAULT 0,
-      is_required BOOLEAN DEFAULT true,
-      is_conditional BOOLEAN DEFAULT false,
-      condition_rules JSONB,
-      created_at TIMESTAMP DEFAULT NOW()
-    );
-  `);
-}
+// SEC-05: schema creation moved to migrations/tenant/001_adopt_runtime_created_tables.sql.
+// Creating tables at request time made an empty copy inside the caller's tenant schema
+// (hiding the real data) and required DDL privileges the app should not hold. Kept as a
+// no-op so existing call sites are unchanged; run the migrations to provision the tables.
+async function ensureTables(_pool) { /* no-op: see migrations */ }
 
 // ============================================================================
 // AUDIT HELPER
@@ -168,7 +44,7 @@ async function logAudit(pool, { resourceType, resourceId, action, actorId, actor
 
 router.get('/categories', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     await ensureTables(pool);
     const result = await pool.query('SELECT * FROM form_categories WHERE is_active = true ORDER BY sort_order, name');
     res.json(result.rows);
@@ -181,7 +57,7 @@ router.get('/categories', async (req, res) => {
 router.post('/categories', async (req, res) => {
   const { name, slug, description, color, icon, parent_id, sort_order } = req.body;
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     await ensureTables(pool);
     const result = await pool.query(
       `INSERT INTO form_categories (name, slug, description, color, icon, parent_id, sort_order)
@@ -202,7 +78,7 @@ router.post('/categories', async (req, res) => {
 // List templates
 router.get('/templates', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     await ensureTables(pool);
     const { category, template_type, specialty, is_active, search, intake_flow_eligible, role } = req.query;
 
@@ -261,7 +137,7 @@ router.get('/templates', async (req, res) => {
 // Get single template
 router.get('/templates/:id', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     await ensureTables(pool);
     const result = await pool.query(
       `SELECT ft.*, fc.name as category_name
@@ -294,7 +170,7 @@ router.post('/templates', async (req, res) => {
   const actorRole = req.headers['x-user-role'];
 
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     await ensureTables(pool);
 
     const result = await pool.query(
@@ -349,7 +225,7 @@ router.put('/templates/:id', async (req, res) => {
   const actorRole = req.headers['x-user-role'];
 
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     await ensureTables(pool);
 
     // Get previous state for audit
@@ -414,8 +290,11 @@ router.put('/templates/:id', async (req, res) => {
     updateFields.push(`updated_at = NOW()`);
     params.push(req.params.id);
 
+    // A user edit makes this template the practice's own; a specialty-pack upgrade must
+    // never overwrite it afterwards (tenant/007, services/specialtyPack.js). Appended to
+    // the SQL rather than taken from the body, so it cannot be spoofed by a caller.
     const result = await pool.query(
-      `UPDATE form_templates SET ${updateFields.join(', ')} WHERE id = $${pi} RETURNING *`,
+      `UPDATE form_templates SET ${updateFields.join(', ')}, is_customised = true WHERE id = $${pi} RETURNING *`,
       params
     );
     const updated = result.rows[0];
@@ -433,7 +312,7 @@ router.delete('/templates/:id', async (req, res) => {
   const actorId = req.headers['x-user-id'];
   const actorRole = req.headers['x-user-role'];
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     await ensureTables(pool);
     const prev = await pool.query('SELECT * FROM form_templates WHERE id = $1', [req.params.id]);
     if (prev.rows.length === 0) return res.status(404).json({ error: 'Template not found' });
@@ -454,7 +333,7 @@ router.delete('/templates/:id', async (req, res) => {
 
 router.get('/templates/:id/versions', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     await ensureTables(pool);
     const result = await pool.query(
       `SELECT ftv.*, u.first_name || ' ' || u.last_name as changed_by_name
@@ -476,7 +355,7 @@ router.post('/templates/:id/versions/:versionId/restore', async (req, res) => {
   const actorId = req.headers['x-user-id'];
   const actorRole = req.headers['x-user-role'];
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     await ensureTables(pool);
 
     const versionResult = await pool.query('SELECT * FROM form_template_versions WHERE id = $1 AND template_id = $2', [req.params.versionId, req.params.id]);
@@ -488,7 +367,7 @@ router.post('/templates/:id/versions/:versionId/restore', async (req, res) => {
     const newVersionNum = previous.version_number + 1;
 
     const result = await pool.query(
-      `UPDATE form_templates SET fields=$1, settings=$2, fhir_questionnaire=$3, version_number=$4, version=$5, updated_at=NOW()
+      `UPDATE form_templates SET fields=$1, settings=$2, fhir_questionnaire=$3, version_number=$4, version=$5, is_customised=true, updated_at=NOW()
        WHERE id=$6 RETURNING *`,
       [version.fields, version.settings, version.fhir_questionnaire, newVersionNum,
        `${Math.floor(newVersionNum/10)}.${newVersionNum%10}`, req.params.id]
@@ -515,7 +394,7 @@ router.post('/templates/:id/versions/:versionId/restore', async (req, res) => {
 
 router.get('/submissions', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     await ensureTables(pool);
     const { patient_id, template_id, status, appointment_id, intake_flow_id } = req.query;
 
@@ -554,9 +433,99 @@ router.get('/submissions', async (req, res) => {
   }
 });
 
+/**
+ * GET /api/form-management/submissions/:id/document
+ *
+ * Serves the document behind a document-backed request (one created from a
+ * secure message rather than a template). Authorises on the submission.
+ */
+router.get('/submissions/:id/document', async (req, res) => {
+  try {
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
+    const result = await pool.query(
+      'SELECT id, patient_id, document_attachment_id FROM form_submissions WHERE id = $1',
+      [req.params.id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Submission not found' });
+    }
+    const submission = result.rows[0];
+
+    if (req.user.role === 'patient' && String(submission.patient_id) !== String(req.user.id)) {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+    if (!submission.document_attachment_id) {
+      return res.status(404).json({ error: 'This request is not backed by a document' });
+    }
+
+    const attachment = await loadAttachment(pool, submission.document_attachment_id);
+    if (!attachment) {
+      return res.status(404).json({ error: 'Document no longer available' });
+    }
+    if (!sendAttachment(res, attachment)) {
+      return res.status(500).json({ error: 'Document could not be decrypted' });
+    }
+  } catch (error) {
+    console.error('Error downloading request document:', error);
+    res.status(500).json({ error: 'Failed to download document' });
+  }
+});
+
+/**
+ * POST /api/form-management/submissions/:id/acknowledge
+ *
+ * Completes a document-backed request. Separate from the template submission
+ * path because there are no field values to record — the patient is confirming
+ * they have read the document, and (when document_action is 'sign') that they
+ * are signing it.
+ */
+router.post('/submissions/:id/acknowledge', async (req, res) => {
+  try {
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
+    const result = await pool.query(
+      'SELECT * FROM form_submissions WHERE id = $1',
+      [req.params.id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Submission not found' });
+    }
+    const submission = result.rows[0];
+
+    // Only the patient the request was addressed to can complete it.
+    if (String(submission.patient_id) !== String(req.user.id)) {
+      return res.status(403).json({ error: 'Only the patient can complete this request' });
+    }
+    if (!submission.document_attachment_id) {
+      return res.status(400).json({ error: 'This request is not backed by a document' });
+    }
+    if (submission.status !== 'draft') {
+      return res.json({ success: true, alreadyCompleted: true });
+    }
+
+    const updated = await pool.query(
+      `UPDATE form_submissions
+          SET status = 'submitted',
+              submitted_at = CURRENT_TIMESTAMP,
+              submitted_by = $1,
+              submitted_by_role = 'patient',
+              ip_address = $2,
+              user_agent = $3,
+              updated_at = NOW()
+        WHERE id = $4
+        RETURNING *`,
+      [req.user.id, req.ip, req.get('user-agent'), req.params.id]
+    );
+
+    res.json({ success: true, submission: updated.rows[0] });
+  } catch (error) {
+    console.error('Error acknowledging document request:', error);
+    res.status(500).json({ error: 'Failed to complete request' });
+  }
+});
+
 router.get('/submissions/:id', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     await ensureTables(pool);
     const result = await pool.query(
       `SELECT
@@ -597,16 +566,63 @@ router.post('/submissions', async (req, res) => {
   const actorRole = req.headers['x-user-role'];
 
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     await ensureTables(pool);
 
-    // Build FHIR QuestionnaireResponse if template has FHIR mapping
-    let fhirResponse = null;
-    if (template_id) {
-      const tmpl = await pool.query('SELECT fhir_questionnaire, name FROM form_templates WHERE id = $1', [template_id]);
-      if (tmpl.rows.length > 0 && tmpl.rows[0].fhir_questionnaire && form_data) {
-        fhirResponse = buildFhirResponse(tmpl.rows[0].fhir_questionnaire, form_data, patient_id);
+    // Resolve the template the submission is against, by id or by slug.
+    //
+    // WHY SLUG RESOLUTION LIVES HERE. form_templates was empty in every tenant until
+    // tenant/008, so the UI rendered a hard-coded frontend array and sent forms with
+    // template_id = null — a signed consent with no durable link to the template version
+    // the patient saw, and a template_version copied from whatever was in that day's
+    // JavaScript bundle. Every caller already sent the slug (in metadata); doing the
+    // lookup server-side fixes all of them at once, keeps the server authoritative about
+    // its own templates, and means a caller that is missed later still records the link.
+    let resolvedTemplateId = template_id || null;
+    let resolvedTemplate = null;
+    const slug = (req.body && (req.body.template_slug
+      || (metadata && metadata.template_slug))) || null;
+
+    if (resolvedTemplateId) {
+      const byId = await pool.query(
+        'SELECT id, name, version, fhir_questionnaire FROM form_templates WHERE id = $1',
+        [resolvedTemplateId]
+      );
+      if (!byId.rows.length) {
+        return res.status(400).json({
+          error: 'TemplateNotFound',
+          message: `No form template with id ${resolvedTemplateId} exists in this practice.`,
+        });
       }
+      resolvedTemplate = byId.rows[0];
+    } else if (slug) {
+      const bySlug = await pool.query(
+        'SELECT id, name, version, fhir_questionnaire FROM form_templates WHERE slug = $1',
+        [slug]
+      );
+      // An explicit reference that cannot be honoured is an error, not a silent null —
+      // that silence is what let the orphaned submissions accumulate unnoticed.
+      if (!bySlug.rows.length) {
+        return res.status(400).json({
+          error: 'TemplateNotFound',
+          message: `No form template with slug "${slug}" exists in this practice. Run the form library migration (tenant/008) if this is a system template.`,
+          slug,
+        });
+      }
+      resolvedTemplate = bySlug.rows[0];
+      resolvedTemplateId = resolvedTemplate.id;
+    }
+
+    // Pin the name and version from the template row, not from the caller. The point of
+    // the link is to record what the patient was actually shown.
+    const pinnedName = (resolvedTemplate && resolvedTemplate.name) || template_name;
+    const pinnedVersion = (resolvedTemplate && resolvedTemplate.version)
+      || template_version || '1.0';
+
+    // Build FHIR QuestionnaireResponse if the template has a FHIR mapping
+    let fhirResponse = null;
+    if (resolvedTemplate && resolvedTemplate.fhir_questionnaire && form_data) {
+      fhirResponse = buildFhirResponse(resolvedTemplate.fhir_questionnaire, form_data, patient_id);
     }
 
     const result = await pool.query(
@@ -615,9 +631,14 @@ router.post('/submissions', async (req, res) => {
         submitted_by, submitted_by_role, form_data, status, language, expires_at, metadata, fhir_response,
         submitted_at)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,
-               CASE WHEN $10 = 'submitted' THEN NOW() ELSE NULL END)
+               -- $10 is the status column (varchar) AND is compared here, where Postgres
+               -- infers text — "inconsistent types deduced for parameter $10". Without the
+               -- cast every INSERT failed with 42P08, and because all three callers wrap
+               -- this in .catch(console.error) labelled "non-critical", form submissions
+               -- silently never worked at all.
+               CASE WHEN $10::varchar = 'submitted' THEN NOW() ELSE NULL END)
        RETURNING *`,
-      [template_id || null, template_name, template_version || '1.0',
+      [resolvedTemplateId, pinnedName, pinnedVersion,
        patient_id || null, appointment_id || null, intake_flow_id || null,
        actorId || null, actorRole || null, JSON.stringify(form_data || {}),
        status || 'draft', language || 'en', expires_at || null,
@@ -639,7 +660,7 @@ router.put('/submissions/:id', async (req, res) => {
   const actorRole = req.headers['x-user-role'];
 
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     await ensureTables(pool);
 
     const prev = await pool.query('SELECT * FROM form_submissions WHERE id = $1', [req.params.id]);
@@ -682,7 +703,7 @@ router.delete('/submissions/:id', async (req, res) => {
   const actorId = req.headers['x-user-id'];
   const actorRole = req.headers['x-user-role'];
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     await ensureTables(pool);
     const prev = await pool.query('SELECT * FROM form_submissions WHERE id = $1', [req.params.id]);
     if (prev.rows.length === 0) return res.status(404).json({ error: 'Submission not found' });
@@ -706,7 +727,7 @@ router.post('/submissions/:id/sign', async (req, res) => {
   const actorRole = req.headers['x-user-role'];
 
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     await ensureTables(pool);
 
     const subResult = await pool.query('SELECT * FROM form_submissions WHERE id = $1', [req.params.id]);
@@ -734,7 +755,7 @@ router.post('/submissions/:id/sign', async (req, res) => {
 
 router.get('/submissions/:id/signatures', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     await ensureTables(pool);
     const result = await pool.query('SELECT * FROM form_signatures WHERE submission_id = $1 ORDER BY signed_at', [req.params.id]);
     res.json(result.rows);
@@ -750,7 +771,7 @@ router.get('/submissions/:id/signatures', async (req, res) => {
 
 router.get('/audit-logs', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     await ensureTables(pool);
     const { resource_type, resource_id, patient_id, actor_id, action, limit = 100 } = req.query;
 
@@ -782,7 +803,7 @@ router.get('/audit-logs', async (req, res) => {
 // Get templates assigned to a flow
 router.get('/intake-flows/:flowId/templates', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     await ensureTables(pool);
     const result = await pool.query(
       `SELECT ift.*, ft.name as template_name, ft.description, ft.template_type, ft.category_slug,
@@ -807,7 +828,7 @@ router.post('/intake-flows/:flowId/templates', async (req, res) => {
   const actorRole = req.headers['x-user-role'];
 
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     await ensureTables(pool);
 
     // Delete existing
@@ -877,7 +898,7 @@ function buildFhirResponse(questionnaire, formData, patientId) {
 
 router.get('/stats', async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     await ensureTables(pool);
     const [templates, submissions, pending, signed] = await Promise.all([
       pool.query('SELECT COUNT(*) FROM form_templates WHERE is_active = true'),

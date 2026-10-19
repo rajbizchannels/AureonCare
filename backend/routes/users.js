@@ -3,6 +3,13 @@ const router = express.Router();
 const { authenticate, authorize } = require('../middleware/auth');
 const { getTimezoneFromCountry } = require('../utils/timezoneUtils');
 const { enforceUserQuota, enforceProviderQuota } = require('../middleware/planEnforcement');
+const { BCRYPT_COST, validatePassword } = require('../utils/passwordPolicy');
+
+// SEC-05: true only when the target row belongs to the caller's practice. A caller with
+// no practice context never matches, so these checks fail CLOSED. Replaces an earlier
+// sentinel-string comparison (which also introduced a stray null byte into this file).
+const samePractice = (rowPracticeId, callerPracticeId) =>
+  Boolean(callerPracticeId) && String(rowPracticeId || '') === String(callerPracticeId);
 
 // All user routes require a valid JWT
 router.use(authenticate);
@@ -40,11 +47,15 @@ const toCamelCase = (obj) => {
 router.get('/', authorize('admin'), async (req, res) => {
   try {
     const pool = req.app.locals.pool;
+    // SEC-05: staff are isolated to their practice. users lives in public (identity
+    // plane), so search_path can't scope it — filter explicitly by the caller's
+    // practice. (A caller with no practice context sees an empty list, not everyone.)
     const result = await pool.query(`
       SELECT *
       FROM users
+      WHERE practice_id = $1
       ORDER BY id ASC
-    `);
+    `, [req.user.practiceId || null]);
     const users = result.rows.map(toCamelCase);
     res.json(users);
   } catch (error) {
@@ -57,11 +68,13 @@ router.get('/', authorize('admin'), async (req, res) => {
 router.get('/:id', isSelfOrAdmin, async (req, res) => {
   try {
     const pool = req.app.locals.pool;
+    // SEC-05: allow viewing self always; otherwise only users in the caller's practice.
     const result = await pool.query(
       `SELECT *
        FROM users
-       WHERE id::text = $1::text`,
-      [req.params.id]
+       WHERE id::text = $1::text
+         AND (id::text = $2::text OR practice_id = $3)`,
+      [req.params.id, req.user.id, req.user.practiceId || null]
     );
 
     if (result.rows.length === 0) {
@@ -83,8 +96,7 @@ router.post('/', authorize('admin'), enforceUserQuota, enforceProviderQuota, asy
     const pool = req.app.locals.pool;
     const bcrypt = require('bcryptjs');
 
-    // Ensure UUID extension is enabled
-    await pool.query('CREATE EXTENSION IF NOT EXISTS "uuid-ossp"');
+    // SEC-05: table/column creation moved to migrations (see migrations/tenant/001 and 072).
 
     // Accept both camelCase and snake_case
     const finalFirstName = first_name || firstName || '';
@@ -93,13 +105,19 @@ router.post('/', authorize('admin'), enforceUserQuota, enforceProviderQuota, asy
     // Hash password if provided
     let passwordHash = null;
     if (password) {
-      passwordHash = await bcrypt.hash(password, 10);
+      // SEC-12: enforce policy + hash at the shared cost factor
+      const pwCheck = validatePassword(password);
+      if (!pwCheck.valid) {
+        return res.status(400).json({ error: pwCheck.message });
+      }
+      passwordHash = await bcrypt.hash(password, BCRYPT_COST);
     }
 
     // Explicitly generate UUID for id
+    // SEC-05: new staff belong to the creating admin's practice.
     const result = await pool.query(
-      `INSERT INTO users (id, first_name, last_name, role, avatar, email, phone, license_number, specialty, preferences, status, password_hash, created_at)
-       VALUES (uuid_generate_v4(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW())
+      `INSERT INTO users (id, first_name, last_name, role, avatar, email, phone, license_number, specialty, preferences, status, password_hash, practice_id, created_at)
+       VALUES (uuid_generate_v4(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW())
        RETURNING *`,
       [
         finalFirstName,
@@ -112,7 +130,8 @@ router.post('/', authorize('admin'), enforceUserQuota, enforceProviderQuota, asy
         specialty,
         JSON.stringify(preferences || {}),
         status || 'active',
-        passwordHash
+        passwordHash,
+        req.user.practiceId || null
       ]
     );
 
@@ -226,6 +245,16 @@ router.put('/:id', isSelfOrAdmin, async (req, res) => {
     const pool = req.app.locals.pool;
     const bcrypt = require('bcryptjs');
 
+    // SEC-01: privilege fields (role, status) may only be changed by an admin.
+    // A non-admin editing their own record (isSelfOrAdmin) must not be able to
+    // escalate to 'admin' or flip account status — silently ignore those fields.
+    const isAdmin = req.user.role === 'admin';
+    const safeRole = isAdmin ? role : undefined;
+    const safeStatus = isAdmin ? status : undefined;
+    if (!isAdmin && (role !== undefined || status !== undefined)) {
+      console.log(`[DEBUG sec01-rbac] non-admin user ${req.user.id} attempted role/status change on ${req.params.id} (role=${role}, status=${status}) — ignored`);
+    }
+
     // Accept both camelCase and snake_case
     const finalFirstName = first_name || firstName;
     const finalLastName = last_name || lastName;
@@ -239,7 +268,12 @@ router.put('/:id', isSelfOrAdmin, async (req, res) => {
     // Hash password if provided
     let passwordHash = null;
     if (password) {
-      passwordHash = await bcrypt.hash(password, 10);
+      // SEC-12: enforce policy + hash at the shared cost factor
+      const pwCheck = validatePassword(password);
+      if (!pwCheck.valid) {
+        return res.status(400).json({ error: pwCheck.message });
+      }
+      passwordHash = await bcrypt.hash(password, BCRYPT_COST);
     }
 
     // Get current user data to check for role changes
@@ -253,8 +287,13 @@ router.put('/:id', isSelfOrAdmin, async (req, res) => {
     }
 
     const currentUser = currentUserResult.rows[0];
+    // SEC-05: may only modify self or a user in the same practice.
+    if (String(currentUser.id) !== String(req.user.id) &&
+        !samePractice(currentUser.practice_id, req.user.practiceId)) {
+      return res.status(404).json({ error: 'User not found' });
+    }
     const oldRole = currentUser.role;
-    const newRole = role || oldRole;
+    const newRole = safeRole || oldRole;
 
     const result = await pool.query(
       `UPDATE users
@@ -280,14 +319,14 @@ router.put('/:id', isSelfOrAdmin, async (req, res) => {
       [
         finalFirstName,
         finalLastName,
-        role,
+        safeRole,
         avatar,
         email,
         phone,
         license,
         specialty,
         preferences ? JSON.stringify(preferences) : null,
-        status,
+        safeStatus,
         language,
         country,
         timezone,
@@ -387,21 +426,109 @@ router.put('/:id', isSelfOrAdmin, async (req, res) => {
 
 // Delete user — admin only
 router.delete('/:id', authorize('admin'), async (req, res) => {
+  const pool = req.app.locals.pool;
+  // SEC-05: patient_portal_sessions moved into the tenant schema at the 068 cutover, so a
+  // raw pooled client — whose search_path is the default — cannot see it and every deletion
+  // failed with `relation "patient_portal_sessions" does not exist`, reported as a flat 500.
+  // req.db is the caller's tenant-scoped handle; public tables still resolve through it.
+  const db = req.db;
+  if (!db) {
+    return res.status(409).json({
+      error: 'This account is not linked to an active tenant workspace, so user records '
+        + 'cannot be changed. See GET /api/auth/tenant-status.',
+    });
+  }
   try {
-    const pool = req.app.locals.pool;
-    const result = await pool.query(
-      'DELETE FROM users WHERE id::text = $1::text RETURNING *',
-      [req.params.id]
+    const userId = req.params.id;
+    await db.query('BEGIN');
+
+    // These two are housekeeping, not the deletion itself, and the tables they touch have
+    // moved between `public` and the tenant schema across the SEC-05 cutover — so on some
+    // deployments one of them is not visible from this connection at all. A missing table
+    // has no rows to orphan, so it must not be able to block the deletion; anything other
+    // than "relation does not exist" still aborts, because that would mean rows we failed
+    // to clean up. Each runs in a savepoint so a skip does not poison the transaction.
+    const skippedCleanups = [];
+    const cleanup = async (label, sql) => {
+      await db.query('SAVEPOINT cleanup');
+      try {
+        await db.query(sql, [userId]);
+        await db.query('RELEASE SAVEPOINT cleanup');
+      } catch (err) {
+        await db.query('ROLLBACK TO SAVEPOINT cleanup');
+        if (err.code !== '42P01') throw err;
+        console.warn(`[users] skipping ${label} cleanup — table not visible from this schema`);
+        skippedCleanups.push(label);
+      }
+    };
+
+    // social_auth has no FK to users, so it does not cascade on user deletion.
+    // Explicitly remove the account's linked social identities (rows carry the
+    // user id in BOTH user_id and patient_id) so no orphaned link survives — an
+    // orphan would also keep the UNIQUE(provider, provider_user_id) slot occupied
+    // and block that identity from linking to a new account later.
+    await cleanup('social_auth',
+      'DELETE FROM social_auth WHERE user_id::text = $1::text OR patient_id::text = $1::text');
+
+    // Portal sessions are keyed by patient_id (= user id) and likewise do not
+    // cascade; drop them so a deleted account leaves no usable session behind.
+    await cleanup('patient_portal_sessions',
+      'DELETE FROM patient_portal_sessions WHERE patient_id::text = $1::text');
+
+    // SEC-05: only delete a user in the caller's practice. A cross-practice id
+    // matches 0 rows -> rollback (undoing the cascade deletes above) -> 404.
+    const result = await db.query(
+      'DELETE FROM users WHERE id::text = $1::text AND practice_id = $2 RETURNING *',
+      [userId, req.user.practiceId || null]
     );
 
     if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'User not found' });
+      await db.query('ROLLBACK');
+      // 0 rows has two quite different causes and they need different fixes: no such user,
+      // or a user who exists but is not in the caller's practice — including one with no
+      // practice at all, since `practice_id = $2` never matches NULL. Saying only "not
+      // found" for the second sends an admin looking for a record that is right there.
+      const exists = await pool.query(
+        'SELECT practice_id FROM users WHERE id::text = $1::text', [userId]
+      );
+      if (exists.rows.length === 0) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+      return res.status(404).json({
+        error: exists.rows[0].practice_id
+          ? 'That user belongs to a different practice.'
+          : 'That account is not linked to any practice, so it cannot be deleted from here.',
+      });
     }
 
-    res.json({ message: 'User deleted successfully' });
+    await db.query('COMMIT');
+    res.json({
+      message: 'User deleted successfully',
+      skippedCleanups: skippedCleanups.length ? skippedCleanups : undefined,
+    });
   } catch (error) {
+    await db.query('ROLLBACK').catch(() => {});
     console.error('Error deleting user:', error);
-    res.status(500).json({ error: 'Failed to delete user' });
+    // A foreign key violation means something still points at this account. Naming the
+    // table turns an unactionable 500 into a specific thing to go and clear.
+    if (error.code === '23503') {
+      return res.status(409).json({
+        error: 'That user cannot be deleted while other records still refer to them'
+          + (error.table ? ` (${error.table})` : '')
+          + '. Reassign or remove those first.',
+        constraint: error.constraint || undefined,
+      });
+    }
+    // Everything else has been answered with a bare "Failed to delete user", which is the
+    // same string for a missing relation, a broken constraint and a dead connection. The
+    // admin who sees it cannot act on it and nobody without server log access can diagnose
+    // it. Carry the database's own code and message — this route is admin-only, and the
+    // text is schema detail, never patient data.
+    res.status(500).json({
+      error: 'Failed to delete user',
+      code: error.code || undefined,
+      detail: String(error.message || '').slice(0, 300) || undefined,
+    });
   }
 });
 
@@ -468,13 +595,14 @@ router.put('/:id/switch-role', isSelfOrAdmin, async (req, res) => {
       });
     }
 
-    // Update active role
+    // Update active role — SEC-05: only self or a user in the caller's practice.
     const result = await pool.query(
       `UPDATE users
        SET active_role = $1, role = $1, updated_at = NOW()
        WHERE id::text = $2::text
+         AND (id::text = $3::text OR practice_id = $4)
        RETURNING *`,
-      [role_name, req.params.id]
+      [role_name, req.params.id, req.user.id, req.user.practiceId || null]
     );
 
     if (result.rows.length === 0) {
@@ -523,6 +651,13 @@ router.post('/:id/roles', authorize('admin'), async (req, res) => {
 
     if (!role_id) {
       return res.status(400).json({ error: 'Role ID is required' });
+    }
+
+    // SEC-05: the target user must belong to the caller's practice.
+    const tgtP = await pool.query('SELECT practice_id FROM users WHERE id::text = $1::text', [req.params.id]);
+    if (tgtP.rows.length === 0 ||
+        !samePractice(tgtP.rows[0].practice_id, req.user.practiceId)) {
+      return res.status(404).json({ error: 'User not found' });
     }
 
     // Check if role exists
@@ -581,6 +716,13 @@ router.post('/:id/roles', authorize('admin'), async (req, res) => {
 router.delete('/:id/roles/:role_id', authorize('admin'), async (req, res) => {
   try {
     const pool = req.app.locals.pool;
+
+    // SEC-05: the target user must belong to the caller's practice.
+    const tgtP = await pool.query('SELECT practice_id FROM users WHERE id::text = $1::text', [req.params.id]);
+    if (tgtP.rows.length === 0 ||
+        !samePractice(tgtP.rows[0].practice_id, req.user.practiceId)) {
+      return res.status(404).json({ error: 'User not found' });
+    }
 
     // Check if user has other roles
     const rolesCheck = await pool.query(

@@ -1,0 +1,659 @@
+# Implementation Steps — Medical Camps & Specialty Configuration Wizard
+
+Ordered runbook for the two proposals in `FEATURE_MEDICAL_CAMPS.md` and
+`FEATURE_SPECIALTY_WIZARD.md`. Each step names the files to create or edit and the
+acceptance check that proves it landed.
+
+Migration numbering as of this document: next global is **083**, next tenant is **004**.
+Renumber if other work merges first — the runners order by filename / version prefix.
+
+---
+
+## Rules that apply to every step
+
+These are the things this codebase punishes you for getting wrong. Re-read before each
+migration.
+
+1. **Tenant migrations** (`backend/migrations/tenant/NNN_*.sql`) use **unqualified** table
+   names. The runner sets `search_path` per schema and applies the file to every tenant
+   plus the golden `template`.
+2. **Global migrations** (`backend/migrations/NNN_*.sql`) must `SET search_path TO public;`
+   **and** schema-qualify every object. Migration 066 set the *database* default
+   `search_path` to `tenant_default, public, control`, so unqualified DDL in a global
+   migration silently lands in `tenant_default`. Follow `072_global_runtime_ddl.sql`.
+3. **Every new tenant table needs three things**, not one: created by a tenant migration,
+   registered in `control.tenant_tables`, and cloned into `template` via
+   `control.clone_table` + `control.replicate_intra_fks`. Pattern:
+   `071_sec05_lazy_created_tenant_tables.sql`. Miss the registration and newly provisioned
+   tenants lack the table, then routes that lazily `CREATE TABLE IF NOT EXISTS` make empty
+   shadow copies that read zero rows.
+4. Tenant migrations run **inside a transaction** — no `CREATE INDEX CONCURRENTLY`.
+5. **Expand/contract only.** New columns are nullable; no `NOT NULL` in the same release as
+   the column. Backfill in a later step.
+6. Routes use **`req.db`** (per-request tenant pool), never `req.app.locals.pool`, except
+   for genuinely global/control-plane reads.
+7. Deploy order is always: `npm run migrate` then `npm run migrate:tenants`.
+8. Verify with `npm run check:schema-health` and `npm run check:tenant-scoping` before
+   calling a migration step done.
+
+---
+
+# Part A — Phase 0: `locations` (shared prerequisite) — ✅ IMPLEMENTED
+
+Do this first. Both features need it, and building it twice is the expensive mistake.
+
+**Shipped as:** `migrations/tenant/004_locations.sql`,
+`migrations/tenant/005_location_id_columns.sql`, `migrations/083_locations_tenant_table.sql`,
+`utils/locations.js`, `routes/locations.js`, the `locations` seed in
+`services/tenantProvisioning.js`, `components/admin/LocationsTab.js`, and
+`test/locations/sites.test.js` (`npm run test:locations` — 54 checks).
+
+**Four deviations from the plan below, each for a reason worth keeping:**
+
+1. **A2 needs no clone.** 071 cloned because those tables existed in `tenant_default` but
+   not `template`. Here the tenant runner targets `template` like any other schema, so
+   tenant/004 creates it there directly and 083 is registration only.
+2. **A3 does not backfill `appointments` or `inventory_stock_movements.`** They grow
+   without bound and tenant migrations run in one transaction, so a blind historical
+   UPDATE is the lock-heavy change `tenant/README.md` warns against. `location_id IS NULL`
+   means "the primary site", resolved through `utils/locations.js`. Only the two bounded
+   configuration tables are backfilled.
+3. **A4's permission rows do not apply.** `permissions` / `roles` / `role_permissions`
+   live in `public`, `permissions` is empty, and there is no `requirePermission`
+   middleware — this codebase gates with `authorize('admin')`. The route follows that:
+   authenticated read (scheduling needs the list), admin-only write.
+4. **Added, not in the plan:** `POST /:id/make-primary`, a partial unique index enforcing
+   exactly one primary, server-side refusal to delete or deactivate the primary, and
+   refusal to delete a referenced site with the referencing counts named. The FK is
+   `ON DELETE SET NULL`, so a permitted delete would silently detach history rather than
+   fail — the refusal is the real protection and the FK is the fallback.
+
+**Not done, deliberately:** nothing consumes `location_id` yet. Scheduling, inventory and
+working hours are untouched, so single-site tenants behave exactly as before. Making
+scheduling site-aware is B3's job.
+
+### A1. Tenant migration — create the table
+**Create** `backend/migrations/tenant/004_locations.sql`
+
+- `CREATE TABLE IF NOT EXISTS locations (...)` per the DDL in `FEATURE_MEDICAL_CAMPS.md` §3.
+- Indexes on `is_active`, `location_type`.
+- Seed one `is_primary = true` row named from `practices.name` if the table is empty, so
+  every existing tenant has a default site.
+
+### A2. Global migration — register and clone
+**Create** `backend/migrations/083_locations_tenant_table.sql`
+
+- `SET search_path TO public;`
+- `INSERT INTO control.tenant_tables (table_name, sort_order) VALUES ('locations', 400) ON CONFLICT DO NOTHING;`
+- `SELECT control.clone_table('tenant_default', 'locations', 'template');`
+- `SELECT control.replicate_intra_fks('tenant_default', 'template', ARRAY['locations']);`
+
+**Accept:** `locations` exists in `template` and in every `tenant_*` schema;
+`check:schema-health` clean.
+
+### A3. Tenant migration — additive `location_id` columns
+**Create** `backend/migrations/tenant/005_location_id_columns.sql`
+
+Nullable `location_id uuid REFERENCES locations(id) ON DELETE SET NULL` on:
+`appointments`, `inventory_stock_movements`, `doctor_availability`,
+`clinic_working_hours`. Index each. Backfill all existing rows to the primary location
+in the same file (row counts are small per tenant).
+
+> `ON DELETE SET NULL`, not `CASCADE` — and note the `audit_logs` lesson from tenant/003:
+> a `SET NULL` is an UPDATE, so never add one to an append-only table.
+
+### A4. Backend — locations CRUD
+**Create** `backend/routes/locations.js` (follow `routes/appointment-types.js` for shape:
+`authenticate`, then `enforceActiveBilling`, then `req.db`).
+**Edit** `backend/server.js` — `app.use('/api/locations', require('./routes/locations'));`
+**Edit** `backend/migrations/083_*.sql` or a follow-up — add `locations.view` /
+`locations.manage` to `permissions` + `role_permissions` for admin.
+
+### A5. Frontend — site selector
+**Edit** `frontend/src/api/apiService.js` — locations CRUD calls.
+**Edit** `frontend/src/constants/adminConstants.js` — add `LOCATIONS: 'locations'` to
+`ADMIN_TABS`.
+**Create** `frontend/src/components/admin/LocationsPanel.js`.
+**Edit** `frontend/src/config/translations.js` — keys across all five locales.
+
+**Accept:** an admin can add a second site; existing appointments still load; scheduling is
+unchanged for single-site tenants (null `location_id` must behave exactly as today).
+
+---
+
+# Part B — Medical Camps — ✅ IMPLEMENTED
+
+**Shipped as:** `migrations/tenant/006_camps.sql`, `migrations/084_camps_tenant_tables.sql`,
+`services/camps.js`, `routes/camps.js`, `routes/camp-registrations.js`,
+`routes/camp-reports.js`, camp awareness in `routes/scheduling.js` and
+`routes/campaigns.js`, `views/CampsManagementView.js` with
+`components/panels/camps/{CampPlanningPanel,CampRegistrationDesk,CampStationBoard,CampDashboardPanel}.js`,
+and `test/camps/camps.test.js` (`npm run test:camps` — 122 checks).
+
+**Deviations from the plan below, each deliberate:**
+
+1. **B2's "published → in_progress requires inventory allocations" was wrong, so it is not
+   implemented.** A counselling camp may carry no supplies at all, and blocking it would be
+   a bug. What `published` requires instead is **at least one active station** — a pipeline
+   with no stations opens an empty board. Reconciliation is enforced at *close*, and only
+   for allocations that actually exist.
+2. **B9 needed no "billing bypass", because nothing auto-bills.** `payments` and `claims`
+   are only ever created by explicit calls to their own routes; no appointment, encounter or
+   camp produces one. Inventing a bypass would have implied a risk that is not there.
+   What shipped instead is the invariant that keeps it true — a free camp cannot hold a
+   priced service, enforced in the route (the parent row is invisible to a CHECK) and
+   re-checked when a camp is switched to free — plus `GET /api/camps/:id/cost`, which is the
+   camp's real financial picture: budget against stock actually consumed.
+3. **Sponsor-report suppression was added beyond the plan.** An allowlisted projection stops
+   columns leaking, but a *count* of one still re-identifies in a small cohort, so buckets
+   below five are combined. The test asserts a single diagnosis is not published as one case.
+4. **Actor columns carry no foreign key.** `created_by`, `user_id`, `handled_by` and friends
+   are plain uuid, because `users` lives in `public` and `control.replicate_intra_fks` only
+   reproduces FKs between tenant tables — a FK to `public.users` would exist in migrated
+   tenants and silently not in newly provisioned ones. `template` has zero cross-schema FKs
+   and this did not add the first.
+5. **`inventory_stock_movements.reference_type` had to be widened.** Migration 055
+   constrained it to purchase_order/patient/department/adjustment, so issuing stock to a camp
+   failed the CHECK. `camp` was added rather than overloading `department`, which would make
+   camp consumption indistinguishable from internal transfers in every stock report.
+
+**Pre-existing bug found and fixed in passing:** `GET /api/scheduling/slots/:providerId` and
+`/available-dates/:providerId` had no auth middleware at all, so they never received
+`req.db` and had been querying `doctor_availability` / `provider_booking_config` through a
+`public`-pinned pool — failing with 42P01 for every tenant since the SEC-05 cutover moved
+those tables out of `public`. Adding `optionalAuth` fixes the signed-in path. **The
+genuinely anonymous path is still broken** and is out of scope here: a public booking page
+needs tenant routing of its own (see `services/portalRouting.js`).
+
+**Not done, deliberately:** B4's offline capture (Phase 4) — see the note at the end of
+this part.
+
+---
+
+# Part B — original plan
+
+## B1. Schema
+
+**Create** `backend/migrations/tenant/006_camps.sql`
+
+| Table | Key columns |
+|---|---|
+| `camps` | `name`, `location_id`, `sponsor_name`, `starts_at`, `ends_at`, `status`, `capacity`, `is_free`, `budget`, `created_by` |
+| `camp_services` | `camp_id`, `offering_id`, `is_free`, `price` |
+| `camp_staff` | `camp_id`, `user_id`, `camp_role`, UNIQUE(`camp_id`,`user_id`) |
+| `camp_stations` | `camp_id`, `name`, `step_order`, `offering_id`, `form_template_id` |
+| `camp_inventory_allocations` | `camp_id`, `item_id`, `qty_issued`, `qty_consumed`, `qty_returned`, `reconciled_at` |
+| `camp_registrations` | `camp_id`, `token_no`, `full_name`, `phone`, `age_years`, `date_of_birth`, `gender`, `consent_given_at`, `consent_form_submission_id`, `status`, `patient_id` (nullable) |
+| `camp_station_visits` | `registration_id`, `station_id`, `queued_at`, `started_at`, `completed_at`, `handled_by`, `outcome`, `notes` |
+
+- `status` as `varchar` + `CHECK`, not an enum — enums are painful to extend across 100+
+  tenant schemas.
+- `UNIQUE (camp_id, token_no)`.
+- Nullable `camp_id` on `campaigns`, `appointments`, `medical_records`, `diagnosis`,
+  `prescriptions`, `lab_orders` — the camp stamp. **Do not** create camp-only clinical
+  tables.
+
+**Create** `backend/migrations/084_camps_tenant_tables.sql` — register all seven in
+`control.tenant_tables` (sort_order 410–416), clone into `template`, replicate FKs.
+
+**Accept:** `check:schema-health` clean; a freshly provisioned tenant has all seven tables.
+
+## B2. Camp planning API
+**Create** `backend/routes/camps.js` — CRUD for camps, services, staff, stations,
+allocations. Gate with `enforceFeature('camps')` from `middleware/planEnforcement.js`.
+**Edit** `backend/server.js` — register `/api/camps`.
+**Edit** permissions migration — `camps.view`, `camps.manage`, `camps.register`,
+`camps.clinical`, `camps.sponsor_report`.
+
+Enforce in the status transition handler:
+- `draft → published` requires a location, at least one service and at least one staff member.
+- `published → in_progress` requires inventory allocations recorded.
+- `in_progress → closed` requires every allocation reconciled
+  (`qty_issued = qty_consumed + qty_returned`) and freezes counts.
+
+**Accept:** unit test per illegal transition; `enforceFeature` returns the upgrade error on
+a plan without `features.camps`.
+
+## B3. Staffing conflict check
+**Edit** `backend/routes/camps.js` + `backend/routes/scheduling.js`
+
+Adding a user to `camp_staff` must check for clinic appointments at another
+`location_id` inside the camp window, and refuse with the specific conflicts listed (not a
+generic "conflict" string — that pattern has cost this project repeated round trips).
+Conversely, `scheduling.js` availability must exclude providers rostered to a camp.
+
+**Accept:** a provider booked at the clinic cannot be silently rostered to a same-day camp.
+
+## B4. Registration & token queue
+**Create** `backend/routes/camp-registrations.js`
+
+- `POST /api/camps/:id/registrations` — issues the next `token_no` inside a transaction.
+- Consent gate: **reject any station write** for a registration with
+  `consent_given_at IS NULL`. Enforce in the route *and* as a DB check where practical.
+- `GET /api/camps/:id/registrations/match?phone=&name=` — fuzzy candidate patients.
+- `POST /api/camp-registrations/:id/promote` — create or link a `patients` row inside a
+  transaction, set `patient_id`. This is the **only** path that creates a patient from a
+  camp, so dedup stays auditable.
+
+**Accept:** a registration with name + phone + age only succeeds (no MRN, no DOB); clinical
+writes are refused before consent; promotion is idempotent.
+
+## B5. Station pipeline
+**Edit** `backend/routes/camps.js` — station queue endpoints (claim next, start, complete),
+each writing `camp_station_visits` and stamping `camp_id` on whatever clinical row the
+station produces.
+
+## B6. Camp frontend
+**Create**:
+- `frontend/src/views/CampsManagementView.js` — list, create, lifecycle
+- `frontend/src/components/panels/CampPlanningPanel.js` — services, staff, stations, stock
+- `frontend/src/views/CampRegistrationDeskView.js` — high-speed capture, token display
+- `frontend/src/views/CampStationBoardView.js` — per-station queue
+- `frontend/src/components/panels/CampDashboardPanel.js` — throughput, waits, referrals
+
+**Edit**:
+- `frontend/src/config/modules.js` — `{ id: 'camps', ... }`
+- `frontend/src/config/navigation.js` — nav entries
+- `frontend/src/config/planFeatures.js` — `camps` in `clinical_pro`, `enterprise`, `onprem`
+- `frontend/src/utils/rolePermissions.js` — role access for `camps`
+- `frontend/src/api/apiService.js` — camp API surface
+- `frontend/src/config/translations.js` — keys × 5 locales
+
+The registration desk is the only screen with a hard performance requirement: keyboard-only
+capture, no modal chains, token visible immediately.
+
+## B7. Outreach
+**Edit** `backend/routes/campaigns.js` + `frontend/src/views/CampaignsManagementView.js` —
+let a campaign target a camp (`camp_id`) and send through the existing
+`services/notificationService.js` / `whatsappService.js`. No second messaging engine.
+
+## B8. Sponsor report — treat as a security feature
+**Create** `backend/routes/camp-reports.js`
+
+- `GET /api/camps/:id/sponsor-report` — its own route, its own permission
+  (`camps.sponsor_report`), and an **explicit allowlisted projection**: counts, age bands,
+  gender split, conditions screened, referrals made. Never a filtered view of the clinical
+  report — a filter can be forgotten, an allowlist cannot.
+- Log every access to `audit_logs`.
+
+**Accept:** a test asserts the response body contains **no** patient identifier, name,
+phone, DOB or free-text clinical note. Make this test the gate on the endpoint.
+
+## B9. Billing bypass
+**Edit** `backend/routes/camps.js` / payment creation path — a camp with `is_free = true`
+must not create `payments` or `claims` rows. Sponsor-funded camps record a single
+camp-level budget entry, not per-attendee charges.
+
+## B10. Tests
+**Create** `backend/test/camps/*.test.js` following `backend/test/signup/` style:
+lifecycle transitions, token uniqueness under concurrency, consent gate, promotion/dedup,
+inventory reconciliation, staffing conflict, and the sponsor-report PHI assertion.
+
+## B11. Docs
+**Edit** `USER_MANUAL.md`, `DEPLOYMENT_CHECKLIST.md` (new env/plan feature flag),
+`ARCHITECTURE_DIAGRAM.md`.
+
+> **Phase 4 (offline capture) is deliberately not in this list.** Revisit only on real
+> customer demand; if built, scope to registration/vitals/forms with server-pre-issued
+> token ranges and a mandatory conflict-review screen.
+
+---
+
+# Part C — Specialty Configuration Wizard — ✅ IMPLEMENTED (C1–C10, C13–C14)
+
+**Shipped as:** `migrations/085_specialty_catalog.sql`,
+`migrations/tenant/007_pack_provenance.sql`, `utils/specialtyPackSchema.js`,
+`services/specialtyPack.js`, `scripts/load-specialty-packs.js`,
+`data/specialty-packs/{dentistry,ophthalmology,paediatrics}.v1.json` + its README,
+`routes/practiceSetup.js`, the `is_customised` stamps in four existing routes,
+`views/PracticeSetupWizardView.js`, `hooks/usePracticeSetup.js`,
+`isModuleVisible`/`hiddenBySpecialty` in `config/planFeatures.js`, `applyTerminology` in
+`config/translations.js`, and `test/specialty/packs.test.js`
+(`npm run test:specialty` — 119 checks).
+
+**Five deviations, each forced by what the schema actually is:**
+
+1. **Per-practice state is in `public.practices.setup`, NOT
+   `organization_settings.settings`** as the proposal said. That table holds exactly ONE
+   row in `public` and is not in `control.tenant_tables`, so all tenants share it — putting
+   a practice's specialty profile, terminology or hidden modules there would leak them to
+   every other practice. `practices` has one row per practice and is already where 081 put
+   `session_idle_minutes`. (The `organization_settings` sharing is a pre-existing problem
+   of its own; this did not make it worse and did not try to fix it.)
+2. **C3 is a global migration, not `tenant/008`.** `providers` is a `public` table, so
+   `specialty_code` and its backfill live in 085.
+3. **The `roles` pack section was dropped, not implemented.** `roles`, `role_permissions`
+   and `medical_codes` are all `public` tables shared by every tenant, so a pack could not
+   seed them per-practice without polluting other practices. The validator now *rejects* a
+   `roles` section outright, and `codeSets` became a per-practice shortlist in
+   `practices.setup.favouriteCodes` rather than flags on the shared `medical_codes` rows.
+4. **`modules.hide` intersects on merge, it does not union.** A cardiology pack hiding
+   `rcm` must not take billing away from a hospital that also does oncology and bills for
+   it, so a module is hidden only when *every* chosen specialty hides it.
+5. **Clinical review (C12's gate) is implemented as a column, not a process note.**
+   `specialty_packs.clinical_review_status` defaults to `pending`; a pending pack can be
+   applied but only with an explicit `acknowledgeUnreviewed`, the wizard makes an admin
+   tick a box, and `packs:load` refuses to overwrite a version a clinician has approved —
+   approval is attached to `(code, version)`, so edited content must get a new version.
+
+**Found and fixed while testing, in my own work:**
+
+- The validator rejected ordinary clinical prose: `\bselect\b` and `\bcreate\b` match
+  "Select the affected tooth" and "create a treatment plan". Prose fields are now exempt
+  (they are bound parameters, never interpolated) and a form field's `type` is checked
+  against an allowlist instead — `select` is a perfectly ordinary widget name.
+- `reports.show` was computed, reported and then never written anywhere. Now persisted as
+  `setup.visibleReports`, with an assertion.
+- **The test suite was not hermetic.** An earlier draft inserted `dentistry` v2/v3 to test
+  upgrades, leaving them in the global catalogue — so the next run seeded v3 instead of v1
+  and every count assertion drifted. It now brings its own run-scoped specialty and removes
+  it in a `finally`, because a crashed run that left packs behind poisoned later runs too.
+- Four **mutation tests** were used to confirm the suite is load-bearing rather than
+  decorative: removing the `is_customised` stamp, letting the engine overwrite a customised
+  row, letting preview write, and dropping the review gate. The first three initially
+  produced a harness *crash* rather than named failures, which stops every later check — so
+  response accessors were hardened until each mutant fails cleanly by name.
+
+**C11 prerequisite fixed separately:** investigating C11 turned up a live defect unrelated
+to where the content lives. `DynamicFormRenderer` dispatches on `field.type` as a chain
+with no `else`, and the seed data said `checkbox_group` where the renderer says
+`checkboxes` — so **18 fields across 10 of the 22 templates rendered as a bare label with
+no input**, including the HIPAA authorisation and release-of-information forms. Fixed by
+normalising the seed data to `checkboxes` (the name the renderer and the form builder
+already agreed on, and the one zero database rows contradicted), adding a visible fallback
+so the next mismatch is loud, and narrowing this part's own `FIELD_TYPES` — it had invented
+seven types nothing can draw (`time`, `datetime`, `multiselect`, `file`, `divider`,
+`yesno`, plus `checkboxgroup` for `checkboxes`), so a pack could have declared a field that
+validated cleanly and then appeared to a patient as an unanswerable label. A test now fails
+if the three vocabularies drift apart again.
+
+**The template linkage is now fixed (C11 steps 1–4), and fixing it surfaced three further
+defects that had all been failing silently.** `form_templates` had been empty in every
+tenant since the module shipped, so the UI rendered a hard-coded frontend array and sent
+forms with `template_id: null`. Now:
+
+- `migrations/tenant/008_seed_form_library.sql` seeds 22 templates, 14 categories and 283
+  field definitions into every tenant and into `template`, stamped `source_pack = 'base'`
+  so the pack machinery protects them on upgrade. It is **generated** by
+  `scripts/generate-form-library-migration.js`, whose `--verify` mode diffs the committed
+  SQL back against `frontend/src/data/formTemplates.js` field by field — hand-copying 283
+  field definitions has a dropped `required: true` on a consent checkbox as its failure
+  mode, which is invisible in review.
+- `services/tenantProvisioning.js` copies the library out of `template` for newly
+  provisioned tenants, since `provision_schema` clones structure and never data.
+- The submissions endpoint resolves `template_slug` server-side and **pins the name and
+  version from the template row**, so a submission records what the patient was shown
+  rather than what the client claimed. An unresolvable reference is now a 400, not a
+  silent null.
+- All four frontend consumers were fixed: `FormManagementView` reads the API and sends a
+  real id, `NewPatientForm` and `DiagnosisForm` send the slug, and
+  `NewHealthcareOfferingForm` picks from database rows — its `consent_form_id` column is a
+  uuid with a foreign key, so the seed array's slug ids could only ever have produced an
+  invalid reference.
+
+Three pre-existing failures found in the process, each surviving because nothing checked
+the response:
+
+1. **`POST /api/offerings` failed for every request ever made to it** — the insert supplied
+   28 values for 29 placeholders (`bind message supplies 28 parameters, but prepared
+   statement requires 29`). Creating a healthcare offering through the API had never
+   worked, which is why the pack engine and the camp tests both inserted directly.
+   `consent_form_id` was also never populated: the value list had
+   `_consent_form_url || _consent_form_id` where two separate columns needed two values.
+2. **`POST /api/form-management/submissions` failed for every request** —
+   `CASE WHEN $10 = 'submitted'` made Postgres deduce text for the same parameter the
+   `status` varchar column needed, giving 42P08. All three callers wrapped it in
+   `.catch(console.error)` labelled "non-critical", so form submissions silently never
+   worked at all. That, not disuse, is why the table was empty.
+3. The two above are why there was no evidence of the linkage problem in the data: nothing
+   could be written to be orphaned.
+
+**C11 is now complete.** The five specialty-tagged templates moved out of the base library
+into their packs: `behavioral_health` v1 (a new pack, carrying PHQ-9, GAD-7 and the
+behavioural health intake), `dentistry` v2 and `paediatrics` v2. `tenant/009` removes them
+from the base library — but only where that is safe, leaving a row in place when the
+practice has edited it, when a `form_submission` points at it, or when a
+`healthcare_offering` uses it as its consent form. Anything skipped is reported and stays a
+base row, and because the pack uses the same slug the apply engine later reports it as a
+conflict and leaves it alone. The 71 field definitions were converted by
+`generate-form-library-migration.js --pack-forms`, not retyped.
+
+Doing it surfaced two more defects, both of them mine:
+
+1. **The three Part C packs' form fields used `name`, and the renderer keys everything on
+   `field.id`** — `formData[field.id]`, the React key, the change handler. 57 fields across
+   those packs would have rendered with an undefined key and collided with each other.
+   `id` is now required by the validator, with an error that says to rename it; the
+   normalising alias I briefly added is gone, because no pack uses it and untested code
+   that papers over the exact mistake a check exists to catch is worse than the check.
+   Ophthalmology got a v2 whose only change is this fix, so every tenant has an upgrade
+   path to working forms.
+2. **The pack `formTemplates` section really was lossy**, as this document already noted
+   without acting on it: moving the five templates would have dropped `subcategory`,
+   `categorySlug`, `complianceTags`, `languages`, `tags` and `version`. The section now
+   carries every `form_templates` column, and the test asserts the move is lossless rather
+   than trusting it.
+
+It also exposed an operational gap worth keeping: **the provisioning copy of the form
+library had no repair path.** A tenant created while that copy fails is left with no library
+forever, because it inherited `template`'s ledger and so tenant/008 can never run for it —
+and the symptom is just an empty screen. `npm run check:form-library` reports any tenant
+that is short and `npm run repair:form-library` copies the missing rows from `template`;
+both are covered by `test:forms`. Found because six tenants in the development database had
+zero templates, created by test runs during which the copy had been deliberately disabled
+for a mutation test, and nothing had noticed. Of its 22 templates, **17 are generic** (HIPAA notice, financial
+policy, general consent) — they are not specialty content, and putting them in a specialty
+pack would mean a practice only gets them if it happens to pick that specialty. Doing this
+properly needs a product decision about where universal templates live (a `general_practice`
+pack applied to everyone, or the existing form-management seed path), not a mechanical move.
+Three things noted for whoever does it:
+
+- The file uses `pediatrics` while the taxonomy uses `paediatrics`, consistent with
+  `orthopaedics` and `anaesthesiology` — the migration has to normalise that or the tag
+  will silently miss.
+- `FORM_TEMPLATES` has **four** consumers, not one: `FormManagementView`,
+  `NewHealthcareOfferingForm`, `NewPatientForm` and `DiagnosisForm`. All four have to move
+  to the API before the file can be deleted.
+- Fields are keyed on `id`, not `name`, and the renderer reads `formData[field.id]`, so
+  submitted data is keyed by `id`. Renaming to `name` would break every existing
+  submission's data keys — the pack validator has to accept `id` instead.
+- `form_templates` is empty in every tenant, and `FormManagementView` sends a seed template
+  with `template_id: null`, so a signed consent has no durable link to the version the
+  patient saw. That linkage defect is the real argument for doing C11, and it also means
+  seeding has zero conflict risk today — which will stop being true as practices start
+  hand-building forms.
+
+---
+
+# Part C — original plan
+
+Build the engine before the UI. Building the wizard first tends to bake pack semantics into
+React state, where they cannot be re-applied, upgraded or audited.
+
+## C1. Global catalog tables
+**Create** `backend/migrations/085_specialty_catalog.sql` (`SET search_path TO public;`,
+fully qualified)
+
+- `public.specialties` — `code` PK, `name`, `parent_code`, `taxonomy_code`, `is_active`,
+  `sort_order`. Seed the specialty list.
+- `public.specialty_packs` — `code`, `version`, `definition jsonb`, `is_active`,
+  `published_at`, `reviewed_by`, UNIQUE(`code`,`version`).
+
+These are **catalog, not tenant data** — they belong in `public` next to
+`subscription_plans`, and must **not** be registered in `control.tenant_tables`.
+
+## C2. Provenance columns
+**Create** `backend/migrations/tenant/007_pack_provenance.sql`
+
+Nullable `source_pack varchar(60)`, `source_pack_version integer`,
+`is_customised boolean DEFAULT false` on every pack-seeded table:
+`service_categories`, `healthcare_offerings`, `appointment_type_config`,
+`appointment_types`, `form_templates`, `inventory_categories`, `roles`.
+Plus nullable `department_id uuid` on the same tables — left null in this phase, but adding
+the column now is cheap and re-attributing thousands of rows later is not.
+
+**Also edit** the update paths in `routes/offerings.js`, `routes/form-management.js`,
+`routes/appointment-types.js`, `routes/roles.js`, `routes/inventory.js` to set
+`is_customised = true` when a user edits a row whose `source_pack` is non-null.
+**This is the step that makes safe pack upgrades possible — if it is skipped, C5 cannot
+work and cannot be retrofitted cheaply.**
+
+## C3. `providers.specialty_code`
+**Create** `backend/migrations/tenant/008_provider_specialty_code.sql`
+
+Add nullable `specialty_code varchar(60)`; backfill by best-effort match against
+`public.specialties` from the existing free-text `specialization`. Keep both columns for at
+least one release; drop neither until every tenant is migrated.
+
+## C4. Pack schema + validator
+**Create**:
+- `backend/data/specialty-packs/README.md` — the pack contract
+- `backend/data/specialty-packs/dentistry.v1.json`
+- `backend/utils/specialtyPackSchema.js` — validator
+
+The validator **rejects** any pack containing SQL, function references, file paths, or role
+definitions that are not `{ name, basedOn }` over an existing permission set. A pack may
+only ever narrow plan/role visibility, never widen it. Enforce that here, not in review.
+
+## C5. Apply engine
+**Create** `backend/services/specialtyPack.js`
+
+```js
+applyPack(db, pack, { mode })   // 'preview' | 'seed' | 'upgrade'
+```
+
+- One transaction on `req.db`.
+- Idempotent by natural key (`slug` / `code` / `name`).
+- Stamps `source_pack`, `source_pack_version` on everything it writes.
+- `upgrade` **never** overwrites a row with `is_customised = true` — returns it as a
+  conflict for the admin to resolve.
+- `preview` writes nothing and returns the exact create / update / skip / conflict diff the
+  wizard renders at step 6.
+
+**Accept:** apply twice → second run reports all-skip, zero writes. Edit a seeded offering,
+bump the pack version, upgrade → the edit survives and is listed as a conflict.
+
+## C6. Pack loader
+**Create** `backend/scripts/load-specialty-packs.js`
+**Edit** root `package.json` — `"packs:load": "node backend/scripts/load-specialty-packs.js"`
+
+Validates each JSON file and upserts into `public.specialty_packs`. Run in deploy after
+`migrate`.
+
+## C7. Wizard API
+**Create** `backend/routes/practiceSetup.js`
+
+- `GET /api/practice-setup/state` — from `organization_settings.settings.onboarding`
+- `PUT /api/practice-setup/state` — per-step save (resumable)
+- `GET /api/practice-setup/specialties`
+- `POST /api/practice-setup/preview` — `applyPack(..., { mode: 'preview' })`
+- `POST /api/practice-setup/apply` — `seed` or `upgrade`, writes
+  `settings.onboarding.appliedPacks`, logs to `audit_logs`
+
+**Edit** `backend/server.js` — register `/api/practice-setup`.
+**Edit** permissions — `practice.configure`, `practice.apply_specialty_pack`.
+**Edit** `backend/services/tenantProvisioning.js` — set
+`settings.onboarding = { startedAt: null, completedAt: null }` so the wizard knows to
+offer itself. **Do not apply packs during provisioning** — pack application must be an
+authenticated admin action so it is attributable.
+
+Multi-specialty merge rule, implemented here: union for additive sections (offerings,
+forms, codes), primary-specialty-wins for scalars and terminology, conflicts surfaced in
+the preview diff rather than resolved silently.
+
+## C8. Wizard UI
+**Create** `frontend/src/views/PracticeSetupWizardView.js` plus one component per step
+under `frontend/src/components/panels/setup/`:
+
+1. Practice profile — pre-filled from signup, don't re-ask
+2. Specialty (primary + additional, multi-select)
+3. Services & appointment types (preview + edit)
+4. Providers & hours (reuse `InviteStaffPanel`, `clinic_working_hours`)
+5. Forms & intake flow
+6. Review & apply — renders the `preview` diff, then one transactional apply
+
+**Edit**:
+- `frontend/src/App.js` — auto-launch when `onboarding.completedAt` is unset
+- `frontend/src/constants/adminConstants.js` — `SETUP: 'setup'` in `ADMIN_TABS` for re-runs
+- `frontend/src/api/apiService.js`, `frontend/src/config/translations.js`
+
+Every step must be skippable. "Skip for now" leaves a fully working generic practice — the
+wizard is an accelerator, never a gate.
+
+## C9. Specialty module filtering
+**Edit** `frontend/src/config/planFeatures.js`, `frontend/src/utils/rolePermissions.js`,
+`frontend/src/components/layout/AppShell.js`
+
+```
+visible = (planModules ∩ roleModules) \ (specialtyHidden \ adminPinned)
+```
+
+Specialty **only subtracts**. Add an admin override list plus a persistent "Show all
+modules" toggle — hiding modules a customer pays for with no way back is both a support
+burden and lost upsell surface.
+
+**Accept:** a dental tenant on `enterprise` no longer sees FHIR / denials / laboratory by
+default, and an admin can restore them in one click.
+
+## C10. Terminology overrides
+**Edit** `frontend/src/config/translations.js` + its lookup helper — resolve as
+`packOverride ?? translations[locale][key]`, sourced from
+`organization_settings.settings.specialty.terminology`.
+
+## C11. Consolidate the form library
+**Move** the 825 lines of `frontend/src/data/formTemplates.js` into specialty packs
+server-side, so there is one source of truth.
+**Edit** `frontend/src/components/forms/FormTemplateLibrary.js` to read the API that
+`backend/routes/form-management.js` already exposes.
+
+## C12. Reference packs
+**Create** `dentistry`, `ophthalmology`, `paediatrics` pack JSON.
+
+**This step has a non-engineering gate:** CPT/ICD subsets and clinical forms are regulated
+content. Each pack version needs clinician review recorded in
+`specialty_packs.reviewed_by` before `is_active = true`. Do not ship packs on engineering
+sign-off alone.
+
+## C13. Tests
+**Create** `backend/test/specialty/*.test.js` — validator rejection cases, apply
+idempotency, upgrade-preserves-customisation, multi-pack merge conflicts, and that a pack
+cannot widen plan or role visibility.
+
+## C14. Docs
+**Edit** `USER_MANUAL.md`, `DEPLOYMENT_CHECKLIST.md`,
+`backend/data/specialty-packs/README.md`.
+
+---
+
+# Deploy sequence (every release in this plan)
+
+```
+npm run migrate            # global: public / control
+npm run migrate:tenants    # fan out to every tenant schema + template
+npm run packs:load         # Part C only
+npm run check:schema-health
+npm run check:tenant-scoping
+```
+
+Then redeploy backend and frontend.
+
+---
+
+# Suggested order of work
+
+| # | Block | Why here |
+|---|---|---|
+| 1 | A1–A5 (`locations`) | unblocks both features; useful alone for multi-branch |
+| 2 | C1–C6 (taxonomy, provenance, engine) | **provenance must precede any pack seeding** |
+| 3 | C7–C10 (wizard API + UI + filtering) | first customer-visible win, lowest risk |
+| 4 | B1–B5 (camp schema, API, registration, stations) | |
+| 5 | B6–B9 (camp UI, outreach, sponsor report, billing) | |
+| 6 | C11–C12 (form library, reference packs) | gated on clinician review |
+| 7 | B10–B11, C13–C14 (tests, docs) | written alongside, not after |
+
+Two ordering constraints are not negotiable:
+
+- **C2 before any pack is ever applied.** Provenance columns cannot be retrofitted onto
+  already-seeded rows without guessing which were customised.
+- **A1–A3 before B1.** Camps without `locations` means camp-local address fields, which is
+  exactly the duplicate hierarchy this plan exists to avoid.

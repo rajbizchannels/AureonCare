@@ -6,11 +6,14 @@ const { google } = require('googleapis');
 
 const JWT_SECRET = process.env.AC_TK_S;
 
+const { googleClientId } = require('../utils/oauthClientIds');
+
 // ─── Configuration ───────────────────────────────────────────────────────────
-// AC_GG_CID / AC_GG_CSK  Google OAuth client id + secret (Calendar API enabled)
+// REACT_APP_GG_CID      Google OAuth client id (AC_GG_CID still accepted as a fallback)
+// AC_GG_CSK             Google OAuth client secret (Calendar API enabled)
 // AC_GG_URI              OAuth redirect URI registered on that client
 // AC_FE_URL              frontend origin the callback returns the patient to
-const GOOGLE_CLIENT_ID = process.env.AC_GG_CID;
+const GOOGLE_CLIENT_ID = googleClientId();
 const GOOGLE_CLIENT_SECRET = process.env.AC_GG_CSK;
 const GOOGLE_REDIRECT_URI =
   process.env.AC_GG_URI ||
@@ -21,7 +24,7 @@ const isConfigured = () => Boolean(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET);
 
 if (!isConfigured()) {
   console.warn(
-    '[calendar-sync] AC_GG_CID / AC_GG_CSK are not set — Google Calendar sync is disabled'
+    '[calendar-sync] REACT_APP_GG_CID / AC_GG_CSK are not set — Google Calendar sync is disabled'
   );
 }
 
@@ -67,7 +70,7 @@ const authorizePatientAccess = async (req, res, next) => {
       return next();
     }
 
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const owned = await pool.query(
       'SELECT 1 FROM patients WHERE id = $1 AND user_id = $2',
       [patientId, req.user.id]
@@ -158,7 +161,7 @@ router.get('/callback', async (req, res) => {
     const oauth2 = google.oauth2({ version: 'v2', auth: oauth2Client });
     const userInfo = await oauth2.userinfo.get();
 
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     await pool.query(
       `
       INSERT INTO social_auth (
@@ -198,7 +201,7 @@ router.get('/callback', async (req, res) => {
 // Check if patient has Google Calendar connected
 router.get('/status/:patientId', authenticate, authorizePatientAccess, async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(
       `SELECT id, provider, provider_user_id, profile_data, created_at
        FROM social_auth
@@ -228,7 +231,7 @@ router.get('/status/:patientId', authenticate, authorizePatientAccess, async (re
 // Disconnect Google Calendar
 router.delete('/disconnect/:patientId', authenticate, authorizePatientAccess, async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(
       `DELETE FROM social_auth
        WHERE patient_id = $1 AND provider = 'google_calendar'
@@ -250,7 +253,7 @@ router.delete('/disconnect/:patientId', authenticate, authorizePatientAccess, as
 // Sync one appointment to Google Calendar
 router.post('/sync-appointment', authenticate, requireGoogleConfig, authorizePatientAccess, async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { appointmentId } = req.body;
     const patientId = req.patientId;
 
@@ -340,7 +343,7 @@ router.post('/sync-appointment', authenticate, requireGoogleConfig, authorizePat
 // Enable/disable auto-sync for future appointments
 router.put('/auto-sync/:patientId', authenticate, authorizePatientAccess, async (req, res) => {
   try {
-    const pool = req.app.locals.pool;
+    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { enabled } = req.body;
 
     if (typeof enabled !== 'boolean') {

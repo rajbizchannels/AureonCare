@@ -52,7 +52,7 @@ INSERT INTO practices (id, name, tax_id, phone, email, address, plan_tier) VALUE
 INSERT INTO users (id, email, password_hash, first_name, last_name, role, phone, status, avatar, specialty, license_number) VALUES
 (
   '10000000-0000-0000-0000-000000000001'::uuid,
-  'sarah.chen@aureoncare.com',
+  'sarah.chen@aureoncare.tech',
   '$2a$10$8K1p/a0dL3LPkX0EZ7Y5COoIKqGlWh0YGvY8WxE/qR3Y5X0Y5X0Y5',
   'Sarah',
   'Chen',
@@ -65,7 +65,7 @@ INSERT INTO users (id, email, password_hash, first_name, last_name, role, phone,
 ),
 (
   '10000000-0000-0000-0000-000000000002'::uuid,
-  'james.wilson@aureoncare.com',
+  'james.wilson@aureoncare.tech',
   '$2a$10$8K1p/a0dL3LPkX0EZ7Y5COoIKqGlWh0YGvY8WxE/qR3Y5X0Y5X0Y5',
   'James',
   'Wilson',
@@ -78,7 +78,7 @@ INSERT INTO users (id, email, password_hash, first_name, last_name, role, phone,
 ),
 (
   '10000000-0000-0000-0000-000000000003'::uuid,
-  'emily.rodriguez@aureoncare.com',
+  'emily.rodriguez@aureoncare.tech',
   '$2a$10$8K1p/a0dL3LPkX0EZ7Y5COoIKqGlWh0YGvY8WxE/qR3Y5X0Y5X0Y5',
   'Emily',
   'Rodriguez',
@@ -268,7 +268,7 @@ BEGIN
   RAISE NOTICE '  Notifications: %', notifications_count;
   RAISE NOTICE '';
   RAISE NOTICE 'Test Credentials:';
-  RAISE NOTICE '  Admin: sarah.chen@aureoncare.com / password123';
+  RAISE NOTICE '  Admin: sarah.chen@aureoncare.tech / password123';
   RAISE NOTICE '  Patient Portal: john.smith@email.com / password123';
   RAISE NOTICE '  Patient Portal: maria.garcia@email.com / password123';
   RAISE NOTICE '  Patient Portal: robert.johnson@email.com / password123';

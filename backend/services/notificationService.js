@@ -1,5 +1,6 @@
 const nodemailer = require('nodemailer');
 const WhatsAppService = require('./whatsappService');
+const { consumeSendQuota } = require('../utils/sendQuota');
 
 let transporter = null;
 let whatsappService = null;
@@ -87,19 +88,59 @@ function buildEmailHtml(title, headerColor, greeting, intro, rows, extra) {
 </html>`;
 }
 
+/**
+ * Send one email. Never throws — a notification failure must not fail the action that
+ * raised it.
+ *
+ * Returns `{ sent, reason }` so a caller that needs to *tell the user* whether the mail
+ * went out (an invite, say, where a silently dropped message means the invitee is simply
+ * never onboarded) can do so. Callers that only fire-and-forget can ignore it.
+ */
 async function sendEmail(to, subject, html) {
-  if (!to || !process.env.AC_SM_U) return;
+  if (!to) return { sent: false, reason: 'no recipient' };
+  // Both halves, not just the username. With AC_SM_U set and AC_SM_W missing, nodemailer
+  // builds a transport it cannot authenticate and fails at send time with
+  // `EAUTH Missing credentials for "PLAIN"` — technically accurate, but it points at the
+  // mail server rather than at the unset variable that actually caused it.
+  if (!process.env.AC_SM_U || !process.env.AC_SM_W) {
+    return { sent: false, reason: 'smtp_not_configured' };
+  }
+  // SEC-24: cap sends per RECIPIENT. Notifications fire from ordinary business events, so
+  // a per-IP or per-route limit would miss them; the abuse that matters is one inbox being
+  // flooded, and the victim's address is the stable key.
+  const quota = await consumeSendQuota('email', to);
+  if (!quota.allowed) {
+    console.warn(`[SEC-24] email to ${to} suppressed — ${quota.count} sends exceeds the limit of ${quota.limit} in the window`);
+    return { sent: false, reason: 'rate_limited' };
+  }
   try {
     const t = getTransporter();
     const from = `"${process.env.AC_CLN || 'AureonCare'}" <${process.env.AC_SM_U}>`;
     await t.sendMail({ from, to, subject, html });
+    return { sent: true };
   } catch (e) {
     console.error(`NotificationService: email to ${to} failed:`, e.message);
+    // Carry the provider's own words back to the caller. "Could not be delivered" is not
+    // actionable; "535-5.7.8 Username and Password not accepted" is. Only the SMTP status
+    // and the server's response line are passed on — never the transport configuration —
+    // and it is truncated so a chatty server cannot flood a UI.
+    return {
+      sent: false,
+      reason: 'send_failed',
+      detail: [e.code, e.responseCode, e.response || e.message]
+        .filter(Boolean).join(' ').slice(0, 300),
+    };
   }
 }
 
 async function sendWhatsApp(phone, message) {
   if (!whatsappService || !phone) return;
+  // SEC-24: same per-recipient cap, which also bounds spend at the messaging provider.
+  const quota = await consumeSendQuota('whatsapp', phone);
+  if (!quota.allowed) {
+    console.warn(`[SEC-24] WhatsApp to ${phone} suppressed — ${quota.count} sends exceeds the limit of ${quota.limit} in the window`);
+    return;
+  }
   try {
     await whatsappService.sendMessage(phone, message);
   } catch (e) {
@@ -512,4 +553,4 @@ const EVENTS = {
   },
 };
 
-module.exports = { dispatch };
+module.exports = { dispatch, sendEmail, buildEmailHtml };

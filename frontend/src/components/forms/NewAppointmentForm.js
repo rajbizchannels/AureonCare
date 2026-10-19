@@ -3,6 +3,7 @@ import { Calendar, X, Save, AlertTriangle } from 'lucide-react';
 import ConfirmationModal from '../modals/ConfirmationModal';
 import { useAudit } from '../../hooks/useAudit';
 import { toLocalDateTimeString } from '../../utils/formatters';
+import ThemedSelect from './ThemedSelect';
 
 const NewAppointmentForm = ({ theme, api, patients, users, patient, user, onClose, onSuccess, addNotification, t }) => {
   const { logFormView, logCreate, logError, startAction } = useAudit();
@@ -324,17 +325,18 @@ const NewAppointmentForm = ({ theme, api, patients, users, patient, user, onClos
                     {patient.first_name} {patient.last_name} - {patient.mrn || 'N/A'}
                   </div>
                 ) : (
-                  <select
+                  <ThemedSelect
+                    theme={theme}
+                    focusClass="focus:border-cyan-500"
                     required
                     value={formData.patientId}
                     onChange={(e) => setFormData({...formData, patientId: e.target.value})}
-                    className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
                   >
                     <option value="">{t.selectPatient || 'Select Patient'}</option>
                     {patients.map(p => (
                       <option key={p.id} value={p.id}>{p.first_name} {p.last_name} - {p.mrn}</option>
                     ))}
-                  </select>
+                  </ThemedSelect>
                 )}
               </div>
 
@@ -342,11 +344,12 @@ const NewAppointmentForm = ({ theme, api, patients, users, patient, user, onClos
                 <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                   {t.appointmentType || 'Appointment Type'} <span className="text-red-400">*</span>
                 </label>
-                <select
+                <ThemedSelect
+                  theme={theme}
+                  focusClass="focus:border-cyan-500"
                   required
                   value={formData.type}
                   onChange={(e) => setFormData({...formData, type: e.target.value})}
-                  className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
                 >
                   <option value="">{t.selectType || 'Select Type'}</option>
                   {appointmentTypes.map(type => (
@@ -354,17 +357,18 @@ const NewAppointmentForm = ({ theme, api, patients, users, patient, user, onClos
                       {type.name}
                     </option>
                   ))}
-                </select>
+                </ThemedSelect>
               </div>
 
               <div>
                 <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                   {t.service || 'Service/Offering'} <span className="text-gray-400 text-xs">(Optional)</span>
                 </label>
-                <select
+                <ThemedSelect
+                  theme={theme}
+                  focusClass="focus:border-cyan-500"
                   value={formData.offeringId}
                   onChange={(e) => setFormData({...formData, offeringId: e.target.value})}
-                  className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
                 >
                   <option value="">{t.selectService || 'Select a service (optional)'}</option>
                   {offerings.map(offering => (
@@ -374,7 +378,7 @@ const NewAppointmentForm = ({ theme, api, patients, users, patient, user, onClos
                         ` - $${Math.min(...offering.pricing_options.map(p => p.final_price))}`}
                     </option>
                   ))}
-                </select>
+                </ThemedSelect>
                 {formData.offeringId && (() => {
                   const selectedOffering = offerings.find(o => o.id.toString() === formData.offeringId);
                   return selectedOffering && selectedOffering.description && (
@@ -433,10 +437,11 @@ const NewAppointmentForm = ({ theme, api, patients, users, patient, user, onClos
                     {`${user.first_name || user.firstName || ''} ${user.last_name || user.lastName || ''}`.trim() || user.email}
                   </div>
                 ) : (
-                  <select
+                  <ThemedSelect
+                    theme={theme}
+                    focusClass="focus:border-cyan-500"
                     value={formData.providerId}
                     onChange={(e) => setFormData({...formData, providerId: e.target.value})}
-                    className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:border-cyan-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}
                   >
                     <option value="">{t.selectProvider || 'Select Provider'}</option>
                     {providers.map(provider => (
@@ -444,7 +449,7 @@ const NewAppointmentForm = ({ theme, api, patients, users, patient, user, onClos
                         {`${provider.first_name || provider.firstName || ''} ${provider.last_name || provider.lastName || ''}`.trim() || provider.email}
                       </option>
                     ))}
-                  </select>
+                  </ThemedSelect>
                 )}
               </div>
             </div>

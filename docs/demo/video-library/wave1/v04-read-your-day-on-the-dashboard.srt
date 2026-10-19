@@ -1,0 +1,39 @@
+1
+00:00:04,743 --> 00:00:12,293
+Read your day on the dashboard — Home ▸ Dashboard — What each tile counts, and how to jump from a number to the work behind it.
+
+2
+00:00:19,888 --> 00:00:26,281
+Home ▸ Dashboard is where the day starts: the practice at a glance.
+
+3
+00:00:26,281 --> 00:00:35,809
+Each tile counts something live — today’s appointments, active patients, open tasks, revenue this month.
+
+4
+00:00:35,809 --> 00:00:43,531
+These are not a report you run. They are the current state, and they move as the day does.
+
+5
+00:00:43,531 --> 00:00:53,636
+Every card on the dashboard opens the module behind it — one click, no navigation.
+
+6
+00:00:53,636 --> 00:01:08,277
+You land in the module itself, ready to work rather than to read.
+
+7
+00:01:08,277 --> 00:01:16,508
+Quick Actions starts the jobs you do most — a patient, an appointment, a claim — without hunting for the module.
+
+8
+00:01:16,508 --> 00:01:23,089
+That is the habit: read the tiles at the start of the day, then click the one that needs you.
+
+9
+00:01:24,597 --> 00:01:36,137
+What you just did
+
+10
+00:01:37,603 --> 00:01:46,603
+Health | Efficiency | Growth — More in the Getting Started series — the next video is linked on screen.

@@ -1,0 +1,441 @@
+{
+  "code": "paediatrics",
+  "version": 1,
+  "label": "Paediatric Practice",
+  "description": "Starting configuration for a paediatric practice: well-child and immunisation visit types, growth and development services, and the consent a guardian signs.",
+  "modules": {
+    "hide": [
+      "rcm"
+    ]
+  },
+  "terminology": {
+    "patient": "Child",
+    "patients": "Children",
+    "provider": "Paediatrician",
+    "providers": "Paediatricians"
+  },
+  "appointmentTypes": [
+    {
+      "name": "Newborn Visit",
+      "durationMinutes": 40,
+      "color": "#F472B6",
+      "displayOrder": 10
+    },
+    {
+      "name": "Well-child Visit",
+      "durationMinutes": 30,
+      "color": "#2563EB",
+      "displayOrder": 20
+    },
+    {
+      "name": "Immunisation",
+      "durationMinutes": 15,
+      "color": "#14B8A6",
+      "displayOrder": 30
+    },
+    {
+      "name": "Sick Visit",
+      "durationMinutes": 20,
+      "color": "#F59E0B",
+      "displayOrder": 40
+    },
+    {
+      "name": "Development Review",
+      "durationMinutes": 45,
+      "color": "#8B5CF6",
+      "displayOrder": 50
+    },
+    {
+      "name": "Follow-up",
+      "durationMinutes": 15,
+      "color": "#0EA5E9",
+      "displayOrder": 60
+    }
+  ],
+  "serviceCategories": [
+    {
+      "name": "Preventive Care",
+      "icon": "shield",
+      "color": "#14B8A6",
+      "displayOrder": 10
+    },
+    {
+      "name": "Immunisation",
+      "icon": "syringe",
+      "color": "#2563EB",
+      "displayOrder": 20
+    },
+    {
+      "name": "Growth and Development",
+      "icon": "trending-up",
+      "color": "#8B5CF6",
+      "displayOrder": 30
+    },
+    {
+      "name": "Acute Care",
+      "icon": "thermometer",
+      "color": "#F59E0B",
+      "displayOrder": 40
+    }
+  ],
+  "offerings": [
+    {
+      "name": "Newborn Examination",
+      "categoryName": "Preventive Care",
+      "durationMinutes": 40,
+      "cptCodes": [
+        "99391"
+      ],
+      "maxAge": 1
+    },
+    {
+      "name": "Well-child Visit, Infant",
+      "categoryName": "Preventive Care",
+      "durationMinutes": 30,
+      "cptCodes": [
+        "99391"
+      ],
+      "maxAge": 1
+    },
+    {
+      "name": "Well-child Visit, Early Childhood",
+      "categoryName": "Preventive Care",
+      "durationMinutes": 30,
+      "cptCodes": [
+        "99392"
+      ],
+      "minAge": 1,
+      "maxAge": 4
+    },
+    {
+      "name": "Well-child Visit, Late Childhood",
+      "categoryName": "Preventive Care",
+      "durationMinutes": 30,
+      "cptCodes": [
+        "99393"
+      ],
+      "minAge": 5,
+      "maxAge": 11
+    },
+    {
+      "name": "Well-child Visit, Adolescent",
+      "categoryName": "Preventive Care",
+      "durationMinutes": 30,
+      "cptCodes": [
+        "99394"
+      ],
+      "minAge": 12,
+      "maxAge": 17
+    },
+    {
+      "name": "Routine Immunisation Administration",
+      "categoryName": "Immunisation",
+      "durationMinutes": 15,
+      "cptCodes": [
+        "90460"
+      ]
+    },
+    {
+      "name": "Influenza Vaccination",
+      "categoryName": "Immunisation",
+      "durationMinutes": 10,
+      "cptCodes": [
+        "90686"
+      ]
+    },
+    {
+      "name": "Growth Monitoring",
+      "categoryName": "Growth and Development",
+      "durationMinutes": 20,
+      "cptCodes": [
+        "99212"
+      ]
+    },
+    {
+      "name": "Developmental Screening",
+      "categoryName": "Growth and Development",
+      "durationMinutes": 45,
+      "cptCodes": [
+        "96110"
+      ]
+    },
+    {
+      "name": "Autism Screening",
+      "categoryName": "Growth and Development",
+      "durationMinutes": 45,
+      "cptCodes": [
+        "96110"
+      ],
+      "minAge": 1,
+      "maxAge": 3
+    },
+    {
+      "name": "Hearing Screening",
+      "categoryName": "Growth and Development",
+      "durationMinutes": 15,
+      "cptCodes": [
+        "92551"
+      ]
+    },
+    {
+      "name": "Vision Screening",
+      "categoryName": "Growth and Development",
+      "durationMinutes": 15,
+      "cptCodes": [
+        "99173"
+      ]
+    },
+    {
+      "name": "Acute Illness Review",
+      "categoryName": "Acute Care",
+      "durationMinutes": 20,
+      "cptCodes": [
+        "99213"
+      ]
+    },
+    {
+      "name": "Nebulisation",
+      "categoryName": "Acute Care",
+      "durationMinutes": 30,
+      "cptCodes": [
+        "94640"
+      ]
+    }
+  ],
+  "formTemplates": [
+    {
+      "slug": "paediatric-intake",
+      "name": "Paediatric Intake",
+      "templateType": "onboarding",
+      "fields": [
+        {
+          "id": "guardian_name",
+          "type": "text",
+          "label": "Parent or guardian completing this form",
+          "required": true
+        },
+        {
+          "id": "relationship",
+          "type": "select",
+          "label": "Relationship to the child",
+          "options": [
+            "Mother",
+            "Father",
+            "Grandparent",
+            "Legal guardian",
+            "Other"
+          ],
+          "required": true
+        },
+        {
+          "id": "reason_for_visit",
+          "type": "textarea",
+          "label": "Reason for today's visit",
+          "required": true
+        },
+        {
+          "id": "birth_weight",
+          "type": "text",
+          "label": "Birth weight"
+        },
+        {
+          "id": "gestation_weeks",
+          "type": "number",
+          "label": "Weeks of gestation at birth"
+        },
+        {
+          "id": "delivery_type",
+          "type": "radio",
+          "label": "Type of delivery",
+          "options": [
+            "Vaginal",
+            "Caesarean"
+          ]
+        },
+        {
+          "id": "feeding",
+          "type": "radio",
+          "label": "Feeding",
+          "options": [
+            "Breast",
+            "Formula",
+            "Mixed",
+            "Solids"
+          ]
+        },
+        {
+          "id": "immunisations_up_to_date",
+          "type": "radio",
+          "label": "Are immunisations up to date?",
+          "options": [
+            "Yes",
+            "No",
+            "Not sure"
+          ],
+          "required": true
+        },
+        {
+          "id": "allergies",
+          "type": "textarea",
+          "label": "Known allergies"
+        },
+        {
+          "id": "school_nursery",
+          "type": "text",
+          "label": "School or nursery"
+        }
+      ]
+    },
+    {
+      "slug": "paediatric-guardian-consent",
+      "name": "Guardian Consent to Treatment",
+      "templateType": "consent",
+      "requireSignature": true,
+      "fields": [
+        {
+          "id": "child_name",
+          "type": "text",
+          "label": "Child's full name",
+          "required": true
+        },
+        {
+          "id": "guardian_name",
+          "type": "text",
+          "label": "Parent or guardian name",
+          "required": true
+        },
+        {
+          "id": "relationship",
+          "type": "text",
+          "label": "Relationship to the child",
+          "required": true
+        },
+        {
+          "id": "has_parental_responsibility",
+          "type": "checkbox",
+          "label": "I confirm I hold parental responsibility for this child",
+          "required": true
+        },
+        {
+          "id": "treatment_explained",
+          "type": "checkbox",
+          "label": "The proposed treatment and its alternatives have been explained to me",
+          "required": true
+        },
+        {
+          "id": "questions_answered",
+          "type": "checkbox",
+          "label": "I have had the chance to ask questions and they were answered",
+          "required": true
+        }
+      ]
+    },
+    {
+      "slug": "paediatric-immunisation-record",
+      "name": "Immunisation Record",
+      "templateType": "clinical",
+      "fields": [
+        {
+          "id": "vaccine",
+          "type": "text",
+          "label": "Vaccine given",
+          "required": true
+        },
+        {
+          "id": "dose_number",
+          "type": "number",
+          "label": "Dose number"
+        },
+        {
+          "id": "site",
+          "type": "select",
+          "label": "Site",
+          "options": [
+            "Left thigh",
+            "Right thigh",
+            "Left arm",
+            "Right arm",
+            "Oral"
+          ],
+          "required": true
+        },
+        {
+          "id": "batch_number",
+          "type": "text",
+          "label": "Batch number",
+          "required": true
+        },
+        {
+          "id": "expiry",
+          "type": "date",
+          "label": "Expiry date"
+        },
+        {
+          "id": "guardian_informed_of_reactions",
+          "type": "checkbox",
+          "label": "Guardian advised what reactions to look out for",
+          "required": true
+        },
+        {
+          "id": "next_due",
+          "type": "date",
+          "label": "Next dose due"
+        }
+      ]
+    }
+  ],
+  "codeSets": {
+    "icd10": [
+      "Z00.129",
+      "Z23",
+      "J06.9",
+      "R50.9",
+      "A09",
+      "J45.909",
+      "R62.51",
+      "L20.9"
+    ],
+    "cpt": [
+      "99391",
+      "99392",
+      "99393",
+      "99394",
+      "90460",
+      "90686",
+      "96110",
+      "92551",
+      "99173",
+      "99212",
+      "99213",
+      "94640"
+    ]
+  },
+  "inventoryCategories": [
+    {
+      "code": "vaccines",
+      "name": "Vaccines"
+    },
+    {
+      "code": "paediatric_consumables",
+      "name": "Paediatric Consumables"
+    },
+    {
+      "code": "nebuliser",
+      "name": "Nebuliser Supplies"
+    },
+    {
+      "code": "growth_charts",
+      "name": "Growth Charts and Screening Tools"
+    }
+  ],
+  "settings": {
+    "defaultAppointmentDuration": 20,
+    "slotIntervalMinutes": 10
+  },
+  "reports": {
+    "show": [
+      "clinical",
+      "operational"
+    ]
+  }
+}
