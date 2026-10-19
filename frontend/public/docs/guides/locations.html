@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Locations - AureonCare</title>
+    <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+    <header class="doc-header">
+        <div class="doc-header-content">
+            <div class="doc-header-left">
+                <a href="/" class="home-button">
+                    <svg class="home-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                    </svg>
+                    Back to AureonCare
+                </a>
+                <div class="doc-header-title">
+                    <h1>📍 Locations</h1>
+                    <p>Sites as a first-class entity</p>
+                </div>
+            </div>
+            <span class="version-badge">v1.5</span>
+        </div>
+    </header>
+    <div class="doc-container">
+        <a href="../index.html" class="back-link">&larr; Back to Documentation</a>
+        <div class="article-card">
+            <h1>Locations</h1>
+            <p>Found under <strong>Settings &rarr; Practice &rarr; Locations</strong>.</p>
+            <p>Until V1.5 AureonCare assumed one implicit place. Locations makes sites explicit, which is what multi-branch practices, departments, and anything held off-site need.</p>
+
+            <h2>Location Types</h2>
+            <table>
+                <tr><th>Type</th><th>Use For</th></tr>
+                <tr><td>Clinic</td><td>A permanent site your practice operates</td></tr>
+                <tr><td>Camp</td><td>A venue used for an outreach event</td></tr>
+                <tr><td>Mobile</td><td>A vehicle or travelling service</td></tr>
+                <tr><td>Partner</td><td>A site operated by someone else where you deliver care</td></tr>
+            </table>
+
+            <h2>Adding a Location</h2>
+            <ol>
+                <li>Go to <strong>Settings &rarr; Practice &rarr; Locations</strong></li>
+                <li>Click <strong>+ New Location</strong></li>
+                <li>Enter the details</li>
+                <li>Click <strong>Save</strong></li>
+            </ol>
+
+            <table>
+                <tr><th>Field</th><th>Description</th></tr>
+                <tr><td>Name</td><td>What the site is called</td></tr>
+                <tr><td>Type</td><td>Clinic, Camp, Mobile or Partner</td></tr>
+                <tr><td>Address</td><td>Street address</td></tr>
+                <tr><td>City</td><td>City or town</td></tr>
+                <tr><td>Phone</td><td>Site contact number</td></tr>
+                <tr><td>Time Zone</td><td>The site's local time zone</td></tr>
+                <tr><td>Primary Site</td><td>Whether this is the practice's main site</td></tr>
+            </table>
+
+            <p><strong>Exactly one location is primary.</strong> Marking a different site primary moves the flag rather than creating a second one. Your existing clinic details became the primary site automatically when you upgraded.</p>
+
+            <h2>What Carries a Location</h2>
+            <p>Once sites exist, these records can each name one:</p>
+            <ul>
+                <li><strong>Appointments</strong> &mdash; where the appointment takes place</li>
+                <li><strong>Provider availability</strong> &mdash; which site a clinician works from, and when</li>
+                <li><strong>Working hours</strong> &mdash; opening hours per site</li>
+                <li><strong>Inventory stock movements</strong> &mdash; which site stock moved at</li>
+            </ul>
+            <p>A record without a location is still valid; the field is optional everywhere.</p>
+
+            <h2>Removing a Location</h2>
+            <ol>
+                <li>Open the location</li>
+                <li>Click <strong>Delete</strong></li>
+                <li>Confirm</li>
+            </ol>
+            <p><strong>Deleting a site never deletes history.</strong> Appointments, stock movements and availability that referenced it simply lose the location reference; the records themselves stay intact.</p>
+
+            <h2>Best Practices</h2>
+            <ul>
+                <li>&#10003; Create a location before scheduling anything at it</li>
+                <li>&#10003; Set the time zone correctly &mdash; appointment times depend on it</li>
+                <li>&#10003; Use <strong>Camp</strong> type for outreach venues rather than a permanent clinic</li>
+                <li>&#10003; Keep the primary site pointing at your main place of business</li>
+                <li>&#10007; Don't delete a site to "clean up" &mdash; mark it inactive if it may return</li>
+            </ul>
+
+            <h2>Related Guides</h2>
+            <ul>
+                <li><a href="medical-camps.html">Medical Camps</a></li>
+                <li><a href="practice-setup.html">Practice Setup Wizard</a></li>
+                <li><a href="practice-settings.html">Practice Settings</a></li>
+            </ul>
+        </div>
+    </div>
+    <footer style="background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); color: white; padding: 2rem; text-align: center; margin-top: 3rem;">
+        <p>AureonCare v1.5 - Locations</p>
+    </footer>
+</body>
+</html>

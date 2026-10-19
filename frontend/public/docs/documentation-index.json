@@ -1,6 +1,6 @@
 {
-  "version": "1.4",
-  "lastUpdated": "2026-09-14",
+  "version": "1.5",
+  "lastUpdated": "2026-10-19",
   "sections": [
     {
       "id": "getting-started",
@@ -204,6 +204,25 @@
           "roles": [
             "admin",
             "receptionist"
+          ]
+        },
+        {
+          "id": "booking-by-specialty",
+          "title": "Finding the Right Provider When Booking",
+          "path": "/docs/index.html#booking-by-specialty",
+          "url": "/docs/index.html#booking-by-specialty",
+          "keywords": [
+            "booking",
+            "specialty",
+            "provider",
+            "filter",
+            "search",
+            "appointment"
+          ],
+          "summary": "Filter and search providers when booking\n\nNarrow by specialty or type a name; the list reflects who really works there.",
+          "content": "**Finding the Right Provider When Booking**\n\nNew in V1.5. The booking form previously listed every provider in one flat dropdown, so a patient had to recognise the right clinician by name.\n\n**At the provider step you can now:**\n- Filter by specialty\n- Search free-text across provider name and specialty\n- Or leave it open and take any available provider\n\nBoth work on the list already loaded, so there is no delay as you type.\n\n**The specialty options come from the providers actually returned**, not a fixed list, so they cannot drift from the practice's real staffing.\n\nIf you change the filter and the provider you had chosen is no longer shown, the selection clears - so you cannot submit a booking against someone the filter has hidden.\n\nProvider search is reachable before you pick a date, so you can find the right clinician first and then see when they are free.",
+          "roles": [
+            "all"
           ]
         }
       ]
@@ -1227,6 +1246,134 @@
           "content": "**Session timeout**\n\nIdle sessions expire automatically, enforced on the server.\n\n- The clock runs from your LAST ACTION, not from when you signed in\n- Working continuously will not sign you out mid-note\n- The length is set by your administrator in Settings > Practice\n- When a session expires you return to sign-in; unsaved work in an open form is lost\n\nSave long clinical notes as you go rather than leaving a form open while you step away.\n\n**Password requirements**\nMinimum 12 characters, mixing upper case, lower case, digits and symbols.\n\nTo change: User Profile > Security > Change Password.\n\n**Sign-in messages**\n- 'Invalid email or password' - the combination was not accepted. This message is identical whether or not the address is registered, which stops an outsider discovering who has an account\n- 'Enter your authentication code' - your account has 2FA enabled\n- 'Your account is awaiting approval' - you signed up through your practice's email domain; an administrator must accept you\n- 'Your account has been blocked' - contact your administrator\n\n**What gets audited**\nRecorded: sign-ins, every create/edit/delete, every READ of patient data (who opened which chart, record, prescription, lab order or diagnosis), permission changes, exports and backups.\n\nNot recorded: the patient data itself. Entries record what was accessed, never the content returned.\n\nAudit entries cannot be edited or deleted by anyone, including administrators. This is enforced by the database.\n\nReview at Settings > System > Audit Logs.",
           "roles": [
             "all"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "camps",
+      "title": "Medical Camps",
+      "icon": "⛺",
+      "articles": [
+        {
+          "id": "camp-planning",
+          "title": "Planning a Medical Camp",
+          "path": "/docs/guides/medical-camps.html",
+          "url": "/docs/guides/medical-camps.html",
+          "keywords": [
+            "camp",
+            "medical camp",
+            "outreach",
+            "venue",
+            "station",
+            "planning",
+            "event"
+          ],
+          "summary": "Set up an outreach event at a venue you do not own\n\nDefine the venue, services, stations, staff and supplies before the day.",
+          "content": "**Planning a Medical Camp**\n\nFound under Scheduling > Medical Camps > Camp Planning. Available on Clinical Pro and above.\n\nA camp is a time-boxed event at a venue your practice does not own. It runs as a station pipeline, not a slot calendar - nobody books a 09:20 appointment.\n\n**Creating a camp:**\n1. Click + New Camp\n2. Enter name, venue, start and end date, sponsor and expected attendance\n3. Add the services the camp will offer\n4. Define the stations attendees pass through, in order\n5. Assign staff to stations\n6. List supplies, drawn from Inventory where you track it\n7. Save\n\nCreate the venue as a Location of type Camp first - see the Locations guide.\n\n**Camp statuses:**\n- Draft - being planned, not visible to the desk\n- Published - plan agreed, staff and stations fixed\n- In Progress - running; desk and board are live\n- Completed - finished; reporting available\n- Cancelled - called off\n\n**A camp is not a parallel clinical system.** Notes, diagnoses, prescriptions and lab orders written at a camp live in the usual places, stamped with the camp so it is reportable afterwards.\n\n**Best practices:**\n- Create the venue as a Location before planning\n- Publish before the day so desk and board are ready\n- Order stations in the sequence attendees physically walk",
+          "roles": [
+            "admin",
+            "doctor",
+            "nurse",
+            "receptionist"
+          ]
+        },
+        {
+          "id": "camp-registration",
+          "title": "Registration Desk & Promoting Attendees",
+          "path": "/docs/guides/medical-camps.html",
+          "url": "/docs/guides/medical-camps.html",
+          "keywords": [
+            "registration",
+            "desk",
+            "walk-in",
+            "queue",
+            "token",
+            "promote",
+            "consent",
+            "duplicate"
+          ],
+          "summary": "Fast walk-in capture, and the bridge to the patient index\n\nA registration is not a patient; promotion is the deliberate step that makes one.",
+          "content": "**Registration Desk**\n\nScheduling > Medical Camps > Registration Desk. Built for speed under queue pressure.\n\n**Registering an attendee:**\n1. Enter name, phone number and age\n2. Capture consent\n3. Click Register\n4. A queue token is issued\n\n**A camp registration is deliberately NOT a patient record.** The patient index requires an MRN and an exact date of birth; a desk has a name, a number and an approximate age. Keeping them separate lets the desk move quickly without filling your patient list with half-complete records.\n\n**Consent is enforced at the station too.** An attendee without recorded consent cannot be started at a station, not just at the desk - so 'we'll take the consent later' is not available under pressure.\n\n**Promoting a registration to a patient:**\n1. Open the registration\n2. Click Promote to Patient\n3. The system shows existing patients who may be the same person, with phone-number matches ranked highest\n4. Either link to an existing patient, or create a new record\n5. Supply a date of birth\n\nPromotion will not invent a date of birth. Enter the real one, or explicitly ask for an estimate - in which case the record is marked as holding an estimated date.\n\nPromotion always shows possible duplicates first, which makes merging a decision someone made rather than an accident of throughput.",
+          "roles": [
+            "admin",
+            "doctor",
+            "nurse",
+            "receptionist"
+          ]
+        },
+        {
+          "id": "camp-board-reports",
+          "title": "Station Board & Camp Outcomes",
+          "path": "/docs/guides/medical-camps.html",
+          "url": "/docs/guides/medical-camps.html",
+          "keywords": [
+            "station board",
+            "queue",
+            "waiting time",
+            "camp report",
+            "sponsor",
+            "throughput",
+            "referral"
+          ],
+          "summary": "Run the camp live, then report on it\n\nQueue lengths per station while it runs; clinical and sponsor reports afterwards.",
+          "content": "**Station Board**\n\nScheduling > Medical Camps > Station Board. A live view while the camp runs:\n- Every station with its current queue length\n- Average and current waiting time per station\n- Who is in progress at each station\n- Completed counts per station\n\nUse it to spot a bottleneck and move staff while the camp is still running.\n\n**Working a station:**\n1. Select your station\n2. Call the next token\n3. Click Start Visit - refused if consent was never recorded\n4. Deliver care and document as normal\n5. Click Complete - the attendee moves to the next station\n\n**Camp Outcomes**\n\nTwo distinct reports:\n\n**Clinical report** - for the practice. Full detail: attendees seen, conditions found, referrals made, prescriptions issued, throughput per station and per hour.\n\n**Sponsor report** - for the funding organisation. Aggregate only, built from an explicit list of permitted fields rather than by filtering the clinical report.\n\n**Privacy:** in the sponsor report, any category with fewer than five people is merged into a larger bucket. In a camp of eighty, a count of one plus local knowledge identifies somebody. Do not work around this by sending a sponsor the clinical report.\n\nExports: PDF, Excel and CSV.",
+          "roles": [
+            "admin",
+            "doctor",
+            "nurse",
+            "billing_manager"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "practice-setup",
+      "title": "Practice Setup & Locations",
+      "icon": "🏢",
+      "articles": [
+        {
+          "id": "locations",
+          "title": "Managing Locations",
+          "path": "/docs/guides/locations.html",
+          "url": "/docs/guides/locations.html",
+          "keywords": [
+            "location",
+            "site",
+            "branch",
+            "clinic",
+            "venue",
+            "multi-site",
+            "department",
+            "timezone"
+          ],
+          "summary": "Sites as a first-class entity\n\nClinic, camp, mobile and partner sites, with exactly one primary.",
+          "content": "**Locations**\n\nSettings > Practice > Locations. Until V1.5 the product assumed one implicit place; Locations makes sites explicit, which is what multi-branch practices, departments and off-site work need.\n\n**Types:**\n- Clinic - a permanent site your practice operates\n- Camp - a venue used for an outreach event\n- Mobile - a vehicle or travelling service\n- Partner - a site operated by someone else where you deliver care\n\n**Adding a location:**\n1. Settings > Practice > Locations\n2. Click + New Location\n3. Enter name, type, address, city, phone and time zone\n4. Mark it primary if it is your main site\n5. Save\n\nExactly one location is primary. Marking a different site primary moves the flag. Your existing clinic details became the primary site automatically on upgrade.\n\n**What can carry a location:**\nAppointments, provider availability, working hours, and inventory stock movements. The field is optional everywhere.\n\n**Deleting a site never deletes history.** Records that referenced it lose the location reference; the records themselves stay intact.\n\n**Best practices:**\n- Create a location before scheduling anything at it\n- Set the time zone correctly - appointment times depend on it\n- Use Camp type for outreach venues rather than a permanent clinic",
+          "roles": [
+            "admin"
+          ]
+        },
+        {
+          "id": "specialty-wizard",
+          "title": "Practice Setup Wizard",
+          "path": "/docs/guides/practice-setup.html",
+          "url": "/docs/guides/practice-setup.html",
+          "keywords": [
+            "setup",
+            "wizard",
+            "specialty",
+            "onboarding",
+            "pack",
+            "dentistry",
+            "paediatrics",
+            "ophthalmology",
+            "behavioural health",
+            "terminology"
+          ],
+          "summary": "Configure AureonCare for what your practice actually does\n\nSix steps and a specialty pack; it never overwrites your edits.",
+          "content": "**Practice Setup Wizard**\n\nSettings > Practice > Practice Setup. Administrators only.\n\nA new practice starts generic - every module visible, no services defined. The wizard configures AureonCare for what you actually do.\n\n**Six steps:**\n1. Profile - practice name, address, contact details\n2. Specialty - choose one or more\n3. Services - review the starter services your specialty suggests\n4. Providers - add clinicians and their specialties\n5. Forms - review suggested intake and clinical forms\n6. Review - see everything that will change, then apply\n\nYou can leave at any step and return; progress is saved.\n\n**Available specialty packs:**\n- Behavioural Health - counselling and behavioural health practice\n- Dentistry - general dental practice, chair-side appointments\n- Ophthalmology - refraction and investigation workflows\n- Paediatrics - well-child visits and immunisation schedules\n\n**What a pack will do:** create services, forms and terminology you do not already have, and hide modules your specialty typically does not use.\n\n**What a pack will never do:** overwrite anything you have edited (it reports a conflict and leaves your version alone), take ownership of something it did not create, or reveal a module your plan or role forbids.\n\n**Module visibility is now three filters:**\nvisible = (plan AND role) minus (specialty-hidden, unless pinned)\n\nSpecialty can only ever narrow the menu. To bring something back: Settings > Practice > Practice Setup > Hidden modules > Pin.\n\n**Best practices:**\n- Run the wizard before adding real patient data\n- Read the Step 6 preview - it is the last point before changes apply\n- Treat seeded services and forms as starting points\n- Pin back any module your specialty hid but you do use",
+          "roles": [
+            "admin"
           ]
         }
       ]
