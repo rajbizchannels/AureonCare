@@ -163,7 +163,7 @@ export const SecurityScreen: React.FC = () => {
             onChangeText={setCode}
             keyboardType="number-pad"
             maxLength={6}
-            style={styles.codeInput}
+            inputStyle={styles.codeInput}
           />
           <PrimaryButton label="Turn it on" onPress={confirm} busy={busy} />
         </View>

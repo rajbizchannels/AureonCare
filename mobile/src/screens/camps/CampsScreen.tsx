@@ -28,12 +28,12 @@ import { AttendeeList } from './AttendeeList';
 
 type Pane = 'desk' | 'board' | 'attendees';
 
-const STATUS_TONE: Record<CampStatus, 'success' | 'accent' | 'neutral' | 'warning'> = {
+const STATUS_TONE: Record<CampStatus, 'success' | 'accent' | 'neutral'> = {
   in_progress: 'success',
   published: 'accent',
   draft: 'neutral',
-  completed: 'neutral',
-  cancelled: 'warning',
+  closed: 'neutral',
+  archived: 'neutral',
 };
 
 export const CampsScreen: React.FC = () => {

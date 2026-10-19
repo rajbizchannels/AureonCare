@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View,
-  type StyleProp, type ViewStyle,
+  type StyleProp, type TextStyle, type ViewStyle,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { palette, radius, space, tint, type, HIT_SLOP_MIN } from '@/theme/tokens';
@@ -123,16 +123,25 @@ export function Segmented<T extends string>({
   );
 }
 
-/** A labelled text input, styled once so forms do not each re-invent it. */
+/**
+ * A labelled text input, styled once so forms do not each re-invent it.
+ *
+ * `style` lands on the wrapper, not the input, because that is what callers
+ * reach for it to do: putting two fields side by side means giving the
+ * *field* `flex: 1`. Applying it to the TextInput instead left the wrapper
+ * sizing to its content, so a row of two fields ran off the edge of the
+ * screen. `inputStyle` is the way in for the inner control.
+ */
 export const Field: React.FC<
-  { label: string; hint?: string } & React.ComponentProps<typeof TextInput>
-> = ({ label, hint, style, ...input }) => (
-  <View style={styles.field}>
+  { label: string; hint?: string; inputStyle?: StyleProp<TextStyle> } &
+  React.ComponentProps<typeof TextInput>
+> = ({ label, hint, style, inputStyle, ...input }) => (
+  <View style={[styles.field, style as StyleProp<ViewStyle>]}>
     <Text style={styles.fieldLabel}>{label}</Text>
     <TextInput
       placeholderTextColor={palette.textMuted}
       {...input}
-      style={[styles.input, style]}
+      style={[styles.input, inputStyle]}
     />
     {hint ? <Text style={styles.fieldHint}>{hint}</Text> : null}
   </View>

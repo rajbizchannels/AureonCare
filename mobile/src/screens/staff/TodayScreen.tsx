@@ -6,7 +6,7 @@ import { useSession } from '@/context/SessionContext';
 import { Card, Chip, SectionLabel } from '@/components/ui';
 import { useLayout } from '@/lib/device';
 import { canUseCamps } from '@/lib/permissions';
-import { formatTime, fullName, isToday } from '@/lib/useResource';
+import { formatTime, fullName, humanStatus, isToday } from '@/lib/useResource';
 import { hasLiveBoard } from '@/lib/camps';
 import { palette, radius, space, tint, type } from '@/theme/tokens';
 
@@ -247,7 +247,7 @@ export const StaffTodayScreen: React.FC = () => {
                       </Text>
                     ) : null}
                   </View>
-                  <Chip label={appointment.status} tone="neutral" />
+                  <Chip label={humanStatus(appointment.status)} tone="neutral" />
                 </View>
               ))
             )}

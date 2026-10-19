@@ -100,6 +100,16 @@ export const fullName = (
 export const isUpcoming = (iso: string): boolean => new Date(iso).getTime() >= Date.now();
 
 /**
+ * `checked_in` → `checked in`.
+ *
+ * Status columns are snake_case because that is how they are stored and
+ * compared; a chip is read by a person. Doing this at each call site is how
+ * nine of them ended up printing the raw value.
+ */
+export const humanStatus = (value: string | null | undefined): string =>
+  (value ?? '').replace(/_/g, ' ');
+
+/**
  * Same calendar day in the device's own timezone — which is the one the
  * person reading "Today" is standing in, even when the practice stores
  * timestamps in another.
