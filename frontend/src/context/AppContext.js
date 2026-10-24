@@ -393,10 +393,14 @@ const AppProvider = ({ children }) => {
    */
   const clearNotification = async (notifId) => {
     try {
+      // Resolves for a 404 too: already gone is the result the user wanted.
       await api.deleteNotification(notifId);
       setNotifications(prevNotifications => prevNotifications.filter(n => n.id !== notifId));
     } catch (err) {
-      console.error('Error clearing notification:', err);
+      // Anything else is a real failure and the row stays, which is truthful — it was not
+      // deleted. Not surfaced through addNotification: reporting a failure to clear a
+      // notification by adding another notification is circular.
+      console.error('Error clearing notification:', err.message || err);
     }
   };
 

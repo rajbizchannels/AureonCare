@@ -499,14 +499,26 @@ const api = {
     const response = await authenticatedFetch(`${API_BASE_URL}/notifications/${id}`, {
       method: 'DELETE'
     });
-    if (!response.ok) throw new Error('Failed to delete notification');
+    // A 404 means the notification is already gone — another tab cleared it, or the list
+    // in this tab is stale. That is the outcome the user asked for, so report success and
+    // let the caller drop it from the list. Treating it as an error left the row on screen
+    // with "Failed to delete notification" in the console and no way to get rid of it.
+    if (response.status === 404) return { success: true, alreadyGone: true };
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.message || error.error || 'Failed to delete notification');
+    }
     return response.json();
   },
   clearAllNotifications: async () => {
     const response = await authenticatedFetch(`${API_BASE_URL}/notifications`, {
       method: 'DELETE'
     });
-    if (!response.ok) throw new Error('Failed to clear notifications');
+    if (response.status === 404) return { success: true, alreadyGone: true };
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.message || error.error || 'Failed to clear notifications');
+    }
     return response.json();
   },
 

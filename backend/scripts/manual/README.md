@@ -41,9 +41,14 @@ Global first, then tenant. Always.
 | 3 | `apply-tenant-migrations.sql` | tenant 001–006 — creates the tables in every tenant schema and in `template` |
 | 4 | `apply-tenant-migrations-007-009.sql` | tenant 007–009 — pack provenance columns, the system form library, and handing five specialty forms to their packs |
 | 5 | `apply-global-085.sql` | global 085 — the specialty taxonomy, pack catalogue and `practices.setup` |
+| 6 | `apply-specialty-packs.sql` | publishes the specialty packs — the SQL equivalent of `npm run packs:load` |
 
-Then, if you can run node: `npm run packs:load` to publish the specialty packs, and
-`npm run check:form-library` to confirm every tenant has the form library.
+Without step 6 the setup wizard lists every specialty as having **"no starter content
+yet"**. That is not a fault in the wizard: `public.specialty_packs` is simply empty,
+because the packs are JSON files that a node script normally publishes.
+
+If you can run node, `npm run packs:load` does the same thing, and
+`npm run check:form-library` confirms every tenant has the form library.
 
 Step 2 before step 3 matters because `control.provision_schema` clones exactly what
 `control.tenant_tables` lists. Get the order wrong and nothing breaks permanently — a
@@ -55,6 +60,23 @@ exists.
 
 All of them are safe to re-run: every statement is idempotent and the ledgers are consulted
 first, so a re-paste reports `0 file(s) applied`.
+
+## `apply-specialty-packs.sql` is generated
+
+```bash
+node backend/scripts/build-manual-specialty-packs.js > backend/scripts/manual/apply-specialty-packs.sql
+```
+
+Each pack is written as one INSERT for everything except its form templates, then one
+UPDATE per form template. A whole pack as a single quoted literal reaches 17 KB and this
+project's SQL has been rejected by the editor for exactly that before; split this way no
+literal passes about 4 KB. Re-running replaces the definition and rebuilds the templates,
+so the end state is the same however many times it runs, and a pack a clinician has
+approved is skipped entirely.
+
+Checked against the node loader rather than eyeballed: on two databases, one published by
+`npm run packs:load` and one by this script, the pack definitions are identical across all
+3,440 lines of pretty-printed JSON, and still identical after three runs.
 
 ## `apply-tenant-migrations-007-009.sql` is generated
 
