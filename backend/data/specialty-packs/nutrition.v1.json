@@ -1,0 +1,262 @@
+{
+  "code": "nutrition",
+  "version": 1,
+  "label": "Nutrition and Dietetics",
+  "description": "Starting configuration for a dietetic service: assessment and review appointment types built around medical nutrition therapy.",
+  "modules": {
+    "hide": [
+      "camps",
+      "rcm",
+      "clinicalServices"
+    ]
+  },
+  "terminology": {
+    "provider": "Dietitian",
+    "providers": "Dietitians"
+  },
+  "appointmentTypes": [
+    {
+      "name": "Initial Dietetic Assessment",
+      "durationMinutes": 60,
+      "color": "#2563EB",
+      "displayOrder": 10
+    },
+    {
+      "name": "Follow-up Review",
+      "durationMinutes": 30,
+      "color": "#0EA5E9",
+      "displayOrder": 20
+    },
+    {
+      "name": "Group Session",
+      "durationMinutes": 90,
+      "color": "#14B8A6",
+      "displayOrder": 30
+    },
+    {
+      "name": "Body Composition Assessment",
+      "durationMinutes": 30,
+      "color": "#8B5CF6",
+      "displayOrder": 40
+    },
+    {
+      "name": "Telephone Review",
+      "durationMinutes": 20,
+      "color": "#F59E0B",
+      "displayOrder": 50
+    }
+  ],
+  "serviceCategories": [
+    {
+      "name": "Assessment",
+      "icon": "clipboard-list",
+      "displayOrder": 10
+    },
+    {
+      "name": "Medical Nutrition Therapy",
+      "icon": "apple",
+      "displayOrder": 20
+    },
+    {
+      "name": "Group Programmes",
+      "icon": "users",
+      "displayOrder": 30
+    }
+  ],
+  "offerings": [
+    {
+      "name": "Medical Nutrition Therapy, Initial Assessment",
+      "categoryName": "Assessment",
+      "durationMinutes": 60,
+      "cptCodes": [
+        "97802"
+      ]
+    },
+    {
+      "name": "Medical Nutrition Therapy, Follow-up",
+      "categoryName": "Assessment",
+      "durationMinutes": 30,
+      "cptCodes": [
+        "97803"
+      ]
+    },
+    {
+      "name": "Group Medical Nutrition Therapy",
+      "categoryName": "Group Programmes",
+      "durationMinutes": 90,
+      "cptCodes": [
+        "97804"
+      ]
+    },
+    {
+      "name": "Diabetes Nutrition Counselling",
+      "categoryName": "Medical Nutrition Therapy",
+      "durationMinutes": 45
+    },
+    {
+      "name": "Weight Management Programme",
+      "categoryName": "Medical Nutrition Therapy",
+      "durationMinutes": 45
+    },
+    {
+      "name": "Coeliac and Food Intolerance Counselling",
+      "categoryName": "Medical Nutrition Therapy",
+      "durationMinutes": 45
+    },
+    {
+      "name": "Renal Diet Counselling",
+      "categoryName": "Medical Nutrition Therapy",
+      "durationMinutes": 45
+    },
+    {
+      "name": "Enteral Feeding Review",
+      "categoryName": "Medical Nutrition Therapy",
+      "durationMinutes": 30
+    },
+    {
+      "name": "Paediatric Nutrition Assessment",
+      "categoryName": "Assessment",
+      "durationMinutes": 45,
+      "maxAge": 17
+    },
+    {
+      "name": "Body Composition Analysis",
+      "categoryName": "Assessment",
+      "durationMinutes": 30
+    }
+  ],
+  "formTemplates": [
+    {
+      "slug": "dietetic-assessment",
+      "name": "Dietetic Assessment",
+      "templateType": "onboarding",
+      "categorySlug": "onboarding",
+      "version": "1.0",
+      "languages": [
+        "en"
+      ],
+      "complianceTags": [
+        "HIPAA"
+      ],
+      "fields": [
+        {
+          "id": "referral_reason",
+          "type": "textarea",
+          "label": "Reason for referral",
+          "required": true
+        },
+        {
+          "id": "weight_history",
+          "type": "textarea",
+          "label": "Weight history, and any recent change"
+        },
+        {
+          "id": "typical_day",
+          "type": "textarea",
+          "label": "What you eat and drink on a typical day",
+          "required": true
+        },
+        {
+          "id": "restrictions",
+          "type": "checkboxes",
+          "label": "Dietary restrictions",
+          "options": [
+            "Vegetarian",
+            "Vegan",
+            "Halal",
+            "Kosher",
+            "Gluten free",
+            "Dairy free",
+            "Nut free",
+            "Other"
+          ]
+        },
+        {
+          "id": "allergies",
+          "type": "textarea",
+          "label": "Food allergies and intolerances"
+        },
+        {
+          "id": "appetite",
+          "type": "select",
+          "label": "Appetite",
+          "options": [
+            "Good",
+            "Reduced",
+            "Poor",
+            "Increased"
+          ]
+        },
+        {
+          "id": "gi_symptoms",
+          "type": "checkboxes",
+          "label": "Any of these?",
+          "options": [
+            "Nausea",
+            "Vomiting",
+            "Constipation",
+            "Diarrhoea",
+            "Reflux",
+            "Bloating",
+            "Difficulty swallowing"
+          ]
+        },
+        {
+          "id": "supplements",
+          "type": "textarea",
+          "label": "Supplements you take"
+        },
+        {
+          "id": "activity",
+          "type": "text",
+          "label": "Physical activity in a typical week"
+        },
+        {
+          "id": "goals",
+          "type": "textarea",
+          "label": "What you would like to get out of this"
+        }
+      ]
+    }
+  ],
+  "inventoryCategories": [
+    {
+      "code": "nut_supplements",
+      "name": "Nutritional Supplements"
+    },
+    {
+      "code": "nut_enteral",
+      "name": "Enteral Feeds and Giving Sets"
+    },
+    {
+      "code": "nut_measurement",
+      "name": "Measurement Equipment"
+    }
+  ],
+  "codeSets": {
+    "icd10": [
+      "E66.9",
+      "E11.9",
+      "E43",
+      "K90.0",
+      "N18.3",
+      "R63.4",
+      "E44.0"
+    ],
+    "cpt": [
+      "97802",
+      "97803",
+      "97804"
+    ]
+  },
+  "settings": {
+    "defaultAppointmentDuration": 30,
+    "slotIntervalMinutes": 15
+  },
+  "reports": {
+    "show": [
+      "clinical",
+      "operational"
+    ]
+  }
+}

@@ -1,0 +1,270 @@
+{
+  "code": "anaesthesiology",
+  "version": 1,
+  "label": "Anaesthesia and Pain Medicine",
+  "description": "Starting configuration for an anaesthetic and pain service: pre-assessment and pain-clinic appointment types. Anaesthesia itself is billed by time and physical status, so those codes are left for the practice to configure.",
+  "modules": {
+    "hide": [
+      "camps",
+      "patientPortal"
+    ]
+  },
+  "terminology": {
+    "provider": "Anaesthetist",
+    "providers": "Anaesthetists"
+  },
+  "appointmentTypes": [
+    {
+      "name": "Pre-anaesthetic Assessment",
+      "durationMinutes": 45,
+      "color": "#2563EB",
+      "displayOrder": 10
+    },
+    {
+      "name": "Pain Clinic, New Patient",
+      "durationMinutes": 45,
+      "color": "#0EA5E9",
+      "displayOrder": 20
+    },
+    {
+      "name": "Pain Clinic, Follow-up",
+      "durationMinutes": 25,
+      "color": "#14B8A6",
+      "displayOrder": 30
+    },
+    {
+      "name": "Interventional Procedure",
+      "durationMinutes": 45,
+      "color": "#8B5CF6",
+      "displayOrder": 40
+    },
+    {
+      "name": "Post-anaesthetic Review",
+      "durationMinutes": 20,
+      "color": "#F59E0B",
+      "displayOrder": 50
+    }
+  ],
+  "serviceCategories": [
+    {
+      "name": "Pre-assessment",
+      "icon": "clipboard-check",
+      "displayOrder": 10
+    },
+    {
+      "name": "Chronic Pain",
+      "icon": "activity",
+      "displayOrder": 20
+    },
+    {
+      "name": "Interventional Procedures",
+      "icon": "syringe",
+      "displayOrder": 30
+    }
+  ],
+  "offerings": [
+    {
+      "name": "Pre-anaesthetic Assessment",
+      "categoryName": "Pre-assessment",
+      "durationMinutes": 45
+    },
+    {
+      "name": "High-risk Anaesthetic Review",
+      "categoryName": "Pre-assessment",
+      "durationMinutes": 60
+    },
+    {
+      "name": "Post-anaesthetic Review",
+      "categoryName": "Pre-assessment",
+      "durationMinutes": 20
+    },
+    {
+      "name": "Chronic Pain Assessment",
+      "categoryName": "Chronic Pain",
+      "durationMinutes": 45
+    },
+    {
+      "name": "Chronic Pain Follow-up",
+      "categoryName": "Chronic Pain",
+      "durationMinutes": 25
+    },
+    {
+      "name": "Opioid Stewardship Review",
+      "categoryName": "Chronic Pain",
+      "durationMinutes": 30
+    },
+    {
+      "name": "Epidural Steroid Injection",
+      "categoryName": "Interventional Procedures",
+      "durationMinutes": 45,
+      "consentFormRequired": true
+    },
+    {
+      "name": "Facet Joint Injection",
+      "categoryName": "Interventional Procedures",
+      "durationMinutes": 45,
+      "consentFormRequired": true
+    },
+    {
+      "name": "Nerve Block",
+      "categoryName": "Interventional Procedures",
+      "durationMinutes": 40,
+      "consentFormRequired": true
+    },
+    {
+      "name": "Trigger Point Injection",
+      "categoryName": "Interventional Procedures",
+      "durationMinutes": 25,
+      "cptCodes": [
+        "20552"
+      ],
+      "consentFormRequired": true
+    },
+    {
+      "name": "Radiofrequency Denervation",
+      "categoryName": "Interventional Procedures",
+      "durationMinutes": 60,
+      "consentFormRequired": true
+    }
+  ],
+  "formTemplates": [
+    {
+      "slug": "pre-anaesthetic-assessment",
+      "name": "Pre-anaesthetic Assessment",
+      "templateType": "clinical",
+      "categorySlug": "clinical",
+      "version": "1.0",
+      "languages": [
+        "en"
+      ],
+      "complianceTags": [
+        "HIPAA"
+      ],
+      "fields": [
+        {
+          "id": "planned_procedure",
+          "type": "text",
+          "label": "Planned procedure",
+          "required": true
+        },
+        {
+          "id": "previous_anaesthetic",
+          "type": "radio",
+          "label": "Have you had an anaesthetic before?",
+          "options": [
+            "No",
+            "Yes"
+          ],
+          "required": true
+        },
+        {
+          "id": "anaesthetic_problems",
+          "type": "textarea",
+          "label": "Any problems with an anaesthetic — sickness, slow waking, awareness"
+        },
+        {
+          "id": "family_anaesthetic",
+          "type": "checkbox",
+          "label": "Has anyone in your family had a serious reaction to an anaesthetic?"
+        },
+        {
+          "id": "airway_history",
+          "type": "checkboxes",
+          "label": "Do any of these apply?",
+          "options": [
+            "Difficult intubation in the past",
+            "Limited neck movement",
+            "Limited mouth opening",
+            "Loose teeth, caps or crowns",
+            "Sleep apnoea",
+            "None of these"
+          ]
+        },
+        {
+          "id": "reflux",
+          "type": "checkbox",
+          "label": "Do you get heartburn or reflux?"
+        },
+        {
+          "id": "exercise_tolerance",
+          "type": "select",
+          "label": "Can you climb two flights of stairs without stopping?",
+          "options": [
+            "Yes",
+            "With difficulty",
+            "No"
+          ],
+          "required": true
+        },
+        {
+          "id": "medications",
+          "type": "textarea",
+          "label": "Current medicines, with doses",
+          "required": true
+        },
+        {
+          "id": "anticoagulants",
+          "type": "radio",
+          "label": "Do you take a blood thinner?",
+          "options": [
+            "No",
+            "Yes"
+          ],
+          "required": true
+        },
+        {
+          "id": "allergies",
+          "type": "textarea",
+          "label": "Allergies, including latex"
+        },
+        {
+          "id": "fasting_understood",
+          "type": "checkbox",
+          "label": "I understand the fasting instructions I have been given",
+          "required": true
+        }
+      ]
+    }
+  ],
+  "inventoryCategories": [
+    {
+      "code": "anae_airway",
+      "name": "Airway Equipment"
+    },
+    {
+      "code": "anae_drugs",
+      "name": "Anaesthetic Drugs"
+    },
+    {
+      "code": "anae_regional",
+      "name": "Regional Block Supplies"
+    },
+    {
+      "code": "anae_monitoring",
+      "name": "Monitoring Consumables"
+    }
+  ],
+  "codeSets": {
+    "icd10": [
+      "M54.5",
+      "M54.16",
+      "G89.29",
+      "M79.7",
+      "G58.9",
+      "Z01.818"
+    ],
+    "cpt": [
+      "20552"
+    ]
+  },
+  "settings": {
+    "defaultAppointmentDuration": 30,
+    "slotIntervalMinutes": 15
+  },
+  "reports": {
+    "show": [
+      "clinical",
+      "operational"
+    ]
+  }
+}

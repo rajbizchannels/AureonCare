@@ -1,0 +1,289 @@
+{
+  "code": "audiology",
+  "version": 1,
+  "label": "Audiology and Speech Therapy",
+  "description": "Starting configuration for an audiology and speech service: hearing assessment, hearing aid and therapy appointment types.",
+  "modules": {
+    "hide": [
+      "camps",
+      "rcm"
+    ]
+  },
+  "terminology": {
+    "provider": "Audiologist",
+    "providers": "Audiologists"
+  },
+  "appointmentTypes": [
+    {
+      "name": "Hearing Assessment",
+      "durationMinutes": 45,
+      "color": "#2563EB",
+      "displayOrder": 10
+    },
+    {
+      "name": "Hearing Aid Fitting",
+      "durationMinutes": 60,
+      "color": "#0EA5E9",
+      "displayOrder": 20
+    },
+    {
+      "name": "Hearing Aid Review",
+      "durationMinutes": 30,
+      "color": "#14B8A6",
+      "displayOrder": 30
+    },
+    {
+      "name": "Tinnitus Consultation",
+      "durationMinutes": 45,
+      "color": "#8B5CF6",
+      "displayOrder": 40
+    },
+    {
+      "name": "Speech and Language Assessment",
+      "durationMinutes": 60,
+      "color": "#F59E0B",
+      "displayOrder": 50
+    },
+    {
+      "name": "Speech Therapy Session",
+      "durationMinutes": 45,
+      "color": "#64748B",
+      "displayOrder": 60
+    }
+  ],
+  "serviceCategories": [
+    {
+      "name": "Hearing Assessment",
+      "icon": "ear",
+      "displayOrder": 10
+    },
+    {
+      "name": "Hearing Aids",
+      "icon": "volume-2",
+      "displayOrder": 20
+    },
+    {
+      "name": "Tinnitus and Balance",
+      "icon": "activity",
+      "displayOrder": 30
+    },
+    {
+      "name": "Speech and Language",
+      "icon": "message-circle",
+      "displayOrder": 40
+    }
+  ],
+  "offerings": [
+    {
+      "name": "Comprehensive Audiometry",
+      "categoryName": "Hearing Assessment",
+      "durationMinutes": 45,
+      "cptCodes": [
+        "92557"
+      ]
+    },
+    {
+      "name": "Tympanometry",
+      "categoryName": "Hearing Assessment",
+      "durationMinutes": 20,
+      "cptCodes": [
+        "92567"
+      ]
+    },
+    {
+      "name": "Otoacoustic Emissions Testing",
+      "categoryName": "Hearing Assessment",
+      "durationMinutes": 30,
+      "cptCodes": [
+        "92587"
+      ]
+    },
+    {
+      "name": "Paediatric Hearing Assessment",
+      "categoryName": "Hearing Assessment",
+      "durationMinutes": 45,
+      "maxAge": 17
+    },
+    {
+      "name": "Hearing Aid Assessment",
+      "categoryName": "Hearing Aids",
+      "durationMinutes": 45
+    },
+    {
+      "name": "Hearing Aid Fitting",
+      "categoryName": "Hearing Aids",
+      "durationMinutes": 60
+    },
+    {
+      "name": "Hearing Aid Adjustment",
+      "categoryName": "Hearing Aids",
+      "durationMinutes": 30
+    },
+    {
+      "name": "Earmould Impression",
+      "categoryName": "Hearing Aids",
+      "durationMinutes": 20
+    },
+    {
+      "name": "Tinnitus Assessment and Counselling",
+      "categoryName": "Tinnitus and Balance",
+      "durationMinutes": 45
+    },
+    {
+      "name": "Balance Assessment",
+      "categoryName": "Tinnitus and Balance",
+      "durationMinutes": 45
+    },
+    {
+      "name": "Speech and Language Assessment",
+      "categoryName": "Speech and Language",
+      "durationMinutes": 60
+    },
+    {
+      "name": "Speech Therapy Session",
+      "categoryName": "Speech and Language",
+      "durationMinutes": 45
+    }
+  ],
+  "formTemplates": [
+    {
+      "slug": "audiology-intake",
+      "name": "Audiology Intake",
+      "templateType": "onboarding",
+      "categorySlug": "onboarding",
+      "version": "1.0",
+      "languages": [
+        "en"
+      ],
+      "complianceTags": [
+        "HIPAA"
+      ],
+      "fields": [
+        {
+          "id": "main_concern",
+          "type": "checkboxes",
+          "label": "What brings you in?",
+          "options": [
+            "Hearing loss",
+            "Ringing in the ears",
+            "Dizziness",
+            "Ear discharge",
+            "Speech difficulty",
+            "Hearing aid problem"
+          ],
+          "required": true
+        },
+        {
+          "id": "side",
+          "type": "radio",
+          "label": "Which side?",
+          "options": [
+            "Left",
+            "Right",
+            "Both"
+          ]
+        },
+        {
+          "id": "onset",
+          "type": "select",
+          "label": "How did it come on?",
+          "options": [
+            "Gradually",
+            "Suddenly",
+            "Since birth",
+            "After an illness or injury"
+          ]
+        },
+        {
+          "id": "noise_exposure",
+          "type": "checkboxes",
+          "label": "Noise exposure",
+          "options": [
+            "Loud workplace",
+            "Firearms",
+            "Music",
+            "Machinery",
+            "None"
+          ]
+        },
+        {
+          "id": "difficulty_situations",
+          "type": "checkboxes",
+          "label": "Where is hearing hardest?",
+          "options": [
+            "In groups",
+            "On the phone",
+            "Watching television",
+            "In quiet one to one",
+            "Background noise"
+          ]
+        },
+        {
+          "id": "current_aids",
+          "type": "radio",
+          "label": "Do you currently wear hearing aids?",
+          "options": [
+            "No",
+            "One",
+            "Both ears"
+          ]
+        },
+        {
+          "id": "tinnitus_impact",
+          "type": "scale",
+          "label": "If you have tinnitus, how much does it bother you, out of 10"
+        },
+        {
+          "id": "ear_surgery",
+          "type": "textarea",
+          "label": "Previous ear surgery or infections"
+        },
+        {
+          "id": "family_hearing",
+          "type": "checkbox",
+          "label": "Hearing loss in the family"
+        }
+      ]
+    }
+  ],
+  "inventoryCategories": [
+    {
+      "code": "aud_aids",
+      "name": "Hearing Aids and Accessories"
+    },
+    {
+      "code": "aud_earmoulds",
+      "name": "Earmould Materials"
+    },
+    {
+      "code": "aud_batteries",
+      "name": "Batteries and Consumables"
+    }
+  ],
+  "codeSets": {
+    "icd10": [
+      "H90.3",
+      "H93.19",
+      "H81.10",
+      "H61.20",
+      "F80.9",
+      "R47.1",
+      "H90.5"
+    ],
+    "cpt": [
+      "92557",
+      "92567",
+      "92587"
+    ]
+  },
+  "settings": {
+    "defaultAppointmentDuration": 30,
+    "slotIntervalMinutes": 15
+  },
+  "reports": {
+    "show": [
+      "clinical",
+      "operational"
+    ]
+  }
+}
