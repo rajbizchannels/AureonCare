@@ -39,14 +39,45 @@ Global first, then tenant. Always.
 | 1 | `apply-pending-migrations.sql` | globals 080–082, and tenant/003 |
 | 2 | `apply-global-083-084.sql` | globals 083–084 — registers `locations` and the camp tables, and gates camps by plan |
 | 3 | `apply-tenant-migrations.sql` | tenant 001–006 — creates the tables in every tenant schema and in `template` |
+| 4 | `apply-tenant-migrations-007-009.sql` | tenant 007–009 — pack provenance columns, the system form library, and handing five specialty forms to their packs |
+| 5 | `apply-global-085.sql` | global 085 — the specialty taxonomy, pack catalogue and `practices.setup` |
+
+Then, if you can run node: `npm run packs:load` to publish the specialty packs, and
+`npm run check:form-library` to confirm every tenant has the form library.
 
 Step 2 before step 3 matters because `control.provision_schema` clones exactly what
 `control.tenant_tables` lists. Get the order wrong and nothing breaks permanently — a
 tenant provisioned in the gap is picked up by the next tenant run — but until then it is
 missing those tables.
 
-All three are safe to re-run: every statement is idempotent and the ledgers are consulted
+Step 5 before `packs:load`, because the loader refuses to run until `public.specialties`
+exists.
+
+All of them are safe to re-run: every statement is idempotent and the ledgers are consulted
 first, so a re-paste reports `0 file(s) applied`.
+
+## `apply-tenant-migrations-007-009.sql` is generated
+
+tenant/008 is 283 form-field definitions inside jsonb literals. The other scripts run their
+DDL from inside a loop via `EXECUTE '...'`, which here would mean doubling every single
+quote in all of it. So `backend/scripts/build-manual-tenant-007-009.js` embeds 008's body
+**verbatim** at the top level, under a `search_path` pinned to `template`, then copies the
+rows out of `template` into every tenant schema — the same copy that provisioning and
+`scripts/repair-form-library.js` already perform. Nothing is retyped and nothing is escaped.
+
+Regenerate it rather than hand-editing:
+
+```bash
+node backend/scripts/build-manual-tenant-007-009.js > backend/scripts/manual/apply-tenant-migrations-007-009.sql
+```
+
+One subtlety worth knowing if you change it: the embedded 008 body is plain top-level SQL
+and therefore has **no ledger guard** — a second run re-inserts the five specialty forms
+into `template`, because migration 009 removed them and so `ON CONFLICT` does not fire. The
+script repeats the removal from `template` unconditionally, immediately after the body and
+before the fan-out, so the end state is the same however many times it runs. Without that,
+a second run would leave `template` holding 22 base templates instead of 17 and every
+tenant provisioned afterwards would silently get the five back.
 
 ## Why these scripts look the way they do
 
@@ -72,10 +103,12 @@ npm run check:schema-health     # every tenant schema complete and matching temp
 npm run check:tenant-scoping
 ```
 
-`apply-tenant-migrations.sql` is checked against the runner rather than only eyeballed: on
-a database built by the script, `template` and `tenant_default` match a runner-built
-database across all ~2,400 column, constraint and index facts, including the seeded primary
-location (one row in `tenant_default`, none in `template`).
+Both tenant scripts are checked against the runner rather than only eyeballed: on a
+database built from the scripts alone, `template` and `tenant_default` match a runner-built
+database across all 2,411 and 1,638 facts respectively — columns, constraints, indexes, the
+seeded primary location, and every form template's id, field count, signature and witness
+flags, category, subcategory, languages, tags and compliance tags. Run three times in
+succession with the same result each time.
 
 ## `audit-stored-secrets.sql`
 
