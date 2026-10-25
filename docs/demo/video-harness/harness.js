@@ -200,6 +200,49 @@ function upsertPermission(rows, body) {
 
 const PATIENT_KEYS = ['patient_id', 'patientId', 'patient'];
 
+/**
+ * Operational reports are requested with `days=N` — 7, 30, 90, 180, 365 or
+ * `all` — or with startDate/endDate when the range selector is set to Custom.
+ * Honouring it matters beyond tidiness: a script that selects "Last 90 Days"
+ * and narrates the choice is making a claim about what is on screen, and if
+ * every window returns the same rows the claim is decoration.
+ *
+ * The cutoff is the START of the Nth day back, not a timestamp N*24h ago, so
+ * `days=7` means seven calendar days including today rather than six and a
+ * fraction — summary rows are dated midnight and would otherwise fall out of
+ * their own window depending on what time the recording ran.
+ */
+function withinRange(rows, url, field) {
+  const startDate = url.searchParams.get('startDate');
+  const endDate = url.searchParams.get('endDate');
+  if (startDate || endDate) {
+    const from = startDate ? new Date(`${startDate}T00:00:00`).getTime() : -Infinity;
+    const to = endDate ? new Date(`${endDate}T23:59:59`).getTime() : Infinity;
+    return rows.filter((r) => {
+      const t = new Date(r[field]).getTime();
+      return Number.isFinite(t) && t >= from && t <= to;
+    });
+  }
+  const days = url.searchParams.get('days');
+  if (!days || days === 'all') return rows;
+  const n = Number(days);
+  if (!Number.isFinite(n) || n <= 0) return rows;
+  const cutoff = new Date();
+  cutoff.setHours(0, 0, 0, 0);
+  cutoff.setDate(cutoff.getDate() - (n - 1));
+  return rows.filter((r) => {
+    const t = new Date(r[field]).getTime();
+    return Number.isFinite(t) && t >= cutoff.getTime();
+  });
+}
+
+/** A report narrowed to the requested window, summary and details alike. */
+const rangeReport = (report, url) => ({
+  ...report,
+  summary: withinRange(report.summary || [], url, 'date'),
+  details: withinRange(report.details || [], url, 'start_time'),
+});
+
 function filterByQuery(rows, url) {
   let out = rows;
   for (const key of PATIENT_KEYS) {
@@ -529,8 +572,8 @@ async function handleApi(route, store) {
   }
   if (/^\/offerings\/\d+\/forms$/.test(p)) return json([]);
 
-  if (p === '/reports/operational/no-shows') return json(W3.noShowReport);
-  if (p === '/reports/operational/daily-appointments') return json(W3.dailyAppointmentsReport);
+  if (p === '/reports/operational/no-shows') return json(rangeReport(W3.noShowReport, url));
+  if (p === '/reports/operational/daily-appointments') return json(rangeReport(W3.dailyAppointmentsReport, url));
   if (p === '/reports/custom' && method === 'POST') return json(W3.customReportResult);
   if (p.startsWith('/reports/')) return json({ summary: [], details: [] });
 

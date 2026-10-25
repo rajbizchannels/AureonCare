@@ -241,16 +241,78 @@ const offeringStatistics = {
  * no_show_rate, and the detail rows are the cancelled and missed appointments
  * themselves, keyed as the SQL aliases them.
  */
+/**
+ * A year of operational history, weekdays only.
+ *
+ * The reports screen offers 7 / 30 / 90 / 180 / 365 days and All Time, and the
+ * demo API now honours that choice — which is pointless against seven
+ * hand-written rows, since every window returned the same thing. These are
+ * generated so the range actually selects something, and seeded off the day
+ * offset so two recordings of the same script draw the same chart rather than
+ * a different one each take.
+ *
+ * Weekends are skipped rather than zeroed: a clinic that is shut has no
+ * appointments to miss, and a run of 0/0 days reads as a data gap on the chart.
+ */
+const seeded = (n) => {
+  const x = Math.sin(n * 12.9898) * 43758.5453;
+  return x - Math.floor(x);
+};
+
+const isWeekend = (d) => d.getDay() === 0 || d.getDay() === 6;
+
+const eachWeekday = (days, fn) => {
+  const out = [];
+  for (let offset = -(days - 1); offset <= 0; offset += 1) {
+    const d = new Date();
+    d.setDate(d.getDate() + offset);
+    if (isWeekend(d)) continue;
+    out.push(fn(offset, d));
+  }
+  return out;
+};
+
+const noShowSummary = eachWeekday(365, (offset, d) => {
+  const total = 14 + Math.round(seeded(offset) * 10);
+  // Mondays run hotter — the weekend is where people forget they had a slot.
+  const pressure = d.getDay() === 1 ? 1.7 : 1;
+  const noShows = Math.min(total, Math.round(seeded(offset + 1000) * 2.6 * pressure));
+  return {
+    date: day(offset),
+    no_shows: noShows,
+    total_appointments: total,
+    no_show_rate: ((noShows / total) * 100).toFixed(1),
+  };
+});
+
+/** The recent week is hand-written; the cast below fills the year behind it. */
+const NO_SHOW_CAST = [
+  ['Marcus Boone', 'Michael Anderson', 'Medication check', '555-0188', 'Quarterly medication review'],
+  ['Jordan Ellis', 'Dana Okafor', 'Follow-up', '555-0141', 'Post-operative check'],
+  ['Aiko Tanaka', 'Dana Okafor', 'Annual physical', '555-0164', 'Annual physical'],
+  ['Priya Nandakumar', 'Michael Anderson', 'Telehealth consult', '555-0172', 'Medication review'],
+  ['Sarah Williams', 'Michael Anderson', 'Follow-up', '555-0123', 'Diabetes follow-up'],
+];
+
+const olderNoShows = [];
+for (let offset = -10; offset >= -360; offset -= 3) {
+  const d = new Date();
+  d.setDate(d.getDate() + offset);
+  if (isWeekend(d)) continue;
+  const cast = NO_SHOW_CAST[Math.floor(seeded(offset + 77) * NO_SHOW_CAST.length) % NO_SHOW_CAST.length];
+  olderNoShows.push({
+    start_time: at(offset, 9 + Math.floor(seeded(offset + 31) * 8), seeded(offset) > 0.5 ? 30 : 0),
+    patient_name: cast[0],
+    provider_name: cast[1],
+    type: cast[2],
+    status: seeded(offset + 5) > 0.78 ? 'cancelled' : 'no-show',
+    patient_phone: cast[3],
+    reason: cast[4],
+  });
+}
+
 const noShowReport = {
-  summary: [
-    { date: day(-6), no_shows: 3, total_appointments: 20, no_show_rate: '15.0' },
-    { date: day(-5), no_shows: 1, total_appointments: 18, no_show_rate: '5.6' },
-    { date: day(-4), no_shows: 1, total_appointments: 18, no_show_rate: '5.6' },
-    { date: day(-3), no_shows: 0, total_appointments: 21, no_show_rate: '0.0' },
-    { date: day(-2), no_shows: 2, total_appointments: 17, no_show_rate: '11.8' },
-    { date: day(-1), no_shows: 1, total_appointments: 22, no_show_rate: '4.5' },
-    { date: day(0), no_shows: 2, total_appointments: 19, no_show_rate: '10.5' },
-  ],
+  summary: noShowSummary,
   details: [
     { start_time: at(0, 9, 30), patient_name: 'Marcus Boone', provider_name: 'Michael Anderson', type: 'Medication check', status: 'no-show', patient_phone: '555-0188', reason: 'Quarterly medication review' },
     { start_time: at(0, 14, 0), patient_name: 'Jordan Ellis', provider_name: 'Dana Okafor', type: 'Follow-up', status: 'no-show', patient_phone: '555-0141', reason: 'Post-operative check' },
@@ -259,17 +321,23 @@ const noShowReport = {
     { start_time: at(-2, 15, 30), patient_name: 'Marcus Boone', provider_name: 'Michael Anderson', type: 'Follow-up', status: 'no-show', patient_phone: '555-0188', reason: 'Blood pressure review' },
     { start_time: at(-4, 9, 0), patient_name: 'Sarah Williams', provider_name: 'Michael Anderson', type: 'Follow-up', status: 'cancelled', patient_phone: '555-0123', reason: 'Diabetes follow-up' },
     { start_time: at(-6, 13, 30), patient_name: 'Marcus Boone', provider_name: 'Dana Okafor', type: 'Follow-up', status: 'no-show', patient_phone: '555-0188', reason: 'Medication check' },
+    ...olderNoShows,
   ],
 };
 
 const dailyAppointmentsReport = {
-  summary: [
-    { date: day(-4), total: 18, completed: 16, cancelled: 1, no_shows: 1 },
-    { date: day(-3), total: 21, completed: 20, cancelled: 1, no_shows: 0 },
-    { date: day(-2), total: 17, completed: 15, cancelled: 0, no_shows: 2 },
-    { date: day(-1), total: 22, completed: 21, cancelled: 1, no_shows: 0 },
-    { date: day(0), total: 19, completed: 17, cancelled: 0, no_shows: 2 },
-  ],
+  summary: eachWeekday(365, (offset) => {
+    const total = 14 + Math.round(seeded(offset) * 10);
+    const noShows = Math.min(total, Math.round(seeded(offset + 1000) * 2.6));
+    const cancelled = Math.round(seeded(offset + 400) * 2);
+    return {
+      date: day(offset),
+      total,
+      completed: Math.max(0, total - noShows - cancelled),
+      cancelled,
+      no_shows: noShows,
+    };
+  }),
   details: [],
 };
 
