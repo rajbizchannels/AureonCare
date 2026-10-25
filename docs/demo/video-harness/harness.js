@@ -25,6 +25,7 @@ const F = require('./fixtures');
 const voice = require('./voice');
 const W3 = require('./fixtures-wave3');
 const W4 = require('./fixtures-wave4');
+const OCT = require('./fixtures-october');
 
 /** Brand kit. Colours are sampled from the logo, not invented. */
 const BRAND = {
@@ -171,6 +172,18 @@ function createStore() {
     _invPermissions: clone(W4.inventoryPermissions),
     _nextId: 90000,
     _user: clone(F.demoUser),
+    // October release screens — multi-site, camps and specialty setup.
+    _locations: clone(OCT.locations),
+    _camps: clone(OCT.camps),
+    _campServices: clone(OCT.campServices),
+    _campStaff: clone(OCT.campStaff),
+    _campStations: clone(OCT.campStations),
+    _campAllocations: clone(OCT.campAllocations),
+    _campReadiness: clone(OCT.campReadiness),
+    _campRegistrations: clone(OCT.campRegistrations),
+    _campBoard: clone(OCT.campBoard),
+    _campQueues: clone(OCT.campStationQueues),
+    _setupState: clone(OCT.practiceSetupState),
   };
 }
 
@@ -203,8 +216,14 @@ async function handleApi(route, store) {
   const url = new URL(request.url());
   // DEBUG_API=1 prints every call the app makes. Worth reaching for when a
   // screen renders empty: it distinguishes "the mock returned nothing" from
-  // "the app never asked", which are very different bugs.
-  if (process.env.DEBUG_API) console.log('[api]', request.method(), url.pathname + url.search);
+  // "the app never asked", which are very different bugs. Writes print their
+  // body too — "the app asked, with the wrong payload" is a third case, and
+  // the one that catches a dropdown that silently never committed.
+  if (process.env.DEBUG_API) {
+    const dbg = request.postData();
+    console.log('[api]', request.method(), url.pathname + url.search,
+      dbg && request.method() !== 'GET' ? dbg.slice(0, 400) : '');
+  }
   const method = request.method();
   const p = url.pathname.replace(/^.*\/api/, '') || '/';
   const body = (() => {
@@ -881,6 +900,334 @@ async function handleApi(route, store) {
     return json({ tracking: W4.fhirTrackingRecords[decodeURIComponent(fhirTrack[1])] || null });
   }
 
+  // ── October release: locations, camps, specialty setup ────────────────
+  //
+  // These three features answer in camelCase, so nothing here goes through the
+  // snake_case aliasing above. Ordering matters twice over: the sub-resource
+  // paths (/camps/staff/7301, /camps/stations/7502/queue) have to be matched
+  // before /camps/:id, or a station id gets read as a camp id and the screen
+  // silently shows the wrong thing.
+
+  if (p === '/locations/primary') {
+    return json(store._locations.find((l) => l.isPrimary) || null);
+  }
+  if (p === '/locations') {
+    if (method === 'POST') {
+      const created = { id: store._nextId++, isPrimary: false, isActive: true, type: 'clinic', ...body };
+      store._locations.push(created);
+      return json(created);
+    }
+    const includeInactive = url.searchParams.get('includeInactive') === 'true';
+    return json(includeInactive ? store._locations : store._locations.filter((l) => l.isActive));
+  }
+  const locPrimary = p.match(/^\/locations\/(\d+)\/make-primary$/);
+  if (locPrimary && method === 'POST') {
+    store._locations.forEach((l) => { l.isPrimary = String(l.id) === locPrimary[1]; });
+    return json(store._locations.find((l) => String(l.id) === locPrimary[1]) || {});
+  }
+  const locOne = p.match(/^\/locations\/(\d+)$/);
+  if (locOne) {
+    const idx = store._locations.findIndex((l) => String(l.id) === locOne[1]);
+    if (method === 'PUT' || method === 'PATCH') {
+      if (idx >= 0) Object.assign(store._locations[idx], body);
+      return json(idx >= 0 ? store._locations[idx] : {});
+    }
+    if (method === 'DELETE') {
+      if (idx >= 0) store._locations.splice(idx, 1);
+      return json({ success: true });
+    }
+    return json(idx >= 0 ? store._locations[idx] : {});
+  }
+
+  if (p === '/practice-setup/state') {
+    if (method === 'PUT') {
+      store._setupState = { ...store._setupState, ...body };
+      return json(store._setupState);
+    }
+    return json(store._setupState);
+  }
+  if (p === '/practice-setup/specialties') return json(OCT.specialties);
+  if (p === '/practice-setup/packs') {
+    return json(OCT.specialties.filter((s) => s.hasPack));
+  }
+  if (p === '/practice-setup/footprint') {
+    return json({ code: url.searchParams.get('code'), sections: OCT.specialtyPreview.sections });
+  }
+  if (p === '/practice-setup/preview' && method === 'POST') return json(OCT.specialtyPreview);
+  if (p === '/practice-setup/apply' && method === 'POST') {
+    store._setupState = {
+      ...store._setupState,
+      specialties: body.specialtyCodes || [],
+      onboarding: { ...store._setupState.onboarding, completedAt: new Date().toISOString() },
+    };
+    return json(OCT.specialtyApplyResult);
+  }
+  if (p === '/practice-setup/modules' && method === 'PUT') {
+    store._setupState = { ...store._setupState, pinnedModules: body.pinnedModules || [] };
+    return json(store._setupState);
+  }
+  if (p === '/practice-setup/terminology' && method === 'PUT') {
+    store._setupState = { ...store._setupState, terminology: body.terminology || {} };
+    return json(store._setupState);
+  }
+
+  // Camp sub-resources addressed by their own id, before /camps/:id.
+  const campSvcDel = p.match(/^\/camps\/services\/(\d+)$/);
+  if (campSvcDel && method === 'DELETE') {
+    for (const key of Object.keys(store._campServices)) {
+      store._campServices[key] = store._campServices[key].filter((s) => String(s.id) !== campSvcDel[1]);
+    }
+    return json({ success: true });
+  }
+  const campStaffDel = p.match(/^\/camps\/staff\/(\d+)$/);
+  if (campStaffDel && method === 'DELETE') {
+    for (const key of Object.keys(store._campStaff)) {
+      store._campStaff[key] = store._campStaff[key].filter((s) => String(s.id) !== campStaffDel[1]);
+    }
+    return json({ success: true });
+  }
+  const campQueue = p.match(/^\/camps\/stations\/(\d+)\/queue$/);
+  if (campQueue) return json(store._campQueues[campQueue[1]] || []);
+  const campStationOne = p.match(/^\/camps\/stations\/(\d+)$/);
+  if (campStationOne) {
+    for (const key of Object.keys(store._campStations)) {
+      const idx = store._campStations[key].findIndex((s) => String(s.id) === campStationOne[1]);
+      if (idx < 0) continue;
+      if (method === 'DELETE') {
+        const [gone] = store._campStations[key].splice(idx, 1);
+        return json({ success: true, station: gone });
+      }
+      Object.assign(store._campStations[key][idx], body);
+      return json(store._campStations[key][idx]);
+    }
+    return json({ success: true });
+  }
+  const campRecon = p.match(/^\/camps\/allocations\/(\d+)\/reconcile$/);
+  if (campRecon && method === 'POST') {
+    for (const key of Object.keys(store._campAllocations)) {
+      const row = store._campAllocations[key].find((a) => String(a.id) === campRecon[1]);
+      if (!row) continue;
+      row.qtyConsumed = Number(body.qtyConsumed || 0);
+      row.qtyReturned = Number(body.qtyReturned || 0);
+      row.qtyUnaccounted = Math.max(0, Number(row.qtyIssued) - row.qtyConsumed - row.qtyReturned);
+      row.reconciledAt = new Date().toISOString();
+      return json(row);
+    }
+    return json({ success: true });
+  }
+  const campVisit = p.match(/^\/camps\/visits\/(\d+)\/(start|complete)$/);
+  if (campVisit && method === 'POST') {
+    for (const key of Object.keys(store._campQueues)) {
+      const v = store._campQueues[key].find((q) => String(q.id) === campVisit[1]);
+      if (!v) continue;
+      if (campVisit[2] === 'start') {
+        v.status = 'in_progress';
+      } else {
+        store._campQueues[key] = store._campQueues[key].filter((q) => String(q.id) !== campVisit[1]);
+      }
+      return json({ success: true, visit: v });
+    }
+    return json({ success: true });
+  }
+
+  const campStaffConf = p.match(/^\/camps\/(\d+)\/staff\/conflicts$/);
+  if (campStaffConf) {
+    const userId = url.searchParams.get('userId');
+    return json(OCT.campStaffConflicts[userId] || { count: 0, conflicts: [] });
+  }
+  const campSub = p.match(/^\/camps\/(\d+)\/(services|staff|stations|allocations|board|readiness|cost|status)$/);
+  if (campSub) {
+    const [, campId, what] = campSub;
+    if (what === 'readiness') return json(store._campReadiness[campId] || { ready: true, allowed: [], blockers: [] });
+    if (what === 'board') return json(store._campBoard[campId] || []);
+    if (what === 'cost') {
+      const rows = store._campAllocations[campId] || [];
+      return json({
+        issuedCost: rows.reduce((s, r) => s + Number(r.qtyIssued || 0), 0),
+        consumedCost: rows.reduce((s, r) => s + Number(r.qtyConsumed || 0), 0),
+      });
+    }
+    if (what === 'status' && method === 'POST') {
+      const camp = store._camps.find((c) => String(c.id) === campId);
+      if (camp) camp.status = body.status;
+      return json(camp || {});
+    }
+    const bucket = {
+      services: store._campServices, staff: store._campStaff,
+      stations: store._campStations, allocations: store._campAllocations,
+    }[what];
+    if (!bucket) return json([]);
+    if (!bucket[campId]) bucket[campId] = [];
+    if (method === 'POST') {
+      const created = { id: store._nextId++, campId: Number(campId), ...body };
+      if (what === 'services') {
+        const off = (store._offerings || []).find((o) => String(o.id) === String(body.offeringId));
+        created.offeringName = off ? off.name : undefined;
+        created.isFree = true;
+      }
+      if (what === 'staff') {
+        const u = (store.users || []).find((x) => String(x.id) === String(body.userId));
+        if (u) {
+          created.firstName = u.firstName || u.first_name;
+          created.lastName = u.lastName || u.last_name;
+          created.email = u.email;
+        }
+      }
+      if (what === 'stations') {
+        created.isActive = true;
+        created.stepOrder = Number(body.stepOrder || bucket[campId].length + 1);
+      }
+      if (what === 'allocations') {
+        const item = (store._invItems || []).find((i) => String(i.id) === String(body.itemId));
+        created.itemName = item ? item.name : 'Item';
+        created.unitOfMeasure = item ? (item.unit_of_measure || item.unitOfMeasure || '') : '';
+        created.qtyIssued = Number(body.qtyIssued || 0);
+        created.qtyUnaccounted = created.qtyIssued;
+        created.reconciledAt = null;
+      }
+      bucket[campId].push(created);
+      if (what === 'stations') bucket[campId].sort((a, b) => a.stepOrder - b.stepOrder);
+      return json(created);
+    }
+    return json(bucket[campId]);
+  }
+
+  if (p === '/camps') {
+    if (method === 'POST') {
+      const loc = store._locations.find((l) => String(l.id) === String(body.locationId));
+      const created = {
+        id: store._nextId++,
+        status: 'draft',
+        registrationCount: 0,
+        ...body,
+        locationName: loc ? loc.name : undefined,
+      };
+      store._camps.unshift(created);
+      store._campServices[created.id] = [];
+      store._campStaff[created.id] = [];
+      store._campStations[created.id] = [];
+      store._campAllocations[created.id] = [];
+      store._campReadiness[created.id] = {
+        campId: created.id, to: 'published', ready: false, allowed: [],
+        blockers: [
+          { code: 'NoStations', message: 'No stations defined — attendees would have nowhere to go.' },
+          { code: 'NoStaff', message: 'Nobody rostered. A camp needs at least one clinician on duty.' },
+          { code: 'NoServices', message: 'No services listed, so there is nothing to record against.' },
+        ],
+      };
+      return json(created);
+    }
+    return json(store._camps);
+  }
+  const campOne = p.match(/^\/camps\/(\d+)$/);
+  if (campOne) {
+    const idx = store._camps.findIndex((c) => String(c.id) === campOne[1]);
+    if (method === 'DELETE') {
+      if (idx >= 0) store._camps.splice(idx, 1);
+      return json({ success: true });
+    }
+    if (method === 'PUT' || method === 'PATCH') {
+      if (idx >= 0) Object.assign(store._camps[idx], body);
+      return json(idx >= 0 ? store._camps[idx] : {});
+    }
+    return json(idx >= 0 ? store._camps[idx] : {});
+  }
+
+  if (p === '/camp-registrations') {
+    if (method === 'POST') {
+      const campId = String(body.campId);
+      if (!store._campRegistrations[campId]) store._campRegistrations[campId] = [];
+      const rows = store._campRegistrations[campId];
+      const token = rows.reduce((m, r) => Math.max(m, Number(r.tokenNo) || 0), 0) + 1;
+      const created = {
+        id: store._nextId++,
+        campId: Number(campId),
+        tokenNo: token,
+        status: 'registered',
+        patientId: null,
+        mrn: null,
+        ...body,
+        consentGivenAt: body.consentGiven ? new Date().toISOString() : null,
+      };
+      rows.unshift(created);
+      const camp = store._camps.find((c) => String(c.id) === campId);
+      if (camp) camp.registrationCount = (camp.registrationCount || 0) + 1;
+      return json(created);
+    }
+    const campId = url.searchParams.get('campId');
+    const q = (url.searchParams.get('q') || '').toLowerCase();
+    let rows = store._campRegistrations[campId] || [];
+    if (q) {
+      rows = rows.filter((r) => `${r.fullName} ${r.phone || ''} ${r.tokenNo}`.toLowerCase().includes(q));
+    }
+    const status = url.searchParams.get('status');
+    if (status) rows = rows.filter((r) => r.status === status);
+    return json(rows);
+  }
+  const regAction = p.match(/^\/camp-registrations\/(\d+)(?:\/(consent|status|match|promote|queue))?$/);
+  if (regAction) {
+    const [, regId, action] = regAction;
+    let row = null;
+    for (const key of Object.keys(store._campRegistrations)) {
+      row = store._campRegistrations[key].find((r) => String(r.id) === regId) || row;
+    }
+    if (!row) return json({});
+    if (!action) {
+      if (method === 'PUT' || method === 'PATCH') Object.assign(row, body);
+      return json(row);
+    }
+    if (action === 'consent') {
+      row.consentGivenAt = new Date().toISOString();
+      return json(row);
+    }
+    if (action === 'status') {
+      row.status = body.status;
+      return json(row);
+    }
+    if (action === 'match') {
+      // No candidate for the walk-in a recording just captured; a seeded
+      // attendee with an mrn matches the patient it was promoted from.
+      const pt = (store.patients || []).find((pp) => String(pp.id) === String(row.patientId));
+      return json({
+        matches: pt
+          ? [{ patientId: pt.id, name: `${pt.first_name} ${pt.last_name}`, mrn: pt.mrn, score: 0.98 }]
+          : [],
+      });
+    }
+    if (action === 'promote') {
+      const pid = store._nextId++;
+      row.patientId = pid;
+      row.mrn = `MRN-1003${pid % 100}`;
+      row.status = row.status === 'registered' ? 'in_progress' : row.status;
+      return json({ success: true, registration: row, patient: { id: pid, mrn: row.mrn, name: row.fullName } });
+    }
+    if (action === 'queue') {
+      const stationId = String(body.stationId);
+      if (!store._campQueues[stationId]) store._campQueues[stationId] = [];
+      const visit = {
+        id: store._nextId++,
+        registrationId: row.id,
+        tokenNo: row.tokenNo,
+        fullName: row.fullName,
+        ageYears: row.ageYears,
+        gender: row.gender,
+        status: 'queued',
+        queuedAt: new Date().toISOString(),
+        waitSeconds: 0,
+      };
+      store._campQueues[stationId].push(visit);
+      const station = (store._campBoard[String(row.campId)] || []).find((s) => String(s.id) === stationId);
+      if (station) station.queued += 1;
+      return json({ success: true, visit });
+    }
+  }
+  const campReportOne = p.match(/^\/camp-reports\/(\d+)(\/sponsor)?$/);
+  if (campReportOne) {
+    const id = campReportOne[1];
+    if (campReportOne[2]) return json(OCT.campSponsorReport[id] || {});
+    return json(OCT.campReport[id] || { totals: null, referrals: null, stations: [], cost: null });
+  }
+
   // ── generic REST over the store ───────────────────────────────────────
   const segments = p.split('/').filter(Boolean);
   const resource = segments[0];
@@ -891,6 +1238,17 @@ async function handleApi(route, store) {
       if (method === 'GET') return json(filterByQuery(rows, url));
       if (method === 'POST') {
         const created = { id: store._nextId++, created_at: new Date().toISOString(), ...body };
+        // Forms post every id as the string a <select> carries. Postgres hands
+        // back integers, and several screens resolve a name with a strict
+        // `patients.find(p => p.id === patient_id)` — so leaving the string in
+        // the store makes a row the recording just created render as "Unknown
+        // Patient" even though the right patient was chosen. Coerce the way
+        // the real column would.
+        for (const key of Object.keys(created)) {
+          if (/_id$/.test(key) && typeof created[key] === 'string' && /^\d+$/.test(created[key])) {
+            created[key] = Number(created[key]);
+          }
+        }
         if (resource === 'patients') {
           created.mrn = created.mrn || `MRN-2026-${String(store._nextId).slice(-3)}`;
           created.status = created.status || 'active';
@@ -1416,8 +1774,53 @@ class Director {
     await this._dwell(pause);
   }
 
+  /**
+   * Choose from a dropdown, native or themed.
+   *
+   * Most of the app's dropdowns are now ThemedSelect, which draws its own
+   * button-and-listbox and keeps a real <select> behind it purely so `required`
+   * still validates. That one is aria-hidden, pointer-events-none and wired to
+   * `onChange={() => {}}`, so selectOption() sets a DOM value React never hears
+   * about and then returns successfully. A script doing this against a themed
+   * select carries on narrating a choice nobody made — which is how M1 shipped
+   * with "Unknown Patient" on the appointment it had just booked.
+   *
+   * So detect that shape and drive the visible control instead. Scripts keep
+   * calling select() with {label}, {index} or a bare value, and the option text
+   * is resolved from the hidden select's own options.
+   */
   async select(locator, value, { pause = 700 } = {}) {
     await locator.scrollIntoViewIfNeeded().catch(() => {});
+
+    const themed = await locator.evaluate((el) => {
+      if (el.tagName !== 'SELECT' || el.getAttribute('aria-hidden') !== 'true') return null;
+      const combo = el.parentElement && el.parentElement.querySelector('[role="combobox"]');
+      if (!combo) return null;
+      return {
+        options: Array.from(el.options).map((o) => ({
+          value: o.value,
+          label: (o.textContent || '').replace(/\s+/g, ' ').trim(),
+        })),
+      };
+    }).catch(() => null);
+
+    if (themed) {
+      let wanted;
+      if (value && typeof value === 'object' && value.label != null) {
+        wanted = value.label;
+      } else if (value && typeof value === 'object' && value.index != null) {
+        const hit = themed.options[value.index];
+        if (!hit) throw new Error(`select(): no option at index ${value.index}`);
+        wanted = hit.label;
+      } else {
+        const hit = themed.options.find((o) => o.value === String(value));
+        wanted = hit ? hit.label : String(value);
+      }
+      const combo = locator.locator('xpath=../*[@role="combobox"]').first();
+      await this.choose(combo, wanted, { pause });
+      return;
+    }
+
     const box = await locator.boundingBox();
     if (box) {
       await this.page.evaluate(
@@ -1436,6 +1839,29 @@ class Director {
    * cursor happens to be — and an open native select swallows it entirely. Roll
    * the wheel for the look of it, then make sure the container actually moved.
    */
+  /**
+   * Choose from a ThemedSelect.
+   *
+   * ThemedSelect draws its own button-and-listbox and keeps a real <select>
+   * behind it only so `required` still validates — that one is aria-hidden,
+   * pointer-events-none and wired to `onChange={() => {}}`. Playwright's
+   * selectOption() therefore sets a DOM value that React never hears about and
+   * returns successfully, so a mis-aimed `select()` fails silently and the
+   * recording carries on narrating a choice nobody made. Drive the visible
+   * control instead: open the combobox, click the option.
+   */
+  async choose(combobox, optionText, { pause = 800 } = {}) {
+    await this.click(combobox, { pause: 500 });
+    const option = this.page.getByRole('option', { name: optionText }).first();
+    await option.waitFor({ state: 'visible', timeout: 6000 });
+    await this.click(option, { pause });
+  }
+
+  /** The ThemedSelect whose closed box or option list contains `text`. */
+  combo(text) {
+    return this.page.getByRole('combobox').filter({ hasText: text }).first();
+  }
+
   async scrollBy(pixels, steps = 14) {
     const step = Math.round(pixels / steps);
     for (let i = 0; i < steps; i += 1) {
