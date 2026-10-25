@@ -1,31 +1,31 @@
 1
-00:00:00,091 --> 00:00:04,791
+00:00:00,290 --> 00:00:04,990
 Which site was that? — The question a second location adds to every report.
 
 2
-00:00:09,124 --> 00:00:12,344
+00:00:08,389 --> 00:00:11,612
 Every place this practice works, in one list.
 
 3
-00:00:12,344 --> 00:00:17,140
+00:00:11,612 --> 00:00:16,585
 Two clinics, a community hall, and a van.
 
 4
-00:00:17,140 --> 00:00:21,135
+00:00:16,585 --> 00:00:20,592
 The hall is not the practice’s building. It is still a site.
 
 5
-00:00:21,135 --> 00:00:27,209
+00:00:20,592 --> 00:00:26,758
 Which is why a camp points at one, instead of keeping its own address.
 
 6
-00:00:27,209 --> 00:00:31,858
+00:00:26,758 --> 00:00:31,469
 One site is primary. Anything not assigned to a site belongs to it.
 
 7
-00:00:31,858 --> 00:00:35,781
+00:00:31,469 --> 00:00:35,407
 So nothing is ever stranded while the second site is being set up.
 
 8
-00:00:35,846 --> 00:00:41,906
+00:00:35,486 --> 00:00:41,546
 A second site, not a second system. — Clinics, halls and vans — all the same kind of thing.

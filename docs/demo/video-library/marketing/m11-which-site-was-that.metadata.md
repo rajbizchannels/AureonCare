@@ -35,7 +35,7 @@ AureonCare, multi site practice, clinic management, healthcare operations, pract
 | Thumbnail | m11-which-site-was-that.thumbnail.png |
 | Subtitles | m11-which-site-was-that.srt |
 | End screen | Link to the next video in the playlist |
-| Duration | 0:45 |
+| Duration | 0:44 |
 | Resolution | 1920x1080, 30fps, H.264 |
 | Audio | Narration, AAC 160k, normalised to -16 LUFS |
 

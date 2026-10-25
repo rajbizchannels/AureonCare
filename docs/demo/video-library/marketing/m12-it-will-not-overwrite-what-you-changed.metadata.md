@@ -37,7 +37,7 @@ AureonCare, practice setup, EHR onboarding, specialty configuration, clinic soft
 | Thumbnail | m12-it-will-not-overwrite-what-you-changed.thumbnail.png |
 | Subtitles | m12-it-will-not-overwrite-what-you-changed.srt |
 | End screen | Link to the next video in the playlist |
-| Duration | 0:54 |
+| Duration | 0:55 |
 | Resolution | 1920x1080, 30fps, H.264 |
 | Audio | Narration, AAC 160k, normalised to -16 LUFS |
 

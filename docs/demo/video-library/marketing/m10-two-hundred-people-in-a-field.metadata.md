@@ -12,10 +12,10 @@ Planning that knows a camp takes clinicians away from the clinic, and says which
 
 Chapters:
 0:00 The camp
-0:19 Who is on duty
-0:34 The gate
+0:18 Who is on duty
+0:33 The gate
 0:50 The queue
-1:00 What it was worth
+1:01 What it was worth
 
 Subtitles: upload m10-two-hundred-people-in-a-field.srt as the English track — do not rely on auto-captions.
 Narration: spoken track included (google / en-US-Neural2-D).
@@ -39,7 +39,7 @@ AureonCare, medical camp, health camp software, outreach clinic, community healt
 | Thumbnail | m10-two-hundred-people-in-a-field.thumbnail.png |
 | Subtitles | m10-two-hundred-people-in-a-field.srt |
 | End screen | Link to the next video in the playlist |
-| Duration | 1:30 |
+| Duration | 1:31 |
 | Resolution | 1920x1080, 30fps, H.264 |
 | Audio | Narration, AAC 160k, normalised to -16 LUFS |
 

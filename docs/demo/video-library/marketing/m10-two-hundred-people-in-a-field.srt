@@ -1,63 +1,63 @@
 1
-00:00:00,089 --> 00:00:04,529
+00:00:00,169 --> 00:00:04,609
 Two hundred people. One field. — And a record for every one of them.
 
 2
-00:00:08,742 --> 00:00:14,102
+00:00:08,072 --> 00:00:13,324
 Camps are planned here, alongside the clinic that staffs them.
 
 3
-00:00:14,102 --> 00:00:20,778
+00:00:13,324 --> 00:00:20,015
 Services, people, stations and supplies — the four things a camp needs.
 
 4
-00:00:20,778 --> 00:00:25,639
+00:00:20,015 --> 00:00:24,842
 A camp takes clinicians out of the building.
 
 5
-00:00:25,639 --> 00:00:29,490
+00:00:24,842 --> 00:00:28,853
 Pick one who is already booked, and the clinic says so first.
 
 6
-00:00:29,490 --> 00:00:35,797
+00:00:28,853 --> 00:00:35,280
 Three appointments inside the camp window, listed before anyone is rostered.
 
 7
-00:00:35,797 --> 00:00:40,840
+00:00:35,280 --> 00:00:40,282
 At the gate, a walk-in with no appointment and no file.
 
 8
-00:00:40,840 --> 00:00:46,715
+00:00:40,282 --> 00:00:46,494
 Name, age, consent. Nothing that slows the queue down.
 
 9
-00:00:46,715 --> 00:00:52,003
+00:00:46,494 --> 00:00:51,880
 A token for them, and a record for you — at the point of contact.
 
 10
-00:00:52,003 --> 00:00:55,692
+00:00:51,880 --> 00:00:55,787
 Every station, live, with the longest wait at each.
 
 11
-00:00:55,692 --> 00:01:02,410
+00:00:55,787 --> 00:01:02,588
 Fourteen waiting at the doctor, thirty-six minutes deep. That is where to move people.
 
 12
-00:01:02,410 --> 00:01:06,395
+00:01:02,588 --> 00:01:06,586
 Ninety-four seen. Thirty-seven now have a patient record.
 
 13
-00:01:06,395 --> 00:01:14,504
+00:01:06,586 --> 00:01:14,791
 Twenty-one booked a follow-up — the number that decides whether the camp pays for itself.
 
 14
-00:01:14,504 --> 00:01:17,944
+00:01:14,791 --> 00:01:18,303
 The sponsor funded it, so the sponsor gets counts.
 
 15
-00:01:17,944 --> 00:01:23,574
+00:01:18,303 --> 00:01:23,953
 No names, no dates of birth, and small groups combined so nobody is identifiable.
 
 16
-00:01:23,623 --> 00:01:27,423
+00:01:24,143 --> 00:01:27,943
 A clinic that moved. — Not a clipboard you type up later.
