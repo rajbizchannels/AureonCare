@@ -50,7 +50,12 @@ module.exports = {
     d.chapter('The gap');
     await d.step('The gap');
     await d.nav('Insights', 'Reports');
-    await d.say('Where did the other ten go?', 2000);
+    // Deliberately no figure here. This line used to be "where did the other
+    // ten go?", which worked only because the fixture happened to total ten
+    // no-shows over its seven days — the demo API now honours the range
+    // selector, so that total moves with whatever window is chosen and a
+    // hook naming a number would contradict the card behind it.
+    await d.say('The appointments nobody turned up for. Where do they go?', 2400);
 
     await d.click(page.getByRole('button', { name: 'No-Show Report' }).first(), { pause: 2000 });
     await d.say('Scheduled, no-shows, and the rate between them.', 2400);
