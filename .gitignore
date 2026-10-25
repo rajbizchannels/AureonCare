@@ -38,6 +38,12 @@ docs/demo/video-library/**/_debug/
 # named after the probe spec into whichever library folder it targeted.
 docs/demo/video-library/**/probe*
 
+# YouTube OAuth refresh token written by youtube-upload.js. It grants upload
+# rights to whichever channel authorised it, until revoked — never commit it.
+# The video ids the script writes alongside it are NOT secret and stay tracked:
+# they are the record of what is published.
+docs/demo/video-harness/.youtube-token.json
+
 # Root-level env file (e.g. from `vercel env pull`) — never commit
 .env
 .env.*
