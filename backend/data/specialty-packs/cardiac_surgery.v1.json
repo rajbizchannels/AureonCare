@@ -1,0 +1,285 @@
+{
+  "code": "cardiac_surgery",
+  "version": 1,
+  "label": "Cardiothoracic Surgery",
+  "description": "Starting configuration for a cardiothoracic service: consultation, work-up and theatre appointment types, with a coronary, valve and thoracic catalogue.",
+  "modules": {
+    "hide": [
+      "camps"
+    ]
+  },
+  "terminology": {
+    "provider": "Cardiothoracic Surgeon",
+    "providers": "Cardiothoracic Surgeons"
+  },
+  "appointmentTypes": [
+    {
+      "name": "New Patient Consultation",
+      "durationMinutes": 60,
+      "color": "#2563EB",
+      "displayOrder": 10
+    },
+    {
+      "name": "Follow-up Consultation",
+      "durationMinutes": 30,
+      "color": "#0EA5E9",
+      "displayOrder": 20
+    },
+    {
+      "name": "Pre-operative Work-up",
+      "durationMinutes": 60,
+      "color": "#14B8A6",
+      "displayOrder": 30
+    },
+    {
+      "name": "Post-operative Review",
+      "durationMinutes": 30,
+      "color": "#8B5CF6",
+      "displayOrder": 40
+    },
+    {
+      "name": "Wound Review",
+      "durationMinutes": 20,
+      "color": "#F59E0B",
+      "displayOrder": 50
+    },
+    {
+      "name": "Multidisciplinary Review",
+      "durationMinutes": 45,
+      "color": "#64748B",
+      "displayOrder": 60
+    }
+  ],
+  "serviceCategories": [
+    {
+      "name": "Consultations",
+      "icon": "stethoscope",
+      "displayOrder": 10
+    },
+    {
+      "name": "Coronary Surgery",
+      "icon": "heart",
+      "displayOrder": 20
+    },
+    {
+      "name": "Valve Surgery",
+      "icon": "activity",
+      "displayOrder": 30
+    },
+    {
+      "name": "Thoracic Surgery",
+      "icon": "wind",
+      "displayOrder": 40
+    }
+  ],
+  "offerings": [
+    {
+      "name": "New Patient Cardiothoracic Consultation",
+      "categoryName": "Consultations",
+      "durationMinutes": 60,
+      "cptCodes": [
+        "99205"
+      ]
+    },
+    {
+      "name": "Follow-up Cardiothoracic Consultation",
+      "categoryName": "Consultations",
+      "durationMinutes": 30,
+      "cptCodes": [
+        "99214"
+      ]
+    },
+    {
+      "name": "Pre-operative Work-up",
+      "categoryName": "Consultations",
+      "durationMinutes": 60
+    },
+    {
+      "name": "Coronary Artery Bypass Grafting",
+      "categoryName": "Coronary Surgery",
+      "durationMinutes": 300,
+      "consentFormRequired": true,
+      "requiresPreparation": true,
+      "preparationInstructions": "You will be admitted the day before. Stop smoking as far in advance as you can, and bring every medicine you take in its original packaging."
+    },
+    {
+      "name": "Aortic Valve Replacement",
+      "categoryName": "Valve Surgery",
+      "durationMinutes": 300,
+      "consentFormRequired": true
+    },
+    {
+      "name": "Mitral Valve Repair or Replacement",
+      "categoryName": "Valve Surgery",
+      "durationMinutes": 300,
+      "consentFormRequired": true
+    },
+    {
+      "name": "Valve Clinic Review",
+      "categoryName": "Valve Surgery",
+      "durationMinutes": 30
+    },
+    {
+      "name": "Lung Resection",
+      "categoryName": "Thoracic Surgery",
+      "durationMinutes": 240,
+      "consentFormRequired": true
+    },
+    {
+      "name": "Pleural Procedure",
+      "categoryName": "Thoracic Surgery",
+      "durationMinutes": 60,
+      "consentFormRequired": true
+    },
+    {
+      "name": "Thoracic Outpatient Review",
+      "categoryName": "Thoracic Surgery",
+      "durationMinutes": 30
+    },
+    {
+      "name": "Sternal Wound Review",
+      "categoryName": "Consultations",
+      "durationMinutes": 20
+    },
+    {
+      "name": "Post-operative Rehabilitation Review",
+      "categoryName": "Consultations",
+      "durationMinutes": 30
+    }
+  ],
+  "formTemplates": [
+    {
+      "slug": "cardiothoracic-preoperative",
+      "name": "Cardiothoracic Pre-operative Assessment",
+      "templateType": "clinical",
+      "categorySlug": "clinical",
+      "version": "1.0",
+      "languages": [
+        "en"
+      ],
+      "complianceTags": [
+        "HIPAA"
+      ],
+      "fields": [
+        {
+          "id": "planned_procedure",
+          "type": "text",
+          "label": "Planned procedure",
+          "required": true
+        },
+        {
+          "id": "symptoms",
+          "type": "checkboxes",
+          "label": "Current symptoms",
+          "options": [
+            "Chest pain",
+            "Breathlessness",
+            "Palpitations",
+            "Blackouts",
+            "Swollen ankles",
+            "None"
+          ]
+        },
+        {
+          "id": "exercise_tolerance",
+          "type": "select",
+          "label": "How far can you walk on the flat?",
+          "options": [
+            "Unlimited",
+            "Several hundred metres",
+            "About 100 metres",
+            "Only around the house",
+            "Breathless at rest"
+          ]
+        },
+        {
+          "id": "previous_cardiac",
+          "type": "textarea",
+          "label": "Previous heart procedures, with dates"
+        },
+        {
+          "id": "dental_status",
+          "type": "radio",
+          "label": "Have you had a recent dental check?",
+          "options": [
+            "Yes",
+            "No"
+          ],
+          "required": true
+        },
+        {
+          "id": "smoking",
+          "type": "radio",
+          "label": "Smoking",
+          "options": [
+            "Never",
+            "Ex-smoker",
+            "Current smoker"
+          ],
+          "required": true
+        },
+        {
+          "id": "anticoagulants",
+          "type": "textarea",
+          "label": "Blood thinners and antiplatelets, with the last dose taken",
+          "required": true
+        },
+        {
+          "id": "medications",
+          "type": "textarea",
+          "label": "All other medicines, with doses",
+          "required": true
+        },
+        {
+          "id": "allergies",
+          "type": "textarea",
+          "label": "Allergies and reactions"
+        },
+        {
+          "id": "support_at_home",
+          "type": "textarea",
+          "label": "Who will be at home with you after discharge?"
+        }
+      ]
+    }
+  ],
+  "inventoryCategories": [
+    {
+      "code": "cts_theatre",
+      "name": "Cardiothoracic Theatre Consumables"
+    },
+    {
+      "code": "cts_prostheses",
+      "name": "Valves and Grafts"
+    },
+    {
+      "code": "cts_drains",
+      "name": "Chest Drains"
+    }
+  ],
+  "codeSets": {
+    "icd10": [
+      "I25.10",
+      "I35.0",
+      "I34.0",
+      "C34.90",
+      "J93.9",
+      "I71.2",
+      "Z95.1"
+    ],
+    "cpt": [
+      "99205",
+      "99214"
+    ]
+  },
+  "settings": {
+    "defaultAppointmentDuration": 30,
+    "slotIntervalMinutes": 15
+  },
+  "reports": {
+    "show": [
+      "clinical",
+      "operational"
+    ]
+  }
+}

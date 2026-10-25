@@ -1,0 +1,298 @@
+{
+  "code": "gastroenterology",
+  "version": 1,
+  "label": "Gastroenterology",
+  "description": "Starting configuration for a gastroenterology practice: endoscopy and clinic appointment types, with the procedures and preparation instructions a list runs on.",
+  "modules": {
+    "hide": [
+      "camps"
+    ]
+  },
+  "terminology": {
+    "provider": "Gastroenterologist",
+    "providers": "Gastroenterologists"
+  },
+  "appointmentTypes": [
+    {
+      "name": "New Patient Consultation",
+      "durationMinutes": 45,
+      "color": "#2563EB",
+      "displayOrder": 10
+    },
+    {
+      "name": "Follow-up Consultation",
+      "durationMinutes": 20,
+      "color": "#0EA5E9",
+      "displayOrder": 20
+    },
+    {
+      "name": "Upper GI Endoscopy",
+      "durationMinutes": 45,
+      "color": "#14B8A6",
+      "displayOrder": 30
+    },
+    {
+      "name": "Colonoscopy",
+      "durationMinutes": 60,
+      "color": "#8B5CF6",
+      "displayOrder": 40
+    },
+    {
+      "name": "Pre-procedure Assessment",
+      "durationMinutes": 30,
+      "color": "#F59E0B",
+      "displayOrder": 50
+    },
+    {
+      "name": "Infusion Review",
+      "durationMinutes": 90,
+      "color": "#64748B",
+      "displayOrder": 60
+    }
+  ],
+  "serviceCategories": [
+    {
+      "name": "Consultations",
+      "icon": "stethoscope",
+      "displayOrder": 10
+    },
+    {
+      "name": "Endoscopy",
+      "icon": "search",
+      "displayOrder": 20
+    },
+    {
+      "name": "Inflammatory Bowel Disease",
+      "icon": "activity",
+      "displayOrder": 30
+    },
+    {
+      "name": "Liver",
+      "icon": "droplet",
+      "displayOrder": 40
+    }
+  ],
+  "offerings": [
+    {
+      "name": "New Patient Gastroenterology Consultation",
+      "categoryName": "Consultations",
+      "durationMinutes": 45,
+      "cptCodes": [
+        "99204"
+      ]
+    },
+    {
+      "name": "Follow-up Gastroenterology Consultation",
+      "categoryName": "Consultations",
+      "durationMinutes": 20,
+      "cptCodes": [
+        "99213"
+      ]
+    },
+    {
+      "name": "Upper GI Endoscopy, Diagnostic",
+      "categoryName": "Endoscopy",
+      "durationMinutes": 45,
+      "cptCodes": [
+        "43235"
+      ],
+      "consentFormRequired": true,
+      "requiresPreparation": true,
+      "preparationInstructions": "Nothing to eat for six hours and nothing to drink for two hours before the procedure. Arrange for someone to take you home if you are having sedation."
+    },
+    {
+      "name": "Upper GI Endoscopy with Biopsy",
+      "categoryName": "Endoscopy",
+      "durationMinutes": 45,
+      "cptCodes": [
+        "43239"
+      ],
+      "consentFormRequired": true
+    },
+    {
+      "name": "Colonoscopy, Diagnostic",
+      "categoryName": "Endoscopy",
+      "durationMinutes": 60,
+      "cptCodes": [
+        "45378"
+      ],
+      "consentFormRequired": true,
+      "requiresPreparation": true,
+      "preparationInstructions": "Follow the bowel preparation instructions exactly, starting the day before. Clear fluids only from the morning before. Arrange for someone to take you home."
+    },
+    {
+      "name": "Colonoscopy with Biopsy",
+      "categoryName": "Endoscopy",
+      "durationMinutes": 60,
+      "cptCodes": [
+        "45380"
+      ],
+      "consentFormRequired": true
+    },
+    {
+      "name": "Colonoscopy with Polypectomy",
+      "categoryName": "Endoscopy",
+      "durationMinutes": 75,
+      "cptCodes": [
+        "45385"
+      ],
+      "consentFormRequired": true
+    },
+    {
+      "name": "Inflammatory Bowel Disease Review",
+      "categoryName": "Inflammatory Bowel Disease",
+      "durationMinutes": 30
+    },
+    {
+      "name": "Biologic Infusion",
+      "categoryName": "Inflammatory Bowel Disease",
+      "durationMinutes": 120,
+      "consentFormRequired": true
+    },
+    {
+      "name": "Liver Clinic Review",
+      "categoryName": "Liver",
+      "durationMinutes": 30
+    },
+    {
+      "name": "Coeliac Disease Review",
+      "categoryName": "Consultations",
+      "durationMinutes": 25
+    },
+    {
+      "name": "Helicobacter Breath Test",
+      "categoryName": "Consultations",
+      "durationMinutes": 45,
+      "requiresPreparation": true,
+      "preparationInstructions": "No antibiotics for four weeks and no acid-suppressing medicines for two weeks beforehand. Nothing to eat for six hours."
+    }
+  ],
+  "formTemplates": [
+    {
+      "slug": "gastroenterology-intake",
+      "name": "Gastroenterology Intake",
+      "templateType": "onboarding",
+      "categorySlug": "onboarding",
+      "version": "1.0",
+      "languages": [
+        "en"
+      ],
+      "complianceTags": [
+        "HIPAA"
+      ],
+      "fields": [
+        {
+          "id": "symptoms",
+          "type": "checkboxes",
+          "label": "What brings you in?",
+          "options": [
+            "Abdominal pain",
+            "Heartburn",
+            "Difficulty swallowing",
+            "Nausea or vomiting",
+            "Diarrhoea",
+            "Constipation",
+            "Blood in stool",
+            "Weight loss"
+          ],
+          "required": true
+        },
+        {
+          "id": "duration",
+          "type": "text",
+          "label": "How long has this been going on?"
+        },
+        {
+          "id": "bowel_pattern",
+          "type": "text",
+          "label": "Usual bowel pattern, and how it has changed"
+        },
+        {
+          "id": "weight_change",
+          "type": "text",
+          "label": "Any unintended weight change, and over what period"
+        },
+        {
+          "id": "previous_endoscopy",
+          "type": "textarea",
+          "label": "Previous endoscopy or colonoscopy, and when"
+        },
+        {
+          "id": "family_bowel_cancer",
+          "type": "checkbox",
+          "label": "Bowel cancer in a close relative"
+        },
+        {
+          "id": "medications",
+          "type": "textarea",
+          "label": "Current medicines, especially blood thinners and anti-inflammatories",
+          "required": true
+        },
+        {
+          "id": "anticoagulants",
+          "type": "radio",
+          "label": "Do you take a blood thinner?",
+          "options": [
+            "No",
+            "Yes"
+          ],
+          "required": true
+        },
+        {
+          "id": "alcohol",
+          "type": "text",
+          "label": "Alcohol in a typical week"
+        }
+      ]
+    }
+  ],
+  "inventoryCategories": [
+    {
+      "code": "gi_endoscopy",
+      "name": "Endoscopy Accessories"
+    },
+    {
+      "code": "gi_bowel_prep",
+      "name": "Bowel Preparation"
+    },
+    {
+      "code": "gi_biologics",
+      "name": "Biologic Agents"
+    },
+    {
+      "code": "gi_sedation",
+      "name": "Sedation Drugs"
+    }
+  ],
+  "codeSets": {
+    "icd10": [
+      "K21.9",
+      "K58.9",
+      "K50.90",
+      "K51.90",
+      "K29.70",
+      "K76.0",
+      "K90.0",
+      "R10.9"
+    ],
+    "cpt": [
+      "99204",
+      "99213",
+      "43235",
+      "43239",
+      "45378",
+      "45380",
+      "45385"
+    ]
+  },
+  "settings": {
+    "defaultAppointmentDuration": 20,
+    "slotIntervalMinutes": 10
+  },
+  "reports": {
+    "show": [
+      "clinical",
+      "operational"
+    ]
+  }
+}

@@ -1,0 +1,288 @@
+{
+  "code": "geriatrics",
+  "version": 1,
+  "label": "Geriatric Medicine",
+  "description": "Starting configuration for a geriatric practice: longer appointment types, and a catalogue built around assessment, falls, cognition and advance care planning.",
+  "modules": {
+    "hide": [
+      "camps"
+    ]
+  },
+  "terminology": {
+    "provider": "Geriatrician",
+    "providers": "Geriatricians"
+  },
+  "appointmentTypes": [
+    {
+      "name": "Comprehensive Geriatric Assessment",
+      "durationMinutes": 60,
+      "color": "#2563EB",
+      "displayOrder": 10
+    },
+    {
+      "name": "Follow-up Review",
+      "durationMinutes": 30,
+      "color": "#0EA5E9",
+      "displayOrder": 20
+    },
+    {
+      "name": "Memory Clinic Assessment",
+      "durationMinutes": 60,
+      "color": "#14B8A6",
+      "displayOrder": 30
+    },
+    {
+      "name": "Falls Assessment",
+      "durationMinutes": 45,
+      "color": "#8B5CF6",
+      "displayOrder": 40
+    },
+    {
+      "name": "Medication Review",
+      "durationMinutes": 30,
+      "color": "#F59E0B",
+      "displayOrder": 50
+    },
+    {
+      "name": "Home Visit",
+      "durationMinutes": 60,
+      "color": "#64748B",
+      "displayOrder": 60
+    },
+    {
+      "name": "Family Meeting",
+      "durationMinutes": 45,
+      "color": "#DC2626",
+      "displayOrder": 70
+    }
+  ],
+  "serviceCategories": [
+    {
+      "name": "Assessment",
+      "icon": "clipboard-list",
+      "displayOrder": 10
+    },
+    {
+      "name": "Cognition",
+      "icon": "brain",
+      "displayOrder": 20
+    },
+    {
+      "name": "Falls and Mobility",
+      "icon": "footprints",
+      "displayOrder": 30
+    },
+    {
+      "name": "Care Planning",
+      "icon": "file-text",
+      "displayOrder": 40
+    }
+  ],
+  "offerings": [
+    {
+      "name": "Comprehensive Geriatric Assessment",
+      "categoryName": "Assessment",
+      "durationMinutes": 60
+    },
+    {
+      "name": "Established Patient Review",
+      "categoryName": "Assessment",
+      "durationMinutes": 30,
+      "cptCodes": [
+        "99214"
+      ]
+    },
+    {
+      "name": "Cognitive Assessment and Care Plan",
+      "categoryName": "Cognition",
+      "durationMinutes": 60,
+      "cptCodes": [
+        "99483"
+      ]
+    },
+    {
+      "name": "Dementia Follow-up",
+      "categoryName": "Cognition",
+      "durationMinutes": 30
+    },
+    {
+      "name": "Falls Risk Assessment",
+      "categoryName": "Falls and Mobility",
+      "durationMinutes": 45
+    },
+    {
+      "name": "Gait and Balance Assessment",
+      "categoryName": "Falls and Mobility",
+      "durationMinutes": 30
+    },
+    {
+      "name": "Polypharmacy and Deprescribing Review",
+      "categoryName": "Care Planning",
+      "durationMinutes": 30
+    },
+    {
+      "name": "Advance Care Planning",
+      "categoryName": "Care Planning",
+      "durationMinutes": 45,
+      "cptCodes": [
+        "99497"
+      ]
+    },
+    {
+      "name": "Continence Assessment",
+      "categoryName": "Assessment",
+      "durationMinutes": 30
+    },
+    {
+      "name": "Frailty Review",
+      "categoryName": "Assessment",
+      "durationMinutes": 30
+    }
+  ],
+  "formTemplates": [
+    {
+      "slug": "geriatric-assessment-intake",
+      "name": "Geriatric Assessment Intake",
+      "templateType": "onboarding",
+      "categorySlug": "onboarding",
+      "version": "1.0",
+      "languages": [
+        "en"
+      ],
+      "complianceTags": [
+        "HIPAA"
+      ],
+      "fields": [
+        {
+          "id": "completed_by",
+          "type": "select",
+          "label": "Who is completing this form?",
+          "options": [
+            "The patient",
+            "A relative",
+            "A carer"
+          ],
+          "required": true
+        },
+        {
+          "id": "living_situation",
+          "type": "select",
+          "label": "Living situation",
+          "options": [
+            "Alone",
+            "With a partner",
+            "With family",
+            "Residential care",
+            "Nursing home"
+          ],
+          "required": true
+        },
+        {
+          "id": "mobility",
+          "type": "select",
+          "label": "Mobility",
+          "options": [
+            "Independent",
+            "Walking stick",
+            "Walking frame",
+            "Wheelchair",
+            "Bed-bound"
+          ],
+          "required": true
+        },
+        {
+          "id": "falls_12m",
+          "type": "number",
+          "label": "Falls in the last 12 months"
+        },
+        {
+          "id": "memory_concerns",
+          "type": "checkbox",
+          "label": "Are there concerns about memory?"
+        },
+        {
+          "id": "adls",
+          "type": "checkboxes",
+          "label": "Which of these need help?",
+          "options": [
+            "Washing",
+            "Dressing",
+            "Toileting",
+            "Eating",
+            "Moving about",
+            "Managing medicines",
+            "Shopping",
+            "Cooking"
+          ]
+        },
+        {
+          "id": "continence",
+          "type": "select",
+          "label": "Continence",
+          "options": [
+            "Continent",
+            "Occasional accidents",
+            "Incontinent of urine",
+            "Incontinent of both"
+          ]
+        },
+        {
+          "id": "carer_name",
+          "type": "text",
+          "label": "Main carer, and their contact number"
+        },
+        {
+          "id": "advance_directive",
+          "type": "radio",
+          "label": "Is there an advance decision or living will?",
+          "options": [
+            "Yes",
+            "No",
+            "Not sure"
+          ]
+        }
+      ]
+    }
+  ],
+  "inventoryCategories": [
+    {
+      "code": "ger_assessment",
+      "name": "Assessment Tools"
+    },
+    {
+      "code": "ger_mobility",
+      "name": "Mobility Aids"
+    },
+    {
+      "code": "ger_continence",
+      "name": "Continence Supplies"
+    }
+  ],
+  "codeSets": {
+    "icd10": [
+      "R26.81",
+      "F03.90",
+      "R41.3",
+      "M81.0",
+      "R54",
+      "N39.0",
+      "E86.0",
+      "Z91.81"
+    ],
+    "cpt": [
+      "99214",
+      "99483",
+      "99497"
+    ]
+  },
+  "settings": {
+    "defaultAppointmentDuration": 30,
+    "slotIntervalMinutes": 15
+  },
+  "reports": {
+    "show": [
+      "clinical",
+      "operational"
+    ]
+  }
+}
