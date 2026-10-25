@@ -216,8 +216,14 @@ async function handleApi(route, store) {
   const url = new URL(request.url());
   // DEBUG_API=1 prints every call the app makes. Worth reaching for when a
   // screen renders empty: it distinguishes "the mock returned nothing" from
-  // "the app never asked", which are very different bugs.
-  if (process.env.DEBUG_API) console.log('[api]', request.method(), url.pathname + url.search);
+  // "the app never asked", which are very different bugs. Writes print their
+  // body too — "the app asked, with the wrong payload" is a third case, and
+  // the one that catches a dropdown that silently never committed.
+  if (process.env.DEBUG_API) {
+    const dbg = request.postData();
+    console.log('[api]', request.method(), url.pathname + url.search,
+      dbg && request.method() !== 'GET' ? dbg.slice(0, 400) : '');
+  }
   const method = request.method();
   const p = url.pathname.replace(/^.*\/api/, '') || '/';
   const body = (() => {
@@ -1232,6 +1238,17 @@ async function handleApi(route, store) {
       if (method === 'GET') return json(filterByQuery(rows, url));
       if (method === 'POST') {
         const created = { id: store._nextId++, created_at: new Date().toISOString(), ...body };
+        // Forms post every id as the string a <select> carries. Postgres hands
+        // back integers, and several screens resolve a name with a strict
+        // `patients.find(p => p.id === patient_id)` — so leaving the string in
+        // the store makes a row the recording just created render as "Unknown
+        // Patient" even though the right patient was chosen. Coerce the way
+        // the real column would.
+        for (const key of Object.keys(created)) {
+          if (/_id$/.test(key) && typeof created[key] === 'string' && /^\d+$/.test(created[key])) {
+            created[key] = Number(created[key]);
+          }
+        }
         if (resource === 'patients') {
           created.mrn = created.mrn || `MRN-2026-${String(store._nextId).slice(-3)}`;
           created.status = created.status || 'active';

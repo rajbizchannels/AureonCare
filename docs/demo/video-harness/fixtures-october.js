@@ -355,6 +355,15 @@ const specialties = [
   { code: 'physiotherapy', name: 'Physiotherapy', hasPack: false, packVersion: null, clinicalReviewStatus: null },
 ];
 
+/**
+ * The shell reads this on every load, not just the wizard, and offers the
+ * setup banner to any admin whose onboarding has neither completed nor been
+ * skipped. Before this mock existed the route fell through to the generic
+ * handler and returned [], whose `.onboarding` is undefined — so no banner.
+ * Keeping `completedAt` set preserves that: the banner is a first-run prompt
+ * and has no business appearing over the top of a cut about something else.
+ * M12 reaches the wizard through Settings, so it needs no banner either.
+ */
 const practiceSetupState = {
   practice: {
     name: 'Mercy Family Health',
@@ -362,7 +371,11 @@ const practiceSetupState = {
     timezone: 'America/Los_Angeles',
   },
   specialties: [],
-  onboarding: { currentStep: 'profile', completedAt: null, skippedAt: null },
+  onboarding: {
+    currentStep: 'profile',
+    completedAt: new Date(Date.now() - 30 * DAY).toISOString(),
+    skippedAt: null,
+  },
   terminology: {},
   pinnedModules: [],
   hiddenModules: [],

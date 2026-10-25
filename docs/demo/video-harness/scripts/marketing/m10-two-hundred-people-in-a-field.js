@@ -61,9 +61,6 @@ module.exports = {
 
     await d.step('The camp');
     await d.nav('Scheduling', 'Plan');
-    // The practice-setup banner offers itself on a fresh tenant and sits above
-    // the content. Dismiss it so the camp is what the frame is about.
-    await d.maybeClick(page.getByRole('button', { name: /^Not now$/ }), { pause: 600 });
     await d.say('Camps are planned here, alongside the clinic that staffs them.', 2800);
     await d.click(page.getByRole('button', { name: /Riverside Community Health Camp/ }).first(), { pause: 1600 });
     await d.say('Services, people, stations and supplies — the four things a camp needs.', 3000);

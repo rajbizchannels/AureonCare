@@ -58,7 +58,6 @@ module.exports = {
 
     await d.step('The sites');
     await d.nav('Settings', 'Locations');
-    await d.maybeClick(page.getByRole('button', { name: /^Not now$/ }), { pause: 600 });
     await d.say('Every place this practice works, in one list.', 2400);
     await d.say('Two clinics, a community hall, and a van.', 2600);
 
