@@ -135,7 +135,9 @@ const api = async (method, url, body, token) => {
   const csv = await api('GET', '/api/platform/billing/export.csv', undefined, readonly);
   check('CSV export works for a readonly operator', csv.status === 200);
   check('CSV has a header row', typeof csv.body === 'string' && csv.body.split('\n')[0].startsWith('"occurred_at"') === false
-        && csv.body.split('\n')[0] === 'occurred_at,tenant,event_type,amount,currency,description,stripe_object_id,operator');
+        // entry_kind separates settled cash from prorations that will arrive on a later
+        // invoice; without it the amount column cannot be summed safely (migration 086).
+        && csv.body.split('\n')[0] === 'occurred_at,tenant,event_type,entry_kind,amount,currency,description,stripe_object_id,operator');
   check('CSV quotes fields so a comma cannot shift columns', csv.body.includes('"Goodwill for the outage"'));
 
   // ── coupons ───────────────────────────────────────────────────────────────

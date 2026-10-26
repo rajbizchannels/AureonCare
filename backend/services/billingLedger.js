@@ -27,19 +27,19 @@ function monthlyValue(price, billingCycle) {
 async function recordEvent({
   tenantId = null, practiceId = null, eventType, stripeObjectId = null,
   stripeCustomerId = null, amountMinor = 0, currency = null, description = null,
-  occurredAt = null, detail = null, operatorId = null,
+  occurredAt = null, detail = null, operatorId = null, entryKind = 'cash',
 }) {
   try {
     await pool.query(
       `INSERT INTO control.billing_events
          (tenant_id, practice_id, event_type, stripe_object_id, stripe_customer_id,
-          amount_minor, currency, description, occurred_at, detail, operator_id)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,COALESCE($9, now()),$10,$11)
+          amount_minor, currency, description, occurred_at, detail, operator_id, entry_kind)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,COALESCE($9, now()),$10,$11,$12)
        ON CONFLICT (stripe_object_id) DO NOTHING`,
       [tenantId, practiceId, eventType, stripeObjectId, stripeCustomerId,
        Math.round(Number(amountMinor) || 0), currency, description,
        occurredAt ? new Date(occurredAt * 1000) : null,
-       detail ? JSON.stringify(detail) : null, operatorId]
+       detail ? JSON.stringify(detail) : null, operatorId, entryKind]
     );
   } catch (err) {
     // Never let bookkeeping break the webhook: Stripe would retry the whole delivery and
@@ -54,19 +54,26 @@ async function recordEvent({
  * recordEvent deliberately swallows errors so a bookkeeping problem cannot break a webhook.
  * That is exactly wrong for an operator posting a credit note: they must be told it did not
  * land rather than believing it did.
+ *
+ * `occurredAt` (epoch seconds) dates the entry at the moment it takes effect rather than at
+ * the moment it was written. It used to be hardcoded null here, which was harmless while
+ * the only strict writer was a manual adjustment posted the same instant, and wrong as soon
+ * as a prorated plan change had to be booked on the date the change took effect.
  */
 async function recordEventStrict(opts) {
   const { rows } = await pool.query(
     `INSERT INTO control.billing_events
        (tenant_id, practice_id, event_type, stripe_object_id, stripe_customer_id,
-        amount_minor, currency, description, occurred_at, detail, operator_id)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,COALESCE($9, now()),$10,$11)
-     RETURNING id, occurred_at`,
+        amount_minor, currency, description, occurred_at, detail, operator_id, entry_kind)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,COALESCE($9, now()),$10,$11,$12)
+     RETURNING id, occurred_at, entry_kind`,
     [opts.tenantId || null, opts.practiceId || null, opts.eventType,
      opts.stripeObjectId || null, opts.stripeCustomerId || null,
      Math.round(Number(opts.amountMinor) || 0), opts.currency || null,
-     opts.description || null, null,
-     opts.detail ? JSON.stringify(opts.detail) : null, opts.operatorId || null]
+     opts.description || null,
+     opts.occurredAt ? new Date(opts.occurredAt * 1000) : null,
+     opts.detail ? JSON.stringify(opts.detail) : null, opts.operatorId || null,
+     opts.entryKind || 'cash']
   );
   return rows[0];
 }
@@ -119,6 +126,10 @@ async function summary() {
         -- per month in the collected table.
         AND amount_minor <> 0
         AND currency IS NOT NULL
+        -- Accruals are NOT collected revenue. A proration credit or charge is recognised
+        -- when the plan changes and settled on the next invoice, which arrives here
+        -- separately as invoice.paid; counting both would book the same money twice.
+        AND entry_kind = 'cash'
       GROUP BY 1, 2
       ORDER BY 1`
   );
@@ -151,7 +162,7 @@ async function events({ tenantId = null, limit = 100, offset = 0 } = {}) {
   const { rows } = await pool.query(
     `SELECT b.id, b.tenant_id, t.slug AS tenant_slug, t.name AS tenant_name,
             b.event_type, b.amount_minor, b.currency, b.description, b.occurred_at,
-            b.stripe_object_id
+            b.stripe_object_id, b.entry_kind, b.detail
        FROM control.billing_events b
        LEFT JOIN control.tenants t ON t.id = b.tenant_id
       WHERE ($1::uuid IS NULL OR b.tenant_id = $1)
@@ -168,8 +179,12 @@ async function perTenantTotals() {
     `SELECT t.id AS tenant_id, t.slug, t.name, t.status AS tenant_status,
             s.plan_name, s.status AS subscription_status, s.current_period_end,
             p.price, p.currency, p.billing_cycle,
-            COALESCE(SUM(b.amount_minor) FILTER (WHERE b.amount_minor > 0), 0)::bigint AS collected_minor,
-            COALESCE(SUM(b.amount_minor) FILTER (WHERE b.amount_minor < 0), 0)::bigint AS refunded_minor,
+            -- Cash only: see the note in summary(). Prorations are carried separately as
+            -- pending_proration_minor so the console can show what is owed-but-not-yet-
+            -- invoiced without it inflating what has actually been collected.
+            COALESCE(SUM(b.amount_minor) FILTER (WHERE b.amount_minor > 0 AND b.entry_kind = 'cash'), 0)::bigint AS collected_minor,
+            COALESCE(SUM(b.amount_minor) FILTER (WHERE b.amount_minor < 0 AND b.entry_kind = 'cash'), 0)::bigint AS refunded_minor,
+            COALESCE(SUM(b.amount_minor) FILTER (WHERE b.entry_kind = 'accrual'), 0)::bigint AS accrued_minor,
             MAX(b.occurred_at) FILTER (WHERE b.event_type = 'invoice.paid') AS last_payment_at
        FROM control.tenants t
        LEFT JOIN control.subscriptions s ON s.tenant_id = t.id
@@ -186,6 +201,8 @@ async function perTenantTotals() {
     // double negative. The signed value stays in the ledger, where the arithmetic lives.
     refunded: Math.abs(Number(r.refunded_minor)) / 100,
     net: (Number(r.collected_minor) + Number(r.refunded_minor)) / 100,
+    // Signed: negative means the tenant is owed a net credit from mid-period changes.
+    accrued: Number(r.accrued_minor) / 100,
     mrr: Number(monthlyValue(r.price, r.billing_cycle).toFixed(2)),
   }));
 }
@@ -243,8 +260,8 @@ async function tenantDetail(tenantId) {
 /** The ledger as CSV, for handing to an accountant or importing into a book. */
 async function exportCsv({ from = null, to = null } = {}) {
   const { rows } = await pool.query(
-    `SELECT b.occurred_at, t.slug AS tenant, b.event_type, b.amount_minor, b.currency,
-            b.description, b.stripe_object_id, o.email AS operator
+    `SELECT b.occurred_at, t.slug AS tenant, b.event_type, b.entry_kind, b.amount_minor,
+            b.currency, b.description, b.stripe_object_id, o.email AS operator
        FROM control.billing_events b
        LEFT JOIN control.tenants t ON t.id = b.tenant_id
        LEFT JOIN control.operators o ON o.id = b.operator_id
@@ -256,13 +273,16 @@ async function exportCsv({ from = null, to = null } = {}) {
   // Quote every field and double embedded quotes: a description containing a comma or a
   // quote must not shift the columns of an accounting export.
   const esc = (v) => `"${String(v == null ? '' : v).replace(/"/g, '""')}"`;
-  const header = ['occurred_at', 'tenant', 'event_type', 'amount', 'currency',
+  // entry_kind is in the export because an accountant handed a flat list of amounts cannot
+  // otherwise tell settled cash from a proration that will arrive on a later invoice, and
+  // summing the column without that distinction double-counts.
+  const header = ['occurred_at', 'tenant', 'event_type', 'entry_kind', 'amount', 'currency',
                   'description', 'stripe_object_id', 'operator'];
   const lines = [header.join(',')];
   for (const r of rows) {
     lines.push([
       esc(r.occurred_at ? new Date(r.occurred_at).toISOString() : ''),
-      esc(r.tenant), esc(r.event_type),
+      esc(r.tenant), esc(r.event_type), esc(r.entry_kind),
       esc((Number(r.amount_minor) / 100).toFixed(2)),
       esc((r.currency || '').toUpperCase()),
       esc(r.description), esc(r.stripe_object_id), esc(r.operator),
