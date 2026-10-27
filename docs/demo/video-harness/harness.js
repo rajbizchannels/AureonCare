@@ -201,6 +201,25 @@ function upsertPermission(rows, body) {
 const PATIENT_KEYS = ['patient_id', 'patientId', 'patient'];
 
 /**
+ * The next number in a record's own sequence: one past the highest already in
+ * the table for that stem, zero-padded to the table's width — PO-2026-0043
+ * after PO-2026-0042, the way a real backend's sequence would mint it.
+ *
+ * Every site used to build these from `_nextId % 1000`. _nextId starts at
+ * 90000, so the first record a recording created came out as DN-2026-01 and sat
+ * on screen beside seeded rows reading DN-2026-0042 — two-digit numbers in a
+ * column of four, and a sequence running backwards.
+ */
+function nextNumber(rows, field, stem, width = 4) {
+  const pattern = new RegExp(`^${stem.replace(/[-]/g, '\\-')}-(\\d+)$`);
+  const highest = (rows || []).reduce((max, row) => {
+    const hit = pattern.exec(String((row && row[field]) || ''));
+    return hit ? Math.max(max, Number(hit[1])) : max;
+  }, 0);
+  return `${stem}-${String(highest + 1).padStart(width, '0')}`;
+}
+
+/**
  * Operational reports are requested with `days=N` — 7, 30, 90, 180, 365 or
  * `all` — or with startDate/endDate when the range selector is set to Custom.
  * Honouring it matters beyond tidiness: a script that selects "Last 90 Days"
@@ -490,7 +509,7 @@ async function handleApi(route, store) {
       const prefix = billing[1] === 'quotes' ? 'QT' : 'INV';
       const created = {
         id: store._nextId++, created_at: new Date().toISOString(), ...body,
-        [numberField]: body[numberField] || `${prefix}-2026-0${store._nextId % 1000}`,
+        [numberField]: body[numberField] || nextNumber(rows, numberField, `${prefix}-2026`),
         status: body.status || 'draft',
       };
       rows.unshift(created);
@@ -698,7 +717,7 @@ async function handleApi(route, store) {
   }
   if (p === '/inventory/suppliers') {
     if (method === 'POST') {
-      const created = { id: store._nextId++, status: 'active', supplier_number: `SUP-0${store._nextId % 100}`, ...body };
+      const created = { id: store._nextId++, status: 'active', supplier_number: nextNumber(store._invSuppliers, 'supplier_number', 'SUP', 3), ...body };
       store._invSuppliers.push(created);
       return json(created);
     }
@@ -708,7 +727,7 @@ async function handleApi(route, store) {
     if (method === 'POST') {
       const created = {
         id: store._nextId++,
-        item_number: `ITM-0${store._nextId % 1000}`,
+        item_number: nextNumber(store._invItems, 'item_number', 'ITM'),
         current_stock: Number(body.current_stock || body.opening_stock || 0),
         status: 'active',
         ...body,
@@ -742,7 +761,7 @@ async function handleApi(route, store) {
       }
       const created = {
         id: store._nextId++,
-        movement_number: `MV-2026-0${store._nextId % 1000}`,
+        movement_number: nextNumber(store._invMovements, 'movement_number', 'MV-2026'),
         item_name: item ? item.name : '',
         item_sku: item ? item.sku : '',
         unit_of_measure: item ? item.unit_of_measure : '',
@@ -798,7 +817,7 @@ async function handleApi(route, store) {
       });
       const created = {
         id: store._nextId++,
-        po_number: `PO-2026-0${store._nextId % 1000}`,
+        po_number: nextNumber(store._invOrders, 'po_number', 'PO-2026'),
         supplier_name: supplier ? supplier.name : '',
         status: 'pending',
         order_date: new Date().toISOString(),
@@ -830,7 +849,7 @@ async function handleApi(route, store) {
     if (method === 'POST') {
       const created = {
         id: store._nextId++,
-        entryNumber: `JE-2026-0${store._nextId % 1000}`,
+        entryNumber: nextNumber(store._journalEntries, 'entryNumber', 'JE-2026'),
         entryDate: new Date().toISOString().slice(0, 10),
         entryType: 'manual',
         status: 'draft',
@@ -863,7 +882,7 @@ async function handleApi(route, store) {
     if (method === 'POST') {
       const created = {
         id: store._nextId++,
-        [numberField]: `${prefix}-2026-0${store._nextId % 1000}`,
+        [numberField]: nextNumber(rows, numberField, `${prefix}-2026`),
         status: body.status || (acctSub[1] === 'statements' ? 'draft' : 'open'),
         ...body,
       };
@@ -1240,7 +1259,10 @@ async function handleApi(route, store) {
     if (action === 'promote') {
       const pid = store._nextId++;
       row.patientId = pid;
-      row.mrn = `MRN-1003${pid % 100}`;
+      // Promotion makes a patient, so the MRN continues the patients' own
+      // sequence rather than a camp-only format nothing else on screen uses.
+      const known = [...store.patients, ...Object.values(store._campRegistrations).flat()];
+      row.mrn = nextNumber(known, 'mrn', 'MRN-2026', 3);
       row.status = row.status === 'registered' ? 'in_progress' : row.status;
       return json({ success: true, registration: row, patient: { id: pid, mrn: row.mrn, name: row.fullName } });
     }
@@ -1293,11 +1315,11 @@ async function handleApi(route, store) {
           }
         }
         if (resource === 'patients') {
-          created.mrn = created.mrn || `MRN-2026-${String(store._nextId).slice(-3)}`;
+          created.mrn = created.mrn || nextNumber(rows, 'mrn', 'MRN-2026', 3);
           created.status = created.status || 'active';
         }
         if (resource === 'claims') {
-          created.claim_number = created.claim_number || `CLM-2026-0${store._nextId % 1000}`;
+          created.claim_number = created.claim_number || nextNumber(rows, 'claim_number', 'CLM-2026');
           created.status = created.status || 'draft';
         }
         // Wave 2 resources are identified on screen by their number, so a record
@@ -1312,7 +1334,7 @@ async function handleApi(route, store) {
         };
         if (NUMBERED[resource]) {
           const [field, prefix, fallbackStatus] = NUMBERED[resource];
-          created[field] = created[field] || `${prefix}-2026-0${store._nextId % 1000}`;
+          created[field] = created[field] || nextNumber(rows, field, `${prefix}-2026`);
           created.status = created.status || fallbackStatus;
         }
         // Tables render joined display names, which a real backend returns and a
@@ -1328,7 +1350,7 @@ async function handleApi(route, store) {
           // thirteen-digit timestamp in a column of PA-2026-00xx. A real
           // backend owns this sequence, so the demo one does too.
           if (/^PA-\d{10,}$/.test(String(created.preapproval_number || ''))) {
-            created.preapproval_number = `PA-2026-0${store._nextId % 1000}`;
+            created.preapproval_number = nextNumber(rows, 'preapproval_number', 'PA-2026');
           }
         }
         if (resource === 'payment-postings' || resource === 'denials') {

@@ -208,7 +208,21 @@ module.exports = {
       throw new Error(`No claim to post against — the claim beat did not create one. Options: ${JSON.stringify(claimOptions)}`);
     }
     await d.select(claim, { label: target });
-    await d.type(d.field('Payment Amount', 'input'), '180', { delay: 60, pause: 400 });
+    // Pay exactly what the claim allows. Choosing the claim fills Allowed Amount
+    // from the claim's own amount, and that comes from the fee for its CPT code
+    // (179.86 for 99213 in the demo), not from the 180 typed into the claim
+    // earlier. A hard-coded 180 here had the payer paying fourteen cents more
+    // than it allowed — the kind of thing a billing manager spots at once.
+    const allowedField = d.field('Allowed Amount', 'input');
+    let allowed = '';
+    for (let i = 0; i < 25 && !allowed; i += 1) {
+      allowed = (await allowedField.inputValue().catch(() => '')).trim();
+      if (!allowed) await page.waitForTimeout(200);
+    }
+    if (!allowed) {
+      throw new Error('Allowed Amount never filled from the claim, so there is no figure to post.');
+    }
+    await d.type(d.field('Payment Amount', 'input'), allowed, { delay: 60, pause: 400 });
 
     await d.click(page.getByRole('button', { name: /^Create Payment Posting$/ }).last(), { pause: 1200 });
     // "Post Payment" names two different controls: the page's own toolbar button
