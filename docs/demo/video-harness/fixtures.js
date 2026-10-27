@@ -241,9 +241,9 @@ const insurancePayers = [
 ];
 
 const claims = [
-  { id: 4001, claim_number: 'CLM-2026-0104', patient_id: 103, provider_id: 3, payer_id: 203, insurance_provider: 'Copperleaf Health', service_date: day(-12), total_amount: 180, amount: 180, paid_amount: 144, status: 'paid', diagnosis_codes: 'E11.9', procedure_codes: '99213', submitted_at: at(-11, 9) },
-  { id: 4002, claim_number: 'CLM-2026-0111', patient_id: 104, provider_id: 2, payer_id: 204, insurance_provider: 'Larkmoor Assurance', service_date: day(-5), total_amount: 320, amount: 320, paid_amount: 0, status: 'submitted', diagnosis_codes: 'I10', procedure_codes: '99395', submitted_at: at(-4, 9) },
-  { id: 4003, claim_number: 'CLM-2026-0118', patient_id: 102, provider_id: 2, payer_id: 202, insurance_provider: 'Wrenfield Mutual', service_date: day(-3), total_amount: 210, amount: 210, paid_amount: 0, status: 'denied', denial_reason: 'CO-16 Missing information', diagnosis_codes: 'J06.9', procedure_codes: '99214', submitted_at: at(-2, 9) },
+  { id: 4001, claim_number: 'CLM-2026-000104', patient_id: 103, provider_id: 3, payer_id: 203, insurance_provider: 'Copperleaf Health', service_date: day(-12), total_amount: 180, amount: 180, paid_amount: 144, status: 'paid', diagnosis_codes: 'E11.9', procedure_codes: '99213', submitted_at: at(-11, 9) },
+  { id: 4002, claim_number: 'CLM-2026-000111', patient_id: 104, provider_id: 2, payer_id: 204, insurance_provider: 'Larkmoor Assurance', service_date: day(-5), total_amount: 320, amount: 320, paid_amount: 0, status: 'submitted', diagnosis_codes: 'I10', procedure_codes: '99395', submitted_at: at(-4, 9) },
+  { id: 4003, claim_number: 'CLM-2026-000118', patient_id: 102, provider_id: 2, payer_id: 202, insurance_provider: 'Wrenfield Mutual', service_date: day(-3), total_amount: 210, amount: 210, paid_amount: 0, status: 'denied', denial_reason: 'CO-16 Missing information', diagnosis_codes: 'J06.9', procedure_codes: '99214', submitted_at: at(-2, 9) },
 ];
 
 const payments = [
@@ -255,12 +255,12 @@ const payments = [
 const tasks = [
   { id: 2001, title: 'Call Sarah Williams with lab results', status: 'pending', priority: 'high', due_date: at(0, 16), assigned_to: 2 },
   { id: 2002, title: 'Verify insurance for Aiko Tanaka', status: 'pending', priority: 'medium', due_date: at(1, 12), assigned_to: 5 },
-  { id: 2003, title: 'Resubmit denied claim CLM-2026-0118', status: 'in_progress', priority: 'high', due_date: at(1, 17), assigned_to: 1 },
+  { id: 2003, title: 'Resubmit denied claim CLM-2026-000118', status: 'in_progress', priority: 'high', due_date: at(1, 17), assigned_to: 1 },
   { id: 2004, title: 'Order flu vaccine stock', status: 'completed', priority: 'low', due_date: at(-1, 9), assigned_to: 5 },
 ];
 
 const notifications = [
-  { id: 1001, user_id: 1, type: 'alert', title: 'Claim denied', message: 'CLM-2026-0118 was denied — reason CO-16.', is_read: false, created_at: at(0, 8, 10) },
+  { id: 1001, user_id: 1, type: 'alert', title: 'Claim denied', message: 'CLM-2026-000118 was denied — reason CO-16.', is_read: false, created_at: at(0, 8, 10) },
   { id: 1002, user_id: 1, type: 'info', title: 'New portal message', message: 'Sarah Williams completed a pre-visit form.', is_read: false, created_at: at(0, 8, 30) },
   { id: 1003, user_id: 1, type: 'success', title: 'Payment received', message: '$144.00 posted from Copperleaf Health.', is_read: true, created_at: at(-1, 15, 0) },
 ];
@@ -311,32 +311,32 @@ const medicalCodes = {
  * a real Approved and a real Denied rather than describing them.
  */
 const preapprovals = [
-  { id: 5001, preapproval_number: 'PA-2026-0031', patient_id: 103, provider_id: 3, insurance_payer_id: 203, payer_name: 'Copperleaf Health', service_description: 'MRI lumbar spine without contrast', service_date: day(6), status: 'approved', authorization_number: 'AUTH-77321', approved_units: 1, estimated_cost: 1450, valid_from: day(-2), valid_to: day(88), diagnosis_codes: 'M54.5', procedure_codes: '72148', submitted_at: at(-6, 10) },
-  { id: 5002, preapproval_number: 'PA-2026-0034', patient_id: 104, provider_id: 2, insurance_payer_id: 204, payer_name: 'Larkmoor Assurance', service_description: 'Physical therapy, 12 sessions', service_date: day(9), status: 'pending', estimated_cost: 960, diagnosis_codes: 'M25.561', procedure_codes: '97110', submitted_at: at(-2, 14) },
-  { id: 5003, preapproval_number: 'PA-2026-0029', patient_id: 102, provider_id: 2, insurance_payer_id: 202, payer_name: 'Wrenfield Mutual', service_description: 'Sleep study, in-lab', service_date: day(-4), status: 'denied', denial_reason: 'Conservative treatment not documented', estimated_cost: 2100, diagnosis_codes: 'G47.33', procedure_codes: '95810', submitted_at: at(-14, 9) },
+  { id: 5001, preapproval_number: 'PA-2026-000031', patient_id: 103, provider_id: 3, insurance_payer_id: 203, payer_name: 'Copperleaf Health', service_description: 'MRI lumbar spine without contrast', service_date: day(6), status: 'approved', authorization_number: 'AUTH-77321', approved_units: 1, estimated_cost: 1450, valid_from: day(-2), valid_to: day(88), diagnosis_codes: 'M54.5', procedure_codes: '72148', submitted_at: at(-6, 10) },
+  { id: 5002, preapproval_number: 'PA-2026-000034', patient_id: 104, provider_id: 2, insurance_payer_id: 204, payer_name: 'Larkmoor Assurance', service_description: 'Physical therapy, 12 sessions', service_date: day(9), status: 'pending', estimated_cost: 960, diagnosis_codes: 'M25.561', procedure_codes: '97110', submitted_at: at(-2, 14) },
+  { id: 5003, preapproval_number: 'PA-2026-000029', patient_id: 102, provider_id: 2, insurance_payer_id: 202, payer_name: 'Wrenfield Mutual', service_description: 'Sleep study, in-lab', service_date: day(-4), status: 'denied', denial_reason: 'Conservative treatment not documented', estimated_cost: 2100, diagnosis_codes: 'G47.33', procedure_codes: '95810', submitted_at: at(-14, 9) },
 ];
 
 /**
- * Denials. CLM-2026-0118 is the denied claim already in `claims`, so the denial
+ * Denials. CLM-2026-000118 is the denied claim already in `claims`, so the denial
  * queue and the claims queue tell the same story — V10 works that exact claim.
  */
 const denials = [
-  { id: 5101, denial_number: 'DN-2026-0042', claim_id: 4003, claim_number: 'CLM-2026-0118', patient_id: 102, insurance_payer_id: 202, payer_name: 'Wrenfield Mutual', denial_date: day(-2), denied_amount: 210, reason_code: 'CO-16', reason_description: 'Claim/service lacks information', denial_category: 'Invalid/Missing Information', status: 'open', appeal_status: 'not_started', priority: 'high', notes: 'Rendering provider NPI missing on the original submission.' },
-  { id: 5102, denial_number: 'DN-2026-0038', claim_id: 4001, claim_number: 'CLM-2026-0091', patient_id: 105, insurance_payer_id: 205, payer_name: 'Medicare', denial_date: day(-16), denied_amount: 132, reason_code: 'CO-45', reason_description: 'Charge exceeds fee schedule/maximum allowable', denial_category: 'Non-Covered Service', status: 'resolved', appeal_status: 'won', priority: 'medium', resolved_date: day(-4) },
+  { id: 5101, denial_number: 'DEN-2026-000042', patient_name: 'Jordan Ellis', insurance_payer_name: 'Wrenfield Mutual', denial_amount: 210, appeal_deadline: day(28), claim_id: 4003, claim_number: 'CLM-2026-000118', patient_id: 102, insurance_payer_id: 202, payer_name: 'Wrenfield Mutual', denial_date: day(-2), denied_amount: 210, reason_code: 'CO-16', reason_description: 'Claim/service lacks information', denial_category: 'Invalid/Missing Information', status: 'open', appeal_status: 'not_started', priority: 'high', notes: 'Rendering provider NPI missing on the original submission.' },
+  { id: 5102, denial_number: 'DEN-2026-000038', patient_name: 'Aiko Tanaka', insurance_payer_name: 'Medicare', denial_amount: 132, appeal_deadline: day(14), claim_id: 4001, claim_number: 'CLM-2026-000091', patient_id: 105, insurance_payer_id: 205, payer_name: 'Medicare', denial_date: day(-16), denied_amount: 132, reason_code: 'CO-45', reason_description: 'Charge exceeds fee schedule/maximum allowable', denial_category: 'Non-Covered Service', status: 'resolved', appeal_status: 'won', priority: 'medium', resolved_date: day(-4) },
 ];
 
 /** Payment postings — what turns a payer's remittance into a settled balance. */
 const paymentPostings = [
-  { id: 5201, posting_number: 'PP-2026-0088', claim_id: 4001, claim_number: 'CLM-2026-0104', patient_id: 103, insurance_payer_id: 203, payer_name: 'Copperleaf Health', payment_method: 'Electronic Funds Transfer (EFT)', reference_number: 'EFT-88214', payment_date: day(-6), posted_date: day(-6), paid_amount: 144, adjustment_amount: 36, adjustment_code: 'CO', patient_responsibility: 0, status: 'posted', era_number: 'ERA-55120' },
+  { id: 5201, posting_number: 'POST-2026-000088', patient_name: 'Priya Nandakumar', insurance_payer_name: 'Copperleaf Health', payment_amount: 144, posting_date: day(-6), claim_id: 4001, claim_number: 'CLM-2026-000104', patient_id: 103, insurance_payer_id: 203, payer_name: 'Copperleaf Health', payment_method: 'Electronic Funds Transfer (EFT)', reference_number: 'EFT-88214', payment_date: day(-6), posted_date: day(-6), paid_amount: 144, adjustment_amount: 36, adjustment_code: 'CO', patient_responsibility: 0, status: 'posted', era_number: 'ERA-55120' },
 ];
 
 const quotes = [
-  { id: 5301, quote_number: 'QT-2026-0014', patient_id: 105, status: 'sent', subtotal: 240, discount: 0, tax: 0, total: 240, valid_until: day(21), created_at: at(-3, 11), items: [{ description: 'Diabetes management programme', quantity: 1, unit_price: 240 }] },
+  { id: 5301, quote_number: 'QTE-2026-000014', patient_id: 105, status: 'sent', subtotal: 240, discount: 0, tax: 0, total: 240, valid_until: day(21), created_at: at(-3, 11), items: [{ description: 'Diabetes management programme', quantity: 1, unit_price: 240 }] },
 ];
 
 const invoices = [
-  { id: 5401, invoice_number: 'INV-2026-0207', patient_id: 103, quote_id: null, status: 'paid', subtotal: 180, tax: 0, total: 180, amount_paid: 180, balance: 0, issue_date: day(-9), due_date: day(21), paid_date: day(-6) },
-  { id: 5402, invoice_number: 'INV-2026-0211', patient_id: 104, quote_id: null, status: 'sent', subtotal: 95, tax: 0, total: 95, amount_paid: 0, balance: 95, issue_date: day(-2), due_date: day(28) },
+  { id: 5401, invoice_number: 'INV-2026-000207', patient_id: 103, quote_id: null, status: 'paid', subtotal: 180, tax: 0, total: 180, amount_paid: 180, balance: 0, issue_date: day(-9), due_date: day(21), paid_date: day(-6) },
+  { id: 5402, invoice_number: 'INV-2026-000211', patient_id: 104, quote_id: null, status: 'sent', subtotal: 95, tax: 0, total: 95, amount_paid: 0, balance: 95, issue_date: day(-2), due_date: day(28) },
 ];
 
 /* ── Wave 2: clinical network ─────────────────────────────────────────────── */
@@ -377,8 +377,8 @@ const laboratories = [
  * they must be plain code strings, not {code, name} objects.
  */
 const labOrders = [
-  { id: 7301, order_number: 'LAB-2026-0442', patient_id: 101, provider_id: 2, laboratory_id: 6101, laboratory_name: 'Labcorp - Portland Central', order_date: day(-4), collection_date: day(-3), status: 'resulted', priority: 'routine', diagnosis_codes: ['E11.9'], test_codes: ['83036', '80061'], result_date: day(-1), results: [{ name: 'Hemoglobin A1c', value: '8.2', unit: '%', reference_range: '4.0-5.6', flag: 'abnormal' }, { name: 'Total cholesterol', value: '186', unit: 'mg/dL', reference_range: '<200', flag: 'normal' }] },
-  { id: 7302, order_number: 'LAB-2026-0451', patient_id: 104, provider_id: 2, laboratory_id: 6102, laboratory_name: 'Quest Diagnostics - Beaverton', order_date: day(-1), status: 'transmitted', priority: 'routine', diagnosis_codes: ['I10'], test_codes: ['80053'] },
+  { id: 7301, order_number: 'LAB-2026-000442', patient_id: 101, provider_id: 2, laboratory_id: 6101, laboratory_name: 'Labcorp - Portland Central', order_date: day(-4), collection_date: day(-3), status: 'resulted', priority: 'routine', diagnosis_codes: ['E11.9'], test_codes: ['83036', '80061'], result_date: day(-1), results: [{ name: 'Hemoglobin A1c', value: '8.2', unit: '%', reference_range: '4.0-5.6', flag: 'abnormal' }, { name: 'Total cholesterol', value: '186', unit: 'mg/dL', reference_range: '<200', flag: 'normal' }] },
+  { id: 7302, order_number: 'LAB-2026-000451', patient_id: 104, provider_id: 2, laboratory_id: 6102, laboratory_name: 'Quest Diagnostics - Beaverton', order_date: day(-1), status: 'transmitted', priority: 'routine', diagnosis_codes: ['I10'], test_codes: ['80053'] },
 ];
 
 const formTemplates = [

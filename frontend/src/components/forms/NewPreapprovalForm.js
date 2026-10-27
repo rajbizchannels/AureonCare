@@ -284,12 +284,8 @@ const NewPreapprovalForm = ({ theme, api, patients, onClose, onSuccess, addNotif
   };
 
   const submitPreapproval = async (submitToClearinghouse = false) => {
-    // Generate preapproval number
-    const timestamp = Date.now();
-    const preapprovalNumber = `PA-${timestamp}`;
-
+    // The server assigns the number (PA-YYYY-NNNNNN).
     const preapprovalData = {
-      preapproval_number: preapprovalNumber,
       patient_id: formData.patientId,
       insurance_payer_id: formData.insurancePayerId,
       requested_service: formData.requestedService,

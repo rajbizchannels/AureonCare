@@ -431,7 +431,7 @@ const fhirStats = {
  */
 const fhirTrackingErrors = [
   {
-    id: 6802, tracking_number: 'LAB-2026-0210', resource_type: 'ServiceRequest',
+    id: 6802, tracking_number: 'LAB-2026-000210', resource_type: 'ServiceRequest',
     current_status: 'rejected', vendor_name: 'Labcorp',
     last_error_code: 'MISSING_NPI', error_severity: 'error',
     error_title: 'Lab order rejected by the receiving system',
@@ -464,8 +464,8 @@ const fhirTrackingErrors = [
 
 /** Detail view for one tracking number, keyed by tracking_number. */
 const fhirTrackingRecords = {
-  'LAB-2026-0210': {
-    id: 6802, tracking_number: 'LAB-2026-0210', resource_type: 'ServiceRequest', resource_id: '7702',
+  'LAB-2026-000210': {
+    id: 6802, tracking_number: 'LAB-2026-000210', resource_type: 'ServiceRequest', resource_id: '7702',
     current_status: 'rejected', vendor_name: 'Labcorp', patient_name: 'Priya Nandakumar',
     created_at: at(-1, 11), updated_at: at(-1, 11, 2),
     events: [

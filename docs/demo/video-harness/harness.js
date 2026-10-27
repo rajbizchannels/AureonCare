@@ -206,10 +206,15 @@ const PATIENT_KEYS = ['patient_id', 'patientId', 'patient'];
  * after PO-2026-0042, the way a real backend's sequence would mint it.
  *
  * Every site used to build these from `_nextId % 1000`. _nextId starts at
- * 90000, so the first record a recording created came out as DN-2026-01 and sat
- * on screen beside seeded rows reading DN-2026-0042 — two-digit numbers in a
- * column of four, and a sequence running backwards.
+ * 90000, so the first record a recording created came out two digits long and
+ * sat on screen beside seeded four-digit rows — a sequence running backwards.
+ *
+ * Records the product numbers on the server (claims, pre-authorizations, lab
+ * orders, denials, postings, quotes, invoices) use its PREFIX-YYYY-NNNNNN
+ * format — see PRODUCT_WIDTH and backend/utils/recordNumbers.js. The rest keep
+ * the demo's own four-digit stems.
  */
+const PRODUCT_WIDTH = 6;
 function nextNumber(rows, field, stem, width = 4) {
   const pattern = new RegExp(`^${stem.replace(/[-]/g, '\\-')}-(\\d+)$`);
   const highest = (rows || []).reduce((max, row) => {
@@ -506,10 +511,10 @@ async function handleApi(route, store) {
     if (method === 'GET' && !billing[2]) return json(filterByQuery(rows, url));
     if (method === 'POST' && key) {
       const numberField = billing[1] === 'quotes' ? 'quote_number' : 'invoice_number';
-      const prefix = billing[1] === 'quotes' ? 'QT' : 'INV';
+      const prefix = billing[1] === 'quotes' ? 'QTE' : 'INV';
       const created = {
         id: store._nextId++, created_at: new Date().toISOString(), ...body,
-        [numberField]: body[numberField] || nextNumber(rows, numberField, `${prefix}-2026`),
+        [numberField]: body[numberField] || nextNumber(rows, numberField, `${prefix}-2026`, PRODUCT_WIDTH),
         status: body.status || 'draft',
       };
       rows.unshift(created);
@@ -1319,22 +1324,24 @@ async function handleApi(route, store) {
           created.status = created.status || 'active';
         }
         if (resource === 'claims') {
-          created.claim_number = created.claim_number || nextNumber(rows, 'claim_number', 'CLM-2026');
+          // The server numbers a claim when the form sends none, as it now does.
+          created.claim_number = created.claim_number
+            || nextNumber(rows, 'claim_number', 'CLM-2026', PRODUCT_WIDTH);
           created.status = created.status || 'draft';
         }
         // Wave 2 resources are identified on screen by their number, so a record
         // created during a recording has to get one or the video shows a blank.
         const NUMBERED = {
           preapprovals: ['preapproval_number', 'PA', 'pending'],
-          denials: ['denial_number', 'DN', 'open'],
-          'payment-postings': ['posting_number', 'PP', 'posted'],
-          quotes: ['quote_number', 'QT', 'draft'],
+          denials: ['denial_number', 'DEN', 'open'],
+          'payment-postings': ['posting_number', 'POST', 'posted'],
+          quotes: ['quote_number', 'QTE', 'draft'],
           invoices: ['invoice_number', 'INV', 'draft'],
           'lab-orders': ['order_number', 'LAB', 'ordered'],
         };
         if (NUMBERED[resource]) {
           const [field, prefix, fallbackStatus] = NUMBERED[resource];
-          created[field] = created[field] || nextNumber(rows, field, `${prefix}-2026`);
+          created[field] = created[field] || nextNumber(rows, field, `${prefix}-2026`, PRODUCT_WIDTH);
           created.status = created.status || fallbackStatus;
         }
         // Tables render joined display names, which a real backend returns and a
@@ -1346,12 +1353,6 @@ async function handleApi(route, store) {
             .find((ip) => String(ip.id) === String(created.insurance_payer_id));
           if (pt) created.patient_name = `${pt.first_name} ${pt.last_name}`;
           if (payer) created.insurance_payer_name = payer.name;
-          // The form mints its own number as `PA-<epoch millis>`, which lands a
-          // thirteen-digit timestamp in a column of PA-2026-00xx. A real
-          // backend owns this sequence, so the demo one does too.
-          if (/^PA-\d{10,}$/.test(String(created.preapproval_number || ''))) {
-            created.preapproval_number = nextNumber(rows, 'preapproval_number', 'PA-2026');
-          }
         }
         if (resource === 'payment-postings' || resource === 'denials') {
           const pt = store.patients.find((p) => String(p.id) === String(created.patient_id));

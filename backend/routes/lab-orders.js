@@ -7,6 +7,7 @@ router.use(require('../middleware/planEnforcement').enforceActiveBilling); // SE
 const vendorIntegrationManager = require('../services/vendorIntegrations');
 const fhirTrackingIntegration = require('../services/fhirTrackingIntegration');
 const notificationService = require('../services/notificationService');
+const { insertNumbered } = require('../utils/recordNumbers');
 
 /**
  * Lab Orders API
@@ -137,8 +138,8 @@ router.post('/', async (req, res) => {
       send_to_vendor
     } = req.body;
 
-    // Generate order number
-    const orderNumber = `LO-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+    // Numbered as LAB-YYYY-NNNNNN by insertNumbered below. It used to be
+    // LO-<epoch ms>-<random>: unique, but not a number anyone can read out to a lab.
 
     // Check if new columns exist, if not add them
     try {
@@ -156,7 +157,7 @@ router.post('/', async (req, res) => {
     }
 
     // Insert lab order
-    const result = await pool.query(`
+    const insertLabOrder = (q, orderNumber) => q.query(`
       INSERT INTO lab_orders (
         patient_id,
         provider_id,
@@ -201,6 +202,9 @@ router.post('/', async (req, res) => {
       collection_class || 'clinic-collect',
       result_recipients || '[]'
     ]);
+    const result = await insertNumbered(
+      pool, { table: 'lab_orders', column: 'order_number', prefix: 'LAB' }, insertLabOrder
+    );
 
     const labOrder = result.rows[0];
 
