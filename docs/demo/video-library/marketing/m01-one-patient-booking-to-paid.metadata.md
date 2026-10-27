@@ -13,9 +13,9 @@ No cuts between modules and no switching systems — the continuity is the point
 Chapters:
 0:00 Booked
 0:28 Seen on video
-0:45 Documented
-1:00 Claimed
-1:24 Paid
+0:46 Documented
+1:01 Claimed
+1:26 Paid
 
 Subtitles: upload m01-one-patient-booking-to-paid.srt as the English track — do not rely on auto-captions.
 Narration: spoken track included (google / en-US-Neural2-D).
@@ -39,7 +39,7 @@ AureonCare, practice management software, medical billing software, telehealth s
 | Thumbnail | m01-one-patient-booking-to-paid.thumbnail.png |
 | Subtitles | m01-one-patient-booking-to-paid.srt |
 | End screen | Link to the next video in the playlist |
-| Duration | 1:53 |
+| Duration | 1:55 |
 | Resolution | 1920x1080, 30fps, H.264 |
 | Audio | Narration, AAC 160k, normalised to -16 LUFS |
 
