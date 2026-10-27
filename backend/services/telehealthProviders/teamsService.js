@@ -57,7 +57,7 @@ class TeamsService {
         'school accounts, and Microsoft drops it silently rather than failing. ' +
         'Reconnect using a Microsoft 365 work account that has a Teams licence. ' +
         'If it already is a work account, check that the permission is on the ' +
-        'app registration matching AC_MS_CID (Azure Portal > App registrations > ' +
+        'app registration matching REACT_APP_MS_CID (Azure Portal > App registrations > ' +
         'API permissions > Microsoft Graph > Delegated > OnlineMeetings.ReadWrite, ' +
         'then Grant admin consent), and reconnect Teams in Admin Settings.'
       );
@@ -91,7 +91,7 @@ class TeamsService {
     if (!clientId || !clientSecret) {
       throw new Error(
         'Microsoft Teams client credentials are missing. ' +
-        'Please set AC_MS_CID and AC_MS_CSK environment variables, or reconnect Teams in Admin Settings.'
+        'Please set REACT_APP_MS_CID and AC_MS_CSK environment variables, or reconnect Teams in Admin Settings.'
       );
     }
 

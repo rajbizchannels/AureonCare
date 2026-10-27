@@ -34,11 +34,9 @@ docs/demo/video-library/**/*.thumbnail.png
 # fixing a stale selector, worthless once it is fixed.
 docs/demo/video-library/**/_debug/
 
-# Wave 3 was commissioned as downloads rather than repository content, so its
-# subtitles, chapters and metadata stay out too. Waves 1 and 2 still track
-# theirs. Delete this line to store Wave 3 the same way as the others; the
-# scripts in ../video-harness reproduce the files either way.
-docs/demo/video-library/wave3/
+# probe.js records through the same harness, so a selector hunt drops a cut
+# named after the probe spec into whichever library folder it targeted.
+docs/demo/video-library/**/probe*
 
 # Root-level env file (e.g. from `vercel env pull`) — never commit
 .env

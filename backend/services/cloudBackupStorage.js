@@ -27,15 +27,16 @@ const PROVIDERS = {
   google_drive: {
     label: 'Google Drive',
     tokenUrl: 'https://oauth2.googleapis.com/token',
-    // Prefer the backend-scoped name; the REACT_APP_* name is kept as a fallback so
-    // existing deployments that only set the frontend variable keep working.
-    envClientId: ['AC_GG_CID', 'REACT_APP_GG_CID'],
+    // Client id order matches utils/oauthClientIds.js: the REACT_APP_* name wins, because
+    // that is necessarily the id the browser authorised with and the server has to match
+    // it. The unprefixed name remains a fallback for deployments that set only it.
+    envClientId: ['REACT_APP_GG_CID', 'AC_GG_CID'],
     envClientSecret: ['AC_GD_CSK', 'AC_GG_CSK'],
   },
   onedrive: {
     label: 'OneDrive',
     tokenUrl: 'https://login.microsoftonline.com/common/oauth2/v2.0/token',
-    envClientId: ['AC_MS_CID', 'REACT_APP_MS_CID'],
+    envClientId: ['REACT_APP_MS_CID', 'AC_MS_CID'],
     envClientSecret: ['AC_OD_CSK', 'AC_MS_CSK'],
   },
 };

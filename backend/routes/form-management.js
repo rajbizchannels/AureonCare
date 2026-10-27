@@ -290,8 +290,11 @@ router.put('/templates/:id', async (req, res) => {
     updateFields.push(`updated_at = NOW()`);
     params.push(req.params.id);
 
+    // A user edit makes this template the practice's own; a specialty-pack upgrade must
+    // never overwrite it afterwards (tenant/007, services/specialtyPack.js). Appended to
+    // the SQL rather than taken from the body, so it cannot be spoofed by a caller.
     const result = await pool.query(
-      `UPDATE form_templates SET ${updateFields.join(', ')} WHERE id = $${pi} RETURNING *`,
+      `UPDATE form_templates SET ${updateFields.join(', ')}, is_customised = true WHERE id = $${pi} RETURNING *`,
       params
     );
     const updated = result.rows[0];
@@ -364,7 +367,7 @@ router.post('/templates/:id/versions/:versionId/restore', async (req, res) => {
     const newVersionNum = previous.version_number + 1;
 
     const result = await pool.query(
-      `UPDATE form_templates SET fields=$1, settings=$2, fhir_questionnaire=$3, version_number=$4, version=$5, updated_at=NOW()
+      `UPDATE form_templates SET fields=$1, settings=$2, fhir_questionnaire=$3, version_number=$4, version=$5, is_customised=true, updated_at=NOW()
        WHERE id=$6 RETURNING *`,
       [version.fields, version.settings, version.fhir_questionnaire, newVersionNum,
        `${Math.floor(newVersionNum/10)}.${newVersionNum%10}`, req.params.id]
@@ -566,13 +569,60 @@ router.post('/submissions', async (req, res) => {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     await ensureTables(pool);
 
-    // Build FHIR QuestionnaireResponse if template has FHIR mapping
-    let fhirResponse = null;
-    if (template_id) {
-      const tmpl = await pool.query('SELECT fhir_questionnaire, name FROM form_templates WHERE id = $1', [template_id]);
-      if (tmpl.rows.length > 0 && tmpl.rows[0].fhir_questionnaire && form_data) {
-        fhirResponse = buildFhirResponse(tmpl.rows[0].fhir_questionnaire, form_data, patient_id);
+    // Resolve the template the submission is against, by id or by slug.
+    //
+    // WHY SLUG RESOLUTION LIVES HERE. form_templates was empty in every tenant until
+    // tenant/008, so the UI rendered a hard-coded frontend array and sent forms with
+    // template_id = null — a signed consent with no durable link to the template version
+    // the patient saw, and a template_version copied from whatever was in that day's
+    // JavaScript bundle. Every caller already sent the slug (in metadata); doing the
+    // lookup server-side fixes all of them at once, keeps the server authoritative about
+    // its own templates, and means a caller that is missed later still records the link.
+    let resolvedTemplateId = template_id || null;
+    let resolvedTemplate = null;
+    const slug = (req.body && (req.body.template_slug
+      || (metadata && metadata.template_slug))) || null;
+
+    if (resolvedTemplateId) {
+      const byId = await pool.query(
+        'SELECT id, name, version, fhir_questionnaire FROM form_templates WHERE id = $1',
+        [resolvedTemplateId]
+      );
+      if (!byId.rows.length) {
+        return res.status(400).json({
+          error: 'TemplateNotFound',
+          message: `No form template with id ${resolvedTemplateId} exists in this practice.`,
+        });
       }
+      resolvedTemplate = byId.rows[0];
+    } else if (slug) {
+      const bySlug = await pool.query(
+        'SELECT id, name, version, fhir_questionnaire FROM form_templates WHERE slug = $1',
+        [slug]
+      );
+      // An explicit reference that cannot be honoured is an error, not a silent null —
+      // that silence is what let the orphaned submissions accumulate unnoticed.
+      if (!bySlug.rows.length) {
+        return res.status(400).json({
+          error: 'TemplateNotFound',
+          message: `No form template with slug "${slug}" exists in this practice. Run the form library migration (tenant/008) if this is a system template.`,
+          slug,
+        });
+      }
+      resolvedTemplate = bySlug.rows[0];
+      resolvedTemplateId = resolvedTemplate.id;
+    }
+
+    // Pin the name and version from the template row, not from the caller. The point of
+    // the link is to record what the patient was actually shown.
+    const pinnedName = (resolvedTemplate && resolvedTemplate.name) || template_name;
+    const pinnedVersion = (resolvedTemplate && resolvedTemplate.version)
+      || template_version || '1.0';
+
+    // Build FHIR QuestionnaireResponse if the template has a FHIR mapping
+    let fhirResponse = null;
+    if (resolvedTemplate && resolvedTemplate.fhir_questionnaire && form_data) {
+      fhirResponse = buildFhirResponse(resolvedTemplate.fhir_questionnaire, form_data, patient_id);
     }
 
     const result = await pool.query(
@@ -581,9 +631,14 @@ router.post('/submissions', async (req, res) => {
         submitted_by, submitted_by_role, form_data, status, language, expires_at, metadata, fhir_response,
         submitted_at)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,
-               CASE WHEN $10 = 'submitted' THEN NOW() ELSE NULL END)
+               -- $10 is the status column (varchar) AND is compared here, where Postgres
+               -- infers text — "inconsistent types deduced for parameter $10". Without the
+               -- cast every INSERT failed with 42P08, and because all three callers wrap
+               -- this in .catch(console.error) labelled "non-critical", form submissions
+               -- silently never worked at all.
+               CASE WHEN $10::varchar = 'submitted' THEN NOW() ELSE NULL END)
        RETURNING *`,
-      [template_id || null, template_name, template_version || '1.0',
+      [resolvedTemplateId, pinnedName, pinnedVersion,
        patient_id || null, appointment_id || null, intake_flow_id || null,
        actorId || null, actorRole || null, JSON.stringify(form_data || {}),
        status || 'draft', language || 'en', expires_at || null,

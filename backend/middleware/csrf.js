@@ -28,6 +28,44 @@ function safeEqual(a, b) {
   return crypto.timingSafeEqual(ab, bb);
 }
 
+/**
+ * Endpoints that never act as the cookie's user.
+ *
+ * CSRF protects state-changing actions performed AS the authenticated user. These three
+ * ignore the session entirely — they create a NEW account or a signup intent from data in
+ * the request. A forged cross-site call achieves nothing against the victim: it cannot
+ * touch their records, and anything it creates belongs to credentials the attacker already
+ * had.
+ *
+ * Exempting them is not a convenience. Because the API is same-origin, the browser attaches
+ * an existing session cookie to these public POSTs without being asked, so the check fired
+ * for anyone who happened to be signed in — or merely carried a stale cookie — and
+ * registering a new subscription returned 403 with nothing on screen explaining why.
+ * Sending the token from the client (done) fixes the common case; this covers the rest,
+ * where the session cookie outlives the readable CSRF cookie.
+ *
+ * Deliberately NOT exempt, though they are also reached without an account:
+ *   POST /api/auth/login and the social-login/exchange routes. A forged login DOES act on
+ *   the victim — it signs their browser into the ATTACKER'S account, so anything they
+ *   record afterwards lands somewhere the attacker can read. In a clinical system that is
+ *   a disclosure, not an inconvenience.
+ *
+ * Matched on the exact method and path, never a prefix, so a future route underneath one
+ * of these cannot inherit the exemption by accident.
+ */
+const SESSION_INDEPENDENT = new Set([
+  'POST /api/signup',
+  'POST /api/invites/accept',
+  'POST /api/team-access/join',
+]);
+
+/** True when this exact request is one of the session-independent endpoints. */
+function isSessionIndependent(req) {
+  // originalUrl carries the mount prefix and may carry a query string.
+  const path = String(req.originalUrl || '').split('?')[0].replace(/\/+$/, '') || '/';
+  return SESSION_INDEPENDENT.has(`${(req.method || '').toUpperCase()} ${path}`);
+}
+
 function verifyCsrf(req, res, next) {
   if (SAFE_METHODS.has((req.method || 'GET').toUpperCase())) return next();
 
@@ -43,6 +81,10 @@ function verifyCsrf(req, res, next) {
   // for CSRF to protect here; the route's own auth decides.
   if (!isPlatform && !getSessionCookie(req)) return next();
 
+  // A session cookie is present, but this endpoint does not act as that user. See
+  // SESSION_INDEPENDENT above for why these three and not the login routes.
+  if (!isPlatform && isSessionIndependent(req)) return next();
+
   const cookieToken = isPlatform ? getPlatformCsrfCookie(req) : getCsrfCookie(req);
   const headerToken = req.headers['x-csrf-token'] || req.headers['x-xsrf-token'];
 
@@ -55,4 +97,4 @@ function verifyCsrf(req, res, next) {
   next();
 }
 
-module.exports = { verifyCsrf };
+module.exports = { verifyCsrf, SESSION_INDEPENDENT };

@@ -60,6 +60,9 @@ const { provisionTenant } = require(path.join(BACKEND, 'services/tenantProvision
 process.env.PORT = process.env.TEST_PORT || '4894';
 process.env.NODE_ENV = 'development';
 process.env.AC_COOKIE_INSECURE = 'true';
+// This suite makes many /api/auth calls in seconds; the auth limiter would block it and
+// report failures unrelated to what is under test. Double-gated, see middleware/rateLimiters.
+process.env.AC_RL_TEST_BYPASS = '1';
 process.env.AC_JWT_S = process.env.AC_JWT_S || crypto.randomBytes(48).toString('base64');
 const BASE = `http://127.0.0.1:${process.env.PORT}`;
 
@@ -93,13 +96,25 @@ const PW = 'A-Strong-Passphrase!23';
     const { practiceId } = await provisionTenant(pool, { name: `${label} ${RUN}` });
     const email = `admin_${label}_${RUN}@${label === 'A' ? DOMAIN : OTHER}`;
     const hash = await bcrypt.hash(PW, 12);
-    await pool.query(
+    const { rows } = await pool.query(
       `INSERT INTO public.users (id,email,first_name,last_name,role,status,password_hash,practice_id,created_at)
-       VALUES (gen_random_uuid(),$1,'Ada','Admin','admin','active',$2,$3,NOW())`,
+       VALUES (gen_random_uuid(),$1,'Ada','Admin','admin','active',$2,$3,NOW()) RETURNING id`,
       [email, hash, practiceId]
     );
     const login = await api('POST', '/api/auth/login', { email, password: PW });
-    return { practiceId, email, token: login.body && login.body.token };
+    return { practiceId, email, userId: rows[0].id, token: login.body && login.body.token };
+  };
+
+  /** An extra account at a given practice, for cases that end in its deletion. */
+  const mkUser = async (label, role, domain) => {
+    const email = `${label}_${RUN}@${domain}`;
+    const hash = await bcrypt.hash(PW, 12);
+    const { rows } = await pool.query(
+      `INSERT INTO public.users (id,email,first_name,last_name,role,status,password_hash,practice_id,created_at)
+       VALUES (gen_random_uuid(),$1,'Leaving','Soon',$2,'active',$3,$4,NOW()) RETURNING id`,
+      [email, role, hash, A.practiceId]
+    );
+    return { id: rows[0].id, email };
   };
   const A = await mkPractice('A');
   const B = await mkPractice('B');
@@ -265,6 +280,119 @@ const PW = 'A-Strong-Passphrase!23';
   const staffClaim = await api('POST', '/api/team-access/domains',
     { domain: `sneaky-${RUN}.example` }, auth(staffLogin.body.token));
   check('a non-admin cannot claim a domain', staffClaim.status === 403);
+
+  // ── Deleting a user who claimed a domain or decided a request ─────────────
+  // 080 pointed practice_domains.created_by and join_requests.decided_by at users(id) with
+  // no ON DELETE action, so deleting such an account raised a foreign key violation that
+  // surfaced as a flat 500 — and the account most likely to hold those references is the
+  // administrator who set the practice up.
+  const leaver = await mkUser('leaver', 'admin', DOMAIN);
+  const leaverLogin = await api('POST', '/api/auth/login', { email: leaver.email, password: PW });
+  const leaverClaim = await api('POST', '/api/team-access/domains',
+    { domain: `leaving-${RUN}.example` }, auth(leaverLogin.body.token));
+  check('the departing admin claimed a domain', leaverClaim.status === 201);
+
+  // audit_logs is append-only (tenant migration 002), and its user_id foreign key was
+  // declared ON DELETE SET NULL — a SET NULL is an UPDATE, so the trigger rejected it and
+  // deleting ANY user who had ever been audited failed with P0001. Write a real audit row
+  // first so the deletion has to survive that.
+  const { rows: schemaRow } = await pool.query(
+    'SELECT schema_name FROM control.tenants WHERE practice_id = $1', [A.practiceId]);
+  const tenantSchema = schemaRow[0].schema_name;
+  const ac = await pool.connect();
+  try {
+    await ac.query('BEGIN');
+    await ac.query(`SET LOCAL search_path TO ${tenantSchema}, public, control`);
+    await ac.query(
+      `INSERT INTO audit_logs (user_id,user_email,user_name,user_role,action_type,
+         resource_type,resource_name,action_description,module,status)
+       VALUES ($1,$2,'Leaving Soon','admin','view','patient','chart','viewed a chart','EHR','success')`,
+      [leaver.id, leaver.email]
+    );
+    await ac.query('COMMIT');
+  } catch (e) { await ac.query('ROLLBACK').catch(() => {}); throw e; } finally { ac.release(); }
+
+  const del = await api('DELETE', `/api/users/${leaver.id}`, undefined, auth(A.token));
+  check('a user who has been audited can still be deleted', del.status === 200);
+
+  const ac2 = await pool.connect();
+  let auditRow = null;
+  try {
+    await ac2.query('BEGIN');
+    await ac2.query(`SET LOCAL search_path TO ${tenantSchema}, public, control`);
+    const r = await ac2.query('SELECT user_id, user_email FROM audit_logs WHERE user_email = $1',
+      [leaver.email]);
+    auditRow = r.rows[0] || null;
+    await ac2.query('COMMIT');
+  } finally { ac2.release(); }
+  check('the audit record survives the deletion', Boolean(auditRow));
+  check('and keeps the id, so the trail is not broken',
+    Boolean(auditRow) && auditRow.user_id === leaver.id);
+  const { rows: survived } = await pool.query(
+    'SELECT created_by FROM public.practice_domains WHERE domain = $1', [`leaving-${RUN}.example`]);
+  check('the claim survives the deletion, so self-join keeps working', survived.length === 1);
+  check('only the attribution is cleared', survived.length === 1 && survived[0].created_by === null);
+
+  const ghost = await api('DELETE', '/api/users/00000000-0000-0000-0000-000000000000',
+    undefined, auth(A.token));
+  check('deleting a non-existent user is a plain 404', ghost.status === 404);
+
+  const crossDelete = await api('DELETE', `/api/users/${B.userId}`, undefined, auth(A.token));
+  check('deleting another practice\'s user is refused', crossDelete.status === 404);
+  check('and says so, rather than claiming the user does not exist',
+    crossDelete.body && /different practice/i.test(crossDelete.body.error || ''));
+
+  // ── The tenant handle's transaction handling ──────────────────────────────
+  // `ROLLBACK TO SAVEPOINT x` starts with ROLLBACK but does not end the transaction.
+  // Treating it as one cleared the in-transaction flag while the transaction was still
+  // open, so every following statement tried to open a nested BEGIN inside it. The user
+  // deletion path relies on savepoints to skip a cleanup table that is not present.
+  {
+    const { makeTenantDb } = require(path.join(BACKEND, 'db/requestTenantDb.js'));
+    const tdb = makeTenantDb(pool, 'tenant_default');
+    await tdb.query('BEGIN');
+    await tdb.query('SAVEPOINT probe');
+    let code = null;
+    try { await tdb.query('DELETE FROM definitely_not_a_table WHERE 1=0'); }
+    catch (e) { code = e.code; await tdb.query('ROLLBACK TO SAVEPOINT probe'); }
+    check('a missing table inside a savepoint reports 42P01', code === '42P01');
+    const after = await tdb.query('SELECT current_setting($1) AS sp', ['search_path']);
+    check('the transaction survives a savepoint rollback', Boolean(after.rows[0]));
+    check('and the tenant search_path is still pinned',
+      /tenant_default/.test(after.rows[0].sp));
+    await tdb.query('COMMIT');
+    const post = await tdb.query('SELECT 1 AS x');
+    check('ordinary queries work again after COMMIT', post.rows[0].x === 1);
+    tdb.release();
+  }
+
+  // ── The feature must not break sign-in where it was never migrated ────────
+  // resolveDomainClaim runs on the social sign-in path. When migration 080 has not been
+  // applied, letting 42P01 escape turned "no domain claims exist" into a 500 on every
+  // Google and Microsoft login without an invite. The rename is inside a transaction, so
+  // only this connection sees the table disappear.
+  {
+    const { resolveDomainClaim } = require(path.join(BACKEND, 'services/domainJoin.js'));
+    const c = await pool.connect();
+    try {
+      await c.query('BEGIN');
+      await c.query('ALTER TABLE public.practice_domains RENAME TO practice_domains_absent');
+      let threw = null, value;
+      try { value = await resolveDomainClaim(c, `anyone_${RUN}@${DOMAIN}`); }
+      catch (e) { threw = e.code || e.message; }
+      check('an unmigrated database does not break the domain lookup', threw === null);
+      check('and it reports no claim, so sign-in proceeds', value === null);
+      await c.query('ROLLBACK');
+    } finally { c.release(); }
+
+    // The real error classes must still surface — swallowing everything would hide a
+    // genuine fault behind "nobody has claimed this domain".
+    const broken = { query: async () => { const e = new Error('permission denied'); e.code = '42501'; throw e; } };
+    let propagated = null;
+    try { await resolveDomainClaim(broken, `anyone_${RUN}@${DOMAIN}`); }
+    catch (e) { propagated = e.code; }
+    check('a permission error is NOT swallowed', propagated === '42501');
+  }
 
   // ── Report ────────────────────────────────────────────────────────────────
   let pass = 0;

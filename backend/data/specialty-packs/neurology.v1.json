@@ -1,0 +1,284 @@
+{
+  "code": "neurology",
+  "version": 1,
+  "label": "Neurology",
+  "description": "Starting configuration for a neurology practice: clinic and neurophysiology appointment types, with a headache, epilepsy and movement-disorder catalogue.",
+  "modules": {
+    "hide": [
+      "camps"
+    ]
+  },
+  "terminology": {
+    "provider": "Neurologist",
+    "providers": "Neurologists"
+  },
+  "appointmentTypes": [
+    {
+      "name": "New Patient Consultation",
+      "durationMinutes": 60,
+      "color": "#2563EB",
+      "displayOrder": 10
+    },
+    {
+      "name": "Follow-up Consultation",
+      "durationMinutes": 30,
+      "color": "#0EA5E9",
+      "displayOrder": 20
+    },
+    {
+      "name": "Electroencephalogram",
+      "durationMinutes": 60,
+      "color": "#14B8A6",
+      "displayOrder": 30
+    },
+    {
+      "name": "Nerve Conduction Study",
+      "durationMinutes": 60,
+      "color": "#8B5CF6",
+      "displayOrder": 40
+    },
+    {
+      "name": "Botulinum Toxin Clinic",
+      "durationMinutes": 30,
+      "color": "#F59E0B",
+      "displayOrder": 50
+    },
+    {
+      "name": "Infusion",
+      "durationMinutes": 120,
+      "color": "#64748B",
+      "displayOrder": 60
+    }
+  ],
+  "serviceCategories": [
+    {
+      "name": "Consultations",
+      "icon": "stethoscope",
+      "displayOrder": 10
+    },
+    {
+      "name": "Neurophysiology",
+      "icon": "activity",
+      "displayOrder": 20
+    },
+    {
+      "name": "Headache",
+      "icon": "brain",
+      "displayOrder": 30
+    },
+    {
+      "name": "Movement Disorders",
+      "icon": "move",
+      "displayOrder": 40
+    }
+  ],
+  "offerings": [
+    {
+      "name": "New Patient Neurology Consultation",
+      "categoryName": "Consultations",
+      "durationMinutes": 60,
+      "cptCodes": [
+        "99205"
+      ]
+    },
+    {
+      "name": "Follow-up Neurology Consultation",
+      "categoryName": "Consultations",
+      "durationMinutes": 30,
+      "cptCodes": [
+        "99214"
+      ]
+    },
+    {
+      "name": "Routine Electroencephalogram",
+      "categoryName": "Neurophysiology",
+      "durationMinutes": 60,
+      "cptCodes": [
+        "95816"
+      ],
+      "requiresPreparation": true,
+      "preparationInstructions": "Wash your hair the night before and use no conditioner, gel or spray. Avoid caffeine on the day. Sleep less than usual if you have been asked to."
+    },
+    {
+      "name": "Electromyography",
+      "categoryName": "Neurophysiology",
+      "durationMinutes": 60,
+      "cptCodes": [
+        "95886"
+      ],
+      "consentFormRequired": true
+    },
+    {
+      "name": "Headache and Migraine Review",
+      "categoryName": "Headache",
+      "durationMinutes": 30
+    },
+    {
+      "name": "Botulinum Toxin for Chronic Migraine",
+      "categoryName": "Headache",
+      "durationMinutes": 30,
+      "consentFormRequired": true
+    },
+    {
+      "name": "Epilepsy Review",
+      "categoryName": "Consultations",
+      "durationMinutes": 30
+    },
+    {
+      "name": "Parkinson Disease Review",
+      "categoryName": "Movement Disorders",
+      "durationMinutes": 40
+    },
+    {
+      "name": "Tremor Assessment",
+      "categoryName": "Movement Disorders",
+      "durationMinutes": 40
+    },
+    {
+      "name": "Multiple Sclerosis Review",
+      "categoryName": "Consultations",
+      "durationMinutes": 40
+    },
+    {
+      "name": "Memory and Cognition Assessment",
+      "categoryName": "Consultations",
+      "durationMinutes": 60
+    },
+    {
+      "name": "Neuropathy Assessment",
+      "categoryName": "Consultations",
+      "durationMinutes": 40
+    }
+  ],
+  "formTemplates": [
+    {
+      "slug": "neurology-intake",
+      "name": "Neurology Intake",
+      "templateType": "onboarding",
+      "categorySlug": "onboarding",
+      "version": "1.0",
+      "languages": [
+        "en"
+      ],
+      "complianceTags": [
+        "HIPAA"
+      ],
+      "fields": [
+        {
+          "id": "main_problem",
+          "type": "checkboxes",
+          "label": "What brings you in?",
+          "options": [
+            "Headaches",
+            "Blackouts or seizures",
+            "Dizziness",
+            "Weakness",
+            "Numbness or tingling",
+            "Tremor",
+            "Memory problems",
+            "Walking difficulty",
+            "Vision problems"
+          ],
+          "required": true
+        },
+        {
+          "id": "description",
+          "type": "textarea",
+          "label": "Describe what happens, in your own words",
+          "required": true
+        },
+        {
+          "id": "onset",
+          "type": "text",
+          "label": "When did it start, and did it come on suddenly or gradually?"
+        },
+        {
+          "id": "frequency",
+          "type": "text",
+          "label": "How often does it happen?"
+        },
+        {
+          "id": "witness_account",
+          "type": "textarea",
+          "label": "If anyone has seen an episode, what did they describe?"
+        },
+        {
+          "id": "triggers",
+          "type": "textarea",
+          "label": "Anything that brings it on or makes it worse"
+        },
+        {
+          "id": "head_injury",
+          "type": "checkbox",
+          "label": "Any significant head injury in the past"
+        },
+        {
+          "id": "family_neuro",
+          "type": "textarea",
+          "label": "Neurological conditions in the family"
+        },
+        {
+          "id": "medications",
+          "type": "textarea",
+          "label": "Current medicines, with doses",
+          "required": true
+        },
+        {
+          "id": "driving",
+          "type": "radio",
+          "label": "Do you drive?",
+          "options": [
+            "No",
+            "Yes"
+          ]
+        }
+      ]
+    }
+  ],
+  "inventoryCategories": [
+    {
+      "code": "neuro_eeg",
+      "name": "EEG Electrodes and Gel"
+    },
+    {
+      "code": "neuro_emg",
+      "name": "EMG Needles"
+    },
+    {
+      "code": "neuro_botulinum",
+      "name": "Botulinum Toxin"
+    },
+    {
+      "code": "neuro_infusion",
+      "name": "Infusion Supplies"
+    }
+  ],
+  "codeSets": {
+    "icd10": [
+      "G43.909",
+      "G40.909",
+      "G20",
+      "G35",
+      "G62.9",
+      "R42",
+      "R51.9",
+      "G56.00"
+    ],
+    "cpt": [
+      "99205",
+      "99214",
+      "95816",
+      "95886"
+    ]
+  },
+  "settings": {
+    "defaultAppointmentDuration": 30,
+    "slotIntervalMinutes": 15
+  },
+  "reports": {
+    "show": [
+      "clinical",
+      "operational"
+    ]
+  }
+}

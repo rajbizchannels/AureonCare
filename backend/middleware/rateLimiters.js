@@ -15,6 +15,20 @@ if (!redisConfigured()) {
 
 const WINDOW_MS = 15 * 60 * 1000; // 15 minutes
 
+/**
+ * Test-only bypass.
+ *
+ * The MFA/session suite makes far more than ten calls under /api/auth in a few seconds —
+ * enrolment, verification, and a dozen deliberate sign-in attempts — so the limiter blocks
+ * it and the run reports failures that have nothing to do with the behaviour under test.
+ *
+ * Gated on TWO conditions, not one: an explicit opt-in variable AND a non-production
+ * NODE_ENV. One stray environment variable in production therefore cannot switch off
+ * brute-force protection; it would take two, one of which breaks much else besides.
+ */
+const testBypass = () =>
+  process.env.AC_RL_TEST_BYPASS === '1' && process.env.NODE_ENV !== 'production';
+
 // Strict limiter for authentication-sensitive endpoints (login, password
 // reset, social login). Low ceiling per IP to blunt credential brute-force
 // and password-reset abuse.
@@ -22,6 +36,7 @@ const authLimiter = rateLimit({
   store: storeFor('auth'),
   windowMs: WINDOW_MS,
   max: 10,
+  skip: testBypass,
   standardHeaders: true,
   legacyHeaders: false,
   handler: (req, res) => {

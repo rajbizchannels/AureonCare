@@ -1,6 +1,6 @@
 # AureonCare User Manual
 
-**Version 1.3 - Updated August 2026**
+**Version 1.5 - Updated October 2026**
 **Modern Healthcare Practice Management System**
 
 ---
@@ -34,6 +34,12 @@
 25. [Accounting](#25-accounting)
 26. [Inventory Management](#26-inventory-management)
 27. [Subscription Plans & Licensing](#27-subscription-plans--licensing)
+28. [Secure Messaging](#28-secure-messaging)
+29. [Mobile App](#29-mobile-app)
+30. [Account Security](#30-account-security)
+31. [Medical Camps](#31-medical-camps)
+32. [Locations](#32-locations)
+33. [Practice Setup Wizard](#33-practice-setup-wizard)
 
 ---
 
@@ -46,15 +52,21 @@ AureonCare is a comprehensive, enterprise-grade medical practice management plat
 **Key Capabilities:**
 - Electronic Health Records (EHR) management
 - Appointment scheduling, waitlist, and public self-booking links
+- Medical camps: outreach events run as a station pipeline
+- Multi-site support with locations for clinics, camps, mobile and partner venues
+- Specialty configuration for dentistry, ophthalmology, paediatrics and behavioural health
 - Revenue Cycle Management (RCM) with claims and billing
 - Double-entry accounting and inventory management
 - Custom form building with automated patient intake
 - Telehealth video consultations across Zoom, Google Meet, Teams, and Webex
+- Secure messaging between staff, and between the practice and its patients
 - Patient portal for self-service
+- Native mobile apps for iOS and Android
 - Laboratory and pharmacy management
 - Email and WhatsApp notifications across every module
 - FHIR HL7 compliant for interoperability
 - Multi-language support (8 languages)
+- Two-factor authentication and enforced session timeouts
 - HIPAA-ready security and compliance
 - Cloud, customer-cloud, and on-premises deployment
 
@@ -77,12 +89,18 @@ This manual is designed for:
 - Internet connection (minimum 5 Mbps recommended)
 - Screen resolution: 1280x720 or higher
 - For telehealth: Webcam and microphone
+- For two-factor authentication: an authenticator app on your phone
 
 **For Patients:**
 - Modern web browser or mobile device
 - Internet connection
 - Email address for portal access
 - For telehealth: Webcam and microphone
+
+**For the Mobile App:**
+- iOS 15 or later, or Android 8 (API 26) or later
+- Biometric hardware if you want Face ID / Touch ID / fingerprint unlock
+- Notifications permission for appointment and message alerts
 
 ### 1.4 Conventions Used in This Manual
 
@@ -92,7 +110,146 @@ This manual is designed for:
 - 💡 **Tip** - Helpful suggestions and best practices
 - ✅ **Note** - Additional information
 
-### 1.5 What's New in Version 1.3 (August 2026)
+### 1.5 What's New in Version 1.5 (October 2026)
+
+**Major New Features:**
+
+🆕 **Medical Camps**
+- Run time-boxed outreach events at venues your practice does not own
+- Four working screens: **Camp Planning**, **Registration Desk**, **Station Board**, **Camp Outcomes**
+- A camp runs as a station pipeline rather than a slot calendar
+- Walk-in registration captures just a name, phone number and age — no MRN required
+- Promote a registration to a full patient record when you choose, with duplicate matching
+- Live queue lengths and waiting times per station
+- Sponsor reporting that cannot leak individual identities
+- Available on Clinical Pro and above
+- See Section 31
+
+🆕 **Locations**
+- Sites are now a first-class entity rather than one implied clinic
+- Four types: **Clinic**, **Camp**, **Mobile**, **Partner**
+- Supports multi-branch practices, departments, and anything held off-site
+- Appointments, stock movements, provider availability and working hours can each carry a location
+- Exactly one site is marked primary
+- Removing a site never deletes clinical or stock history
+- See Section 32
+
+🆕 **Practice Setup Wizard**
+- Six-step wizard that configures a new practice for what it actually does
+- Steps: Profile → Specialty → Services → Providers → Forms → Review
+- Specialty packs available for **Behavioural Health**, **Dentistry**, **Ophthalmology** and **Paediatrics**
+- A pack seeds starter services, forms and terminology
+- A pack **never overwrites anything you have edited** — it reports a conflict instead
+- Specialty only ever narrows the menu; administrators can pin any module back
+- See Section 33
+
+🆕 **Booking by Specialty**
+- Patients booking an appointment can now filter providers by specialty
+- Free-text search across provider name and specialty
+- Specialty options come from the providers actually on staff, so they cannot go stale
+
+🆕 **Restore Now Asks First**
+- Restoring a backup previously ran the moment you chose a file — no prompt, no undo
+- Both restore paths now confirm first
+- The file is read **before** you are asked, so the prompt tells you when the backup was taken, how many records it holds, and across how many tables
+- A malformed file is rejected outright rather than after you have agreed
+- Confirmation text is translated across all supported locales
+
+🆕 **Backup and Restore Scoped to Your Practice**
+- Backup and restore now operate only on your own practice's data
+- A restore no longer touches tables shared across practices
+
+🆕 **Form Fixes**
+- Fixed 18 form fields that displayed a label with no input box
+- Submissions now record the exact template version the patient filled in, so a later template edit never changes what someone answered
+- Five specialty form templates moved into their matching specialty packs
+
+🆕 **Clearer Error Messages**
+- An account not linked to a practice is now told why it sees no providers
+- A provider list that fails to load says so, rather than appearing empty
+- Sign-in through Google or Microsoft reports why an authorisation was rejected
+- Provider search is reachable before you pick a date
+
+### 1.6 What's New in Version 1.4 (September 2026)
+
+**Major New Features:**
+
+🆕 **Secure Messaging**
+- Threaded conversations between colleagues, and between the practice and its patients
+- One shared inbox at **Patients → Engagement → Messages**
+- Patients reply from a **Messages** tab in the Patient Portal
+- Unread count shown on the message icon in the header
+- Attach documents to a message and file them straight into the patient's chart
+- Message bodies and attachments are encrypted before they are stored
+- See Section 28
+
+🆕 **Native Mobile App (iOS & Android)**
+- Real native apps, not a wrapped website
+- Separate experiences for staff and for patients, chosen automatically at sign-in
+- Biometric unlock (Face ID, Touch ID, fingerprint)
+- Push notifications
+- Capture a photo directly into a message
+- Layout adapts live between phone and tablet — tablets get a list-and-detail split view
+- Tablet-only tabs for encounter capture, orders, and revenue cycle
+- See Section 29
+
+🆕 **Two-Factor Authentication (2FA)**
+- Time-based one-time codes (TOTP) from any authenticator app
+- Enrol by scanning a QR code, or by typing the setup key
+- Ten single-use recovery codes issued when you enrol
+- Turning 2FA off requires both your password and a current code
+- Administrators can require 2FA for everyone in the practice
+- See Section 30
+
+🆕 **Enforced Session Timeout**
+- Idle sessions now expire for real, checked on the server
+- Measured from your last action, not from when you signed in — working continuously will not sign you out mid-note
+- Timeout length is set by your administrator
+
+🆕 **Self-Service Practice Signup**
+- New practices can sign up at `/signup` without contacting sales
+- Pick a plan, enter details, apply a coupon if you have one, and pay through Stripe Checkout
+- Your workspace is created once payment succeeds
+- Card details never touch AureonCare
+
+🆕 **Join Your Practice by Email Domain**
+- A practice can claim a domain it controls and prove it with a DNS record
+- Colleagues then sign up with their work email — no invitation needed
+- New joiners land in a pending-approval queue for an administrator to accept
+- Self-serve joiners are never given administrator rights
+
+🆕 **Subscription Plans in Settings**
+- **Settings → Plans** is now live and administrator-only
+- Change plan and see the prorated amount before confirming
+- Changes sync to billing automatically
+
+🆕 **Diagnoses Moved to Clinical**
+- Diagnosis management now lives under **Clinical → Diagnosis** rather than Patients
+- Standalone diagnosis form gained a patient picker
+
+🆕 **Document Upload Review Queue**
+- Documents arriving from patients queue for staff review before filing
+- Review, accept, or reject from one screen
+
+🆕 **Stronger Account Protection**
+- Minimum password length raised to 12 characters, with mixed character types
+- Sign-in no longer reveals whether an email address is registered
+- Sessions are held in a protected browser cookie that scripts cannot read
+- Google and Microsoft sign-in moved to a more secure exchange handled by the server
+
+🆕 **Expanded Audit Trail**
+- Record *reads* are now logged, so "who opened this chart" has an answer
+- Audit entries can no longer be edited or deleted, by anyone
+- Entries record what was accessed, never the data returned
+
+🆕 **Encrypted Backups**
+- Backups containing patient data are encrypted before they leave your infrastructure
+
+🆕 **Training Video Library**
+- A published library of short how-to videos covering front desk, clinical, finance, and administration workflows
+- Linked from the in-app help drawer
+
+### 1.7 What's New in Version 1.3 (August 2026)
 
 **Major New Features:**
 
@@ -186,7 +343,7 @@ This manual is designed for:
 - CI/CD pipelines and an automated update agent
 - Supports cloud, customer-cloud, and on-premises deployment
 
-### 1.6 What's New in Version 1.2 (January 2026)
+### 1.8 What's New in Version 1.2 (January 2026)
 
 **Major New Features:**
 
@@ -283,7 +440,7 @@ This manual is designed for:
 - Contextual help based on current module
 - Quick access via Help icon in header or ?help=true URL parameter
 
-### 1.7 What's New in Version 1.1 (December 2025)
+### 1.9 What's New in Version 1.1 (December 2025)
 
 **Previous Enhancements:**
 
@@ -348,6 +505,7 @@ This manual is designed for:
 2. Enter your **Email Address**
 3. Enter your **Password**
 4. Click **Sign In**
+5. If two-factor authentication is on, enter the 6-digit code from your authenticator app
 
 **Patient Portal Login:**
 
@@ -367,6 +525,29 @@ This manual is designed for:
 5. Confirm your new password
 6. Log in with your new credentials
 
+**Sign-in Messages You May See:**
+
+| Message | What it means | What to do |
+|---------|---------------|------------|
+| *Invalid email or password* | The email and password combination was not accepted | Re-check both. For your safety this message is identical whether or not the address is registered |
+| *Enter your authentication code* | Your account has 2FA enabled | Open your authenticator app and enter the current code |
+| *Your account is awaiting approval* | You signed up through your practice's email domain and an administrator has not yet accepted you | Contact your practice administrator |
+| *Your account has been blocked* | An administrator has disabled the account | Contact your practice administrator |
+| *Your session has expired* | You were idle longer than your practice's timeout | Sign in again |
+
+⚠️ **Note:** AureonCare deliberately gives the same message for a wrong password and an unknown email address. This stops an outsider from discovering who has an account.
+
+**Session Timeout:**
+
+🆕 **NEW IN V1.4:** Idle sessions expire automatically.
+
+- The clock runs from your **last action**, not from when you signed in
+- Working continuously will not sign you out mid-note
+- The timeout length is set by your administrator in **Settings → Practice**
+- When a session expires you are returned to the sign-in screen; unsaved work in an open form is lost
+
+💡 **Tip:** Save long clinical notes as you go rather than leaving a form open while you step away.
+
 ### 2.2 First-Time Login
 
 When logging in for the first time:
@@ -376,6 +557,36 @@ When logging in for the first time:
 3. Upload a profile picture (optional)
 4. Set your language preference
 5. Review your assigned roles and permissions
+6. Set up two-factor authentication, if your practice requires it (see Section 30)
+
+**Password Requirements:**
+
+🆕 **UPDATED IN V1.4:** Passwords must be at least **12 characters** and mix character types — upper case, lower case, digits, and symbols.
+
+### 2.2.1 Getting an Account
+
+There are three ways to get an AureonCare account:
+
+**1. Invitation from your practice**
+- An administrator adds you under **Settings → Users**
+- You receive an email with a link to set your password
+- You can also accept the invitation with Google or Microsoft sign-in
+
+**2. Signing up with your work email** (🆕 NEW IN V1.4)
+- If your practice has claimed and verified its email domain, you can sign yourself up with your work address
+- Go to the sign-up page and register with that address
+- Your account is created in a **pending** state and appears in your practice's approval queue
+- An administrator approves it before you can sign in
+- Self-serve joiners are never given administrator rights
+
+**3. Starting a new practice** (🆕 NEW IN V1.4)
+- Go to `/signup`
+- Choose a subscription plan
+- Enter your practice details and apply a coupon code if you have one
+- Complete payment through Stripe Checkout
+- Your workspace and administrator account are created once payment succeeds
+
+✅ **Note:** Card details are handled entirely by Stripe and never reach AureonCare.
 
 ### 2.3 Social Login (OAuth)
 
@@ -431,17 +642,20 @@ Every module in AureonCare lives in exactly one workspace group. Use this map to
 **📅 Scheduling**
 - *Calendar:* Calendar view (day/week/month), Appointment list, Waitlist
 - *Providers:* Provider management
+- *Medical Camps:* Camp planning, Registration desk, Station board, Camp outcomes
 - *Setup:* Appointment types
 
 **👥 Patients**
-- *Records:* EHR, Diagnosis, Patient history
+- *Records:* EHR, Patient history
 - *Forms:* Patient intake, Form templates, Form submissions, Form audit
-- *Engagement:* Patient portal — appointments, diagnoses, prescriptions, records, forms
+- *Engagement:* Messages, Patient portal — appointments, diagnoses, prescriptions, records, forms, messages
 
 **🩺 Clinical**
-- *Care:* Telehealth
+- *Care:* Telehealth, Diagnosis
 - *Network:* Pharmacies, Laboratories
 - *FHIR:* FHIR tracking
+
+⚠️ **Moved in V1.4:** Diagnosis management is now under **Clinical**, not Patients. Messages is new under **Patients → Engagement**.
 
 **💰 Billing**
 - *Revenue Cycle:* Claims, Pre-approvals, Payments, Payment postings, Denials
@@ -461,11 +675,13 @@ Every module in AureonCare lives in exactly one workspace group. Use this map to
 - Custom report builder
 
 **🔧 Settings**
-- *Practice:* Clinic settings, Working hours, Appointment settings
+- *Practice:* Practice setup, Clinic settings, Locations, Working hours, Appointment settings
 - *Access:* Users, Roles, Plans
 - *System:* Integrations, Telehealth setup, Backup, Archive, Audit logs
 
-💡 **Tip:** What you see depends on your subscription tier *and* your role. A module must be included in your plan **and** permitted by your role before it appears. See Section 27.
+💡 **Tip:** What you see depends on three things: your subscription tier, your role, and your practice's specialty. A module must be in your plan **and** permitted by your role before it appears; a specialty pack can then hide modules you do not use, and an administrator can pin any of those back. See Sections 27 and 33.
+
+🆕 **Added in V1.5:** Medical Camps under **Scheduling**; Practice Setup and Locations under **Settings → Practice**.
 
 **Common Actions:**
 - **View** - Click on a record to see details
@@ -1941,6 +2157,10 @@ When creating a prescription, the system automatically checks for:
 
 ## 10. Diagnosis Management
 
+⚠️ **MOVED IN V1.4:** Diagnosis management now lives under **Clinical → Diagnosis**. It was previously under Patients. Everything else works as before.
+
+🆕 **NEW IN V1.4:** The standalone diagnosis form now has its own patient picker, so you can record a diagnosis without opening the chart first. The form sits above the diagnosis list on the same screen.
+
 ### 10.1 Creating a Diagnosis
 
 **To Document a Patient Diagnosis:**
@@ -3054,17 +3274,23 @@ The Patient Portal is a secure online platform where patients can:
 - Access medical records
 - View prescriptions
 - Complete assigned forms
-- Communicate with providers
+- Exchange secure messages with the practice
 - Manage personal information
 - Browse healthcare offerings
 
-**🆕 UPDATED IN V1.3:** When a patient signs in, the portal *is* their Home workspace — they land directly on it rather than navigating to it. Portal sections appear in the second pane: Appointments, Diagnoses, Prescriptions, Records, and Forms.
+**🆕 UPDATED IN V1.4:** Portal sections in the second pane are now Appointments, Diagnoses, Prescriptions, Records, **Forms**, and **Messages**.
 
-**Portal Security (V1.3):**
+When a patient signs in, the portal *is* their Home workspace — they land directly on it rather than navigating to it.
+
+Patients can also use the **mobile app** (Section 29) instead of the browser portal.
+
+**Portal Security:**
 - Session tokens are hashed at rest and bound to the specific patient
 - Repeated failed logins trigger rate limiting and temporary account lockout
-- Sessions are held in `sessionStorage` and clear when the browser closes
+- Sessions clear when the browser closes
 - Social login tokens are validated server-side before any account is created
+- 🆕 **V1.4:** Sign-in gives the same message for a wrong password and an unknown email, so an outsider cannot discover who is registered
+- 🆕 **V1.4:** Passwords must be at least 12 characters with mixed character types
 
 ### 16.2 Public Booking Links
 
@@ -3136,11 +3362,18 @@ Public bookings arrive in the normal appointment queue. If the contact details m
 
 **Booking Appointments:**
 1. Click **Book Appointment**
-2. Select provider (or any available)
-3. Select appointment type
+2. Select appointment type
+3. Choose a provider:
+   - 🆕 **Filter by specialty** (V1.5) — narrow the list to the right kind of clinician
+   - 🆕 **Search by name or specialty** (V1.5) — type to find someone directly
+   - Or leave it open and take any available provider
 4. Choose available date and time from calendar
 5. Add reason for visit
 6. Click **Book Appointment**
+
+💡 **Tip (V1.5):** The specialty list is built from the practice's actual staff, so it always reflects who really works there. If you change the filter and the provider you had chosen is no longer shown, the selection clears — so you cannot accidentally book with someone the filter has hidden.
+
+✅ **Note:** Provider search is available before you pick a date, so you can find the right clinician first and then see when they are free.
 7. Receive confirmation email
 
 **Rescheduling Appointments:**
@@ -3450,6 +3683,8 @@ AureonCare sends automatic notifications for:
 - Lab results available
 - Prescription refill requests
 - Form assignments and submission receipts
+- New secure messages (🆕 V1.4)
+- Documents awaiting review in the upload queue (🆕 V1.4)
 - Patient portal messages
 - Claim status updates
 - Payment receipts and failures
@@ -4504,16 +4739,32 @@ Status: Success
 
 ⚠️ **Warning:** Restore operations will overwrite current data. Always create a backup before restoring!
 
+🆕 **NEW IN V1.5 — Restore now asks before it runs.** Previously, choosing a backup file started the restore immediately: a misclick in a file dialog was enough to wipe and reload the practice's tables with no prompt and no undo. Both restore paths now confirm first.
+
+**What the confirmation tells you:**
+
+The backup file is read *before* you are asked, so the prompt shows:
+- When the backup was taken
+- How many records it contains
+- How many tables it spans
+
+A malformed or unreadable file is rejected at that point — you are never asked to approve something that could not have worked.
+
+✅ **Scope (V1.5):** Backup and restore operate only on **your own practice's data**. A restore no longer touches tables shared between practices.
+
 **Full Restore:**
 1. Go to **Backup & Restore**
 2. View list of available backups
 3. Select backup to restore
 4. Click **Restore**
-5. Confirm action (requires admin password)
-6. System performs restore (may take several minutes)
-7. Users are logged out during restore
-8. System restarts automatically
-9. Verify data after restore
+5. **Read the confirmation carefully** — check the backup date and record count match what you expect
+6. Confirm action (requires admin password)
+7. System performs restore (may take several minutes)
+8. Users are logged out during restore
+9. System restarts automatically
+10. Verify data after restore
+
+💡 **Tip:** If the date or record count in the confirmation is not what you expected, cancel. That prompt exists precisely to catch the wrong file.
 
 **Partial Restore:**
 1. Select backup
@@ -5173,6 +5424,10 @@ AureonCare ships with starter templates for common intake scenarios — new pati
 
 Editing a published template creates a new version. Submissions stay attached to the version that was live when the patient completed the form, so historical records never change retroactively.
 
+🆕 **V1.5:** Each submission now records the exact template version the patient saw. A later edit to the template cannot change what someone answered, or how the question was worded when they answered it.
+
+🆕 **V1.5:** Fixed 18 form fields that previously rendered as a label with no input box. If you built a template before this release and a field looked unanswerable, re-open the template — it will now render correctly.
+
 ### 24.2 Default Intake Forms
 
 Mark a template as a **default intake form** and it is assigned automatically when a new patient registers.
@@ -5503,12 +5758,22 @@ Supplier performance — order volume, on-time delivery, average lead time — i
 
 ### 27.1 How Access is Determined
 
-A module appears for a user only when **both** conditions hold:
+**🆕 UPDATED IN V1.5:** There are now three filters, not two.
+
+A module appears for a user only when **both** of these hold:
 
 1. The module is included in the practice's **subscription tier**
 2. The user's **role** permits access to it
 
-If either check fails, the module does not appear in the navigation.
+If either check fails, the module does not appear. On top of that, a third filter can *hide* a module that passes both:
+
+3. Your practice's **specialty** may hide modules it typically does not use — unless an administrator has pinned the module back
+
+```
+visible  =  (plan  ∩  role)  minus  (specialty-hidden, unless pinned)
+```
+
+⚠️ **Important:** Specialty can only ever narrow the menu. It can never reveal a module your plan or your role forbids — so it cannot be used to reach a feature you have not paid for. See Section 33.
 
 ### 27.2 Subscription Tiers
 
@@ -5524,7 +5789,12 @@ If either check fails, the module does not appear in the navigation.
 | Form Management | ✅ | ✅ | ✅ | ✅ |
 | Accounting | ✅ | ✅ | ✅ | ✅ |
 | Inventory | ✅ | ✅ | ✅ | ✅ |
+| Secure Messaging | ✅ | ✅ | ✅ | ✅ |
+| Mobile App | ✅ | ✅ | ✅ | ✅ |
+| Locations | ✅ | ✅ | ✅ | ✅ |
+| Practice Setup Wizard | ✅ | ✅ | ✅ | ✅ |
 | Administration | ✅ | ✅ | ✅ | ✅ |
+| Medical Camps | — | ✅ | ✅ | ✅ |
 | Telehealth | — | ✅ | ✅ | ✅ |
 | Revenue Cycle (RCM) | — | ✅ | ✅ | ✅ |
 | CRM | — | ✅ | ✅ | ✅ |
@@ -5534,7 +5804,7 @@ If either check fails, the module does not appear in the navigation.
 **Tier Summary:**
 
 - **Practice Essentials** — Core clinical and operational tools for a single practice
-- **Clinical Pro** — Adds telehealth, revenue cycle, CRM, and offerings
+- **Clinical Pro** — Adds telehealth, revenue cycle, CRM, offerings, and medical camps
 - **Enterprise** — Adds third-party integrations
 - **On-Premises / Customer Cloud** — Enterprise feature set, deployed on infrastructure you control
 
@@ -5593,6 +5863,688 @@ Administrators can generate, activate, and revoke license keys from the same scr
 | **On-Premises** | Deployed on your own servers, license-key activated |
 
 Self-hosted deployments ship with Docker images, Helm charts, CI/CD pipeline templates, and an update agent that applies releases on a schedule you control.
+
+### 27.7 Self-Service Signup & Domain Joining
+
+**🆕 NEW IN V1.4**
+
+#### Starting a New Practice
+
+1. Go to `/signup`
+2. Choose a subscription tier
+3. Enter practice name, your name, and your email address
+4. Apply a coupon code if you have one — the discount is shown before you pay
+5. Continue to Stripe Checkout and complete payment
+6. Your workspace, subscription, and administrator account are created automatically
+
+✅ **Note:** Nothing is created until payment succeeds. If you close the browser tab after paying, your workspace is still created — check your email for the sign-in link.
+
+⚠️ **Warning:** Card details are entered on Stripe's own page and never pass through AureonCare.
+
+#### Claiming Your Email Domain
+
+Claiming a domain lets colleagues sign themselves up with their work address instead of waiting for an invitation.
+
+**To claim a domain:**
+
+1. Go to **Settings → Access → Team Access**
+2. Click **Claim Domain**
+3. Enter the domain, for example `yourpractice.com`
+4. The system gives you a DNS TXT record
+5. Add that record to your domain's DNS settings
+6. Return and click **Verify** — verification confirms you control the domain
+
+⚠️ **Warning:** Public mailbox providers such as `gmail.com`, `outlook.com`, or `yahoo.com` cannot be claimed. A domain can only be claimed by one practice.
+
+**Join Policy:**
+
+| Policy | What happens when a colleague signs up |
+|--------|----------------------------------------|
+| **Request approval** (default) | Account created as *pending*; an administrator must approve it |
+| **Auto-join** | Account is activated immediately |
+
+💡 **Tip:** Leave the policy on *Request approval*. A claimed domain is not a staff list, and for a clinical system a person should decide who gets in.
+
+#### Approving Pending Joiners
+
+1. Go to **Settings → Access → Team Access**
+2. Open the **Pending Requests** queue
+3. Review the name, email address, and how the address was verified
+4. Click **Approve** or **Reject**
+
+⚠️ **Warning:** Rejecting blocks the account rather than leaving it pending, so it cannot be approved later by mistake.
+
+✅ **Note:** Two proofs are required before anyone can join this way — your practice must have proven it controls the *domain*, and the joiner must have proven they control the *address*. Neither alone is enough.
+
+---
+
+## 28. Secure Messaging
+
+**🆕 NEW IN V1.4** — Found under **Patients → Engagement → Messages**
+
+Secure Messaging provides threaded conversations between colleagues, and between the practice and its patients, inside AureonCare rather than over email or text.
+
+### 28.1 Why Use It
+
+- Patient messages stay attached to the practice record rather than sitting in a personal inbox
+- Message bodies and attachments are encrypted before they are stored
+- Conversations are visible to the care team, so cover arrangements work
+- Documents sent by a patient can be filed straight into their chart
+
+⚠️ **Warning:** Secure Messaging is not for emergencies. Tell patients to call the practice or emergency services for anything urgent.
+
+### 28.2 The Inbox
+
+Open **Patients → Engagement → Messages**. The inbox has two panes:
+
+- **Left:** your conversation threads, newest activity first
+- **Right:** the selected conversation
+
+Staff-to-staff and staff-to-patient threads share one inbox — they are not split across separate screens.
+
+**Unread Messages:**
+
+The message icon in the header carries a count of unread conversations. Click it from anywhere to jump to the inbox.
+
+### 28.3 Starting a Conversation
+
+1. Click **New Message**
+2. Choose who you are writing to:
+   - **Colleague** — search staff by name
+   - **Patient** — search by name or MRN
+3. Add more participants if the conversation needs them
+4. Enter a subject
+5. Type your message
+6. Attach documents if needed
+7. Click **Send**
+
+✅ **Note:** Patients see only the threads they are a participant in. They never see staff-only conversations.
+
+### 28.4 Replying
+
+1. Select the thread
+2. Type in the reply box at the bottom
+3. Attach files if needed
+4. Click **Send**
+
+The thread updates for every participant. Patients are notified by email, and by WhatsApp if they have opted in.
+
+### 28.5 Attachments
+
+**Sending an attachment:**
+
+1. Click the paperclip in the message composer
+2. Choose the file
+3. Send
+
+**Filing a patient's attachment into the chart:**
+
+1. Open the message containing the document
+2. Click **File to Chart** on the attachment
+3. Choose the record type and add a description
+4. Confirm
+
+The document is added to the patient's records and stays visible in the message thread.
+
+💡 **Tip:** File clinically relevant documents promptly. A document that lives only in a message thread is easy to miss when someone later reads the chart.
+
+### 28.6 Patient View
+
+Patients reach messaging as a **Messages** tab in the Patient Portal.
+
+They can:
+- Read threads they are part of
+- Reply
+- Attach documents such as photos of an insurance card or a referral letter
+- See when a message has been read
+
+They cannot:
+- Start a thread with a staff member who is not part of their care
+- See staff-only conversations
+- See other patients' threads
+
+### 28.7 Privacy & Retention
+
+- Message bodies and attachment contents are encrypted before being written to the database
+- Encryption is at rest under a key the practice controls — it is **not** end-to-end encryption, and this is deliberate: retention, legal hold, audit, and clinical coverage all require the practice to retain access
+- Messages are covered by the audit trail
+- Messages are retained and archived under the same rules as other patient records
+
+### 28.8 Best Practices
+
+- ✅ Answer patient messages within one business day
+- ✅ Set expectations with patients about response times
+- ✅ File clinically significant messages into the chart
+- ✅ Use messaging for follow-up questions, results discussion, and admin queries
+- ❌ Don't use messaging for urgent clinical problems
+- ❌ Don't discuss one patient in another patient's thread
+- ❌ Don't move a clinical conversation to personal email or text
+
+---
+
+## 29. Mobile App
+
+**🆕 NEW IN V1.4** — Available for iOS and Android
+
+AureonCare ships native mobile apps for both staff and patients. They are real native applications sharing the platform's API, not a wrapped website.
+
+### 29.1 Installing
+
+1. Search for **AureonCare** in the App Store (iOS) or Google Play (Android)
+2. Install and open the app
+3. Enter the practice URL if prompted
+4. Sign in with the same email and password you use on the web
+
+The app chooses the right experience automatically based on your account — you do not pick "staff" or "patient".
+
+### 29.2 Signing In & Security
+
+**Biometric Unlock:**
+
+1. Sign in with your password once
+2. When prompted, enable **Face ID**, **Touch ID**, or **fingerprint unlock**
+3. Subsequent launches unlock biometrically
+
+Credentials are held in the device's secure hardware store (iOS Keychain / Android Keystore).
+
+**Two-Factor Authentication:**
+
+If your account has 2FA enabled, the app asks for your authenticator code at sign-in exactly as the web app does.
+
+**Automatic Sign-Out:**
+
+The app signs you out if the server rejects your stored credential — for example after a password change or an administrator disabling the account.
+
+⚠️ **Warning:** Enable a device passcode and biometric lock. An unlocked phone with the app installed is an unlocked chart.
+
+### 29.3 Staff App
+
+**Tabs on a phone:**
+
+| Tab | What it shows |
+|-----|---------------|
+| **Schedule** | Today's appointments, with the ability to open each one |
+| **Patients** | Patient search and chart summary |
+| **Orders** | Lab and prescription orders |
+| **Billing** | Claims and payment status |
+| **More** | Messages, settings, sign out |
+
+**Additional tablet tabs:**
+
+On a tablet the app adds the workflows that need more room:
+- **Encounter capture** — document a visit
+- **Orders** with multi-select pickers
+- **Revenue cycle** with side-by-side context
+
+### 29.4 Patient App
+
+| Tab | What it shows |
+|-----|---------------|
+| **Home** | Next appointment, recent activity, outstanding forms |
+| **Visits** | Upcoming and past appointments |
+| **Records** | Medical records, prescriptions, results |
+| **Messages** | Secure messages with the practice |
+| **More** | Profile, notification settings, sign out |
+
+### 29.5 Responsive Layout
+
+The app measures the window width live rather than assuming a device type:
+
+- **Under 600dp** — phone layout, screens stack
+- **900dp and above** — tablet layout, list and detail side by side
+
+This matters for iPad Split View and Android foldables, which change size while the app is running.
+
+### 29.6 Push Notifications
+
+Enable notifications when first prompted, or later in your device settings.
+
+You will be notified for:
+- New secure messages
+- Appointment reminders
+- Appointment changes and cancellations
+- Lab results (patients)
+- Task assignments (staff)
+
+Notification preferences follow the same settings as email and WhatsApp — see Section 18.
+
+### 29.7 Camera Capture
+
+1. Open a message thread
+2. Tap the camera icon
+3. Take the photo
+4. Review and send
+
+The photo is encrypted and attached to the message. Staff can file it into the patient's chart.
+
+💡 **Tip:** This is the fastest way for a patient to send an insurance card, a rash photo, or a home reading.
+
+### 29.8 Troubleshooting
+
+| Problem | Fix |
+|---------|-----|
+| **Cannot sign in** | Confirm the practice URL, and that your account works on the web |
+| **Biometric unlock stopped working** | Sign in with your password; the stored credential is cleared when it is rejected |
+| **No notifications** | Check notification permission in device settings, then your in-app preferences |
+| **Data looks stale** | Pull down to refresh |
+| **Signed out unexpectedly** | Your session hit the idle timeout, or an administrator changed your account |
+
+---
+
+## 30. Account Security
+
+**🆕 NEW IN V1.4**
+
+### 30.1 Two-Factor Authentication (2FA)
+
+Two-factor authentication asks for a 6-digit code from your phone in addition to your password. It is the single most effective protection for an account that touches patient data.
+
+#### Enrolling
+
+1. Open **User Profile → Security**
+2. Click **Enable Two-Factor Authentication**
+3. Scan the QR code with an authenticator app, **or** type the setup key shown beneath it
+4. Enter the 6-digit code your app displays
+5. Click **Verify**
+6. **Save your ten recovery codes** — they are shown only once
+
+✅ **Note:** 2FA switches on only after a code from your app verifies. An abandoned setup cannot lock you out.
+
+**Supported authenticator apps:** Google Authenticator, Microsoft Authenticator, Authy, 1Password, Bitwarden, or any app supporting TOTP.
+
+#### Recovery Codes
+
+- Ten codes are issued when you enrol
+- Each works **once**
+- Use one in place of an authenticator code if you lose your phone
+- They are stored hashed — AureonCare cannot show them to you again
+
+⚠️ **Warning:** Save your recovery codes somewhere safe and offline **before** leaving the enrolment screen. Losing both your phone and your recovery codes means an administrator must reset your access.
+
+**Regenerating recovery codes:**
+
+1. Go to **User Profile → Security**
+2. Click **Regenerate Recovery Codes**
+3. Enter a current authenticator code
+4. Save the new set — the old set stops working immediately
+
+#### Signing In With 2FA
+
+1. Enter your email and password
+2. Enter the 6-digit code from your authenticator app
+3. If you cannot reach your phone, click **Use a recovery code** and enter one
+
+#### Turning 2FA Off
+
+1. Go to **User Profile → Security**
+2. Click **Disable Two-Factor Authentication**
+3. Enter **both** your password and a current authenticator code
+4. Confirm
+
+⚠️ **Warning:** Being signed in is deliberately not enough to remove your second factor — that is exactly what someone holding a stolen session would try to do.
+
+#### Requiring 2FA Practice-Wide
+
+Administrators can require 2FA for every account.
+
+1. Go to **Settings → Access → Team Access**
+2. Enable **Require two-factor authentication**
+3. Save
+
+⚠️ **Warning:** The setting is refused while any administrator still lacks a second factor, and the error names them. Enabling it otherwise would lock the person enabling it out of their own practice at the next sign-in.
+
+💡 **Tip:** Have every administrator enrol first, then switch the requirement on, then give staff a deadline to enrol.
+
+### 30.2 Passwords
+
+**Requirements (updated in V1.4):**
+- Minimum **12 characters**
+- Mix of upper case, lower case, digits, and symbols
+
+**Changing your password:**
+
+1. Go to **User Profile → Security**
+2. Click **Change Password**
+3. Enter your current password, then the new one twice
+4. Click **Save**
+
+**Best practice:**
+- ✅ Use a password manager and a unique password per system
+- ✅ Change it immediately if you suspect exposure
+- ❌ Don't reuse a password from another system
+- ❌ Don't share credentials, ever — audit entries are attributed to the account that acted
+
+### 30.3 How Sessions Are Protected
+
+You do not need to configure any of this, but it is worth knowing:
+
+- Your session is held in a protected browser cookie that page scripts cannot read, so a malicious script cannot steal it
+- Requests carry a second token that proves they came from the real application
+- Sessions expire after a period of inactivity, enforced on the server
+- Signing out invalidates the session immediately — it cannot be replayed
+- Google and Microsoft sign-in use an exchange completed by the server, so no third-party token is exposed to the browser
+
+### 30.4 What Gets Audited
+
+🆕 **EXPANDED IN V1.4:** The audit trail now records reads as well as changes.
+
+**Recorded:**
+- Who signed in, when, and from what address
+- Every create, edit, and delete
+- **Every read of patient data** — who opened which chart, record, prescription, lab order, or diagnosis
+- Permission and role changes
+- Export and backup operations
+
+**Not recorded:**
+- The patient data itself. Entries record *what* was accessed, never the content returned — an audit trail that copied the data would become a second place to leak it.
+
+**Immutability:**
+
+Audit entries cannot be edited or deleted by anyone, including administrators. This is enforced by the database, not by application permissions.
+
+To review: **Settings → System → Audit Logs**. See Section 19 for filtering and export.
+
+### 30.5 Data Protection
+
+| Protection | What it covers |
+|------------|----------------|
+| **Encryption in transit** | Everything between your browser or phone and the server |
+| **Encryption at rest** | The database, plus message bodies and attachments encrypted separately |
+| **Encrypted backups** | Backups containing patient data are encrypted before leaving your infrastructure |
+| **Rate limiting** | Repeated failed sign-ins are throttled and the account is temporarily locked |
+| **Send quotas** | Per-recipient limits on email and WhatsApp, so a fault cannot flood a patient |
+
+### 30.6 Security Checklist for Administrators
+
+- ✅ Require 2FA for all accounts, administrators first
+- ✅ Set an idle session timeout appropriate to your setting — shorter for shared workstations
+- ✅ Review the pending-joiner queue regularly; reject anything unexpected
+- ✅ Review user accounts quarterly and disable leavers the day they leave
+- ✅ Check audit logs for unusual access patterns
+- ✅ Confirm backups are running and encrypted
+- ✅ Keep the claimed-domain join policy on *Request approval*
+- ❌ Don't share administrator accounts
+- ❌ Don't leave departed staff accounts active "just in case"
+
+---
+
+## 31. Medical Camps
+
+**🆕 NEW IN V1.5** — Found under **Scheduling → Medical Camps** | Clinical Pro and above
+
+Medical Camps supports time-boxed outreach events held at a venue your practice does not own — a school hall, a community centre, a partner site.
+
+### 31.1 How a Camp Differs From a Clinic Day
+
+A camp is **not** a slot calendar. Nobody books a 09:20 appointment. Instead:
+
+- Attendees arrive as walk-ins and are registered at a desk
+- They receive a **queue token**
+- They move through a pipeline of **stations** — registration, vitals, consultation, pharmacy, and so on
+- Each station has its own queue
+
+A camp is a scheduling and reporting context laid over your normal clinical records. Notes, diagnoses, prescriptions and lab orders written at a camp live in the usual places — there is no second clinical system to reconcile afterwards.
+
+### 31.2 Camp Planning
+
+**Scheduling → Medical Camps → Camp Planning**
+
+**Creating a camp:**
+
+1. Click **+ New Camp**
+2. Enter the camp details:
+
+| Field | Description |
+|-------|-------------|
+| **Camp Name** | What the event is called |
+| **Venue** | Choose a location, or create one of type *Camp* (see Section 32) |
+| **Start / End Date** | The window the camp runs |
+| **Sponsor** | Organisation funding or hosting, if any |
+| **Expected Attendance** | Used for planning supplies and staffing |
+
+3. Add the **services** the camp will offer
+4. Define the **stations** attendees pass through, in order
+5. Assign **staff** to stations
+6. List the **supplies** the camp needs — drawn from Inventory where you track it
+7. Click **Save**
+
+**Camp statuses:**
+
+- 📝 **Draft** — Being planned, not visible to the desk
+- 📋 **Published** — Plan agreed, staff and stations fixed
+- ▶️ **In Progress** — Running; the desk and board are live
+- ✅ **Completed** — Finished; reporting available
+- ❌ **Cancelled** — Called off
+
+### 31.3 Registration Desk
+
+**Scheduling → Medical Camps → Registration Desk**
+
+Built for speed under queue pressure.
+
+**Registering an attendee:**
+
+1. Enter **name**, **phone number** and **age**
+2. Capture **consent**
+3. Click **Register**
+4. A **queue token** is issued and printed or shown
+
+✅ **Note:** A camp registration is deliberately *not* a patient record. The patient index requires an MRN and an exact date of birth; a registration desk has a name, a number and an approximate age. Keeping them separate is what lets the desk move quickly without filling your patient list with half-complete records.
+
+**Consent is required.** An attendee without recorded consent cannot be started at a station — the check is enforced at the station as well as at the desk, so "we'll take the consent later" is not available under pressure.
+
+### 31.4 Promoting a Registration to a Patient
+
+When a camp attendee becomes an ongoing patient — a referral, a follow-up, a prescription to dispense later — promote their registration.
+
+1. Open the registration
+2. Click **Promote to Patient**
+3. The system shows **existing patients who may be the same person**, with phone-number matches ranked highest
+4. Either:
+   - **Link** to an existing patient, or
+   - **Create** a new patient record
+5. Supply a **date of birth**
+
+⚠️ **Warning:** Promotion will not invent a date of birth. Enter the real one, or explicitly ask for an estimate — in which case the record is marked as holding an estimated date, so nobody later mistakes it for a verified one.
+
+💡 **Tip:** Promotion is the only bridge between camp registrations and your patient index, and it always shows possible duplicates first. That makes merging a decision someone made, rather than something that happened by accident at volume.
+
+### 31.5 Station Board
+
+**Scheduling → Medical Camps → Station Board**
+
+A live view of the camp while it runs:
+
+- Every station, with its current queue length
+- Average and current waiting time per station
+- Which attendee is in progress at each station
+- Completed counts per station
+
+Use it to spot a bottleneck and move staff while the camp is still running.
+
+**Working a station:**
+
+1. Select your station
+2. Call the next token
+3. Click **Start Visit** — refused if consent was never recorded
+4. Deliver care and document it as you normally would
+5. Click **Complete** — the attendee moves to the next station in the pipeline
+
+### 31.6 Camp Outcomes
+
+**Scheduling → Medical Camps → Camp Outcomes**
+
+Two distinct reports:
+
+**Clinical report** — for the practice. Full detail: attendees seen, conditions found, referrals made, prescriptions issued, throughput per station and per hour.
+
+**Sponsor report** — for the funding organisation. Aggregate only, built from an explicit list of permitted fields rather than by filtering the clinical report.
+
+⚠️ **Privacy:** In the sponsor report, any category with fewer than five people is merged into a larger bucket. In a camp of eighty, a count of one plus local knowledge identifies somebody. Do not work around this by exporting the clinical report to a sponsor.
+
+**Exports:** PDF, Excel and CSV.
+
+### 31.7 Best Practices
+
+- ✅ Create the venue as a **Location** before planning the camp
+- ✅ Publish the camp before the day so the desk and board are ready
+- ✅ Order stations in the sequence attendees physically walk
+- ✅ Record consent at registration, every time
+- ✅ Promote registrations the same day, while staff still recall the attendee
+- ✅ Send sponsors the sponsor report, never the clinical one
+- ❌ Don't register attendees as full patients to "save time later" — it fills the index with incomplete records
+- ❌ Don't skip the consent step under queue pressure; the station will refuse the visit anyway
+
+---
+
+## 32. Locations
+
+**🆕 NEW IN V1.5** — Found under **Settings → Practice → Locations**
+
+Until this release AureonCare assumed one implicit place. Locations makes sites explicit, which is what multi-branch practices, departments, and anything held off-site need.
+
+### 32.1 Location Types
+
+| Type | Use For |
+|------|---------|
+| **Clinic** | A permanent site your practice operates |
+| **Camp** | A venue used for an outreach event (see Section 31) |
+| **Mobile** | A vehicle or travelling service |
+| **Partner** | A site operated by someone else where you deliver care |
+
+### 32.2 Adding a Location
+
+1. Go to **Settings → Practice → Locations**
+2. Click **+ New Location**
+3. Enter the details:
+
+| Field | Description |
+|-------|-------------|
+| **Name** | What the site is called |
+| **Type** | Clinic, Camp, Mobile or Partner |
+| **Address** | Street address |
+| **City** | City or town |
+| **Phone** | Site contact number |
+| **Time Zone** | The site's local time zone |
+| **Primary Site** | Whether this is the practice's main site |
+
+4. Click **Save**
+
+✅ **Note:** Exactly one location is the primary site. Marking a different site primary moves the flag rather than creating a second one. Your existing clinic details became the primary site automatically when you upgraded.
+
+### 32.3 What Carries a Location
+
+Once sites exist, these records can each name one:
+
+- **Appointments** — where the appointment takes place
+- **Provider availability** — which site a clinician works from, and when
+- **Working hours** — opening hours per site
+- **Inventory stock movements** — which site stock moved at
+
+A record without a location is still valid; the field is optional everywhere.
+
+### 32.4 Removing a Location
+
+1. Open the location
+2. Click **Delete**
+3. Confirm
+
+⚠️ **Note:** Deleting a site never deletes history. Appointments, stock movements and availability that referenced it simply lose the location reference; the records themselves stay intact.
+
+### 32.5 Best Practices
+
+- ✅ Create a location before scheduling anything at it
+- ✅ Set the time zone correctly — appointment times depend on it
+- ✅ Use **Camp** type for outreach venues rather than creating a permanent clinic
+- ✅ Keep the primary site pointing at your main place of business
+- ❌ Don't delete a site to "clean up" — mark it inactive if it may return
+
+---
+
+## 33. Practice Setup Wizard
+
+**🆕 NEW IN V1.5** — Found under **Settings → Practice → Practice Setup** | Administrators only
+
+A new practice starts generic: every module visible, every menu item present, no services defined. The Practice Setup Wizard configures AureonCare for what your practice actually does.
+
+### 33.1 The Six Steps
+
+| Step | What it does |
+|------|--------------|
+| **1. Profile** | Practice name, address, contact details |
+| **2. Specialty** | Choose one or more specialties |
+| **3. Services** | Review the starter services your specialty suggests |
+| **4. Providers** | Add clinicians and their specialties |
+| **5. Forms** | Review the intake and clinical forms your specialty suggests |
+| **6. Review** | See everything that will change, then apply |
+
+You can leave the wizard at any step and return — your progress is saved.
+
+### 33.2 Specialty Packs
+
+A specialty pack is a starting configuration: suggested services, forms, and terminology for a kind of practice.
+
+**Available packs:**
+
+| Pack | Covers |
+|------|--------|
+| **Behavioural Health** | Counselling and behavioural health practice |
+| **Dentistry** | General dental practice, chair-side appointments |
+| **Ophthalmology** | Refraction and investigation workflows |
+| **Paediatrics** | Well-child visits and immunisation schedules |
+
+Choosing a pack does not commit you to it. Step 6 shows exactly what would be created or changed before anything happens.
+
+### 33.3 What a Pack Will and Will Not Do
+
+**A pack will:**
+- Create services, forms and terminology you do not already have
+- Hide modules your specialty typically does not use
+
+**A pack will never:**
+- Overwrite anything you have edited — it reports a **conflict** and leaves your version alone
+- Take ownership of a service or form it did not create
+- Reveal a module your subscription tier or your role does not permit
+
+✅ **Note:** The third point matters. Specialty can only ever *narrow* the menu, never widen it. A pack cannot be used to reach a feature your plan does not include.
+
+### 33.4 Module Visibility
+
+From V1.5 there are three filters on what you see:
+
+```
+visible  =  (what your plan includes  ∩  what your role permits)
+            minus  (what your specialty hides, unless an admin pinned it back)
+```
+
+**Pinning a module back:**
+
+If your specialty hid something you do use:
+
+1. Go to **Settings → Practice → Practice Setup**
+2. Open **Hidden modules**
+3. Click **Pin** next to the module
+4. It reappears in the navigation for everyone whose plan and role allow it
+
+💡 **Tip:** Hiding is a convenience, not a restriction. Anything your plan covers can always be pinned back.
+
+### 33.5 Re-running the Wizard
+
+You can run the wizard again at any time — to add a second specialty, or after a pack update.
+
+Re-running:
+- Shows a fresh preview of what would change
+- Still refuses to touch anything you have edited since
+- Leaves your pinned modules pinned
+
+### 33.6 Best Practices
+
+- ✅ Run the wizard before adding real patient data
+- ✅ Read the Step 6 preview properly — it is the last point before changes apply
+- ✅ Adjust seeded services and forms afterwards; they are starting points, not rules
+- ✅ Pin back any module your specialty hid but you actually use
+- ❌ Don't expect a pack to overwrite your edits — it is designed not to
+- ❌ Don't choose a specialty you do not practise just to get one of its forms; copy the form instead
 
 ---
 
@@ -5654,6 +6606,38 @@ Self-hosted deployments ship with Docker images, Helm charts, CI/CD pipeline tem
 
 ## Document Version History
 
+**Version 1.5** - October 2026 - Major Update with:
+- Medical Camps: planning, registration desk, station board and outcome reporting
+- Camp registrations kept separate from the patient index, with a deliberate promotion step and duplicate matching
+- Sponsor reporting with small-group suppression
+- Locations: sites as a first-class entity (clinic, camp, mobile, partner)
+- Practice Setup Wizard with specialty packs for behavioural health, dentistry, ophthalmology and paediatrics
+- Specialty as a third filter on module visibility, narrowing only, with administrator pinning
+- Patients can filter and search providers by specialty when booking
+- Restore now confirms before overwriting, showing the backup's date, record count and table count
+- Backup and restore scoped to the caller's own practice
+- Form submissions linked to the exact template version the patient saw
+- Fixed 18 form fields that rendered without an input
+- Clearer errors for unlinked accounts, failed provider loads and rejected OAuth sign-ins
+
+**Version 1.4** - September 2026 - Major Update with:
+- Secure Messaging between staff, and between the practice and its patients
+- Native mobile apps for iOS and Android, with biometric unlock and push notifications
+- Two-factor authentication (TOTP) with recovery codes and a practice-wide requirement option
+- Server-enforced idle session timeout, measured from last activity
+- Self-service practice signup through Stripe Checkout, with coupon support
+- Join-by-email-domain with DNS verification and a pending-approval queue
+- Settings → Plans made live, administrator-only, with prorated plan changes
+- Diagnosis management moved from Patients to Clinical
+- Document upload review queue
+- Password minimum raised to 12 characters with mixed character types
+- Sign-in no longer reveals whether an email address is registered
+- Sessions moved to protected cookies; OAuth exchange moved server-side
+- Audit trail expanded to record PHI reads, and made immutable
+- Backups containing patient data encrypted before leaving the infrastructure
+- Published training video library
+- Contact and documentation domains moved to aureoncare.tech
+
 **Version 1.3** - August 2026 - Major Update with:
 - Three-pane application shell (workspace groups → modules → content)
 - Accounting module: chart of accounts, journal, receivables, payables, reconciliation, statements
@@ -5685,6 +6669,13 @@ Self-hosted deployments ship with Docker images, Helm charts, CI/CD pipeline tem
 - In-app Help Drawer with Browse, Search, and AI Assistant tabs
 - Publicly accessible documentation website
 - Context-aware AI-powered help assistant
+
+**Version 1.5** - October 2026 - Updated with:
+- Locations: multiple sites per practice, with one primary site
+- Medical Camps: planning, staffing conflicts, registration desk with queue tokens,
+  station board, consent gate, stock reconciliation, and an aggregates-only sponsor report
+- Practice Setup: specialty configuration wizard with previewed changes, protection for
+  your own edits, multi-specialty merging and per-practice terminology
 
 **Version 1.1** - December 2025 - Updated with:
 - Waitlist management integration into Practice Management

@@ -1,0 +1,39 @@
+1
+00:00:04,365 --> 00:00:12,655
+Fill a cancelled slot from the waitlist — Scheduling ▸ Waitlist — Turn a cancellation into a booking instead of an empty hour.
+
+2
+00:00:18,052 --> 00:00:23,886
+Scheduling ▸ Waitlist is everyone who wants an earlier slot than the one they have.
+
+3
+00:00:23,886 --> 00:00:30,785
+Each entry carries the provider they need, the type of visit, and the days and times they can actually make.
+
+4
+00:00:30,785 --> 00:00:43,202
+Priority and flexibility are what matter — the patient who can come any morning fills a gap the rigid one cannot.
+
+5
+00:00:43,202 --> 00:00:52,556
+Switching to every status shows who has already been called, and who is booked.
+
+6
+00:00:52,556 --> 00:01:04,806
+A slot has just opened. Notify contacts the next patient and marks the entry as called, so nobody rings them twice.
+
+7
+00:01:04,806 --> 00:01:12,024
+Once they accept and you book them, mark the entry scheduled — it leaves the queue and the slot is filled.
+
+8
+00:01:12,024 --> 00:01:19,197
+The habit that makes this work: put people on the waitlist with real availability, not just a name.
+
+9
+00:01:20,901 --> 00:01:35,381
+What you just did
+
+10
+00:01:36,016 --> 00:01:45,016
+Health | Efficiency | Growth — More in the Getting Started series — the next video is linked on screen.

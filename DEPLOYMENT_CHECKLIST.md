@@ -56,10 +56,25 @@ Then, and on every deploy after:
 
 ```bash
 node backend/run-migrations.js          # global: public + control — applies only what is new
-node backend/run-tenant-migrations.js   # fans out tenant/001, 002 to every tenant schema
+node backend/run-tenant-migrations.js   # fans tenant/001, 002, 003 out to every tenant schema
 ```
 
 Add `--dry-run` to either to see what would run without touching anything.
+
+> **Tenant migrations are not optional.** `run-migrations.js` only touches `public` and
+> `control`. Skipping `run-tenant-migrations.js` leaves per-tenant tables behind — and
+> tenant/003 in particular is what makes it possible to delete a user at all: without it,
+> the `ON DELETE SET NULL` on `audit_logs.user_id` tries to rewrite a table that
+> tenant/002 made append-only, and the deletion fails with
+> `P0001: audit_logs is append-only`.
+>
+> **Do not paste `migrations/tenant/*.sql` into a SQL editor.** Those files use
+> *unqualified* table names because the runner sets `search_path` per tenant before each
+> one. Run directly, `audit_logs` resolves against `public` where it does not exist and you
+> get `ERROR: 42P01: relation "audit_logs" does not exist` — which describes how they were
+> run, not the migrations. Without node, use
+> `backend/scripts/manual/apply-tenant-migrations.sql`, which does the per-schema loop
+> itself.
 
 - [ ] `--adopt` run exactly once on the existing database (skip on a brand-new one)
 - [ ] Global migrations complete without error
@@ -479,6 +494,43 @@ shell to run:
 npm run migrate:core       # public/control migrations
 npm run migrate:tenants    # fans the tenant/*.sql set out across every tenant schema
 ```
+
+Run them **in that order, both of them**, every release. A table that only the first runner
+knows about does not exist in any tenant; a table only the second knows about is missing
+from every tenant provisioned afterwards, because `control.provision_schema` clones exactly
+what `control.tenant_tables` lists. Migrations 083 and 084 (locations, medical camps) are
+registration-only for that reason, with the tables themselves created by `tenant/004`–`006`.
+
+Afterwards, `npm run check:schema-health` should report every tenant schema complete. A
+tenant left behind is reported there rather than failing at request time.
+
+Camps are gated by the `camps` key in `subscription_plans.features`, which migration 084
+adds to `clinical_pro`, `enterprise` and `onprem` and deliberately not to `essentials`. No
+new environment variables are involved.
+
+The specialty packs need a third command, after both runners:
+
+```bash
+npm run packs:load         # validates backend/data/specialty-packs/*.json, then loads them
+```
+
+It validates every file first and loads nothing if any one fails, so a bad pack cannot
+leave a half-populated catalogue.
+
+`migrate:tenants` also seeds the system form library (tenant/008): 22 templates, 14
+categories and 283 field definitions per tenant. After it runs,
+`SELECT count(*) FROM <schema>.form_templates WHERE source_pack = 'base'` should be 22 in
+every tenant schema and in `template`. If it is 0 anywhere, forms sent to patients from
+that tenant will have no template linkage — which is the defect tenant/008 exists to fix.
+`npm run test:forms` asserts it end to end, and `npm run check:form-library` reports any
+tenant that is short (with `npm run repair:form-library` to copy the missing rows from
+`template`). Worth running after any deploy that provisions tenants: the provisioning copy
+is the only route the library takes into a new tenant, and a tenant that misses it cannot
+be fixed by re-running the migrations. Packs land with `clinical_review_status = 'pending'` —
+they are usable, but the API refuses to apply one without an explicit acknowledgement and
+the wizard says the content is an engineering draft. Re-running never overwrites a version
+a clinician has approved; edited content must get a new version number. No new environment
+variables are involved here either.
 
 If your Supabase project blocks connections from arbitrary IPs, either allowlist your
 address for the duration or run these from a bastion — do **not** add a bootstrap endpoint

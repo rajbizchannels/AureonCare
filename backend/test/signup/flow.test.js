@@ -308,6 +308,100 @@ async function postWebhook(secret, event) {
   check('portal session routed to the patient\'s OWN tenant',
         routed[0] && routed[0].tid === other.tenant.id);
 
+  // ── 6. Public endpoints must work for a visitor who already has a cookie ───
+  // The API is same-origin, so the browser attaches an existing session cookie to public
+  // POSTs without being asked. verifyCsrf then treats them as cookie-authenticated and
+  // rejected them for want of a token — so signing up for a new subscription, or accepting
+  // an invite, failed with 403 for anyone already signed in or carrying a stale cookie.
+  {
+    const RUN6 = crypto.randomBytes(4).toString('hex');
+    const { practiceId: p6 } = await provisionTenant(pool, { name: 'CSRF ' + RUN6 });
+    const email6 = `csrf_${RUN6}@example.com`;
+    const PW6 = 'A-Strong-Passphrase!23';
+    const bcrypt6 = require(path.join(BACKEND, '..', 'node_modules', 'bcryptjs'));
+    await pool.query(
+      `INSERT INTO public.users (id,email,first_name,last_name,role,status,password_hash,practice_id,created_at)
+       VALUES (gen_random_uuid(),$1,'A','B','admin','active',$2,$3,NOW())`,
+      [email6, await bcrypt6.hash(PW6, 12), p6]
+    );
+    const login6 = await fetch(BASE + '/api/auth/login', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email6, password: PW6 }),
+    });
+    const cookies6 = (login6.headers.getSetCookie ? login6.headers.getSetCookie() : [])
+      .map((c) => c.split(';')[0]).join('; ');
+    const csrf6 = /ac_csrf=([^;]+)/.exec(cookies6);
+    check('signing in yields both a session and a CSRF cookie',
+      /ac_session=/.test(cookies6) && Boolean(csrf6));
+
+    const signupBody = JSON.stringify({
+      practiceName: 'Late Signup ' + RUN6, email: `late_${RUN6}@example.com`,
+      password: PW6, firstName: 'L', lastName: 'S', planId: planId,
+    });
+
+    // This used to assert a 403 — the behaviour before the session-independent exemption.
+    // Signup does not act as the cookie's user, so it is now allowed through; what must
+    // still hold is that it works WHETHER OR NOT the visitor happens to carry a cookie.
+    const noToken = await fetch(BASE + '/api/signup', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', Cookie: cookies6 },
+      body: signupBody,
+    });
+    check('signup works with a stale session cookie and no CSRF header',
+      noToken.status !== 403);
+
+    // The exemption must cover the session-independent endpoints...
+    const exemptSignup = await fetch(BASE + '/api/signup', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', Cookie: cookies6 },
+      body: signupBody,
+    });
+    check('signup is exempt from CSRF even with a session cookie and no token',
+      exemptSignup.status !== 403);
+
+    const exemptJoin = await fetch(BASE + '/api/team-access/join', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', Cookie: cookies6 },
+      body: JSON.stringify({ email: `j_${RUN6}@unclaimed-${RUN6}.example`, password: PW6 }),
+    });
+    check('domain join is exempt too', exemptJoin.status !== 403);
+
+    const exemptAccept = await fetch(BASE + '/api/invites/accept', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', Cookie: cookies6 },
+      body: JSON.stringify({ token: 'not-a-real-token', password: PW6 }),
+    });
+    check('invite acceptance is exempt too', exemptAccept.status !== 403);
+
+    // ...and must NOT cover anything that acts as the cookie's user. A forged login signs
+    // the victim's browser into the ATTACKER'S account, so it stays protected.
+    const loginGuarded = await fetch(BASE + '/api/auth/login', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', Cookie: cookies6 },
+      body: JSON.stringify({ email: email6, password: PW6 }),
+    });
+    check('login is NOT exempt — a forged login is a real attack', loginGuarded.status === 403);
+
+    const usersGuarded = await fetch(BASE + '/api/users', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', Cookie: cookies6 },
+      body: JSON.stringify({ email: 'x@y.test' }),
+    });
+    check('an authenticated route is still protected', usersGuarded.status === 403);
+
+    // A path underneath an exempt one must not inherit the exemption.
+    const nested = await fetch(BASE + '/api/signup/something-else', {
+      method: 'POST', headers: { 'Content-Type': 'application/json', Cookie: cookies6 },
+      body: '{}',
+    });
+    check('a nested path does not inherit the exemption', nested.status === 403);
+
+    const withToken = await fetch(BASE + '/api/signup', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Cookie: cookies6,
+        'X-CSRF-Token': decodeURIComponent(csrf6[1]),
+      },
+      body: signupBody,
+    });
+    check('the same POST succeeds once the CSRF header is sent', withToken.status !== 403);
+  }
+
   // ── Report ────────────────────────────────────────────────────────────────
   for (const [name, ok] of results) console.log(`  ${ok ? 'ok ' : 'FAIL'} ${name}`);
   console.log(`\n${pass}/${results.length} checks passed.`);

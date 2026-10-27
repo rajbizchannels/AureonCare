@@ -175,12 +175,28 @@ const SubscriptionPlansPanel = ({ theme, api, addNotification }) => {
                   </ul>
                 )}
                 <p className={`mt-3 font-semibold ${text}`}>
-                  Due on next invoice: {money(pending.preview.amountDue, pending.preview.currency)}
+                  {pending.preview.source === 'local' ? 'Prorated amount: ' : 'Due on next invoice: '}
+                  {money(pending.preview.amountDue, pending.preview.currency)}
                 </p>
+                {pending.preview.effectiveAt && (
+                  <p className={`mt-1 text-xs ${muted}`}>
+                    Effective {new Date(pending.preview.effectiveAt).toLocaleString()} — the change is
+                    prorated from that moment.
+                  </p>
+                )}
+                {/* Said plainly, because "prorated" reads as "charged" and for these
+                    practices no card is charged at all. */}
+                {pending.preview.source === 'local' && (
+                  <p className={`mt-2 text-xs ${muted}`}>
+                    This practice is invoiced manually, so nothing is charged to a card. The
+                    amount above is recorded against your account for your next invoice.
+                  </p>
+                )}
               </>
             ) : (
               <p className={`mt-3 text-sm ${muted}`}>
-                This practice is not billed through Stripe, so nothing will be charged.
+                Nothing will be charged.
+                {pending.preview.reason ? ` ${pending.preview.reason}` : ''}
               </p>
             )}
 

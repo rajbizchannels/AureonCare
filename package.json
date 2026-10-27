@@ -9,6 +9,7 @@
     "migrate": "node backend/run-migrations.js",
     "migrate:core": "node backend/run-migrations.js",
     "migrate:tenants": "node backend/run-tenant-migrations.js",
+    "packs:load": "node backend/scripts/load-specialty-packs.js",
     "platform:operator": "node backend/scripts/create-platform-operator.js",
     "migrate:preauth": "node backend/scripts/run-preapprovals-migration.js",
     "migrate:messaging": "node backend/scripts/migrate-messaging.js",
@@ -16,6 +17,8 @@
     "check:tenant-scoping": "node backend/scripts/check-tenant-scoping.js",
     "check:db-role": "node backend/scripts/check-db-role.js",
     "check:schema-health": "node backend/scripts/check-schema-health.js",
+    "check:form-library": "node backend/scripts/repair-form-library.js --check",
+    "repair:form-library": "node backend/scripts/repair-form-library.js",
     "test:sec05": "bash backend/test/sec05/run.sh",
     "test:signup": "node backend/test/signup/flow.test.js",
     "test:plans": "node backend/test/signup/plan-change.test.js",
@@ -23,7 +26,12 @@
     "test:accounting": "node backend/test/signup/accounting.test.js",
     "test:notify": "node backend/test/signup/notify.test.js",
     "test:domains": "node backend/test/signup/domain-join.test.js",
-    "test:mfa": "node backend/test/signup/mfa-session.test.js"
+    "test:mfa": "node backend/test/signup/mfa-session.test.js",
+    "test:locations": "node backend/test/locations/sites.test.js",
+    "test:camps": "node backend/test/camps/camps.test.js",
+    "test:specialty": "node backend/test/specialty/packs.test.js",
+    "test:forms": "node backend/test/forms/linkage.test.js",
+    "test:subscription-changes": "node backend/test/billing/subscription-changes.test.js"
   },
   "dependencies": {
     "@azure/msal-browser": "^4.25.1",
@@ -31,7 +39,6 @@
     "@azure/msal-react": "^3.0.20",
     "@microsoft/microsoft-graph-client": "^3.0.7",
     "@react-oauth/google": "^0.12.2",
-    "@supabase/supabase-js": "^2.49.1",
     "axios": "^1.13.2",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",

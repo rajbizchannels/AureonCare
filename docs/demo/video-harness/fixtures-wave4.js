@@ -206,8 +206,11 @@ const stripeSettings = {
 };
 
 /* ── inventory ───────────────────────────────────────────────────────────── */
-/* InventoryView is snake_case throughout, and reads current_stock /
- * reorder_level, not quantity_on_hand. */
+/* InventoryView is snake_case throughout. These rows carry quantity_on_hand,
+ * which is the column inventory_items actually has and what the API returns
+ * via SELECT i.*. They previously said current_stock, matching a field the
+ * view read and nothing ever produced — the fixtures were bent to fit the bug
+ * rather than the API, which hid it. */
 
 const inventoryCategories = [
   { id: 8801, code: 'VAC', name: 'Vaccines', description: 'Refrigerated stock', parent_id: null, is_active: true },
@@ -224,35 +227,35 @@ const inventoryItems = [
   {
     id: 8701, item_number: 'ITM-0101', name: 'Influenza vaccine (quadrivalent)', sku: 'VAC-FLU-Q',
     category_id: 8801, item_type: 'vaccine', unit_of_measure: 'dose', barcode: '8901234500011',
-    current_stock: 24, reorder_level: 40, reorder_quantity: 100, unit_cost: 14.5, selling_price: 32,
+    quantity_on_hand: 24, reorder_level: 40, reorder_quantity: 100, unit_cost: 14.5, selling_price: 32,
     supplier_id: 8902, status: 'active', is_lot_tracked: true, is_expiry_tracked: true,
     requires_refrigeration: true, lot_number: 'FLU-2609', next_expiry_date: day(120),
   },
   {
     id: 8702, item_number: 'ITM-0102', name: 'Tetanus vaccine', sku: 'VAC-TET',
     category_id: 8801, item_type: 'vaccine', unit_of_measure: 'dose', barcode: '8901234500028',
-    current_stock: 86, reorder_level: 30, reorder_quantity: 60, unit_cost: 22, selling_price: 44,
+    quantity_on_hand: 86, reorder_level: 30, reorder_quantity: 60, unit_cost: 22, selling_price: 44,
     supplier_id: 8902, status: 'active', is_lot_tracked: true, is_expiry_tracked: true,
     requires_refrigeration: true, lot_number: 'TET-2551', next_expiry_date: day(300),
   },
   {
     id: 8703, item_number: 'ITM-0201', name: 'Examination gloves, medium', sku: 'CON-GLV-M',
     category_id: 8802, item_type: 'supply', unit_of_measure: 'box', barcode: '8901234500035',
-    current_stock: 12, reorder_level: 20, reorder_quantity: 40, unit_cost: 6.2, selling_price: 0,
+    quantity_on_hand: 12, reorder_level: 20, reorder_quantity: 40, unit_cost: 6.2, selling_price: 0,
     supplier_id: 8901, status: 'active', is_lot_tracked: false, is_expiry_tracked: false,
     requires_refrigeration: false,
   },
   {
     id: 8704, item_number: 'ITM-0202', name: 'Alcohol swabs', sku: 'CON-SWB',
     category_id: 8802, item_type: 'supply', unit_of_measure: 'box', barcode: '8901234500042',
-    current_stock: 64, reorder_level: 25, reorder_quantity: 50, unit_cost: 3.1, selling_price: 0,
+    quantity_on_hand: 64, reorder_level: 25, reorder_quantity: 50, unit_cost: 3.1, selling_price: 0,
     supplier_id: 8901, status: 'active', is_lot_tracked: false, is_expiry_tracked: false,
     requires_refrigeration: false,
   },
   {
     id: 8705, item_number: 'ITM-0301', name: 'Lidocaine 1% (10 mL vial)', sku: 'DRG-LID-1',
     category_id: 8803, item_type: 'medication', unit_of_measure: 'vial', barcode: '8901234500059',
-    current_stock: 31, reorder_level: 15, reorder_quantity: 30, unit_cost: 4.8, selling_price: 12,
+    quantity_on_hand: 31, reorder_level: 15, reorder_quantity: 30, unit_cost: 4.8, selling_price: 12,
     supplier_id: 8901, status: 'active', is_lot_tracked: true, is_expiry_tracked: true,
     requires_refrigeration: false, lot_number: 'LID-4412', next_expiry_date: day(45),
   },

@@ -1,0 +1,286 @@
+{
+  "code": "dermatology",
+  "version": 1,
+  "label": "Dermatology",
+  "description": "Starting configuration for a dermatology practice: clinic and procedure appointment types, with a lesion, biopsy and phototherapy catalogue.",
+  "modules": {
+    "hide": [
+      "camps"
+    ]
+  },
+  "terminology": {
+    "provider": "Dermatologist",
+    "providers": "Dermatologists"
+  },
+  "appointmentTypes": [
+    {
+      "name": "New Patient Consultation",
+      "durationMinutes": 30,
+      "color": "#2563EB",
+      "displayOrder": 10
+    },
+    {
+      "name": "Follow-up Consultation",
+      "durationMinutes": 15,
+      "color": "#0EA5E9",
+      "displayOrder": 20
+    },
+    {
+      "name": "Mole and Skin Check",
+      "durationMinutes": 30,
+      "color": "#14B8A6",
+      "displayOrder": 30
+    },
+    {
+      "name": "Minor Procedure",
+      "durationMinutes": 30,
+      "color": "#8B5CF6",
+      "displayOrder": 40
+    },
+    {
+      "name": "Phototherapy",
+      "durationMinutes": 20,
+      "color": "#F59E0B",
+      "displayOrder": 50
+    },
+    {
+      "name": "Patch Test Application",
+      "durationMinutes": 45,
+      "color": "#64748B",
+      "displayOrder": 60
+    }
+  ],
+  "serviceCategories": [
+    {
+      "name": "Consultations",
+      "icon": "stethoscope",
+      "displayOrder": 10
+    },
+    {
+      "name": "Lesion Management",
+      "icon": "scissors",
+      "displayOrder": 20
+    },
+    {
+      "name": "Inflammatory Skin Disease",
+      "icon": "activity",
+      "displayOrder": 30
+    },
+    {
+      "name": "Allergy Testing",
+      "icon": "search",
+      "displayOrder": 40
+    }
+  ],
+  "offerings": [
+    {
+      "name": "New Patient Dermatology Consultation",
+      "categoryName": "Consultations",
+      "durationMinutes": 30,
+      "cptCodes": [
+        "99203"
+      ]
+    },
+    {
+      "name": "Follow-up Dermatology Consultation",
+      "categoryName": "Consultations",
+      "durationMinutes": 15,
+      "cptCodes": [
+        "99213"
+      ]
+    },
+    {
+      "name": "Full Skin Examination",
+      "categoryName": "Consultations",
+      "durationMinutes": 30
+    },
+    {
+      "name": "Skin Biopsy, Tangential",
+      "categoryName": "Lesion Management",
+      "durationMinutes": 25,
+      "cptCodes": [
+        "11102"
+      ],
+      "consentFormRequired": true
+    },
+    {
+      "name": "Skin Biopsy, Punch",
+      "categoryName": "Lesion Management",
+      "durationMinutes": 25,
+      "cptCodes": [
+        "11104"
+      ],
+      "consentFormRequired": true
+    },
+    {
+      "name": "Cryotherapy, First Lesion",
+      "categoryName": "Lesion Management",
+      "durationMinutes": 15,
+      "cptCodes": [
+        "17000"
+      ]
+    },
+    {
+      "name": "Cryotherapy, Additional Lesions",
+      "categoryName": "Lesion Management",
+      "durationMinutes": 15,
+      "cptCodes": [
+        "17003"
+      ]
+    },
+    {
+      "name": "Excision of Benign Lesion",
+      "categoryName": "Lesion Management",
+      "durationMinutes": 40,
+      "consentFormRequired": true
+    },
+    {
+      "name": "Acne Review",
+      "categoryName": "Inflammatory Skin Disease",
+      "durationMinutes": 20
+    },
+    {
+      "name": "Eczema Review",
+      "categoryName": "Inflammatory Skin Disease",
+      "durationMinutes": 20
+    },
+    {
+      "name": "Psoriasis Review",
+      "categoryName": "Inflammatory Skin Disease",
+      "durationMinutes": 25
+    },
+    {
+      "name": "Patch Testing",
+      "categoryName": "Allergy Testing",
+      "durationMinutes": 45,
+      "requiresPreparation": true,
+      "preparationInstructions": "Keep the test area dry and avoid washing your back for the 48 hours the patches are on. Do not apply steroid creams to your back for a week beforehand."
+    }
+  ],
+  "formTemplates": [
+    {
+      "slug": "dermatology-intake",
+      "name": "Dermatology Intake",
+      "templateType": "onboarding",
+      "categorySlug": "onboarding",
+      "version": "1.0",
+      "languages": [
+        "en"
+      ],
+      "complianceTags": [
+        "HIPAA"
+      ],
+      "fields": [
+        {
+          "id": "main_concern",
+          "type": "textarea",
+          "label": "What would you like looked at?",
+          "required": true
+        },
+        {
+          "id": "location",
+          "type": "text",
+          "label": "Where on the body?",
+          "required": true
+        },
+        {
+          "id": "duration",
+          "type": "text",
+          "label": "How long has it been there?"
+        },
+        {
+          "id": "changing",
+          "type": "checkboxes",
+          "label": "Has it changed?",
+          "options": [
+            "Grown",
+            "Changed colour",
+            "Bled",
+            "Itched",
+            "Become painful",
+            "No change"
+          ]
+        },
+        {
+          "id": "sun_exposure",
+          "type": "select",
+          "label": "Sun exposure over your life",
+          "options": [
+            "Minimal",
+            "Moderate",
+            "Heavy",
+            "Sunbed use"
+          ]
+        },
+        {
+          "id": "skin_cancer_history",
+          "type": "checkbox",
+          "label": "Have you had a skin cancer before?"
+        },
+        {
+          "id": "family_melanoma",
+          "type": "checkbox",
+          "label": "Melanoma in a close relative"
+        },
+        {
+          "id": "treatments_tried",
+          "type": "textarea",
+          "label": "Creams or treatments already tried"
+        },
+        {
+          "id": "medications",
+          "type": "textarea",
+          "label": "Current medicines"
+        }
+      ]
+    }
+  ],
+  "inventoryCategories": [
+    {
+      "code": "derm_biopsy",
+      "name": "Biopsy and Excision Packs"
+    },
+    {
+      "code": "derm_cryo",
+      "name": "Cryotherapy Supplies"
+    },
+    {
+      "code": "derm_patch",
+      "name": "Patch Test Allergens"
+    },
+    {
+      "code": "derm_topicals",
+      "name": "Topical Treatments"
+    }
+  ],
+  "codeSets": {
+    "icd10": [
+      "L70.0",
+      "L20.9",
+      "L40.0",
+      "D22.9",
+      "C44.90",
+      "L30.9",
+      "L50.9",
+      "B07.9"
+    ],
+    "cpt": [
+      "99203",
+      "99213",
+      "11102",
+      "11104",
+      "17000",
+      "17003"
+    ]
+  },
+  "settings": {
+    "defaultAppointmentDuration": 15,
+    "slotIntervalMinutes": 10
+  },
+  "reports": {
+    "show": [
+      "clinical",
+      "operational"
+    ]
+  }
+}

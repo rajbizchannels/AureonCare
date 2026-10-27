@@ -62,8 +62,13 @@ function makeTenantDb(pool, schemaName, res) {
   };
 
   // Transaction-control statements the caller issues itself, which must not be wrapped.
-  const TX_STMT = /^\s*(BEGIN|START\s+TRANSACTION|COMMIT|END|ROLLBACK)\b/i;
+  //
+  // The close pattern is anchored deliberately. `ROLLBACK TO SAVEPOINT x` begins with
+  // ROLLBACK but does NOT end the transaction — treating it as one would clear inTx while
+  // the transaction is still open, and every following statement would then try to open a
+  // nested BEGIN inside it.
   const TX_OPEN = /^\s*(BEGIN|START\s+TRANSACTION)\b/i;
+  const TX_CLOSE = /^\s*(COMMIT|END|ROLLBACK)\s*;?\s*$/i;
   const setLocalPath = `SET LOCAL search_path TO ${schemaName}, public, control`;
   let inTx = false;
 
@@ -91,15 +96,17 @@ function makeTenantDb(pool, schemaName, res) {
       const sql = String(text);
 
       // Caller-managed transaction: pin once, just after their BEGIN, and stay out of the
-      // way until they close it.
-      if (TX_STMT.test(sql)) {
+      // way until they close it. Savepoint statements fall through to the `inTx` branch and
+      // run as-is, which is what they need — the pin is already in effect.
+      if (TX_OPEN.test(sql)) {
         const result = await c.query(sql, params);
-        if (TX_OPEN.test(sql)) {
-          inTx = true;
-          await c.query(setLocalPath);
-        } else {
-          inTx = false;
-        }
+        inTx = true;
+        await c.query(setLocalPath);
+        return result;
+      }
+      if (TX_CLOSE.test(sql)) {
+        const result = await c.query(sql, params);
+        inTx = false;
         return result;
       }
       if (inTx) return c.query(sql, params);

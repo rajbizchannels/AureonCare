@@ -16,20 +16,58 @@ export type Credential =
   | { kind: 'staff'; token: string }
   | { kind: 'portal'; token: string; patientId: string };
 
+/**
+ * Why a credential stopped working. The two cases read identically to the
+ * client — both are a 401 — but they mean opposite things to the person
+ * holding the phone, so the sign-in screen is told which one happened.
+ */
+export type UnauthorizedReason = 'rejected' | 'timed-out';
+
 export class ApiError extends Error {
   readonly status: number;
-  constructor(status: number, message: string) {
+  /**
+   * The parsed error body, when there was one.
+   *
+   * Several backend refusals are not merely "no" — they say what to do next.
+   * `{ mfaRequired: true }` asks for a second factor, `{ sessionTimedOut: true }`
+   * distinguishes an idle sign-out from a revoked token. Dropping the body and
+   * keeping only `error` would turn all of those into the same dead end.
+   */
+  readonly body: Record<string, unknown>;
+
+  constructor(status: number, message: string, body: Record<string, unknown> = {}) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
+    this.body = body;
+  }
+
+  private flag(key: string): boolean {
+    return this.body[key] === true;
+  }
+
+  /** The password was right; the authenticator code is missing or wrong. */
+  get mfaRequired(): boolean {
+    return this.flag('mfaRequired');
+  }
+
+  /** The practice requires a second factor and this account has not set one up. */
+  get mfaEnrolmentRequired(): boolean {
+    return this.flag('mfaEnrolmentRequired');
+  }
+
+  /** Signed out for inactivity, not because the credential was revoked. */
+  get sessionTimedOut(): boolean {
+    return this.flag('sessionTimedOut');
   }
 }
 
 // ── Shapes returned by the backend ──────────────────────────────────────────
 
-export type Role =
-  | 'admin' | 'doctor' | 'nurse' | 'receptionist'
-  | 'billing_manager' | 'crm_manager' | 'staff' | 'patient';
+// The role set and what each role may do live in ./permissions, next to the
+// matrix the web app uses, rather than here.
+export type { Role } from './permissions';
+import type { Role } from './permissions';
 
 export interface Account {
   id: string;
@@ -39,6 +77,8 @@ export interface Account {
   lastName?: string;
   specialty?: string;
   mrn?: string;
+  /** Which practice this account belongs to. Added by the SEC-05 tenant cutover. */
+  practiceId?: string | null;
 }
 
 export interface Participant {
@@ -211,6 +251,166 @@ export interface LabOrder {
   created_at: string;
 }
 
+/**
+ * Rows from the routes added since the mobile app was first built. These
+ * routes camelCase their output in the handler (`toCamelCase` at the top of
+ * each file), unlike the older `SELECT *` ones above — so the casing below is
+ * inconsistent on purpose: it is what each endpoint actually sends.
+ */
+
+export interface Location {
+  id: string;
+  name: string;
+  locationType: string | null;
+  addressLine1: string | null;
+  city: string | null;
+  country: string | null;
+  phone: string | null;
+  isPrimary: boolean;
+  isActive: boolean;
+}
+
+/**
+ * The five states a camp moves through, from `CAMP_STATUSES` in
+ * backend/services/camps.js. The transition map there is deliberately sparse —
+ * draft → published → in_progress → closed → archived, with no way back —
+ * because reopening a closed camp would let its frozen counts and its sponsor
+ * report disagree.
+ */
+export type CampStatus = 'draft' | 'published' | 'in_progress' | 'closed' | 'archived';
+
+export interface Camp {
+  id: string;
+  name: string;
+  description: string | null;
+  status: CampStatus;
+  startsAt: string;
+  endsAt: string;
+  locationId: string | null;
+  locationName?: string | null;
+  capacity: number | null;
+  isFree: boolean;
+  sponsorName: string | null;
+  /** Derived in the list query, so absent from GET /camps/:id. */
+  registrationCount?: number;
+  staffCount?: number;
+  serviceCount?: number;
+}
+
+export interface CampStation {
+  id: string;
+  name: string;
+  stepOrder: number;
+  isClinical: boolean;
+  isActive: boolean;
+  queued: number;
+  inProgress: number;
+  completed: number;
+  longestWaitSeconds: number | null;
+}
+
+export interface CampRegistration {
+  id: string;
+  campId: string;
+  tokenNo: number;
+  fullName: string;
+  phone: string | null;
+  email: string | null;
+  ageYears: number | null;
+  dateOfBirth: string | null;
+  gender: string | null;
+  status: string;
+  consentGivenAt: string | null;
+  patientId: string | null;
+  createdAt: string;
+}
+
+export interface StationVisit {
+  id: string;
+  registrationId: string;
+  stationId: string;
+  status: 'queued' | 'in_progress' | 'completed';
+  queuedAt: string;
+  tokenNo: number;
+  fullName: string;
+  ageYears: number | null;
+  gender: string | null;
+  consentGivenAt: string | null;
+  patientId: string | null;
+}
+
+export interface FormSubmission {
+  id: string;
+  template_id: string | null;
+  template_name: string | null;
+  status: string;
+  source?: 'manual' | 'secure_message' | null;
+  document_attachment_id?: string | null;
+  document_name?: string | null;
+  document_action?: 'acknowledge' | 'sign' | null;
+  patient_id?: string | null;
+  patient_name?: string | null;
+  mrn?: string | null;
+  created_at: string;
+  submitted_at: string | null;
+}
+
+export interface Task {
+  id: string;
+  title: string;
+  description: string | null;
+  priority: 'High' | 'Medium' | 'Low' | string;
+  status: string;
+  dueDate: string | null;
+  createdAt: string;
+}
+
+/** `SELECT *` from `notifications`, so snake_case. */
+export interface Notification {
+  id: string;
+  user_id: string | null;
+  type: string | null;
+  message: string;
+  read: boolean;
+  created_at: string;
+}
+
+export interface MfaStatus {
+  enabled: boolean;
+  enrolledAt: string | null;
+  backupCodesRemaining: number;
+  requiredByPractice: boolean;
+  sessionIdleMinutes: number | null;
+}
+
+export interface MfaEnrolment {
+  base32: string;
+  otpauthUrl?: string;
+  qr?: string;
+  note?: string;
+}
+
+/**
+ * Why this account is seeing errors everywhere.
+ *
+ * A staff account only works if it resolves to a provisioned tenant schema.
+ * When it does not, every clinical route 500s identically and the app looks
+ * broken rather than misconfigured — so this is read once after sign-in and
+ * surfaced as one explanation instead of eight empty screens.
+ */
+export interface TenantStatus {
+  healthy: boolean;
+  resolvedSchema: string | null;
+  practiceId: string | null;
+  practiceName: string | null;
+  tenantStatus: string | null;
+  schemaExists: boolean;
+  tableCount: number;
+  templateTableCount: number;
+  /** Null when everything resolves; otherwise one sentence naming the cause. */
+  problem: string | null;
+}
+
 /** What the sender wants done with an attachment; mirrors messageDocumentFiling.js. */
 export type Disposition = 'records' | 'form_request' | 'none';
 
@@ -235,14 +435,14 @@ export class ApiClient {
    * signed-in state where every screen quietly fails; the session layer wires
    * it to sign-out so the person is returned to a login they can act on.
    */
-  private onUnauthorized: (() => void) | null = null;
+  private onUnauthorized: ((reason: UnauthorizedReason) => void) | null = null;
 
   constructor(baseUrl: string, credential: Credential | null = null) {
     this.baseUrl = baseUrl.replace(/\/$/, '');
     this.credential = credential;
   }
 
-  setUnauthorizedHandler(handler: (() => void) | null): void {
+  setUnauthorizedHandler(handler: ((reason: UnauthorizedReason) => void) | null): void {
     this.onUnauthorized = handler;
   }
 
@@ -271,11 +471,19 @@ export class ApiClient {
     });
 
     if (!response.ok) {
+      const detail = (await response.json().catch(() => null)) as
+        | (Record<string, unknown> & { error?: string; message?: string })
+        | null;
       // Only a credentialled request can have its credential rejected; a 401
       // from a login attempt is a wrong password, not a dead session.
-      if (response.status === 401 && this.credential) this.onUnauthorized?.();
-      const detail = (await response.json().catch(() => null)) as { error?: string } | null;
-      throw new ApiError(response.status, detail?.error ?? `Request failed (${response.status})`);
+      if (response.status === 401 && this.credential) {
+        this.onUnauthorized?.(detail?.sessionTimedOut === true ? 'timed-out' : 'rejected');
+      }
+      throw new ApiError(
+        response.status,
+        detail?.error ?? detail?.message ?? `Request failed (${response.status})`,
+        detail ?? {}
+      );
     }
     if (response.status === 204) return undefined as T;
     return (await response.json()) as T;
@@ -285,7 +493,7 @@ export class ApiClient {
   private async requestBlob(path: string): Promise<Blob> {
     const response = await fetch(`${this.baseUrl}/api${path}`, { headers: this.headers() });
     if (!response.ok) {
-      if (response.status === 401 && this.credential) this.onUnauthorized?.();
+      if (response.status === 401 && this.credential) this.onUnauthorized?.('rejected');
       throw new ApiError(response.status, `Download failed (${response.status})`);
     }
     return response.blob();
@@ -297,10 +505,16 @@ export class ApiClient {
    * Staff sign-in. The response's `user.role` is what decides which shell the
    * app renders — the app never asks the person which kind of user they are.
    */
-  async signInStaff(email: string, password: string): Promise<{ token: string; user: Account }> {
+  async signInStaff(
+    email: string,
+    password: string,
+    mfaCode?: string
+  ): Promise<{ token: string; user: Account }> {
     return this.request('/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email, password }),
+      // Omitted rather than sent empty: the backend branches on the key being
+      // absent to decide whether to challenge or to reject a wrong code.
+      body: JSON.stringify(mfaCode ? { email, password, mfaCode } : { email, password }),
     });
   }
 
@@ -462,6 +676,171 @@ export class ApiClient {
 
   listClaims(): Promise<Claim[]> {
     return this.request('/claims');
+  }
+
+  // ── Account ───────────────────────────────────────────────────────────────
+
+  /** The live account. Roles change while someone is signed in; this is how we notice. */
+  me(): Promise<Account> {
+    return this.request('/auth/me');
+  }
+
+  tenantStatus(): Promise<TenantStatus> {
+    return this.request('/auth/tenant-status');
+  }
+
+  mfaStatus(): Promise<MfaStatus> {
+    return this.request('/auth/mfa/status');
+  }
+
+  beginMfaEnrolment(): Promise<MfaEnrolment> {
+    return this.request('/auth/mfa/enroll', { method: 'POST' });
+  }
+
+  /** Proves the authenticator works and switches the factor on. Returns recovery codes. */
+  confirmMfaEnrolment(code: string): Promise<{ backupCodes?: string[] }> {
+    return this.request('/auth/mfa/verify', { method: 'POST', body: JSON.stringify({ code }) });
+  }
+
+  disableMfa(password: string): Promise<{ success?: boolean }> {
+    return this.request('/auth/mfa/disable', {
+      method: 'POST',
+      body: JSON.stringify({ password }),
+    });
+  }
+
+  // ── Sites ─────────────────────────────────────────────────────────────────
+
+  listLocations(): Promise<Location[]> {
+    return this.request('/locations');
+  }
+
+  // ── Medical camps ─────────────────────────────────────────────────────────
+
+  listCamps(params: { status?: string; locationId?: string } = {}): Promise<Camp[]> {
+    const query = new URLSearchParams();
+    if (params.status) query.set('status', params.status);
+    if (params.locationId) query.set('locationId', params.locationId);
+    const suffix = query.toString() ? `?${query}` : '';
+    return this.request(`/camps${suffix}`);
+  }
+
+  getCamp(id: string): Promise<Camp> {
+    return this.request(`/camps/${id}`);
+  }
+
+  /** Every station with its live queue depth and longest wait. */
+  campBoard(campId: string): Promise<CampStation[]> {
+    return this.request(`/camps/${campId}/board`);
+  }
+
+  stationQueue(stationId: string): Promise<StationVisit[]> {
+    return this.request(`/camps/stations/${stationId}/queue`);
+  }
+
+  startVisit(visitId: string): Promise<StationVisit> {
+    return this.request(`/camps/visits/${visitId}/start`, { method: 'POST' });
+  }
+
+  completeVisit(
+    visitId: string,
+    input: { outcome?: string; notes?: string } = {}
+  ): Promise<StationVisit> {
+    return this.request(`/camps/visits/${visitId}/complete`, {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
+  }
+
+  listCampRegistrations(params: {
+    campId: string;
+    status?: string;
+    q?: string;
+  }): Promise<CampRegistration[]> {
+    const query = new URLSearchParams({ campId: params.campId });
+    if (params.status) query.set('status', params.status);
+    if (params.q) query.set('q', params.q);
+    return this.request(`/camp-registrations?${query}`);
+  }
+
+  /**
+   * Register an attendee. The backend allocates the token number and, if the
+   * camp is already running, queues them at the first station — so the reply
+   * carries both and the desk does not have to make a second call.
+   */
+  registerAttendee(input: {
+    campId: string;
+    fullName: string;
+    phone?: string;
+    ageYears?: number;
+    dateOfBirth?: string;
+    gender?: string;
+    city?: string;
+    consentGiven?: boolean;
+    notes?: string;
+  }): Promise<{ registration: CampRegistration; firstVisit: StationVisit | null }> {
+    return this.request('/camp-registrations', { method: 'POST', body: JSON.stringify(input) });
+  }
+
+  recordConsent(registrationId: string): Promise<CampRegistration> {
+    return this.request(`/camp-registrations/${registrationId}/consent`, { method: 'POST' });
+  }
+
+  queueAtStation(registrationId: string, stationId: string): Promise<StationVisit> {
+    return this.request(`/camp-registrations/${registrationId}/queue`, {
+      method: 'POST',
+      body: JSON.stringify({ stationId }),
+    });
+  }
+
+  // ── Forms ─────────────────────────────────────────────────────────────────
+
+  /**
+   * Forms waiting on a patient. Portal sessions read their own through
+   * /patient-portal; staff read any patient's through /form-management.
+   */
+  listFormSubmissions(patientId?: string): Promise<FormSubmission[]> {
+    if (this.credential?.kind === 'portal') {
+      if (!patientId) throw new ApiError(400, 'A patient is required to list form requests.');
+      return this.request(`/patient-portal/${patientId}/form-requests`);
+    }
+    const suffix = patientId ? `?patient_id=${encodeURIComponent(patientId)}` : '';
+    return this.request(`/form-management/submissions${suffix}`);
+  }
+
+  acknowledgeForm(submissionId: string, patientId?: string): Promise<{ success?: boolean }> {
+    return this.credential?.kind === 'portal'
+      ? this.request(`/patient-portal/${patientId}/form-requests/${submissionId}/acknowledge`, {
+          method: 'POST',
+        })
+      : this.request(`/form-management/submissions/${submissionId}/acknowledge`, {
+          method: 'POST',
+        });
+  }
+
+  downloadFormDocument(submissionId: string, patientId?: string): Promise<Blob> {
+    return this.credential?.kind === 'portal'
+      ? this.requestBlob(`/patient-portal/${patientId}/form-requests/${submissionId}/document`)
+      : this.requestBlob(`/form-management/submissions/${submissionId}/document`);
+  }
+
+  // ── Tasks and notifications ───────────────────────────────────────────────
+
+  listTasks(): Promise<Task[]> {
+    return this.request('/tasks');
+  }
+
+  updateTask(id: string, patch: Partial<Pick<Task, 'status' | 'priority' | 'title'>>): Promise<Task> {
+    return this.request(`/tasks/${id}`, { method: 'PUT', body: JSON.stringify(patch) });
+  }
+
+  listNotifications(userId?: string): Promise<Notification[]> {
+    const suffix = userId ? `?userId=${encodeURIComponent(userId)}` : '';
+    return this.request(`/notifications${suffix}`);
+  }
+
+  markNotificationRead(id: string): Promise<Notification> {
+    return this.request(`/notifications/${id}/read`, { method: 'PUT' });
   }
 }
 

@@ -2,6 +2,7 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const { authenticate } = require('../middleware/auth');
 const { makeTenantDb } = require('../db/requestTenantDb');
+const { microsoftClientId, googleClientId } = require('../utils/oauthClientIds');
 const router = express.Router();
 const crypto = require('crypto');
 const axios = require('axios');
@@ -189,6 +190,27 @@ const PROVIDER_ENV_MAP = {
 };
 
 function resolveProviderEnv(key) {
+  // Client ids resolve through the shared helper so this file, oauthExchange and
+  // cloudBackupStorage cannot disagree about which app registration we are. They did:
+  // sign-in read AC_MS_CID while this read REACT_APP_MS_CID, so two names holding
+  // different values sent each flow to a different app.
+  if (key === 'ONEDRIVE_CLIENT_ID' || key === 'MICROSOFT_TEAMS_CLIENT_ID'
+      || key === 'TEAMS_CLIENT_ID') {
+    return microsoftClientId() || process.env[key] || null;
+  }
+  // Drive genuinely shares the sign-in client — .env.example says so, and it only ever
+  // read AC_GG_CID/REACT_APP_GG_CID.
+  if (key === 'GOOGLE_DRIVE_CLIENT_ID') {
+    return googleClientId() || process.env[key] || null;
+  }
+  // Meet does NOT. It has its own pair, AC_GM_CID / AC_GM_CSK, and always did — so its own
+  // id must win. Folding it into the shared helper took the id from the sign-in client
+  // while the secret still came from AC_GM_CSK, and Google rejects a mismatched pair with
+  // invalid_client. Consolidating names that pointed at ONE client was right; forcing two
+  // genuinely different clients together was not.
+  if (key === 'GOOGLE_MEET_CLIENT_ID') {
+    return process.env.AC_GM_CID || googleClientId() || process.env[key] || null;
+  }
   const mappedKey = PROVIDER_ENV_MAP[key];
   if (mappedKey) {
     // Try the canonical abbreviated var first, then the legacy full-name var
@@ -202,36 +224,66 @@ function resolveProviderEnv(key) {
  * Env vars (AC_ZM_CID, etc.) take precedence over DB values so that
  * updating credentials after Marketplace approval takes effect immediately.
  */
-function resolveClientCredentials(providerType, dbRow) {
-  const prefix = providerType.toUpperCase();
-  const envPrefixes = providerType === 'microsoft_teams'
-    ? ['TEAMS', prefix]
-    : [prefix];
+/**
+ * The environment variables that hold each provider's OAuth client, as PAIRS.
+ *
+ * An id and a secret are one credential. Resolving them independently is what produced
+ * `invalid_client` on Google Meet: with AC_GM_CID unset, the id fell through to the
+ * sign-in client while the secret still came from AC_GM_CSK, so the two halves belonged to
+ * different OAuth clients — and both reported as coming from "env", which is true and
+ * useless. There is no cross-provider fallback for an id here; a provider whose own id
+ * variable is unset is reported as unset rather than silently lent someone else's.
+ *
+ * Where two names appear for an id, they are two names for the SAME client (the
+ * REACT_APP_-prefixed one is what the browser authorises with, so it wins).
+ */
+const PROVIDER_CREDENTIALS = {
+  zoom:            { id: ['AC_ZM_CID'],                       secret: ['AC_ZM_CSK'] },
+  google_meet:     { id: ['AC_GM_CID'],                       secret: ['AC_GM_CSK'] },
+  webex:           { id: ['AC_WBX_CID'],                      secret: ['AC_WBX_CSK'] },
+  microsoft_teams: { id: ['REACT_APP_MS_CID', 'AC_MS_CID'],   secret: ['AC_MS_CSK'] },
+  onedrive:        { id: ['REACT_APP_MS_CID', 'AC_MS_CID'],   secret: ['AC_OD_CSK'] },
+  google_drive:    { id: ['REACT_APP_GG_CID', 'AC_GG_CID'],   secret: ['AC_GD_CSK'] },
+};
 
-  let envClientId = null;
-  let envClientSecret = null;
-  for (const ep of envPrefixes) {
-    envClientId = envClientId || resolveProviderEnv(`${ep}_CLIENT_ID`) || null;
-    envClientSecret = envClientSecret || resolveProviderEnv(`${ep}_CLIENT_SECRET`) || null;
+/** First variable in the list that holds a value, with the name that supplied it. */
+function firstEnv(names) {
+  for (const n of names || []) {
+    const v = process.env[n];
+    if (v && String(v).trim()) return { value: String(v).trim(), from: n };
   }
+  return { value: null, from: null };
+}
 
-  const client_id = envClientId || dbRow?.client_id || null;
-  const client_secret = envClientSecret || dbRow?.client_secret || null;
+function resolveClientCredentials(providerType, dbRow) {
+  const spec = PROVIDER_CREDENTIALS[providerType];
+  const prefix = providerType.toUpperCase();
+
+  const envId = spec ? firstEnv(spec.id) : { value: null, from: null };
+  const envSecret = spec ? firstEnv(spec.secret) : { value: null, from: null };
+
+  const client_id = envId.value || dbRow?.client_id || null;
+  const client_secret = envSecret.value || dbRow?.client_secret || null;
 
   // SEC-05: the DB columns are DEPRECATED — the OAuth client id/secret are global and
   // belong in the environment, not duplicated into every tenant's settings row. The
   // fallback is retained so an environment that has not set its env vars yet keeps
   // working, but it is reported so it gets fixed, then cleared with
   // scripts/deprecate-oauth-credentials.js.
-  if (!envClientSecret && dbRow?.client_secret) {
+  if (!envSecret.value && dbRow?.client_secret) {
     console.warn(
       `[integrationOAuth] DEPRECATED: using database-stored client_secret for "${providerType}". ` +
-      `Set ${prefix}_CLIENT_ID / ${prefix}_CLIENT_SECRET in the environment, then run ` +
-      `scripts/deprecate-oauth-credentials.js to clear the stored copy.`
+      `Set ${(spec ? spec.id[0] : prefix + '_CLIENT_ID')} / ${(spec ? spec.secret[0] : prefix + '_CLIENT_SECRET')} ` +
+      `in the environment, then run scripts/deprecate-oauth-credentials.js to clear the stored copy.`
     );
   }
 
-  return { client_id, client_secret };
+  // Name the actual VARIABLE behind each half, never its value. "env" alone could not
+  // distinguish a matched pair from two halves of different clients.
+  const idSource = envId.from || (dbRow?.client_id ? 'database' : `unset (${spec ? spec.id.join(' or ') : '?'})`);
+  const secretSource = envSecret.from || (dbRow?.client_secret ? 'database' : `unset (${spec ? spec.secret.join(' or ') : '?'})`);
+
+  return { client_id, client_secret, idSource, secretSource };
 }
 
 const OAUTH_CONFIGS = {
@@ -336,13 +388,17 @@ router.get('/:providerType/initiate', async (req, res) => {
     const dbRow = result.rows[0] || null;
 
     // Resolve credentials (DB → env vars)
-    const { client_id, client_secret } = resolveClientCredentials(providerType, dbRow);
+    const { client_id, client_secret, idSource, secretSource } =
+      resolveClientCredentials(providerType, dbRow);
 
     if (!client_id || !client_secret) {
+      // The hint used to name variables that do not exist (GOOGLE_MEET_CLIENT_ID rather
+      // than AC_GM_CID), sending whoever read it to set the wrong thing. idSource and
+      // secretSource carry the real names.
       return res.status(400).json({
         error: 'Provider not configured',
         needsEnvSetup: true,
-        hint: `Set ${providerType.toUpperCase()}_CLIENT_ID and ${providerType.toUpperCase()}_CLIENT_SECRET environment variables on the server.`,
+        hint: `Client id: ${idSource}. Client secret: ${secretSource}.`,
       });
     }
 
@@ -435,10 +491,14 @@ router.get('/:providerType/callback', async (req, res) => {
       [providerType]
     );
     const dbRow = result.rows[0] || null;
-    const { client_id, client_secret } = resolveClientCredentials(providerType, dbRow);
+    const { client_id, client_secret, idSource, secretSource } = resolveClientCredentials(providerType, dbRow);
 
     if (!client_id || !client_secret) {
-      return sendOAuthResult(res, false, providerType, 'Provider not configured — missing Client ID or Secret on the server.');
+      // Name the variable that is missing rather than the category. With the pairwise
+      // resolution above this is now reachable where it previously borrowed another
+      // provider's id and failed later as invalid_client instead.
+      return sendOAuthResult(res, false, providerType,
+        `Provider not configured — id from ${idSource}, secret from ${secretSource}.`);
     }
 
     const redirectUri = `${getBaseUrl(req)}/api/integrations/oauth/${providerType}/callback`;
@@ -466,8 +526,16 @@ router.get('/:providerType/callback', async (req, res) => {
         tokenType: tokens.token_type,
       });
     } catch (tokenError) {
-      console.error('Token exchange error:', tokenError.response?.data || tokenError.message);
-      return sendOAuthResult(res, false, providerType, 'Token exchange failed — check your Client Secret and Redirect URL.');
+      const detail = tokenError.response?.data;
+      console.error('Token exchange error:', detail || tokenError.message);
+      // Name the provider's own error. "check your Client Secret and Redirect URL" is the
+      // same sentence for a mismatched client, a wrong secret and an unregistered redirect,
+      // and the one fact that separates them went only to the log.
+      const code = detail && (detail.error || detail.error_description);
+      const where = `id from ${idSource}, secret from ${secretSource}`;
+      return sendOAuthResult(res, false, providerType,
+        'Token exchange failed — check your Client Secret and Redirect URL.'
+        + (code ? ` [${String(code).slice(0, 120)} | ${where}]` : ` [${where}]`));
     }
 
     const expiresAt = tokens.expires_in ? Date.now() + tokens.expires_in * 1000 : null;

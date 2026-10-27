@@ -35,6 +35,23 @@ const readCookie = (name) => {
   }
 };
 
+/**
+ * Headers for the PUBLIC endpoints — signup, invite acceptance, domain join.
+ *
+ * These are reached with no account, so they deliberately skip authenticatedFetch. But the
+ * API is same-origin, which means the browser attaches any session cookie the visitor
+ * already has WITHOUT being asked. verifyCsrf then sees a cookie-authenticated request and
+ * rejects it for want of a token — so registering a new subscription, or accepting an
+ * invite, failed with 403 for anyone who happened to be signed in or merely had a stale
+ * cookie. Sending the token when we have one keeps the protection and fixes the flow.
+ */
+const publicPostHeaders = () => {
+  const headers = { 'Content-Type': 'application/json' };
+  const csrf = readCookie('ac_csrf');
+  if (csrf) headers['X-CSRF-Token'] = csrf;
+  return headers;
+};
+
 const getAuthHeaders = () => {
   const headers = { 'Content-Type': 'application/json' };
   try {
@@ -482,14 +499,26 @@ const api = {
     const response = await authenticatedFetch(`${API_BASE_URL}/notifications/${id}`, {
       method: 'DELETE'
     });
-    if (!response.ok) throw new Error('Failed to delete notification');
+    // A 404 means the notification is already gone — another tab cleared it, or the list
+    // in this tab is stale. That is the outcome the user asked for, so report success and
+    // let the caller drop it from the list. Treating it as an error left the row on screen
+    // with "Failed to delete notification" in the console and no way to get rid of it.
+    if (response.status === 404) return { success: true, alreadyGone: true };
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.message || error.error || 'Failed to delete notification');
+    }
     return response.json();
   },
   clearAllNotifications: async () => {
     const response = await authenticatedFetch(`${API_BASE_URL}/notifications`, {
       method: 'DELETE'
     });
-    if (!response.ok) throw new Error('Failed to clear notifications');
+    if (response.status === 404) return { success: true, alreadyGone: true };
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.message || error.error || 'Failed to clear notifications');
+    }
     return response.json();
   },
 
@@ -749,14 +778,28 @@ const api = {
     const response = await authenticatedFetch(`${API_BASE_URL}/users/${id}`, {
       method: 'DELETE'
     });
-    if (!response.ok) throw new Error('Failed to delete user');
+    if (!response.ok) {
+      // "Failed to delete user" told the admin nothing — it was the same message whether
+      // the account was in another practice, unlinked, or still referenced by other
+      // records. The server distinguishes those; pass its answer through.
+      const data = await response.json().catch(() => ({}));
+      const detail = data.code || data.detail
+        ? ` [${[data.code, data.detail].filter(Boolean).join(': ')}]`
+        : '';
+      throw new Error((data.error || 'Failed to delete user') + detail);
+    }
     return response.json();
   },
 
   // Providers
   getProviders: async () => {
     const response = await authenticatedFetch(`${API_BASE_URL}/providers`);
-    if (!response.ok) throw new Error('Failed to fetch providers');
+    if (!response.ok) {
+      // The server distinguishes "not linked to a practice" from a generic failure;
+      // discarding the body turned that into an unactionable "Failed to fetch providers".
+      const body = await response.json().catch(() => ({}));
+      throw new Error(body.message || body.error || 'Failed to fetch providers');
+    }
     return response.json();
   },
   getProvider: async (id) => {
@@ -805,7 +848,7 @@ const api = {
       err.mfaEnrolmentRequired = Boolean(data.mfaEnrolmentRequired);
       throw err;
     }
-    return response.json();
+    return api._storePortalSessionToken(await response.json());
   },
   changePassword: async (currentPassword, newPassword) => {
     const response = await authenticatedFetch(`${API_BASE_URL}/auth/change-password`, {
@@ -858,9 +901,12 @@ const api = {
     });
     if (!response.ok) {
       const e = await response.json().catch(() => ({}));
-      throw new Error(e.error || 'Google sign-in failed');
+      // providerError is the short OAuth/AADSTS code. Showing it turns an unactionable
+      // "try again" into something whoever configured the app can look up.
+      throw new Error((e.error || 'Google sign-in failed')
+        + (e.providerError ? ` [${e.providerError}]` : ''));
     }
-    return response.json();
+    return api._storePortalSessionToken(await response.json());
   },
   exchangeMicrosoftCode: async (code, redirectUri, codeVerifier, inviteToken) => {
     const response = await authenticatedFetch(`${API_BASE_URL}/auth/oauth/microsoft/exchange`, {
@@ -869,9 +915,12 @@ const api = {
     });
     if (!response.ok) {
       const e = await response.json().catch(() => ({}));
-      throw new Error(e.error || 'Microsoft sign-in failed');
+      // providerError is the short OAuth/AADSTS code. Showing it turns an unactionable
+      // "try again" into something whoever configured the app can look up.
+      throw new Error((e.error || 'Microsoft sign-in failed')
+        + (e.providerError ? ` [${e.providerError}]` : ''));
     }
-    return response.json();
+    return api._storePortalSessionToken(await response.json());
   },
 
   socialLogin: async (provider, providerId, accessToken, email, firstName, lastName, profileData) => {
@@ -881,7 +930,7 @@ const api = {
       body: JSON.stringify({ provider, providerId, accessToken, email, firstName, lastName, profileData })
     });
     if (!response.ok) throw new Error('Failed to login with social account');
-    return response.json();
+    return api._storePortalSessionToken(await response.json());
   },
   socialRegister: async (provider, providerId, accessToken, email, firstName, lastName, profileData) => {
     const response = await authenticatedFetch(`${API_BASE_URL}/auth/social-register`, {
@@ -1783,6 +1832,229 @@ const api = {
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.error || error.message || 'Failed to delete appointment type');
+    }
+    return response.json();
+  },
+
+  // Locations (sites)
+  //
+  // The server answers a refused write with { error: <code>, message: <what to do> } —
+  // a site cannot be deleted while history references it, and the primary site cannot be
+  // deleted or deactivated. Surface `message` first so the UI shows the remedy rather
+  // than a generic failure.
+  getLocations: async ({ includeInactive = false, type } = {}) => {
+    const params = new URLSearchParams();
+    if (includeInactive) params.set('includeInactive', 'true');
+    if (type) params.set('type', type);
+    const qs = params.toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/locations${qs ? `?${qs}` : ''}`);
+    if (!response.ok) throw new Error('Failed to fetch locations');
+    return response.json();
+  },
+  getPrimaryLocation: async () => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/locations/primary`);
+    if (response.status === 404) return null; // tenant has no primary site yet
+    if (!response.ok) throw new Error('Failed to fetch primary location');
+    return response.json();
+  },
+  getLocation: async (id) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/locations/${id}`);
+    if (!response.ok) throw new Error('Failed to fetch location');
+    return response.json();
+  },
+  createLocation: async (data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/locations`, {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.message || error.error || 'Failed to create location');
+    }
+    return response.json();
+  },
+  updateLocation: async (id, data) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/locations/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.message || error.error || 'Failed to update location');
+    }
+    return response.json();
+  },
+  makeLocationPrimary: async (id) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/locations/${id}/make-primary`, {
+      method: 'POST'
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.message || error.error || 'Failed to set primary location');
+    }
+    return response.json();
+  },
+  deleteLocation: async (id) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/locations/${id}`, {
+      method: 'DELETE'
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.message || error.error || 'Failed to delete location');
+    }
+    return response.json();
+  },
+
+  // Practice setup — the specialty configuration wizard.
+  //
+  // getPracticeSetupState is read by the shell on load, not only by the wizard: the
+  // hidden-module list and the terminology overrides come from there. It is readable by
+  // any authenticated user; everything else is admin-only.
+  getPracticeSetupState: async () => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/practice-setup/state`);
+    if (!response.ok) return null; // no tenant, or not configured — the shell carries on
+    return response.json();
+  },
+  savePracticeSetupState: async (data) => api._setupWrite('PUT', '/practice-setup/state', data, 'save setup state'),
+  getSpecialties: async () => api._setupRead('/practice-setup/specialties'),
+  getSpecialtyPacks: async () => api._setupRead('/practice-setup/packs'),
+  getPackFootprint: async (code) => api._setupRead(`/practice-setup/footprint?code=${encodeURIComponent(code)}`),
+  previewSpecialtyPack: async (specialtyCodes) =>
+    api._setupWrite('POST', '/practice-setup/preview', { specialtyCodes }, 'preview the pack'),
+  applySpecialtyPack: async (specialtyCodes, { mode = 'seed', acknowledgeUnreviewed = false } = {}) =>
+    api._setupWrite('POST', '/practice-setup/apply',
+      { specialtyCodes, mode, acknowledgeUnreviewed }, 'apply the pack'),
+  setPinnedModules: async (pinnedModules) =>
+    api._setupWrite('PUT', '/practice-setup/modules', { pinnedModules }, 'update module visibility'),
+  setTerminology: async (terminology) =>
+    api._setupWrite('PUT', '/practice-setup/terminology', { terminology }, 'update terminology'),
+
+  _setupRead: async (path) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}${path}`);
+    if (!response.ok) {
+      const e = await response.json().catch(() => ({}));
+      const err = new Error(e.message || e.error || 'Request failed');
+      err.code = e.error;
+      throw err;
+    }
+    return response.json();
+  },
+  _setupWrite: async (method, path, data, what) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}${path}`, {
+      method, body: JSON.stringify(data),
+    });
+    if (!response.ok) {
+      const e = await response.json().catch(() => ({}));
+      const err = new Error(e.message || e.error || `Failed to ${what}`);
+      err.code = e.error;
+      err.errors = e.errors;
+      err.reviewStatus = e.reviewStatus;
+      throw err;
+    }
+    return response.json();
+  },
+
+  // Medical camps
+  //
+  // The camp API answers a refused action with { error: <code>, message: <what to do> } and,
+  // for a lifecycle change, a `blockers` array naming every outstanding requirement at
+  // once. Surface `message` first; show `blockers` where there is room for a list.
+  getCamps: async ({ status, from, to, locationId } = {}) => {
+    const p = new URLSearchParams();
+    if (status) p.set('status', status);
+    if (from) p.set('from', from);
+    if (to) p.set('to', to);
+    if (locationId) p.set('locationId', locationId);
+    const qs = p.toString();
+    const response = await authenticatedFetch(`${API_BASE_URL}/camps${qs ? `?${qs}` : ''}`);
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.message || error.error || 'Failed to fetch camps');
+    }
+    return response.json();
+  },
+  getCamp: async (id) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/camps/${id}`);
+    if (!response.ok) throw new Error('Failed to fetch camp');
+    return response.json();
+  },
+  getCampReadiness: async (id, to) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/camps/${id}/readiness${to ? `?to=${to}` : ''}`);
+    if (!response.ok) throw new Error('Failed to check camp readiness');
+    return response.json();
+  },
+  createCamp: async (data) => api._campWrite('POST', '/camps', data, 'create camp'),
+  updateCamp: async (id, data) => api._campWrite('PUT', `/camps/${id}`, data, 'update camp'),
+  setCampStatus: async (id, status) => api._campWrite('POST', `/camps/${id}/status`, { status }, 'change camp status'),
+  deleteCamp: async (id) => api._campWrite('DELETE', `/camps/${id}`, undefined, 'delete camp'),
+
+  getCampServices: async (id) => api._campRead(`/camps/${id}/services`),
+  addCampService: async (id, data) => api._campWrite('POST', `/camps/${id}/services`, data, 'add service'),
+  removeCampService: async (serviceId) => api._campWrite('DELETE', `/camps/services/${serviceId}`, undefined, 'remove service'),
+
+  getCampStaff: async (id) => api._campRead(`/camps/${id}/staff`),
+  getCampStaffConflicts: async (id, userId) => api._campRead(`/camps/${id}/staff/conflicts?userId=${userId}`),
+  addCampStaff: async (id, data) => api._campWrite('POST', `/camps/${id}/staff`, data, 'roster staff'),
+  removeCampStaff: async (staffId) => api._campWrite('DELETE', `/camps/staff/${staffId}`, undefined, 'remove staff'),
+
+  getCampStations: async (id) => api._campRead(`/camps/${id}/stations`),
+  addCampStation: async (id, data) => api._campWrite('POST', `/camps/${id}/stations`, data, 'add station'),
+  updateCampStation: async (stationId, data) => api._campWrite('PUT', `/camps/stations/${stationId}`, data, 'update station'),
+  removeCampStation: async (stationId) => api._campWrite('DELETE', `/camps/stations/${stationId}`, undefined, 'delete station'),
+
+  getCampAllocations: async (id) => api._campRead(`/camps/${id}/allocations`),
+  getCampCost: async (id) => api._campRead(`/camps/${id}/cost`),
+  issueCampStock: async (id, data) => api._campWrite('POST', `/camps/${id}/allocations`, data, 'issue stock'),
+  reconcileCampStock: async (allocId, data) => api._campWrite('POST', `/camps/allocations/${allocId}/reconcile`, data, 'reconcile stock'),
+
+  getCampBoard: async (id) => api._campRead(`/camps/${id}/board`),
+  getCampStationQueue: async (stationId) => api._campRead(`/camps/stations/${stationId}/queue`),
+  startCampVisit: async (visitId) => api._campWrite('POST', `/camps/visits/${visitId}/start`, {}, 'start visit'),
+  completeCampVisit: async (visitId, data) => api._campWrite('POST', `/camps/visits/${visitId}/complete`, data, 'complete visit'),
+
+  registerCampAttendee: async (data) => api._campWrite('POST', '/camp-registrations', data, 'register attendee'),
+  getCampRegistrations: async (campId, { status, q, promoted } = {}) => {
+    const p = new URLSearchParams({ campId });
+    if (status) p.set('status', status);
+    if (q) p.set('q', q);
+    if (promoted !== undefined) p.set('promoted', String(promoted));
+    return api._campRead(`/camp-registrations?${p.toString()}`);
+  },
+  getCampRegistration: async (id) => api._campRead(`/camp-registrations/${id}`),
+  updateCampRegistration: async (id, data) => api._campWrite('PUT', `/camp-registrations/${id}`, data, 'update registration'),
+  recordCampConsent: async (id, data = {}) => api._campWrite('POST', `/camp-registrations/${id}/consent`, data, 'record consent'),
+  setCampRegistrationStatus: async (id, status) => api._campWrite('POST', `/camp-registrations/${id}/status`, { status }, 'update status'),
+  matchCampRegistration: async (id) => api._campRead(`/camp-registrations/${id}/match`),
+  promoteCampRegistration: async (id, data = {}) => api._campWrite('POST', `/camp-registrations/${id}/promote`, data, 'promote registration'),
+  queueCampAttendee: async (id, stationId) => api._campWrite('POST', `/camp-registrations/${id}/queue`, { stationId }, 'queue attendee'),
+
+  getCampReport: async (campId) => api._campRead(`/camp-reports/${campId}`),
+  // Aggregates only — the server refuses to put attendee data in this response.
+  getCampSponsorReport: async (campId) => api._campRead(`/camp-reports/${campId}/sponsor`),
+
+  _campRead: async (path) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}${path}`);
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      const err = new Error(error.message || error.error || 'Request failed');
+      err.code = error.error;
+      throw err;
+    }
+    return response.json();
+  },
+  _campWrite: async (method, path, data, what) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}${path}`, {
+      method,
+      body: data === undefined ? undefined : JSON.stringify(data),
+    });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      const err = new Error(error.message || error.error || `Failed to ${what}`);
+      err.code = error.error;
+      err.blockers = error.blockers;
+      err.conflicts = error.conflicts;
+      err.references = error.references;
+      throw err;
     }
     return response.json();
   },
@@ -3677,6 +3949,20 @@ const api = {
       console.error('Failed to clear token:', e);
     }
   },
+  // A login response carries portalSessionToken only when the account is a patient with
+  // portal access. Unlike the JWT above this is always persisted, same-origin or not: the
+  // portal's router.param guard reads the Authorization header and nothing else, so there
+  // is no cookie to fall back on. This mirrors what PatientLoginPage already does after a
+  // direct portal login.
+  _storePortalSessionToken: (data) => {
+    if (!data || !data.portalSessionToken) return data;
+    try {
+      sessionStorage.setItem('portalSessionToken', data.portalSessionToken);
+    } catch (e) {
+      console.error('Failed to store portal session token:', e);
+    }
+    return data;
+  },
   // SEC-16: revoke the session server-side before dropping local state. Bumps the
   // account's token_version (invalidating this and any other clinician JWT) and clears
 
@@ -3696,7 +3982,7 @@ const api = {
   startSignup: async (payload) => {
     const r = await fetch(`${API_BASE_URL}/signup`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: publicPostHeaders(),
       body: JSON.stringify(payload),
     });
     const data = await r.json().catch(() => ({}));
@@ -3752,7 +4038,7 @@ const api = {
   acceptInvite: async (payload) => {
     const r = await fetch(`${API_BASE_URL}/invites/accept`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: publicPostHeaders(),
       body: JSON.stringify(payload),
     });
     const data = await r.json().catch(() => ({}));
@@ -3910,7 +4196,7 @@ const api = {
   joinPractice: async (payload) => {
     const r = await fetch(`${API_BASE_URL}/team-access/join`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: publicPostHeaders(),
       body: JSON.stringify(payload),
     });
     const data = await r.json().catch(() => ({}));

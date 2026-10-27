@@ -3,12 +3,10 @@ import { X, Heart, Clock, Tag, Shield, AlertCircle } from 'lucide-react';
 import MedicalCodeMultiSelect from './MedicalCodeMultiSelect';
 import ConfirmationModal from '../modals/ConfirmationModal';
 import { useAudit } from '../../hooks/useAudit';
-import { FORM_TEMPLATES } from '../../data/formTemplates';
 import ThemedSelect from './ThemedSelect';
 
-const CONSENT_FORM_OPTIONS = FORM_TEMPLATES.filter(t =>
-  ['consent', 'privacy', 'legal'].includes(t.category_slug)
-);
+// Categories whose templates can serve as an offering's consent form.
+const CONSENT_CATEGORIES = ['consent', 'privacy', 'legal'];
 
 const NewHealthcareOfferingForm = ({ theme, api, onClose, onSuccess, addNotification, t, editingOffering = null }) => {
   const { logFormView, logCreate, logUpdate, logError, startAction } = useAudit();
@@ -72,6 +70,14 @@ const NewHealthcareOfferingForm = ({ theme, api, onClose, onSuccess, addNotifica
       .then(data => setFormTemplates(Array.isArray(data) ? data : (data?.templates || [])))
       .catch(() => setFormTemplates([]));
   }, [api]);
+
+  // From the DATABASE, not the frontend seed array. consent_form_id is a uuid with a
+  // foreign key to form_templates, and the seed array's `id` is a slug string — so the
+  // old picker could only ever have produced an invalid reference. (It also loaded these
+  // rows already and never used them, which is why `formTemplates` was flagged unused.)
+  const CONSENT_FORM_OPTIONS = formTemplates.filter(
+    (tpl) => CONSENT_CATEGORIES.includes(tpl.category_slug)
+  );
 
   // Populate form when editing
   useEffect(() => {

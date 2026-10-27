@@ -1,0 +1,318 @@
+{
+  "code": "general_practice",
+  "version": 1,
+  "label": "General Practice",
+  "description": "Starting configuration for a family medicine or general practice: routine and same-day appointment types, a preventive and chronic-care service catalogue, and a general intake form.",
+  "modules": {
+    "hide": [
+      "camps"
+    ]
+  },
+  "terminology": {
+    "provider": "GP",
+    "providers": "GPs"
+  },
+  "appointmentTypes": [
+    {
+      "name": "New Patient Consultation",
+      "durationMinutes": 30,
+      "color": "#2563EB",
+      "displayOrder": 10
+    },
+    {
+      "name": "Routine Appointment",
+      "durationMinutes": 15,
+      "color": "#0EA5E9",
+      "displayOrder": 20
+    },
+    {
+      "name": "Same-day / Urgent",
+      "durationMinutes": 10,
+      "color": "#14B8A6",
+      "displayOrder": 30
+    },
+    {
+      "name": "Chronic Disease Review",
+      "durationMinutes": 20,
+      "color": "#8B5CF6",
+      "displayOrder": 40
+    },
+    {
+      "name": "Health Check",
+      "durationMinutes": 30,
+      "color": "#F59E0B",
+      "displayOrder": 50
+    },
+    {
+      "name": "Immunisation",
+      "durationMinutes": 10,
+      "color": "#64748B",
+      "displayOrder": 60
+    },
+    {
+      "name": "Telephone Consultation",
+      "durationMinutes": 10,
+      "color": "#DC2626",
+      "displayOrder": 70
+    }
+  ],
+  "serviceCategories": [
+    {
+      "name": "Consultations",
+      "icon": "stethoscope",
+      "displayOrder": 10
+    },
+    {
+      "name": "Preventive Care",
+      "icon": "shield",
+      "displayOrder": 20
+    },
+    {
+      "name": "Chronic Disease Management",
+      "icon": "activity",
+      "displayOrder": 30
+    },
+    {
+      "name": "Minor Procedures",
+      "icon": "scissors",
+      "displayOrder": 40
+    }
+  ],
+  "offerings": [
+    {
+      "name": "New Patient Office Visit",
+      "categoryName": "Consultations",
+      "durationMinutes": 30,
+      "cptCodes": [
+        "99204"
+      ]
+    },
+    {
+      "name": "Established Patient Office Visit, Brief",
+      "categoryName": "Consultations",
+      "durationMinutes": 10,
+      "cptCodes": [
+        "99212"
+      ]
+    },
+    {
+      "name": "Established Patient Office Visit, Standard",
+      "categoryName": "Consultations",
+      "durationMinutes": 15,
+      "cptCodes": [
+        "99213"
+      ]
+    },
+    {
+      "name": "Established Patient Office Visit, Extended",
+      "categoryName": "Consultations",
+      "durationMinutes": 25,
+      "cptCodes": [
+        "99214"
+      ]
+    },
+    {
+      "name": "Adult Preventive Visit, 18-39",
+      "categoryName": "Preventive Care",
+      "durationMinutes": 30,
+      "cptCodes": [
+        "99385"
+      ],
+      "minAge": 18,
+      "maxAge": 39
+    },
+    {
+      "name": "Adult Preventive Visit, 40-64",
+      "categoryName": "Preventive Care",
+      "durationMinutes": 30,
+      "cptCodes": [
+        "99386"
+      ],
+      "minAge": 40,
+      "maxAge": 64
+    },
+    {
+      "name": "Adult Preventive Visit, 65+",
+      "categoryName": "Preventive Care",
+      "durationMinutes": 30,
+      "cptCodes": [
+        "99387"
+      ],
+      "minAge": 65
+    },
+    {
+      "name": "Immunisation Administration",
+      "categoryName": "Preventive Care",
+      "durationMinutes": 10,
+      "cptCodes": [
+        "90471"
+      ]
+    },
+    {
+      "name": "Venepuncture",
+      "categoryName": "Preventive Care",
+      "durationMinutes": 10,
+      "cptCodes": [
+        "36415"
+      ]
+    },
+    {
+      "name": "Diabetes Review",
+      "categoryName": "Chronic Disease Management",
+      "durationMinutes": 20
+    },
+    {
+      "name": "Hypertension Review",
+      "categoryName": "Chronic Disease Management",
+      "durationMinutes": 15
+    },
+    {
+      "name": "Asthma / COPD Review",
+      "categoryName": "Chronic Disease Management",
+      "durationMinutes": 20
+    },
+    {
+      "name": "Medication Review",
+      "categoryName": "Chronic Disease Management",
+      "durationMinutes": 15
+    },
+    {
+      "name": "Wound Care and Dressing",
+      "categoryName": "Minor Procedures",
+      "durationMinutes": 20
+    },
+    {
+      "name": "Ear Syringing",
+      "categoryName": "Minor Procedures",
+      "durationMinutes": 15,
+      "cptCodes": [
+        "69210"
+      ]
+    }
+  ],
+  "formTemplates": [
+    {
+      "slug": "gp-new-patient-intake",
+      "name": "New Patient Intake",
+      "templateType": "onboarding",
+      "categorySlug": "onboarding",
+      "version": "1.0",
+      "languages": [
+        "en"
+      ],
+      "complianceTags": [
+        "HIPAA"
+      ],
+      "fields": [
+        {
+          "id": "reason",
+          "type": "textarea",
+          "label": "What brings you in today?",
+          "required": true
+        },
+        {
+          "id": "duration",
+          "type": "text",
+          "label": "How long has this been going on?"
+        },
+        {
+          "id": "past_conditions",
+          "type": "textarea",
+          "label": "Ongoing medical conditions"
+        },
+        {
+          "id": "medications",
+          "type": "textarea",
+          "label": "Current medicines, including anything bought over the counter"
+        },
+        {
+          "id": "allergies",
+          "type": "textarea",
+          "label": "Allergies and what happens"
+        },
+        {
+          "id": "surgeries",
+          "type": "textarea",
+          "label": "Previous operations"
+        },
+        {
+          "id": "family_history",
+          "type": "textarea",
+          "label": "Conditions that run in your family"
+        },
+        {
+          "id": "smoking",
+          "type": "radio",
+          "label": "Do you smoke?",
+          "options": [
+            "Never",
+            "Ex-smoker",
+            "Current smoker"
+          ]
+        },
+        {
+          "id": "alcohol",
+          "type": "text",
+          "label": "Alcohol in a typical week"
+        },
+        {
+          "id": "exercise",
+          "type": "text",
+          "label": "Exercise in a typical week"
+        }
+      ]
+    }
+  ],
+  "inventoryCategories": [
+    {
+      "code": "gp_consumables",
+      "name": "Consultation Consumables"
+    },
+    {
+      "code": "gp_vaccines",
+      "name": "Vaccines"
+    },
+    {
+      "code": "gp_dressings",
+      "name": "Dressings and Wound Care"
+    },
+    {
+      "code": "gp_diagnostics",
+      "name": "Point-of-care Diagnostics"
+    }
+  ],
+  "codeSets": {
+    "icd10": [
+      "Z00.00",
+      "I10",
+      "E11.9",
+      "J45.909",
+      "M54.5",
+      "J06.9",
+      "E78.5",
+      "F41.9"
+    ],
+    "cpt": [
+      "99204",
+      "99212",
+      "99213",
+      "99214",
+      "99385",
+      "99386",
+      "99387",
+      "90471",
+      "36415",
+      "69210"
+    ]
+  },
+  "settings": {
+    "defaultAppointmentDuration": 15,
+    "slotIntervalMinutes": 5
+  },
+  "reports": {
+    "show": [
+      "clinical",
+      "operational"
+    ]
+  }
+}

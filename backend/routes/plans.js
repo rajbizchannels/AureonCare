@@ -1,6 +1,7 @@
 const express = require('express');
 const { authenticate, authorize } = require('../middleware/auth');
 const billing = require('../services/platformBilling');
+const subscriptionChanges = require('../services/subscriptionChanges');
 const { invalidateEntitlements } = require('../services/entitlements');
 const router = express.Router();
 router.use(authenticate);
@@ -82,22 +83,43 @@ router.get('/preview/:planId', authorize('admin'), async (req, res) => {
   try {
     if (!req.user.practiceId) return res.status(403).json({ error: 'Your account is not linked to a practice.' });
     const { rows } = await pool.query(
-      `SELECT s.stripe_subscription_id, p.stripe_price_id, p.display_name
+      `SELECT s.stripe_subscription_id, s.current_period_start, s.current_period_end,
+              old.price AS old_price,
+              p.id, p.name, p.display_name, p.price, p.currency, p.billing_cycle, p.stripe_price_id
          FROM control.subscriptions s
          CROSS JOIN public.subscription_plans p
+         LEFT JOIN public.subscription_plans old ON old.id = s.plan_id
         WHERE s.practice_id = $1 AND p.id = $2`,
       [req.user.practiceId, req.params.planId]
     );
     if (!rows.length) return res.status(404).json({ error: 'Plan or subscription not found' });
-    const { stripe_subscription_id: subId, stripe_price_id: priceId } = rows[0];
+    const r = rows[0];
 
-    // No Stripe subscription (an operator-created tenant, or one still on the legacy
-    // path): the switch is a records-only change with nothing to prorate.
-    if (!subId || !priceId || !billing.isConfigured()) {
-      return res.json({ prorated: false, amountDue: 0, lines: [] });
-    }
-    const preview = await billing.previewPlanChange({ subscriptionId: subId, newPriceId: priceId });
-    res.json({ prorated: true, ...preview });
+    // The same quote the change itself will use, so what is shown and what is booked are
+    // produced by one piece of code rather than two that can disagree. A practice not
+    // billed through Stripe now gets a figure too — previously it was told the change cost
+    // nothing, which was only true in the sense that no card would be charged.
+    const quote = await subscriptionChanges.quotePlanChange({
+      subscription: r,
+      plan: r,
+      prorationDate: req.query.at,
+    });
+    res.json({
+      prorated: quote.source !== 'none',
+      source: quote.source,
+      amountDue: quote.amountDue,
+      prorationNet: quote.netMinor / 100,
+      credit: quote.creditMinor / 100,
+      charge: quote.chargeMinor / 100,
+      currency: quote.currency,
+      effectiveAt: new Date(quote.prorationDate * 1000).toISOString(),
+      prorationDate: quote.prorationDate,
+      ...(quote.reason ? { reason: quote.reason } : {}),
+      lines: quote.lines.length ? quote.lines : [
+        ...(quote.creditMinor ? [{ description: 'Unused time on your current plan', amount: quote.creditMinor / 100 }] : []),
+        ...(quote.chargeMinor ? [{ description: `Remaining time on ${r.display_name || r.name}`, amount: quote.chargeMinor / 100 }] : []),
+      ],
+    });
   } catch (e) {
     if (e.statusCode) return res.status(e.statusCode).json({ error: e.message });
     console.error('Plan preview error:', e);
@@ -137,8 +159,15 @@ router.put('/current', authorize('admin'), async (req, res) => {
     if (!planRows.length) return res.status(404).json({ error: 'Plan not found' });
     const plan = planRows[0];
 
+    // The plan being left is needed by name and by price: by name so the audit trail says
+    // what the change moved FROM, by price so a tenant Stripe does not bill can still have
+    // the change prorated locally.
     const { rows: subRows } = await pool.query(
-      'SELECT * FROM control.subscriptions WHERE practice_id = $1 LIMIT 1', [req.user.practiceId]
+      `SELECT s.*, p.price AS old_price, p.display_name AS old_plan_display_name,
+              p.name AS old_plan_name, p.billing_cycle AS old_billing_cycle
+         FROM control.subscriptions s
+         LEFT JOIN public.subscription_plans p ON p.id = s.plan_id
+        WHERE s.practice_id = $1 LIMIT 1`, [req.user.practiceId]
     );
     if (!subRows.length) {
       return res.status(409).json({
@@ -150,6 +179,11 @@ router.put('/current', authorize('admin'), async (req, res) => {
       return res.status(400).json({ error: 'You are already on that plan.' });
     }
 
+    // Price the change BEFORE applying it. Afterwards the subscription is already on the
+    // new price and there is nothing left to quote — the proration would be recorded as
+    // zero and the books would show a tier change that cost nothing.
+    const quote = await subscriptionChanges.quotePlanChange({ subscription: sub, plan, prorationDate });
+
     // Move the money first. If Stripe refuses (card declined, subscription canceled), the
     // entitlement must NOT change — otherwise a practice could unlock a higher tier by
     // failing to pay for it.
@@ -158,7 +192,9 @@ router.put('/current', authorize('admin'), async (req, res) => {
       await billing.changeSubscriptionPlan({
         subscriptionId: sub.stripe_subscription_id,
         newPriceId: plan.stripe_price_id,
-        prorationDate: prorationDate ? Number(prorationDate) : undefined,
+        // Pin to the instant the change was quoted at, so the amount recorded in the
+        // ledger is the amount Stripe bills rather than a second reading taken later.
+        prorationDate: quote.prorationDate,
       });
       prorated = true;
     }
@@ -172,16 +208,45 @@ router.put('/current', authorize('admin'), async (req, res) => {
     );
     invalidateEntitlements(req.user.practiceId);
 
+    // Audit it and book it. A practice moving its own tier used to leave no trace in the
+    // platform console and no entry in the ledger: the only evidence that anything had
+    // happened was plan_id holding a different number.
+    const { accountingError } = await subscriptionChanges.recordChange(pool, {
+      tenantId: sub.tenant_id,
+      practiceId: req.user.practiceId,
+      actor: { type: 'tenant_user', id: req.user.id, label: req.user.email || null },
+      ip: req.ip || req.headers['x-forwarded-for'] || null,
+      fromPlan: sub.plan_id
+        ? { id: sub.plan_id, name: sub.old_plan_name, display_name: sub.old_plan_display_name }
+        : null,
+      toPlan: plan,
+      quote,
+      pushedToStripe: prorated,
+    });
+
     res.json({
       ...updated[0],
       prorated,
+      proration: {
+        source: quote.source,
+        effectiveAt: new Date(quote.prorationDate * 1000).toISOString(),
+        credit: quote.creditMinor / 100,
+        charge: quote.chargeMinor / 100,
+        net: quote.netMinor / 100,
+        currency: quote.currency,
+        ...(quote.reason ? { reason: quote.reason } : {}),
+      },
       plan_display_name: plan.display_name,
       plan_price: plan.price,
       currency: plan.currency,
       billing_cycle: plan.billing_cycle,
+      // Say which of the three happened, rather than implying a charge that is not coming.
       message: prorated
         ? 'Plan changed. The prorated credit and charge appear on your next invoice.'
-        : 'Plan changed. This practice is not billed through Stripe, so nothing was charged.',
+        : quote.source === 'local'
+          ? 'Plan changed. This practice is invoiced manually; the prorated amount has been recorded against your account.'
+          : 'Plan changed. This practice is not billed through Stripe, so nothing was charged.',
+      ...(accountingError ? { accountingWarning: 'The change was applied but could not be written to the billing ledger; support has been alerted.' } : {}),
     });
   } catch (error) {
     if (error.statusCode) return res.status(error.statusCode).json({ error: error.message });

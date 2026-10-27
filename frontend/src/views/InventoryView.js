@@ -318,7 +318,7 @@ const StockMovementForm = ({ items, onSave, onClose }) => {
         </FormField>
         {selectedItem && (
           <div className="col-span-2 flex gap-4 text-xs px-3 py-2 rounded-lg bg-orange-50 dark:bg-orange-900/20 text-orange-800 dark:text-orange-300">
-            <span>Current Stock: <strong>{selectedItem.current_stock ?? '—'} {selectedItem.unit_of_measure}</strong></span>
+            <span>Current Stock: <strong>{selectedItem.quantity_on_hand ?? '—'} {selectedItem.unit_of_measure}</strong></span>
             <span>Reorder Level: <strong>{selectedItem.reorder_level ?? '—'}</strong></span>
           </div>
         )}
@@ -903,7 +903,7 @@ export default function InventoryView({ theme, api, user, addNotification, setCu
   const filteredItems = items.filter(item => {
     if (itemStatusFilter && item.status !== itemStatusFilter) return false;
     if (itemTypeFilter && item.item_type !== itemTypeFilter) return false;
-    if (showLowStock && !(parseFloat(item.current_stock || 0) <= parseFloat(item.reorder_level || 0))) return false;
+    if (showLowStock && !(parseFloat(item.quantity_on_hand || 0) <= parseFloat(item.reorder_level || 0))) return false;
     if (showExpiringSoon && item.next_expiry_date) {
       const expiry = new Date(item.next_expiry_date);
       if (expiry > thirtyDaysFromNow) return false;
@@ -943,7 +943,7 @@ export default function InventoryView({ theme, api, user, addNotification, setCu
     );
   });
 
-  const lowStockItems = items.filter(i => parseFloat(i.current_stock || 0) <= parseFloat(i.reorder_level || 0) && i.status === 'active');
+  const lowStockItems = items.filter(i => parseFloat(i.quantity_on_hand || 0) <= parseFloat(i.reorder_level || 0) && i.status === 'active');
   const expiringItems = items.filter(i => {
     if (!i.next_expiry_date) return false;
     return new Date(i.next_expiry_date) <= thirtyDaysFromNow;
@@ -964,7 +964,7 @@ export default function InventoryView({ theme, api, user, addNotification, setCu
         />
         <StatCard
           label="Total Inventory Value"
-          value={formatCurrency(dashboard?.totalValue ?? items.reduce((s, i) => s + (parseFloat(i.current_stock || 0) * parseFloat(i.unit_cost || 0)), 0), currency)}
+          value={formatCurrency(dashboard?.totalValue ?? items.reduce((s, i) => s + (parseFloat(i.quantity_on_hand || 0) * parseFloat(i.unit_cost || 0)), 0), currency)}
           sub="at cost"
           icon={DollarSign}
           color="bg-amber-100 text-amber-600"
@@ -1007,7 +1007,7 @@ export default function InventoryView({ theme, api, user, addNotification, setCu
                   <div className="min-w-0 flex-1">
                     <p className={`text-sm font-medium truncate ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{item.name}</p>
                     <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
-                      Stock: {item.current_stock ?? 0} / Min: {item.reorder_level ?? 0}
+                      Stock: {item.quantity_on_hand ?? 0} / Min: {item.reorder_level ?? 0}
                     </p>
                   </div>
                   <span className="ml-3 px-2 py-0.5 text-xs rounded-full bg-red-100 text-red-700 whitespace-nowrap">
@@ -1135,7 +1135,7 @@ export default function InventoryView({ theme, api, user, addNotification, setCu
         empty={filteredItems.length === 0 ? 'No items found' : null}
       >
         {filteredItems.map(item => {
-          const isLow = parseFloat(item.current_stock || 0) <= parseFloat(item.reorder_level || 0);
+          const isLow = parseFloat(item.quantity_on_hand || 0) <= parseFloat(item.reorder_level || 0);
           const catName = categories.find(c => c.id === item.category_id)?.name || '—';
           return (
             <tr key={item.id} className={theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-50'}>
@@ -1149,7 +1149,7 @@ export default function InventoryView({ theme, api, user, addNotification, setCu
               <td className="px-4 py-3">
                 <div className={`flex items-center gap-1.5 text-sm font-medium ${isLow ? 'text-red-500' : theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                   {isLow && <AlertTriangle size={12} />}
-                  {item.current_stock ?? 0} <span className={`text-xs font-normal ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>{item.unit_of_measure}</span>
+                  {item.quantity_on_hand ?? 0} <span className={`text-xs font-normal ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>{item.unit_of_measure}</span>
                 </div>
               </td>
               <td className={`px-4 py-3 text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>{item.reorder_level ?? '—'}</td>

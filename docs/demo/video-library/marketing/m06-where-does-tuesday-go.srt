@@ -1,19 +1,19 @@
 1
-00:00:05,833 --> 00:00:09,320
-Where did the other ten go?
+00:00:06,301 --> 00:00:10,404
+The appointments nobody turned up for. Where do they go?
 
 2
-00:00:09,320 --> 00:00:12,316
+00:00:10,404 --> 00:00:14,690
 Scheduled, no-shows, and the rate between them.
 
 3
-00:00:12,316 --> 00:00:16,309
+00:00:14,690 --> 00:00:18,668
 Ninety days, because one bad week proves nothing.
 
 4
-00:00:16,309 --> 00:00:20,463
+00:00:18,668 --> 00:00:22,865
 Late cancellations count too. The slot is gone either way.
 
 5
-00:00:20,463 --> 00:00:22,866
+00:00:22,865 --> 00:00:25,270
 And the detail names who, and when.

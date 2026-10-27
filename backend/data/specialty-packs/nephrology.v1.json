@@ -1,0 +1,270 @@
+{
+  "code": "nephrology",
+  "version": 1,
+  "label": "Nephrology",
+  "description": "Starting configuration for a renal service: clinic and dialysis appointment types, with a CKD, dialysis and transplant catalogue.",
+  "modules": {
+    "hide": [
+      "camps"
+    ]
+  },
+  "terminology": {
+    "provider": "Nephrologist",
+    "providers": "Nephrologists"
+  },
+  "appointmentTypes": [
+    {
+      "name": "New Patient Consultation",
+      "durationMinutes": 45,
+      "color": "#2563EB",
+      "displayOrder": 10
+    },
+    {
+      "name": "Follow-up Consultation",
+      "durationMinutes": 30,
+      "color": "#0EA5E9",
+      "displayOrder": 20
+    },
+    {
+      "name": "CKD Review",
+      "durationMinutes": 30,
+      "color": "#14B8A6",
+      "displayOrder": 30
+    },
+    {
+      "name": "Dialysis Session",
+      "durationMinutes": 240,
+      "color": "#8B5CF6",
+      "displayOrder": 40
+    },
+    {
+      "name": "Access Review",
+      "durationMinutes": 30,
+      "color": "#F59E0B",
+      "displayOrder": 50
+    },
+    {
+      "name": "Transplant Follow-up",
+      "durationMinutes": 40,
+      "color": "#64748B",
+      "displayOrder": 60
+    }
+  ],
+  "serviceCategories": [
+    {
+      "name": "Consultations",
+      "icon": "stethoscope",
+      "displayOrder": 10
+    },
+    {
+      "name": "Chronic Kidney Disease",
+      "icon": "activity",
+      "displayOrder": 20
+    },
+    {
+      "name": "Dialysis",
+      "icon": "droplet",
+      "displayOrder": 30
+    },
+    {
+      "name": "Transplant",
+      "icon": "heart",
+      "displayOrder": 40
+    }
+  ],
+  "offerings": [
+    {
+      "name": "New Patient Nephrology Consultation",
+      "categoryName": "Consultations",
+      "durationMinutes": 45,
+      "cptCodes": [
+        "99204"
+      ]
+    },
+    {
+      "name": "Follow-up Nephrology Consultation",
+      "categoryName": "Consultations",
+      "durationMinutes": 30,
+      "cptCodes": [
+        "99214"
+      ]
+    },
+    {
+      "name": "Chronic Kidney Disease Review",
+      "categoryName": "Chronic Kidney Disease",
+      "durationMinutes": 30
+    },
+    {
+      "name": "Proteinuria Assessment",
+      "categoryName": "Chronic Kidney Disease",
+      "durationMinutes": 30
+    },
+    {
+      "name": "Renal Anaemia Management",
+      "categoryName": "Chronic Kidney Disease",
+      "durationMinutes": 25
+    },
+    {
+      "name": "Haemodialysis Session",
+      "categoryName": "Dialysis",
+      "durationMinutes": 240,
+      "consentFormRequired": true
+    },
+    {
+      "name": "Peritoneal Dialysis Training",
+      "categoryName": "Dialysis",
+      "durationMinutes": 90
+    },
+    {
+      "name": "Dialysis Access Assessment",
+      "categoryName": "Dialysis",
+      "durationMinutes": 30
+    },
+    {
+      "name": "Pre-dialysis Education",
+      "categoryName": "Dialysis",
+      "durationMinutes": 60
+    },
+    {
+      "name": "Transplant Work-up",
+      "categoryName": "Transplant",
+      "durationMinutes": 60
+    },
+    {
+      "name": "Post-transplant Review",
+      "categoryName": "Transplant",
+      "durationMinutes": 40
+    },
+    {
+      "name": "Hypertension and Renal Review",
+      "categoryName": "Consultations",
+      "durationMinutes": 25
+    }
+  ],
+  "formTemplates": [
+    {
+      "slug": "nephrology-intake",
+      "name": "Nephrology Intake",
+      "templateType": "onboarding",
+      "categorySlug": "onboarding",
+      "version": "1.0",
+      "languages": [
+        "en"
+      ],
+      "complianceTags": [
+        "HIPAA"
+      ],
+      "fields": [
+        {
+          "id": "referral_reason",
+          "type": "textarea",
+          "label": "Reason for referral",
+          "required": true
+        },
+        {
+          "id": "known_kidney_disease",
+          "type": "radio",
+          "label": "Have you been told you have kidney disease?",
+          "options": [
+            "No",
+            "Yes",
+            "Not sure"
+          ]
+        },
+        {
+          "id": "urine_changes",
+          "type": "checkboxes",
+          "label": "Any of these?",
+          "options": [
+            "Frothy urine",
+            "Blood in urine",
+            "Passing less urine",
+            "Passing more at night",
+            "Swollen ankles or face"
+          ]
+        },
+        {
+          "id": "bp_history",
+          "type": "text",
+          "label": "How long have you had high blood pressure, if at all?"
+        },
+        {
+          "id": "diabetes",
+          "type": "radio",
+          "label": "Do you have diabetes?",
+          "options": [
+            "No",
+            "Type 1",
+            "Type 2"
+          ]
+        },
+        {
+          "id": "nsaids",
+          "type": "radio",
+          "label": "Do you take anti-inflammatory painkillers?",
+          "options": [
+            "No",
+            "Occasionally",
+            "Regularly"
+          ]
+        },
+        {
+          "id": "medications",
+          "type": "textarea",
+          "label": "Current medicines, with doses",
+          "required": true
+        },
+        {
+          "id": "family_kidney",
+          "type": "checkbox",
+          "label": "Kidney disease in the family"
+        },
+        {
+          "id": "dialysis_history",
+          "type": "textarea",
+          "label": "Any previous dialysis or transplant"
+        }
+      ]
+    }
+  ],
+  "inventoryCategories": [
+    {
+      "code": "neph_dialysis",
+      "name": "Dialysis Consumables"
+    },
+    {
+      "code": "neph_access",
+      "name": "Vascular Access Supplies"
+    },
+    {
+      "code": "neph_drugs",
+      "name": "Renal Drugs and ESAs"
+    }
+  ],
+  "codeSets": {
+    "icd10": [
+      "N18.3",
+      "N18.4",
+      "N18.6",
+      "N04.9",
+      "I12.9",
+      "E11.21",
+      "D63.1",
+      "N17.9"
+    ],
+    "cpt": [
+      "99204",
+      "99214"
+    ]
+  },
+  "settings": {
+    "defaultAppointmentDuration": 30,
+    "slotIntervalMinutes": 15
+  },
+  "reports": {
+    "show": [
+      "clinical",
+      "operational"
+    ]
+  }
+}

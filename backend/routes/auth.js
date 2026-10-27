@@ -7,6 +7,7 @@ const { validateSocialToken } = require('../utils/socialTokenValidator');
 const { sendEmail, buildEmailHtml } = require('../services/notificationService');
 const { BCRYPT_COST, validatePassword } = require('../utils/passwordPolicy');
 const { issueAuthCookies, clearAuthCookies } = require('../utils/authCookies');
+const { issuePortalSession } = require('../services/portalSession');
 const { exchangeAuthCode } = require('../utils/oauthExchange');
 const { findUsableInvite, claimInvite } = require('./invites');
 const { resolveDomainClaim } = require('../services/domainJoin');
@@ -133,11 +134,20 @@ router.post('/login', async (req, res) => {
     // clients; the frontend migrates to the cookie and stops storing it.
     const csrfToken = issueAuthCookies(res, token);
 
+    // A patient signing in here lands in the portal, whose routes accept only a portal
+    // session token — the JWT above is not one. Null for every non-patient, and for a
+    // patient whose portal access is off.
+    const portalSession = await issuePortalSession(pool, user, {
+      ip: req.ip,
+      userAgent: req.get('user-agent'),
+    });
+
     res.json({
       message: 'Login successful',
       token,
       csrfToken,
-      user: toCamelCase(userData)
+      user: toCamelCase(userData),
+      ...(portalSession ? { portalSessionToken: portalSession.sessionToken } : {})
     });
   } catch (error) {
     console.error('Error during login:', error);
@@ -1021,6 +1031,19 @@ const socialLoginHandler = async (req, res) => {
           // makes this a staff signup just as an invite does, so it skips it too;
           // otherwise a new clinician would silently acquire a patient record.
           if (!invite && !domainClaim) {
+          // SEC-05: `patients` and `roles` moved into the tenant schemas at the 068 cutover,
+          // and sl_client is a RAW pool connection whose search_path is the default — so
+          // these reads resolved against `public`, where the tables no longer exist, and
+          // every new social sign-up died with 42P01 reported as "Social login failed".
+          //
+          // A patient self-registering has no tenant context to pin: no invite, no domain
+          // claim, no session. There is genuinely no schema to write a chart into. Rather
+          // than fail the sign-in, create the account and skip the chart — which is the
+          // same unallocated state this path already produced, and which
+          // GET /api/auth/tenant-status explains. The savepoint keeps the skip from
+          // aborting the surrounding transaction.
+          await sl_client.query('SAVEPOINT patient_chart');
+          try {
           // Create patient record — patients.id = users.id in current schema
           const sl_patientCheck = await sl_client.query(
             'SELECT id FROM patients WHERE id = $1 OR email = $2 LIMIT 1',
@@ -1046,6 +1069,18 @@ const socialLoginHandler = async (req, res) => {
             await sl_client.query(
               `INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
               [user.id, sl_roleResult.rows[0].id]
+            );
+          }
+          await sl_client.query('RELEASE SAVEPOINT patient_chart');
+          } catch (chartErr) {
+            await sl_client.query('ROLLBACK TO SAVEPOINT patient_chart');
+            // Only a missing relation is tolerated. Anything else is a real fault and must
+            // still fail the sign-in rather than silently producing a half-made account.
+            if (chartErr.code !== '42P01') throw chartErr;
+            console.warn(
+              '[social-login] patients/roles are not reachable from the default search_path, '
+              + 'so ' + user.email + ' was created without a patient chart. A self-registration '
+              + 'has no tenant to write one into — see GET /api/auth/tenant-status.'
             );
           }
           } // end patient self-registration path
@@ -1080,12 +1115,19 @@ const socialLoginHandler = async (req, res) => {
 
     const csrfToken = issueAuthCookies(res, token);
 
+    // Same as the password path: a patient needs a portal session, not just the JWT.
+    const portalSession = await issuePortalSession(pool, user, {
+      ip: req.ip,
+      userAgent: req.get('user-agent'),
+    });
+
     res.json({
       message: 'Social login successful',
       token,
       csrfToken,
       user: toCamelCase(userData),
-      isNewUser
+      isNewUser,
+      ...(portalSession ? { portalSessionToken: portalSession.sessionToken } : {})
     });
 
   } catch (error) {
@@ -1142,7 +1184,14 @@ router.post('/oauth/microsoft/exchange', async (req, res) => {
     req.body = { provider: 'microsoft', providerId: null, accessToken, refreshToken, profileData: {}, inviteToken: (req.body || {}).inviteToken };
     return socialLoginHandler(req, res);
   } catch (err) {
-    if (err.statusCode) return res.status(err.statusCode).json({ error: err.message });
+    if (err.statusCode) {
+      // providerError is the short OAuth/AADSTS code, set by exchangeAuthCode. It is the
+      // difference between "try again" and knowing the client secret is wrong.
+      return res.status(err.statusCode).json({
+        error: err.message,
+        providerError: err.providerError || undefined,
+      });
+    }
     console.error('Error during microsoft code exchange:', err);
     res.status(500).json({ error: 'Social login failed' });
   }
@@ -1158,7 +1207,14 @@ router.post('/oauth/google/exchange', async (req, res) => {
     req.body = { provider: 'google', providerId: null, accessToken, refreshToken, profileData: {}, inviteToken: (req.body || {}).inviteToken };
     return socialLoginHandler(req, res);
   } catch (err) {
-    if (err.statusCode) return res.status(err.statusCode).json({ error: err.message });
+    if (err.statusCode) {
+      // providerError is the short OAuth/AADSTS code, set by exchangeAuthCode. It is the
+      // difference between "try again" and knowing the client secret is wrong.
+      return res.status(err.statusCode).json({
+        error: err.message,
+        providerError: err.providerError || undefined,
+      });
+    }
     console.error('Error during google code exchange:', err);
     res.status(500).json({ error: 'Social login failed' });
   }

@@ -77,6 +77,9 @@ router.put('/categories/:id', authorize('admin', 'billing_manager'), async (req,
     const { name, code, description, parentId, isActive } = req.body;
     const result = await pool.query(`
       UPDATE inventory_categories SET
+        -- A user edit makes this row the practice's own; a specialty-pack upgrade must
+        -- never overwrite it afterwards (tenant/007, services/specialtyPack.js).
+        is_customised = true,
         name        = COALESCE($1, name),
         code        = COALESCE($2, code),
         description = COALESCE($3, description),
@@ -1243,7 +1246,9 @@ router.post('/backup', authorize('admin'), async (req, res) => {
     const destination = req.body?.destination;
     if (destination && cloudStorage.isSupported(destination)) {
       try {
-        cloud = await cloudStorage.uploadBackup(pool, destination, fileName, backupData);
+        // backup_provider_settings is per-tenant, so the connected provider must be looked
+        // up through this request's schema — the raw pool reads a different one.
+        cloud = await cloudStorage.uploadBackup(req.db || pool, destination, fileName, backupData);
       } catch (uploadErr) {
         console.error(`Inventory backup upload to ${destination} failed:`, uploadErr);
         cloudError = uploadErr.message;

@@ -6,11 +6,14 @@ const { google } = require('googleapis');
 
 const JWT_SECRET = process.env.AC_TK_S;
 
+const { googleClientId } = require('../utils/oauthClientIds');
+
 // ─── Configuration ───────────────────────────────────────────────────────────
-// AC_GG_CID / AC_GG_CSK  Google OAuth client id + secret (Calendar API enabled)
+// REACT_APP_GG_CID      Google OAuth client id (AC_GG_CID still accepted as a fallback)
+// AC_GG_CSK             Google OAuth client secret (Calendar API enabled)
 // AC_GG_URI              OAuth redirect URI registered on that client
 // AC_FE_URL              frontend origin the callback returns the patient to
-const GOOGLE_CLIENT_ID = process.env.AC_GG_CID;
+const GOOGLE_CLIENT_ID = googleClientId();
 const GOOGLE_CLIENT_SECRET = process.env.AC_GG_CSK;
 const GOOGLE_REDIRECT_URI =
   process.env.AC_GG_URI ||
@@ -21,7 +24,7 @@ const isConfigured = () => Boolean(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET);
 
 if (!isConfigured()) {
   console.warn(
-    '[calendar-sync] AC_GG_CID / AC_GG_CSK are not set — Google Calendar sync is disabled'
+    '[calendar-sync] REACT_APP_GG_CID / AC_GG_CSK are not set — Google Calendar sync is disabled'
   );
 }
 

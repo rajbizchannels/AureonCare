@@ -1,0 +1,276 @@
+{
+  "code": "fertility",
+  "version": 1,
+  "label": "Fertility and Reproductive Medicine",
+  "description": "Starting configuration for a fertility service: consultation, monitoring and treatment appointment types built around a stimulation cycle.",
+  "modules": {
+    "hide": [
+      "camps"
+    ]
+  },
+  "terminology": {
+    "provider": "Fertility Specialist",
+    "providers": "Fertility Specialists",
+    "appointment": "Visit",
+    "appointments": "Visits"
+  },
+  "appointmentTypes": [
+    {
+      "name": "Initial Fertility Consultation",
+      "durationMinutes": 60,
+      "color": "#2563EB",
+      "displayOrder": 10
+    },
+    {
+      "name": "Follow-up Consultation",
+      "durationMinutes": 30,
+      "color": "#0EA5E9",
+      "displayOrder": 20
+    },
+    {
+      "name": "Monitoring Scan",
+      "durationMinutes": 20,
+      "color": "#14B8A6",
+      "displayOrder": 30
+    },
+    {
+      "name": "Egg Collection",
+      "durationMinutes": 60,
+      "color": "#8B5CF6",
+      "displayOrder": 40
+    },
+    {
+      "name": "Embryo Transfer",
+      "durationMinutes": 45,
+      "color": "#F59E0B",
+      "displayOrder": 50
+    },
+    {
+      "name": "Counselling Session",
+      "durationMinutes": 60,
+      "color": "#64748B",
+      "displayOrder": 60
+    },
+    {
+      "name": "Treatment Planning",
+      "durationMinutes": 45,
+      "color": "#DC2626",
+      "displayOrder": 70
+    }
+  ],
+  "serviceCategories": [
+    {
+      "name": "Assessment",
+      "icon": "clipboard-list",
+      "displayOrder": 10
+    },
+    {
+      "name": "Monitoring",
+      "icon": "search",
+      "displayOrder": 20
+    },
+    {
+      "name": "Treatment",
+      "icon": "activity",
+      "displayOrder": 30
+    },
+    {
+      "name": "Counselling",
+      "icon": "message-circle",
+      "displayOrder": 40
+    }
+  ],
+  "offerings": [
+    {
+      "name": "Initial Fertility Assessment",
+      "categoryName": "Assessment",
+      "durationMinutes": 60
+    },
+    {
+      "name": "Follow-up Fertility Consultation",
+      "categoryName": "Assessment",
+      "durationMinutes": 30
+    },
+    {
+      "name": "Ovarian Reserve Assessment",
+      "categoryName": "Assessment",
+      "durationMinutes": 30
+    },
+    {
+      "name": "Semen Analysis Review",
+      "categoryName": "Assessment",
+      "durationMinutes": 30
+    },
+    {
+      "name": "Follicle Tracking Scan",
+      "categoryName": "Monitoring",
+      "durationMinutes": 20
+    },
+    {
+      "name": "Baseline Scan",
+      "categoryName": "Monitoring",
+      "durationMinutes": 20
+    },
+    {
+      "name": "Ovulation Induction Review",
+      "categoryName": "Treatment",
+      "durationMinutes": 30
+    },
+    {
+      "name": "Intrauterine Insemination",
+      "categoryName": "Treatment",
+      "durationMinutes": 30,
+      "consentFormRequired": true
+    },
+    {
+      "name": "Egg Collection",
+      "categoryName": "Treatment",
+      "durationMinutes": 60,
+      "consentFormRequired": true,
+      "requiresPreparation": true,
+      "preparationInstructions": "Nothing to eat for six hours and nothing to drink for two hours beforehand. Arrange for someone to take you home; you must not drive for 24 hours."
+    },
+    {
+      "name": "Embryo Transfer",
+      "categoryName": "Treatment",
+      "durationMinutes": 45,
+      "consentFormRequired": true,
+      "requiresPreparation": true,
+      "preparationInstructions": "Arrive with a comfortably full bladder, which makes the transfer easier to guide."
+    },
+    {
+      "name": "Fertility Counselling",
+      "categoryName": "Counselling",
+      "durationMinutes": 60
+    },
+    {
+      "name": "Pregnancy Test Review",
+      "categoryName": "Monitoring",
+      "durationMinutes": 20
+    }
+  ],
+  "formTemplates": [
+    {
+      "slug": "fertility-intake",
+      "name": "Fertility Intake",
+      "templateType": "onboarding",
+      "categorySlug": "onboarding",
+      "version": "1.0",
+      "languages": [
+        "en"
+      ],
+      "complianceTags": [
+        "HIPAA"
+      ],
+      "fields": [
+        {
+          "id": "trying_duration",
+          "type": "text",
+          "label": "How long have you been trying to conceive?",
+          "required": true
+        },
+        {
+          "id": "previous_pregnancies",
+          "type": "text",
+          "label": "Previous pregnancies and outcomes"
+        },
+        {
+          "id": "cycle_regular",
+          "type": "radio",
+          "label": "Are your periods regular?",
+          "options": [
+            "Yes",
+            "No",
+            "Not applicable"
+          ]
+        },
+        {
+          "id": "cycle_length",
+          "type": "text",
+          "label": "Usual cycle length"
+        },
+        {
+          "id": "previous_treatment",
+          "type": "textarea",
+          "label": "Any fertility treatment already tried, and the outcome"
+        },
+        {
+          "id": "conditions",
+          "type": "checkboxes",
+          "label": "Have you been told you have any of these?",
+          "options": [
+            "Polycystic ovaries",
+            "Endometriosis",
+            "Fibroids",
+            "Blocked tubes",
+            "Thyroid problem",
+            "None of these"
+          ]
+        },
+        {
+          "id": "partner_assessment",
+          "type": "radio",
+          "label": "Has your partner had a semen analysis?",
+          "options": [
+            "Yes",
+            "No",
+            "Not applicable"
+          ]
+        },
+        {
+          "id": "smoking_alcohol",
+          "type": "textarea",
+          "label": "Smoking and alcohol, for both partners where it applies"
+        },
+        {
+          "id": "medications",
+          "type": "textarea",
+          "label": "Current medicines and supplements"
+        },
+        {
+          "id": "support_needs",
+          "type": "textarea",
+          "label": "Anything that would help us support you through treatment"
+        }
+      ]
+    }
+  ],
+  "inventoryCategories": [
+    {
+      "code": "fert_media",
+      "name": "Culture Media and Lab Consumables"
+    },
+    {
+      "code": "fert_drugs",
+      "name": "Stimulation Drugs"
+    },
+    {
+      "code": "fert_procedure",
+      "name": "Procedure Packs"
+    },
+    {
+      "code": "fert_cryo",
+      "name": "Cryostorage Supplies"
+    }
+  ],
+  "codeSets": {
+    "icd10": [
+      "N97.9",
+      "N97.0",
+      "E28.2",
+      "N80.9",
+      "N46.9",
+      "Z31.41"
+    ]
+  },
+  "settings": {
+    "defaultAppointmentDuration": 20,
+    "slotIntervalMinutes": 10
+  },
+  "reports": {
+    "show": [
+      "clinical",
+      "operational"
+    ]
+  }
+}

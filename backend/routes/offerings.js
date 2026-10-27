@@ -76,7 +76,10 @@ router.put('/categories/:id', async (req, res) => {
   try {
     const result = await pool.query(
       `UPDATE service_categories
-       SET name = COALESCE($1, name),
+       SET -- A user edit makes this row the practice's own: a pack upgrade must never
+           -- overwrite it afterwards (tenant/007, services/specialtyPack.js).
+           is_customised = true,
+           name = COALESCE($1, name),
            description = COALESCE($2, description),
            icon = COALESCE($3, icon),
            color = COALESCE($4, color),
@@ -387,7 +390,13 @@ router.post('/', async (req, res) => {
         min_age, max_age, gender_restriction || 'any',
         contraindications, prerequisites, allowed_provider_specializations,
         image_url, video_url, brochure_url,
-        _consent_form_required || false, _consent_form_url || _consent_form_id,
+        // consent_form_url and consent_form_id are TWO columns and need two values. This
+        // list supplied 28 values for 29 placeholders, so every POST /api/offerings failed
+        // outright with `bind message supplies 28 parameters, but prepared statement
+        // requires 29` — creating an offering through the API never worked. The old
+        // `_consent_form_url || _consent_form_id` also meant consent_form_id was never
+        // populated, so an offering could not reference its consent form at all.
+        _consent_form_required || false, _consent_form_url || null, _consent_form_id || null,
         seo_title, seo_description, seo_keywords, created_by
       ]
     );
@@ -454,8 +463,11 @@ router.put('/:id', async (req, res) => {
     const setClause = fields.map((field, index) => `${field} = $${index + 2}`).join(', ');
     const values = [id, ...fields.map(field => updates[field])];
 
+    // is_customised is appended rather than being one of `fields`, so it is set by the
+    // edit itself and cannot be spoofed through the request body. The view_count bump
+    // further up deliberately does NOT stamp: reading an offering is not customising it.
     const result = await pool.query(
-      `UPDATE healthcare_offerings SET ${setClause} WHERE id = $1 RETURNING *`,
+      `UPDATE healthcare_offerings SET ${setClause}, is_customised = true WHERE id = $1 RETURNING *`,
       values
     );
 
