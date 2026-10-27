@@ -10,18 +10,12 @@ One patient crosses the whole practice: a telehealth visit booked at the front d
 
 No cuts between modules and no switching systems — the continuity is the point.
 
-0:00 Booked
-0:25 Seen on video
-0:43 Documented
-0:58 Claimed
-1:22 Paid
-
 Chapters:
 0:00 Booked
-0:29 Seen on video
-0:47 Documented
-1:02 Claimed
-1:27 Paid
+0:30 Seen on video
+0:48 Documented
+1:04 Claimed
+1:30 Paid
 
 Subtitles: upload m01-one-patient-booking-to-paid.srt as the English track — do not rely on auto-captions.
 Narration: spoken track included (google / en-US-Neural2-D).
@@ -45,7 +39,7 @@ AureonCare, practice management software, medical billing software, telehealth s
 | Thumbnail | m01-one-patient-booking-to-paid.thumbnail.png |
 | Subtitles | m01-one-patient-booking-to-paid.srt |
 | End screen | Link to the next video in the playlist |
-| Duration | 1:57 |
+| Duration | 1:59 |
 | Resolution | 1920x1080, 30fps, H.264 |
 | Audio | Narration, AAC 160k, normalised to -16 LUFS |
 

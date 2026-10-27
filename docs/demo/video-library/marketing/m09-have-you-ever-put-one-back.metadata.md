@@ -37,7 +37,7 @@ AureonCare, backup and restore, disaster recovery, healthcare IT, practice manag
 | Thumbnail | m09-have-you-ever-put-one-back.thumbnail.png |
 | Subtitles | m09-have-you-ever-put-one-back.srt |
 | End screen | Link to the next video in the playlist |
-| Duration | 0:16 |
+| Duration | 0:20 |
 | Resolution | 1920x1080, 30fps, H.264 |
 | Audio | Narration, AAC 160k, normalised to -16 LUFS |
 

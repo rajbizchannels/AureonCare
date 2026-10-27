@@ -25,11 +25,15 @@ module.exports = {
   intro: 'A single visit travels the whole system: booked, seen on video, documented, claimed, paid.',
   journey: 'Book → video visit → chart → claim → payment posted',
   youtubeTitle: 'One patient, booking to bank deposit — AureonCare in 90 seconds',
+  // No chapter list here. This description used to end with one, hardcoded,
+  // and it went stale the moment the cut was re-recorded — it read 0:25 for a
+  // beat that now lands at 0:29, which as a YouTube chapter is a link to the
+  // wrong moment rather than a typo. The recorder writes .chapters.txt beside
+  // the video from the real timings; that is the only copy.
   description:
     'One patient crosses the whole practice: a telehealth visit booked at the front desk, seen '
     + 'over video, documented in the chart, billed as a claim, and settled when the payment posts.\n\n'
-    + 'No cuts between modules and no switching systems — the continuity is the point.\n\n'
-    + '0:00 Booked\n0:25 Seen on video\n0:43 Documented\n0:58 Claimed\n1:22 Paid',
+    + 'No cuts between modules and no switching systems — the continuity is the point.',
   tags: [
     'AureonCare', 'practice management software', 'medical billing software',
     'telehealth software', 'EHR demo', 'clinic software', 'revenue cycle management',
