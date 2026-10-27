@@ -39,7 +39,7 @@ Try it: https://app.aureoncare.tech
 
 ---
 
-## M1 — m01-one-patient-booking-to-paid `01:53`
+## M1 — m01-one-patient-booking-to-paid `01:55`
 
 ### Title `49 chars`
 
@@ -56,9 +56,9 @@ No cuts between modules and no switching systems — the continuity is the point
 
 0:00 Booked
 0:28 Seen on video
-0:45 Documented
-1:00 Claimed
-1:24 Paid
+0:46 Documented
+1:01 Claimed
+1:26 Paid
 
 Try it: https://app.aureoncare.tech
 ```
@@ -109,7 +109,7 @@ Upload `m02-friday-cancellation.thumbnail.png` and `m02-friday-cancellation.srt`
 
 ---
 
-## M3 — m03-chart-it-and-go `01:25`
+## M3 — m03-chart-it-and-go `01:24`
 
 ### Title `72 chars`
 
@@ -126,7 +126,7 @@ Diagnoses, prescriptions and lab orders are tabs of the same chart, so an order 
 
 0:00 The chart
 0:14 The note
-0:42 The order
+0:45 The order
 
 Try it: https://app.aureoncare.tech
 ```
@@ -352,7 +352,7 @@ Planning that knows a camp takes clinicians away from the clinic, and says which
 0:18 Who is on duty
 0:33 The gate
 0:50 The queue
-1:01 What it was worth
+1:00 What it was worth
 
 Try it: https://app.aureoncare.tech
 ```

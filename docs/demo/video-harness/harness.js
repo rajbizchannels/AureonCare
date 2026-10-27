@@ -1850,8 +1850,16 @@ class Director {
   /** Click if the target shows up; returns false and moves on if it does not. */
   async maybeClick(locator, opts = {}) {
     if (!(await this.exists(locator, opts.timeout || 3500))) return false;
-    await this.click(locator.first(), opts);
-    return true;
+    try {
+      await this.click(locator.first(), opts);
+      return true;
+    } catch (err) {
+      // A self-dismissing dialog (the lab order's "OK") can close while the
+      // click is still waiting for it to settle. Gone is the outcome a click
+      // would have produced, so only fail if the target is still there.
+      if (await this.exists(locator, 500)) throw err;
+      return false;
+    }
   }
 
   /** Date, time and number inputs: set the value directly, never keystroke it. */

@@ -377,8 +377,8 @@ const laboratories = [
  * they must be plain code strings, not {code, name} objects.
  */
 const labOrders = [
-  { id: 7301, order_number: 'LAB-2026-000442', patient_id: 101, provider_id: 2, laboratory_id: 6101, laboratory_name: 'Labcorp - Portland Central', order_date: day(-4), collection_date: day(-3), status: 'resulted', priority: 'routine', diagnosis_codes: ['E11.9'], test_codes: ['83036', '80061'], result_date: day(-1), results: [{ name: 'Hemoglobin A1c', value: '8.2', unit: '%', reference_range: '4.0-5.6', flag: 'abnormal' }, { name: 'Total cholesterol', value: '186', unit: 'mg/dL', reference_range: '<200', flag: 'normal' }] },
-  { id: 7302, order_number: 'LAB-2026-000451', patient_id: 104, provider_id: 2, laboratory_id: 6102, laboratory_name: 'Quest Diagnostics - Beaverton', order_date: day(-1), status: 'transmitted', priority: 'routine', diagnosis_codes: ['I10'], test_codes: ['80053'] },
+  { id: 7301, order_number: 'LAB-2026-000442', created_at: at(-4, 10, 20), patient_id: 101, provider_id: 2, laboratory_id: 6101, laboratory_name: 'Labcorp - Portland Central', order_date: day(-4), collection_date: day(-3), status: 'resulted', priority: 'routine', diagnosis_codes: ['E11.9'], test_codes: ['83036', '80061'], result_date: day(-1), results: [{ name: 'Hemoglobin A1c', value: '8.2', unit: '%', reference_range: '4.0-5.6', flag: 'abnormal' }, { name: 'Total cholesterol', value: '186', unit: 'mg/dL', reference_range: '<200', flag: 'normal' }] },
+  { id: 7302, order_number: 'LAB-2026-000451', created_at: at(-1, 15, 5), patient_id: 104, provider_id: 2, laboratory_id: 6102, laboratory_name: 'Quest Diagnostics - Beaverton', order_date: day(-1), status: 'transmitted', priority: 'routine', diagnosis_codes: ['I10'], test_codes: ['80053'] },
 ];
 
 const formTemplates = [
