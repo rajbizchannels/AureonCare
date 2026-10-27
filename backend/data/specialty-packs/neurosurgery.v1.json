@@ -1,0 +1,284 @@
+{
+  "code": "neurosurgery",
+  "version": 1,
+  "label": "Neurosurgery",
+  "description": "Starting configuration for a neurosurgical practice: consultation, imaging-review and theatre appointment types, with a spinal and cranial catalogue.",
+  "modules": {
+    "hide": [
+      "camps"
+    ]
+  },
+  "terminology": {
+    "provider": "Neurosurgeon",
+    "providers": "Neurosurgeons"
+  },
+  "appointmentTypes": [
+    {
+      "name": "New Patient Consultation",
+      "durationMinutes": 45,
+      "color": "#2563EB",
+      "displayOrder": 10
+    },
+    {
+      "name": "Follow-up Consultation",
+      "durationMinutes": 25,
+      "color": "#0EA5E9",
+      "displayOrder": 20
+    },
+    {
+      "name": "Imaging Review",
+      "durationMinutes": 30,
+      "color": "#14B8A6",
+      "displayOrder": 30
+    },
+    {
+      "name": "Pre-operative Assessment",
+      "durationMinutes": 45,
+      "color": "#8B5CF6",
+      "displayOrder": 40
+    },
+    {
+      "name": "Post-operative Review",
+      "durationMinutes": 25,
+      "color": "#F59E0B",
+      "displayOrder": 50
+    },
+    {
+      "name": "Spinal Injection",
+      "durationMinutes": 45,
+      "color": "#64748B",
+      "displayOrder": 60
+    }
+  ],
+  "serviceCategories": [
+    {
+      "name": "Consultations",
+      "icon": "stethoscope",
+      "displayOrder": 10
+    },
+    {
+      "name": "Spine",
+      "icon": "align-center",
+      "displayOrder": 20
+    },
+    {
+      "name": "Cranial",
+      "icon": "brain",
+      "displayOrder": 30
+    },
+    {
+      "name": "Pain Procedures",
+      "icon": "syringe",
+      "displayOrder": 40
+    }
+  ],
+  "offerings": [
+    {
+      "name": "New Patient Neurosurgical Consultation",
+      "categoryName": "Consultations",
+      "durationMinutes": 45,
+      "cptCodes": [
+        "99205"
+      ]
+    },
+    {
+      "name": "Follow-up Neurosurgical Consultation",
+      "categoryName": "Consultations",
+      "durationMinutes": 25,
+      "cptCodes": [
+        "99214"
+      ]
+    },
+    {
+      "name": "Imaging Review Consultation",
+      "categoryName": "Consultations",
+      "durationMinutes": 30
+    },
+    {
+      "name": "Lumbar Disc Surgery",
+      "categoryName": "Spine",
+      "durationMinutes": 120,
+      "consentFormRequired": true,
+      "requiresPreparation": true,
+      "preparationInstructions": "Nothing to eat for six hours beforehand. Arrange help at home; you will be advised not to lift or drive for several weeks."
+    },
+    {
+      "name": "Cervical Spine Surgery",
+      "categoryName": "Spine",
+      "durationMinutes": 150,
+      "consentFormRequired": true
+    },
+    {
+      "name": "Lumbar Decompression",
+      "categoryName": "Spine",
+      "durationMinutes": 120,
+      "consentFormRequired": true
+    },
+    {
+      "name": "Spinal Fusion Assessment",
+      "categoryName": "Spine",
+      "durationMinutes": 45
+    },
+    {
+      "name": "Craniotomy",
+      "categoryName": "Cranial",
+      "durationMinutes": 240,
+      "consentFormRequired": true
+    },
+    {
+      "name": "Hydrocephalus and Shunt Review",
+      "categoryName": "Cranial",
+      "durationMinutes": 30
+    },
+    {
+      "name": "Brain Tumour Review",
+      "categoryName": "Cranial",
+      "durationMinutes": 45
+    },
+    {
+      "name": "Epidural Steroid Injection",
+      "categoryName": "Pain Procedures",
+      "durationMinutes": 45,
+      "consentFormRequired": true
+    },
+    {
+      "name": "Nerve Root Block",
+      "categoryName": "Pain Procedures",
+      "durationMinutes": 45,
+      "consentFormRequired": true
+    }
+  ],
+  "formTemplates": [
+    {
+      "slug": "neurosurgical-intake",
+      "name": "Neurosurgical Intake",
+      "templateType": "onboarding",
+      "categorySlug": "onboarding",
+      "version": "1.0",
+      "languages": [
+        "en"
+      ],
+      "complianceTags": [
+        "HIPAA"
+      ],
+      "fields": [
+        {
+          "id": "referral_reason",
+          "type": "textarea",
+          "label": "Reason for referral",
+          "required": true
+        },
+        {
+          "id": "symptom_area",
+          "type": "checkboxes",
+          "label": "Where are the symptoms?",
+          "options": [
+            "Head",
+            "Neck",
+            "Arm",
+            "Back",
+            "Leg"
+          ],
+          "required": true
+        },
+        {
+          "id": "pain_vs_weakness",
+          "type": "checkboxes",
+          "label": "What are you experiencing?",
+          "options": [
+            "Pain",
+            "Numbness",
+            "Pins and needles",
+            "Weakness",
+            "Loss of balance",
+            "Bladder or bowel changes"
+          ]
+        },
+        {
+          "id": "red_flags",
+          "type": "checkboxes",
+          "label": "Any of these?",
+          "options": [
+            "Loss of bladder control",
+            "Loss of bowel control",
+            "Numbness between the legs",
+            "Rapidly worsening weakness",
+            "None of these"
+          ],
+          "required": true
+        },
+        {
+          "id": "onset",
+          "type": "text",
+          "label": "When did it start?"
+        },
+        {
+          "id": "imaging",
+          "type": "textarea",
+          "label": "Scans already done, where and when"
+        },
+        {
+          "id": "previous_spine_surgery",
+          "type": "textarea",
+          "label": "Previous spine or brain surgery"
+        },
+        {
+          "id": "medications",
+          "type": "textarea",
+          "label": "Current medicines, including blood thinners",
+          "required": true
+        },
+        {
+          "id": "walking_aid",
+          "type": "radio",
+          "label": "Do you use a walking aid?",
+          "options": [
+            "No",
+            "Stick",
+            "Frame",
+            "Wheelchair"
+          ]
+        }
+      ]
+    }
+  ],
+  "inventoryCategories": [
+    {
+      "code": "nsurg_implants",
+      "name": "Spinal Implants"
+    },
+    {
+      "code": "nsurg_theatre",
+      "name": "Neurosurgical Theatre Consumables"
+    },
+    {
+      "code": "nsurg_injectables",
+      "name": "Injectables for Pain Procedures"
+    }
+  ],
+  "codeSets": {
+    "icd10": [
+      "M51.26",
+      "M48.061",
+      "M54.16",
+      "G91.9",
+      "C71.9",
+      "S06.0X0A",
+      "M47.816"
+    ],
+    "cpt": [
+      "99205",
+      "99214"
+    ]
+  },
+  "settings": {
+    "defaultAppointmentDuration": 30,
+    "slotIntervalMinutes": 15
+  },
+  "reports": {
+    "show": [
+      "clinical",
+      "operational"
+    ]
+  }
+}

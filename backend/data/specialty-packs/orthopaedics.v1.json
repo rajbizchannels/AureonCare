@@ -1,0 +1,313 @@
+{
+  "code": "orthopaedics",
+  "version": 1,
+  "label": "Orthopaedics",
+  "description": "Starting configuration for an orthopaedic practice: clinic, injection and theatre appointment types, with a joint, spine and sports-injury catalogue.",
+  "modules": {
+    "hide": [
+      "camps"
+    ]
+  },
+  "terminology": {
+    "provider": "Orthopaedic Surgeon",
+    "providers": "Orthopaedic Surgeons"
+  },
+  "appointmentTypes": [
+    {
+      "name": "New Patient Consultation",
+      "durationMinutes": 30,
+      "color": "#2563EB",
+      "displayOrder": 10
+    },
+    {
+      "name": "Follow-up Consultation",
+      "durationMinutes": 15,
+      "color": "#0EA5E9",
+      "displayOrder": 20
+    },
+    {
+      "name": "Joint Injection",
+      "durationMinutes": 30,
+      "color": "#14B8A6",
+      "displayOrder": 30
+    },
+    {
+      "name": "Fracture Clinic",
+      "durationMinutes": 20,
+      "color": "#8B5CF6",
+      "displayOrder": 40
+    },
+    {
+      "name": "Pre-operative Assessment",
+      "durationMinutes": 45,
+      "color": "#F59E0B",
+      "displayOrder": 50
+    },
+    {
+      "name": "Post-operative Review",
+      "durationMinutes": 20,
+      "color": "#64748B",
+      "displayOrder": 60
+    },
+    {
+      "name": "Cast or Splint Application",
+      "durationMinutes": 30,
+      "color": "#DC2626",
+      "displayOrder": 70
+    }
+  ],
+  "serviceCategories": [
+    {
+      "name": "Consultations",
+      "icon": "stethoscope",
+      "displayOrder": 10
+    },
+    {
+      "name": "Joint Replacement",
+      "icon": "bone",
+      "displayOrder": 20
+    },
+    {
+      "name": "Sports Injury",
+      "icon": "activity",
+      "displayOrder": 30
+    },
+    {
+      "name": "Spine",
+      "icon": "align-center",
+      "displayOrder": 40
+    },
+    {
+      "name": "Trauma",
+      "icon": "bandage",
+      "displayOrder": 50
+    }
+  ],
+  "offerings": [
+    {
+      "name": "New Patient Orthopaedic Consultation",
+      "categoryName": "Consultations",
+      "durationMinutes": 30,
+      "cptCodes": [
+        "99204"
+      ]
+    },
+    {
+      "name": "Follow-up Orthopaedic Consultation",
+      "categoryName": "Consultations",
+      "durationMinutes": 15,
+      "cptCodes": [
+        "99213"
+      ]
+    },
+    {
+      "name": "Major Joint Injection or Aspiration",
+      "categoryName": "Consultations",
+      "durationMinutes": 30,
+      "cptCodes": [
+        "20610"
+      ],
+      "consentFormRequired": true
+    },
+    {
+      "name": "Total Knee Replacement",
+      "categoryName": "Joint Replacement",
+      "durationMinutes": 120,
+      "cptCodes": [
+        "27447"
+      ],
+      "consentFormRequired": true,
+      "requiresPreparation": true,
+      "preparationInstructions": "Nothing to eat for six hours beforehand. Bring crutches or a frame if you have them, and arrange help at home for the first fortnight."
+    },
+    {
+      "name": "Total Hip Replacement",
+      "categoryName": "Joint Replacement",
+      "durationMinutes": 120,
+      "cptCodes": [
+        "27130"
+      ],
+      "consentFormRequired": true
+    },
+    {
+      "name": "Knee Arthroscopy",
+      "categoryName": "Sports Injury",
+      "durationMinutes": 60,
+      "consentFormRequired": true
+    },
+    {
+      "name": "Shoulder Assessment",
+      "categoryName": "Sports Injury",
+      "durationMinutes": 30
+    },
+    {
+      "name": "ACL Reconstruction",
+      "categoryName": "Sports Injury",
+      "durationMinutes": 120,
+      "consentFormRequired": true
+    },
+    {
+      "name": "Carpal Tunnel Release",
+      "categoryName": "Consultations",
+      "durationMinutes": 45,
+      "consentFormRequired": true
+    },
+    {
+      "name": "Back and Spine Assessment",
+      "categoryName": "Spine",
+      "durationMinutes": 40
+    },
+    {
+      "name": "Fracture Review",
+      "categoryName": "Trauma",
+      "durationMinutes": 20
+    },
+    {
+      "name": "Cast Application or Removal",
+      "categoryName": "Trauma",
+      "durationMinutes": 30
+    }
+  ],
+  "formTemplates": [
+    {
+      "slug": "orthopaedic-intake",
+      "name": "Orthopaedic Intake",
+      "templateType": "onboarding",
+      "categorySlug": "onboarding",
+      "version": "1.0",
+      "languages": [
+        "en"
+      ],
+      "complianceTags": [
+        "HIPAA"
+      ],
+      "fields": [
+        {
+          "id": "affected_area",
+          "type": "select",
+          "label": "Which area?",
+          "options": [
+            "Neck",
+            "Shoulder",
+            "Elbow",
+            "Wrist or hand",
+            "Back",
+            "Hip",
+            "Knee",
+            "Ankle or foot"
+          ],
+          "required": true
+        },
+        {
+          "id": "side",
+          "type": "radio",
+          "label": "Side",
+          "options": [
+            "Left",
+            "Right",
+            "Both",
+            "Not applicable"
+          ],
+          "required": true
+        },
+        {
+          "id": "how_started",
+          "type": "textarea",
+          "label": "How did it start? Include any injury",
+          "required": true
+        },
+        {
+          "id": "pain_score",
+          "type": "scale",
+          "label": "Pain at its worst, out of 10"
+        },
+        {
+          "id": "worse_with",
+          "type": "checkboxes",
+          "label": "What makes it worse?",
+          "options": [
+            "Walking",
+            "Stairs",
+            "Standing",
+            "Sitting",
+            "Lifting",
+            "At night",
+            "Nothing in particular"
+          ]
+        },
+        {
+          "id": "walking_distance",
+          "type": "text",
+          "label": "How far can you walk before it stops you?"
+        },
+        {
+          "id": "previous_surgery",
+          "type": "textarea",
+          "label": "Previous surgery or injections to this area"
+        },
+        {
+          "id": "imaging",
+          "type": "textarea",
+          "label": "Any X-rays or scans already done, and where"
+        },
+        {
+          "id": "physio",
+          "type": "checkbox",
+          "label": "Have you had physiotherapy for this?"
+        },
+        {
+          "id": "medications",
+          "type": "textarea",
+          "label": "Painkillers and other medicines you take"
+        }
+      ]
+    }
+  ],
+  "inventoryCategories": [
+    {
+      "code": "ortho_implants",
+      "name": "Implants and Prostheses"
+    },
+    {
+      "code": "ortho_casting",
+      "name": "Casting and Splinting"
+    },
+    {
+      "code": "ortho_injectables",
+      "name": "Injectables"
+    },
+    {
+      "code": "ortho_theatre",
+      "name": "Theatre Consumables"
+    }
+  ],
+  "codeSets": {
+    "icd10": [
+      "M17.9",
+      "M16.9",
+      "M54.5",
+      "M75.100",
+      "S83.209A",
+      "G56.00",
+      "M25.561",
+      "S52.501A"
+    ],
+    "cpt": [
+      "99204",
+      "99213",
+      "20610",
+      "27447",
+      "27130"
+    ]
+  },
+  "settings": {
+    "defaultAppointmentDuration": 20,
+    "slotIntervalMinutes": 10
+  },
+  "reports": {
+    "show": [
+      "clinical",
+      "operational"
+    ]
+  }
+}

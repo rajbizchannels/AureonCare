@@ -1,0 +1,268 @@
+{
+  "code": "occupational_health",
+  "version": 1,
+  "label": "Occupational Health",
+  "description": "Starting configuration for an occupational health service: fitness-for-work and surveillance appointment types, and the screening a workplace programme runs.",
+  "modules": {
+    "hide": [
+      "camps",
+      "patientPortal"
+    ]
+  },
+  "terminology": {
+    "patient": "Employee",
+    "patients": "Employees"
+  },
+  "appointmentTypes": [
+    {
+      "name": "Pre-employment Assessment",
+      "durationMinutes": 45,
+      "color": "#2563EB",
+      "displayOrder": 10
+    },
+    {
+      "name": "Fitness for Work Assessment",
+      "durationMinutes": 30,
+      "color": "#0EA5E9",
+      "displayOrder": 20
+    },
+    {
+      "name": "Health Surveillance",
+      "durationMinutes": 30,
+      "color": "#14B8A6",
+      "displayOrder": 30
+    },
+    {
+      "name": "Return to Work Review",
+      "durationMinutes": 30,
+      "color": "#8B5CF6",
+      "displayOrder": 40
+    },
+    {
+      "name": "Vaccination",
+      "durationMinutes": 10,
+      "color": "#F59E0B",
+      "displayOrder": 50
+    },
+    {
+      "name": "Management Referral",
+      "durationMinutes": 45,
+      "color": "#64748B",
+      "displayOrder": 60
+    }
+  ],
+  "serviceCategories": [
+    {
+      "name": "Assessments",
+      "icon": "clipboard-check",
+      "displayOrder": 10
+    },
+    {
+      "name": "Health Surveillance",
+      "icon": "shield",
+      "displayOrder": 20
+    },
+    {
+      "name": "Immunisation",
+      "icon": "syringe",
+      "displayOrder": 30
+    },
+    {
+      "name": "Screening",
+      "icon": "search",
+      "displayOrder": 40
+    }
+  ],
+  "offerings": [
+    {
+      "name": "Pre-employment Health Assessment",
+      "categoryName": "Assessments",
+      "durationMinutes": 45
+    },
+    {
+      "name": "Fitness for Work Assessment",
+      "categoryName": "Assessments",
+      "durationMinutes": 30
+    },
+    {
+      "name": "Return to Work Assessment",
+      "categoryName": "Assessments",
+      "durationMinutes": 30
+    },
+    {
+      "name": "Management Referral Assessment",
+      "categoryName": "Assessments",
+      "durationMinutes": 45
+    },
+    {
+      "name": "Audiometry",
+      "categoryName": "Health Surveillance",
+      "durationMinutes": 20,
+      "cptCodes": [
+        "92557"
+      ]
+    },
+    {
+      "name": "Spirometry",
+      "categoryName": "Health Surveillance",
+      "durationMinutes": 20,
+      "cptCodes": [
+        "94010"
+      ]
+    },
+    {
+      "name": "Vision Screening",
+      "categoryName": "Health Surveillance",
+      "durationMinutes": 15,
+      "cptCodes": [
+        "99173"
+      ]
+    },
+    {
+      "name": "Skin Surveillance",
+      "categoryName": "Health Surveillance",
+      "durationMinutes": 20
+    },
+    {
+      "name": "Hand-arm Vibration Assessment",
+      "categoryName": "Health Surveillance",
+      "durationMinutes": 20
+    },
+    {
+      "name": "Occupational Vaccination",
+      "categoryName": "Immunisation",
+      "durationMinutes": 10,
+      "cptCodes": [
+        "90471"
+      ]
+    },
+    {
+      "name": "Drug and Alcohol Screening",
+      "categoryName": "Screening",
+      "durationMinutes": 20,
+      "consentFormRequired": true
+    },
+    {
+      "name": "Night Worker Health Assessment",
+      "categoryName": "Assessments",
+      "durationMinutes": 30
+    }
+  ],
+  "formTemplates": [
+    {
+      "slug": "occupational-health-questionnaire",
+      "name": "Occupational Health Questionnaire",
+      "templateType": "onboarding",
+      "categorySlug": "onboarding",
+      "version": "1.0",
+      "languages": [
+        "en"
+      ],
+      "complianceTags": [
+        "HIPAA"
+      ],
+      "requireSignature": true,
+      "fields": [
+        {
+          "id": "employer",
+          "type": "text",
+          "label": "Employer",
+          "required": true
+        },
+        {
+          "id": "job_title",
+          "type": "text",
+          "label": "Job title",
+          "required": true
+        },
+        {
+          "id": "job_tasks",
+          "type": "textarea",
+          "label": "Main tasks of the role",
+          "required": true
+        },
+        {
+          "id": "exposures",
+          "type": "checkboxes",
+          "label": "Does the role involve any of these?",
+          "options": [
+            "Noise",
+            "Vibration",
+            "Dust or fumes",
+            "Chemicals",
+            "Night work",
+            "Driving",
+            "Working at height",
+            "Manual handling"
+          ]
+        },
+        {
+          "id": "conditions",
+          "type": "textarea",
+          "label": "Health conditions that could affect this work"
+        },
+        {
+          "id": "medications",
+          "type": "textarea",
+          "label": "Current medicines"
+        },
+        {
+          "id": "sickness_absence",
+          "type": "text",
+          "label": "Days of sickness absence in the last 12 months"
+        },
+        {
+          "id": "adjustments",
+          "type": "textarea",
+          "label": "Any workplace adjustments you think would help"
+        },
+        {
+          "id": "consent_to_report",
+          "type": "checkbox",
+          "label": "I understand a fitness-for-work report will be shared with my employer, and that it will not contain clinical details",
+          "required": true
+        }
+      ]
+    }
+  ],
+  "inventoryCategories": [
+    {
+      "code": "oh_screening",
+      "name": "Screening Consumables"
+    },
+    {
+      "code": "oh_vaccines",
+      "name": "Occupational Vaccines"
+    },
+    {
+      "code": "oh_ppe",
+      "name": "PPE and Fit Testing"
+    }
+  ],
+  "codeSets": {
+    "icd10": [
+      "Z02.1",
+      "Z57.0",
+      "H83.3X9",
+      "J68.9",
+      "M54.5",
+      "Z56.6"
+    ],
+    "cpt": [
+      "92557",
+      "94010",
+      "99173",
+      "90471"
+    ]
+  },
+  "settings": {
+    "defaultAppointmentDuration": 30,
+    "slotIntervalMinutes": 15
+  },
+  "reports": {
+    "show": [
+      "clinical",
+      "operational"
+    ]
+  }
+}

@@ -1,0 +1,286 @@
+{
+  "code": "psychiatry",
+  "version": 1,
+  "label": "Psychiatry",
+  "description": "Starting configuration for a psychiatric practice: assessment, review and medication appointment types, with a diagnostic and psychotherapy catalogue.",
+  "modules": {
+    "hide": [
+      "camps",
+      "inventory",
+      "clinicalServices"
+    ]
+  },
+  "terminology": {
+    "provider": "Psychiatrist",
+    "providers": "Psychiatrists",
+    "appointment": "Session",
+    "appointments": "Sessions"
+  },
+  "appointmentTypes": [
+    {
+      "name": "Initial Psychiatric Assessment",
+      "durationMinutes": 60,
+      "color": "#2563EB",
+      "displayOrder": 10
+    },
+    {
+      "name": "Follow-up Review",
+      "durationMinutes": 30,
+      "color": "#0EA5E9",
+      "displayOrder": 20
+    },
+    {
+      "name": "Medication Review",
+      "durationMinutes": 20,
+      "color": "#14B8A6",
+      "displayOrder": 30
+    },
+    {
+      "name": "Psychotherapy Session",
+      "durationMinutes": 50,
+      "color": "#8B5CF6",
+      "displayOrder": 40
+    },
+    {
+      "name": "Crisis Appointment",
+      "durationMinutes": 45,
+      "color": "#F59E0B",
+      "displayOrder": 50
+    },
+    {
+      "name": "Family Meeting",
+      "durationMinutes": 60,
+      "color": "#64748B",
+      "displayOrder": 60
+    }
+  ],
+  "serviceCategories": [
+    {
+      "name": "Assessment",
+      "icon": "clipboard-list",
+      "displayOrder": 10
+    },
+    {
+      "name": "Medication Management",
+      "icon": "pill",
+      "displayOrder": 20
+    },
+    {
+      "name": "Psychotherapy",
+      "icon": "message-circle",
+      "displayOrder": 30
+    },
+    {
+      "name": "Crisis Care",
+      "icon": "alert-circle",
+      "displayOrder": 40
+    }
+  ],
+  "offerings": [
+    {
+      "name": "Psychiatric Diagnostic Evaluation",
+      "categoryName": "Assessment",
+      "durationMinutes": 60,
+      "cptCodes": [
+        "90791"
+      ]
+    },
+    {
+      "name": "Psychiatric Diagnostic Evaluation with Medical Services",
+      "categoryName": "Assessment",
+      "durationMinutes": 60,
+      "cptCodes": [
+        "90792"
+      ]
+    },
+    {
+      "name": "Medication Management Review",
+      "categoryName": "Medication Management",
+      "durationMinutes": 20,
+      "cptCodes": [
+        "99213"
+      ]
+    },
+    {
+      "name": "Complex Medication Review",
+      "categoryName": "Medication Management",
+      "durationMinutes": 30,
+      "cptCodes": [
+        "99214"
+      ]
+    },
+    {
+      "name": "Clozapine Monitoring",
+      "categoryName": "Medication Management",
+      "durationMinutes": 25
+    },
+    {
+      "name": "Lithium Monitoring",
+      "categoryName": "Medication Management",
+      "durationMinutes": 25
+    },
+    {
+      "name": "Psychotherapy, 30 minutes",
+      "categoryName": "Psychotherapy",
+      "durationMinutes": 30,
+      "cptCodes": [
+        "90832"
+      ]
+    },
+    {
+      "name": "Psychotherapy, 45 minutes",
+      "categoryName": "Psychotherapy",
+      "durationMinutes": 45,
+      "cptCodes": [
+        "90834"
+      ]
+    },
+    {
+      "name": "Psychotherapy, 60 minutes",
+      "categoryName": "Psychotherapy",
+      "durationMinutes": 60,
+      "cptCodes": [
+        "90837"
+      ]
+    },
+    {
+      "name": "Psychotherapy for Crisis",
+      "categoryName": "Crisis Care",
+      "durationMinutes": 60,
+      "cptCodes": [
+        "90839"
+      ]
+    },
+    {
+      "name": "Family Psychotherapy with Patient",
+      "categoryName": "Psychotherapy",
+      "durationMinutes": 50,
+      "cptCodes": [
+        "90847"
+      ]
+    },
+    {
+      "name": "Risk Assessment and Safety Planning",
+      "categoryName": "Crisis Care",
+      "durationMinutes": 45
+    }
+  ],
+  "formTemplates": [
+    {
+      "slug": "psychiatric-intake",
+      "name": "Psychiatric Intake",
+      "templateType": "onboarding",
+      "categorySlug": "onboarding",
+      "version": "1.0",
+      "languages": [
+        "en"
+      ],
+      "complianceTags": [
+        "HIPAA"
+      ],
+      "fields": [
+        {
+          "id": "presenting_concern",
+          "type": "textarea",
+          "label": "What has brought you here?",
+          "required": true
+        },
+        {
+          "id": "duration",
+          "type": "text",
+          "label": "How long have you been feeling this way?"
+        },
+        {
+          "id": "symptoms",
+          "type": "checkboxes",
+          "label": "Have you experienced any of these recently?",
+          "options": [
+            "Low mood",
+            "Loss of interest",
+            "Anxiety",
+            "Panic attacks",
+            "Sleep problems",
+            "Appetite change",
+            "Poor concentration",
+            "Irritability",
+            "Unusual experiences"
+          ]
+        },
+        {
+          "id": "previous_treatment",
+          "type": "textarea",
+          "label": "Previous mental health treatment, and what helped"
+        },
+        {
+          "id": "current_medication",
+          "type": "textarea",
+          "label": "Medicines you take now, including anything for mental health"
+        },
+        {
+          "id": "hospital_admissions",
+          "type": "textarea",
+          "label": "Any previous admissions to a mental health unit"
+        },
+        {
+          "id": "substances",
+          "type": "textarea",
+          "label": "Alcohol, cannabis or other substances, and roughly how much"
+        },
+        {
+          "id": "self_harm",
+          "type": "radio",
+          "label": "Have you had thoughts of harming yourself recently?",
+          "options": [
+            "No",
+            "Yes, fleeting thoughts",
+            "Yes, with a plan"
+          ],
+          "required": true
+        },
+        {
+          "id": "support_network",
+          "type": "textarea",
+          "label": "Who do you turn to for support?"
+        },
+        {
+          "id": "goals",
+          "type": "textarea",
+          "label": "What would you like to be different?"
+        }
+      ]
+    }
+  ],
+  "codeSets": {
+    "icd10": [
+      "F32.9",
+      "F33.1",
+      "F41.1",
+      "F41.9",
+      "F31.9",
+      "F20.9",
+      "F43.10",
+      "F90.9"
+    ],
+    "cpt": [
+      "90791",
+      "90792",
+      "90832",
+      "90834",
+      "90837",
+      "90839",
+      "90847",
+      "99213",
+      "99214"
+    ]
+  },
+  "settings": {
+    "defaultAppointmentDuration": 30,
+    "slotIntervalMinutes": 15
+  },
+  "reports": {
+    "show": [
+      "clinical",
+      "operational"
+    ]
+  }
+}

@@ -41,6 +41,7 @@ const { invalidateEntitlements } = require('../services/entitlements');
 const { provisionTenant } = require('../services/tenantProvisioning');
 const billing = require('../services/platformBilling');
 const ledger = require('../services/billingLedger');
+const subscriptionChanges = require('../services/subscriptionChanges');
 const { issuePlatformCookies, clearPlatformCookies } = require('../utils/authCookies');
 
 const clientIp = (req) => req.ip || req.headers['x-forwarded-for'] || req.connection?.remoteAddress || null;
@@ -241,10 +242,22 @@ router.get('/audit', async (req, res) => {
   const pool = req.app.locals.pool;
   const limit = Math.min(parseInt(req.query.limit || '100', 10), 500);
   const offset = parseInt(req.query.offset || '0', 10);
+  // `action` filters the trail to one kind of event — subscription.plan_changed being the
+  // reason it exists: scrolling 500 mixed rows to find who moved a tenant between tiers is
+  // not an audit trail anyone will actually use.
+  const action = req.query.action ? String(req.query.action) : null;
+  const tenantId = req.query.tenantId ? String(req.query.tenantId) : null;
   const { rows } = await pool.query(
-    `SELECT a.*, o.email AS operator_email
+    `SELECT a.*, o.email AS operator_email,
+            -- Rows written before migration 086 have no actor_type; for those the only
+            -- honest answer is derived from whether an operator is attached.
+            COALESCE(a.actor_type,
+                     CASE WHEN a.operator_id IS NOT NULL THEN 'operator' ELSE 'system' END) AS actor,
+            COALESCE(a.actor_label, o.email) AS actor_email
        FROM control.audit_log a LEFT JOIN control.operators o ON o.id = a.operator_id
-      ORDER BY a.created_at DESC LIMIT $1 OFFSET $2`, [limit, offset]);
+      WHERE ($3::text IS NULL OR a.action = $3)
+        AND ($4::uuid IS NULL OR a.tenant_id = $4)
+      ORDER BY a.created_at DESC LIMIT $1 OFFSET $2`, [limit, offset, action, tenantId]);
   res.json(rows);
 });
 
@@ -513,19 +526,40 @@ router.get('/tenants/:id/subscription', async (req, res) => {
 router.get('/tenants/:id/subscription/preview/:planId', async (req, res) => {
   const pool = req.app.locals.pool;
   const { rows } = await pool.query(
-    `SELECT s.stripe_subscription_id, p.stripe_price_id
+    `SELECT s.stripe_subscription_id, s.current_period_start, s.current_period_end,
+            old.price AS old_price,
+            p.id, p.name, p.display_name, p.price, p.currency, p.billing_cycle, p.stripe_price_id
        FROM control.subscriptions s
        CROSS JOIN public.subscription_plans p
+       LEFT JOIN public.subscription_plans old ON old.id = s.plan_id
       WHERE s.tenant_id = $1 AND p.id = $2`,
     [req.params.id, req.params.planId]
   );
   if (!rows.length) return res.status(404).json({ error: 'Tenant or plan not found' });
-  const { stripe_subscription_id: subId, stripe_price_id: priceId } = rows[0];
-  if (!subId || !priceId || !billing.isConfigured()) {
-    return res.json({ prorated: false, amountDue: 0, lines: [] });
-  }
-  const preview = await billing.previewPlanChange({ subscriptionId: subId, newPriceId: priceId });
-  res.json({ prorated: true, ...preview });
+  const r = rows[0];
+  // Same quote function the change uses, so the operator is shown the number that will be
+  // booked rather than one computed by a second code path.
+  // An operator may date a correction to when it should have happened; a practice admin
+  // may not. See resolveProrationDate.
+  const quote = await subscriptionChanges.quotePlanChange({
+    subscription: r, plan: r, prorationDate: req.query.at, allowBackdating: true,
+  });
+  res.json({
+    prorated: quote.source !== 'none',
+    source: quote.source,
+    amountDue: quote.amountDue,
+    prorationNet: quote.netMinor / 100,
+    credit: quote.creditMinor / 100,
+    charge: quote.chargeMinor / 100,
+    currency: quote.currency,
+    prorationDate: quote.prorationDate,
+    effectiveAt: new Date(quote.prorationDate * 1000).toISOString(),
+    ...(quote.reason ? { reason: quote.reason } : {}),
+    lines: quote.lines.length ? quote.lines : [
+      ...(quote.creditMinor ? [{ description: 'Unused time on the current plan', amount: quote.creditMinor / 100 }] : []),
+      ...(quote.chargeMinor ? [{ description: `Remaining time on ${r.display_name || r.name}`, amount: quote.chargeMinor / 100 }] : []),
+    ],
+  });
 });
 
 router.put('/tenants/:id/subscription', requireOperatorRole('billing'), async (req, res) => {
@@ -545,37 +579,53 @@ router.put('/tenants/:id/subscription', requireOperatorRole('billing'), async (r
   if (tenant.rows.length === 0) return res.status(404).json({ error: 'Tenant not found' });
   const { practice_id } = tenant.rows[0];
 
+  // The subscription as it stands, with the plan it is on, so the change can be described
+  // and priced. Read once, before anything is written.
+  const { rows: cur } = await pool.query(
+    `SELECT s.*, p.price AS old_price, p.name AS old_plan_name,
+            p.display_name AS old_plan_display_name
+       FROM control.subscriptions s
+       LEFT JOIN public.subscription_plans p ON p.id = s.plan_id
+      WHERE s.tenant_id = $1`, [req.params.id]);
+  const existing = cur[0] || null;
+
   let planName = null;
+  let newPlan = null;
   let prorated = false;
+  let quote = null;
   if (planId != null) {
     const p = await pool.query(
-      'SELECT name, stripe_price_id FROM public.subscription_plans WHERE id = $1', [planId]);
+      `SELECT id, name, display_name, price, currency, billing_cycle, stripe_price_id
+         FROM public.subscription_plans WHERE id = $1`, [planId]);
     if (p.rows.length === 0) return res.status(400).json({ error: 'Unknown planId' });
-    planName = p.rows[0].name;
+    newPlan = p.rows[0];
+    planName = newPlan.name;
 
-    // Move the money first. Recording a plan the customer is not actually being billed for
-    // is how a tenant ends up on a higher tier for free — the same ordering the
-    // tenant-facing change uses.
-    const { rows: cur } = await pool.query(
-      'SELECT plan_id, stripe_subscription_id FROM control.subscriptions WHERE tenant_id = $1',
-      [req.params.id]);
-    const existing = cur[0];
     const changingPlan = existing && existing.plan_id !== planId;
     const subId = stripeSubscriptionId || (existing && existing.stripe_subscription_id);
 
-    if (pushToStripe && changingPlan && subId && p.rows[0].stripe_price_id && billing.isConfigured()) {
-      await billing.changeSubscriptionPlan({
-        subscriptionId: subId,
-        newPriceId: p.rows[0].stripe_price_id,
-        prorationDate: prorationDate ? Number(prorationDate) : undefined,
+    if (changingPlan) {
+      // Price it before applying it — see the same note on the tenant-facing route. The
+      // quote is taken even when nothing is pushed to Stripe, so a tenant we invoice by
+      // hand still gets a dated, prorated accounting entry instead of a bare plan_id edit.
+      quote = await subscriptionChanges.quotePlanChange({
+        subscription: { ...existing, stripe_subscription_id: pushToStripe ? subId : null },
+        plan: newPlan,
+        prorationDate,
+        allowBackdating: true,
       });
-      prorated = true;
-      await ledger.recordEvent({
-        tenantId: req.params.id, practiceId: practice_id,
-        eventType: 'subscription.changed',
-        stripeObjectId: `${subId}:plan:${planId}:${Date.now()}`,
-        description: `Operator moved tenant to ${planName} (prorated)`,
-      });
+
+      // Move the money first. Recording a plan the customer is not actually being billed for
+      // is how a tenant ends up on a higher tier for free — the same ordering the
+      // tenant-facing change uses.
+      if (pushToStripe && subId && newPlan.stripe_price_id && billing.isConfigured()) {
+        await billing.changeSubscriptionPlan({
+          subscriptionId: subId,
+          newPriceId: newPlan.stripe_price_id,
+          prorationDate: quote.prorationDate,
+        });
+        prorated = true;
+      }
     }
   }
 
@@ -601,10 +651,43 @@ router.put('/tenants/:id/subscription', requireOperatorRole('billing'), async (r
      currentPeriodEnd ?? null, enforcementEnabled ?? null]);
 
   invalidateEntitlements(practice_id);
-  await logPlatformAction(pool, { operatorId: req.operator.id, action: 'subscription.update',
-    targetType: 'tenant', targetId: req.params.id, tenantId: req.params.id,
-    detail: { planId, status, seats, prorated }, ip: clientIp(req) });
-  res.json({ ...rows[0], prorated });
+
+  // One record of the change, through the same path the tenant-facing route uses, so the
+  // two cannot drift again. It names the operator, says what the plan moved FROM as well
+  // as to, and books the proration dated at the change.
+  const { accountingError } = await subscriptionChanges.recordChange(pool, {
+    tenantId: req.params.id,
+    practiceId: practice_id,
+    actor: { type: 'operator', id: req.operator.id, label: req.operator.email || null },
+    ip: clientIp(req),
+    fromPlan: existing && existing.plan_id
+      ? { id: existing.plan_id, name: existing.old_plan_name, display_name: existing.old_plan_display_name }
+      : null,
+    toPlan: newPlan,
+    quote,
+    statusFrom: existing ? existing.status : null,
+    statusTo: status ?? null,
+    seatsFrom: existing ? existing.seats : null,
+    seatsTo: seats ?? null,
+    pushedToStripe: prorated,
+  });
+
+  res.json({
+    ...rows[0],
+    prorated,
+    ...(quote ? {
+      proration: {
+        source: quote.source,
+        effectiveAt: new Date(quote.prorationDate * 1000).toISOString(),
+        credit: quote.creditMinor / 100,
+        charge: quote.chargeMinor / 100,
+        net: quote.netMinor / 100,
+        currency: quote.currency,
+        ...(quote.reason ? { reason: quote.reason } : {}),
+      },
+    } : {}),
+    ...(accountingError ? { accountingWarning: accountingError } : {}),
+  });
 });
 
 /**

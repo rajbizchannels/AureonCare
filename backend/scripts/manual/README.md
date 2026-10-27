@@ -42,6 +42,7 @@ Global first, then tenant. Always.
 | 4 | `apply-tenant-migrations-007-009.sql` | tenant 007–009 — pack provenance columns, the system form library, and handing five specialty forms to their packs |
 | 5 | `apply-global-085.sql` | global 085 — the specialty taxonomy, pack catalogue and `practices.setup` |
 | 6 | `apply-specialty-packs.sql` | publishes the specialty packs — the SQL equivalent of `npm run packs:load` |
+| 7 | `apply-global-086.sql` | global 086 — lets a subscription change be attributed to a practice admin, and keeps prorations apart from collected cash |
 
 Without step 6 the setup wizard lists every specialty as having **"no starter content
 yet"**. That is not a fault in the wizard: `public.specialty_packs` is simply empty,
@@ -57,6 +58,10 @@ missing those tables.
 
 Step 5 before `packs:load`, because the loader refuses to run until `public.specialties`
 exists.
+
+Step 7 stands on its own — it touches only the control-plane billing tables and can be run
+at any point. Until it is applied, a practice admin changing their own plan gets a 500: the
+audit write names them as the actor and there is no column to put that in.
 
 All of them are safe to re-run: every statement is idempotent and the ledgers are consulted
 first, so a re-paste reports `0 file(s) applied`.

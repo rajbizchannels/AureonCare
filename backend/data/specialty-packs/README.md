@@ -127,17 +127,80 @@ than the check alone.
 
 ## Shipped packs
 
-| Code | Version | Review | Notes |
-|---|---|---|---|
-| `behavioral_health` | 1 | pending | PHQ-9, GAD-7 and intake, moved out of the base library |
-| `dentistry` | 1, 2 | pending | v2 adds the dental health history form |
-| `ophthalmology` | 1, 2 | pending | v2 is the field-key fix only; no content change |
-| `paediatrics` | 1, 2 | pending | v2 adds the paediatric wellness intake |
+Every top-level specialty in `public.specialties` has a pack — 36 of them. The 13
+sub-specialties (orthodontics, retina, neonatology and so on) deliberately do not: the
+wizard offers only top-level specialties, and a sub-specialty inherits its parent.
 
-Five form templates moved out of the base form library into these packs (tenant/009), so a
-practice gets them because it does that specialty rather than because it exists. PHQ-9 and
-GAD-7 are standardised instruments — the clinical-review gate matters especially for them,
-since the item wording and scoring are part of the instrument's validity.
+| Code | Latest | Offerings | With a code | Forms |
+|---|---|---|---|---|
+| `anaesthesiology` | v1 | 11 | 1 | 1 |
+| `audiology` | v1 | 12 | 3 | 1 |
+| `behavioral_health` | v1 | 11 | 11 | 3 |
+| `cardiac_surgery` | v1 | 12 | 2 | 1 |
+| `cardiology` | v1 | 12 | 6 | 1 |
+| `dentistry` | v2 | 13 | 13 | 4 |
+| `dermatology` | v1 | 12 | 6 | 1 |
+| `emergency_medicine` | v1 | 10 | 4 | 1 |
+| `endocrinology` | v1 | 12 | 4 | 1 |
+| `ent` | v1 | 12 | 6 | 1 |
+| `fertility` | v1 | 12 | 0 | 1 |
+| `gastroenterology` | v1 | 12 | 7 | 1 |
+| `general_practice` | v1 | 15 | 10 | 1 |
+| `general_surgery` | v1 | 12 | 3 | 1 |
+| `geriatrics` | v1 | 10 | 3 | 1 |
+| `internal_medicine` | v1 | 12 | 6 | 1 |
+| `nephrology` | v1 | 12 | 2 | 1 |
+| `neurology` | v1 | 12 | 4 | 1 |
+| `neurosurgery` | v1 | 12 | 2 | 1 |
+| `nutrition` | v1 | 10 | 3 | 1 |
+| `obstetrics_gynae` | v1 | 12 | 5 | 1 |
+| `occupational_health` | v1 | 12 | 4 | 1 |
+| `oncology` | v1 | 12 | 5 | 1 |
+| `ophthalmology` | v2 | 14 | 14 | 3 |
+| `orthopaedics` | v1 | 12 | 5 | 1 |
+| `paediatrics` | v2 | 14 | 14 | 4 |
+| `pathology` | v1 | 12 | 7 | 1 |
+| `physiotherapy` | v1 | 12 | 8 | 1 |
+| `plastic_surgery` | v1 | 12 | 2 | 1 |
+| `podiatry` | v1 | 12 | 3 | 1 |
+| `psychiatry` | v1 | 12 | 9 | 1 |
+| `pulmonology` | v1 | 12 | 5 | 1 |
+| `radiology` | v1 | 12 | 5 | 1 |
+| `rheumatology` | v1 | 12 | 7 | 1 |
+| `urology` | v1 | 12 | 3 | 1 |
+| `vascular_surgery` | v1 | 12 | 4 | 1 |
+
+All of them are **engineering drafts** — every one loads with
+`clinical_review_status = 'pending'`, and the wizard makes an administrator acknowledge
+that before applying one.
+
+### Procedure codes are omitted rather than guessed
+
+196 of 432 offerings carry a CPT code. The rest ship without one, and that is the
+policy rather than an oversight: a code appears only where it is standard and
+unambiguous. Office-visit and preventive-visit codes are universal, so they are used
+freely; operative codes vary by approach, laterality and complexity, so most procedures
+leave the field blank for the practice to fill from its own billing setup. A missing code
+is a blank somebody completes. A wrong one is a denied claim, and it looks exactly as
+authoritative as a right one.
+
+PHQ-9 and GAD-7, in the behavioural health pack, are standardised instruments whose item
+wording and scoring are part of their validity. Treat clinician sign-off for that pack as
+a prerequisite rather than a formality.
+
+### Authoring
+
+The 32 packs added for the remaining specialties were written as structured content under
+`backend/scripts/specialty-content/` and emitted by its `build.js`, so they share one
+shape and one set of defaults:
+
+```bash
+node backend/scripts/specialty-content/build.js --check   # validate
+node backend/scripts/specialty-content/build.js           # write the JSON files
+```
+
+The JSON files remain the artefact that gets loaded. Editing one by hand is fine; just
+know that re-running the builder would overwrite it.
 
 `backend/scripts/generate-form-library-migration.js --pack-forms <specialty>` converts a
 template from the seed library into pack format, carrying every column. It was used for

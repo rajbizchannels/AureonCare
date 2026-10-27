@@ -234,7 +234,7 @@ async function pushPlanToStripe({
  *
  * @returns {Promise<{amountDue: number, currency: string, prorationDate: number, lines: Array}>}
  */
-async function previewPlanChange({ subscriptionId, newPriceId }) {
+async function previewPlanChange({ subscriptionId, newPriceId, prorationDate: pinned }) {
   const s = stripe();
   const sub = await s.subscriptions.retrieve(subscriptionId);
   const itemId = sub.items.data[0] && sub.items.data[0].id;
@@ -243,7 +243,11 @@ async function previewPlanChange({ subscriptionId, newPriceId }) {
     e.statusCode = 409;
     throw e;
   }
-  const prorationDate = Math.floor(Date.now() / 1000);
+  // `pinned` re-prices at an instant already quoted. Without it a confirmation step
+  // re-quotes at a new "now", so the amount the customer agreed to and the amount they are
+  // charged are two different readings of a moving number — and the pinned date sent to
+  // subscriptions.update would then belong to neither.
+  const prorationDate = Number(pinned) > 0 ? Math.floor(Number(pinned)) : Math.floor(Date.now() / 1000);
   const preview = await s.invoices.createPreview({
     customer: typeof sub.customer === 'string' ? sub.customer : sub.customer.id,
     subscription: subscriptionId,

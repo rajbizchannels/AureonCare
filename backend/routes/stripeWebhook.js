@@ -395,16 +395,23 @@ async function handleSubscriptionChange(pool, subscription) {
   const periodEnd = subscription.current_period_end
     ? new Date(subscription.current_period_end * 1000)
     : null;
+  // Stripe sends both ends of the period. Storing the start too is what lets a mid-period
+  // change be prorated against the real period rather than one inferred from the billing
+  // cycle, which is only approximate across months of unequal length.
+  const periodStart = subscription.current_period_start
+    ? new Date(subscription.current_period_start * 1000)
+    : null;
 
   const { rows } = await pool.query(
     `UPDATE control.subscriptions
         SET status = $1,
             stripe_subscription_id = COALESCE($2, stripe_subscription_id),
             current_period_end = COALESCE($3, current_period_end),
+            current_period_start = COALESCE($5, current_period_start),
             updated_at = now()
       WHERE stripe_customer_id = $4
       RETURNING tenant_id, practice_id`,
-    [status, subscription.id || null, periodEnd, customerId]
+    [status, subscription.id || null, periodEnd, customerId, periodStart]
   );
 
   if (rows.length === 0) {
@@ -435,6 +442,8 @@ async function handleSubscriptionChange(pool, subscription) {
     const { logPlatformAction } = require('../services/platformAudit');
     await logPlatformAction(pool, {
       action: 'subscription.stripe_sync',
+      actorType: 'stripe',
+      actorLabel: 'stripe webhook',
       targetType: 'tenant',
       targetId: rows[0].tenant_id,
       tenantId: rows[0].tenant_id,

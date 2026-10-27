@@ -1,0 +1,295 @@
+{
+  "code": "obstetrics_gynae",
+  "version": 1,
+  "label": "Obstetrics and Gynaecology",
+  "description": "Starting configuration for an obstetrics and gynaecology practice: antenatal and gynaecology appointment types, with a screening, colposcopy and scanning catalogue.",
+  "modules": {
+    "hide": [
+      "camps"
+    ]
+  },
+  "terminology": {
+    "provider": "Obstetrician",
+    "providers": "Obstetricians"
+  },
+  "appointmentTypes": [
+    {
+      "name": "Booking Appointment",
+      "durationMinutes": 45,
+      "color": "#2563EB",
+      "displayOrder": 10
+    },
+    {
+      "name": "Antenatal Review",
+      "durationMinutes": 20,
+      "color": "#0EA5E9",
+      "displayOrder": 20
+    },
+    {
+      "name": "Obstetric Ultrasound",
+      "durationMinutes": 30,
+      "color": "#14B8A6",
+      "displayOrder": 30
+    },
+    {
+      "name": "Gynaecology, New Patient",
+      "durationMinutes": 30,
+      "color": "#8B5CF6",
+      "displayOrder": 40
+    },
+    {
+      "name": "Gynaecology, Follow-up",
+      "durationMinutes": 20,
+      "color": "#F59E0B",
+      "displayOrder": 50
+    },
+    {
+      "name": "Colposcopy",
+      "durationMinutes": 30,
+      "color": "#64748B",
+      "displayOrder": 60
+    },
+    {
+      "name": "Postnatal Review",
+      "durationMinutes": 25,
+      "color": "#DC2626",
+      "displayOrder": 70
+    }
+  ],
+  "serviceCategories": [
+    {
+      "name": "Antenatal Care",
+      "icon": "baby",
+      "displayOrder": 10
+    },
+    {
+      "name": "Gynaecology",
+      "icon": "stethoscope",
+      "displayOrder": 20
+    },
+    {
+      "name": "Screening",
+      "icon": "search",
+      "displayOrder": 30
+    },
+    {
+      "name": "Contraception",
+      "icon": "shield",
+      "displayOrder": 40
+    }
+  ],
+  "offerings": [
+    {
+      "name": "Antenatal Booking Appointment",
+      "categoryName": "Antenatal Care",
+      "durationMinutes": 45
+    },
+    {
+      "name": "Routine Antenatal Review",
+      "categoryName": "Antenatal Care",
+      "durationMinutes": 20
+    },
+    {
+      "name": "Obstetric Ultrasound, Second or Third Trimester",
+      "categoryName": "Antenatal Care",
+      "durationMinutes": 30,
+      "cptCodes": [
+        "76805"
+      ]
+    },
+    {
+      "name": "Postnatal Review",
+      "categoryName": "Antenatal Care",
+      "durationMinutes": 25
+    },
+    {
+      "name": "New Patient Gynaecology Consultation",
+      "categoryName": "Gynaecology",
+      "durationMinutes": 30,
+      "cptCodes": [
+        "99204"
+      ]
+    },
+    {
+      "name": "Follow-up Gynaecology Consultation",
+      "categoryName": "Gynaecology",
+      "durationMinutes": 20,
+      "cptCodes": [
+        "99213"
+      ]
+    },
+    {
+      "name": "Cervical Screening",
+      "categoryName": "Screening",
+      "durationMinutes": 20
+    },
+    {
+      "name": "Colposcopy with Biopsy",
+      "categoryName": "Screening",
+      "durationMinutes": 30,
+      "cptCodes": [
+        "57454"
+      ],
+      "consentFormRequired": true,
+      "requiresPreparation": true,
+      "preparationInstructions": "Book it for a time when you are not bleeding if you can. Avoid intercourse, tampons and vaginal creams for 24 hours beforehand."
+    },
+    {
+      "name": "Endometrial Biopsy",
+      "categoryName": "Gynaecology",
+      "durationMinutes": 30,
+      "cptCodes": [
+        "58100"
+      ],
+      "consentFormRequired": true
+    },
+    {
+      "name": "Contraceptive Implant Fitting or Removal",
+      "categoryName": "Contraception",
+      "durationMinutes": 30,
+      "consentFormRequired": true
+    },
+    {
+      "name": "Intrauterine Device Fitting",
+      "categoryName": "Contraception",
+      "durationMinutes": 30,
+      "consentFormRequired": true
+    },
+    {
+      "name": "Menopause Review",
+      "categoryName": "Gynaecology",
+      "durationMinutes": 30
+    }
+  ],
+  "formTemplates": [
+    {
+      "slug": "obgyn-intake",
+      "name": "Obstetrics and Gynaecology Intake",
+      "templateType": "onboarding",
+      "categorySlug": "onboarding",
+      "version": "1.0",
+      "languages": [
+        "en"
+      ],
+      "complianceTags": [
+        "HIPAA"
+      ],
+      "fields": [
+        {
+          "id": "reason",
+          "type": "textarea",
+          "label": "Reason for today’s visit",
+          "required": true
+        },
+        {
+          "id": "pregnant_now",
+          "type": "radio",
+          "label": "Are you pregnant?",
+          "options": [
+            "No",
+            "Yes",
+            "Not sure"
+          ],
+          "required": true
+        },
+        {
+          "id": "lmp",
+          "type": "date",
+          "label": "First day of your last period"
+        },
+        {
+          "id": "cycle",
+          "type": "text",
+          "label": "Usual cycle — how often, how long, how heavy"
+        },
+        {
+          "id": "pregnancies",
+          "type": "text",
+          "label": "Number of pregnancies and births"
+        },
+        {
+          "id": "delivery_history",
+          "type": "textarea",
+          "label": "How previous births went, including any complications"
+        },
+        {
+          "id": "contraception",
+          "type": "select",
+          "label": "Current contraception",
+          "options": [
+            "None",
+            "Pill",
+            "Implant",
+            "Coil",
+            "Injection",
+            "Barrier",
+            "Sterilised",
+            "Other"
+          ]
+        },
+        {
+          "id": "last_smear",
+          "type": "text",
+          "label": "Date and result of your last cervical screening"
+        },
+        {
+          "id": "gynae_surgery",
+          "type": "textarea",
+          "label": "Previous gynaecological surgery"
+        },
+        {
+          "id": "medications",
+          "type": "textarea",
+          "label": "Current medicines"
+        }
+      ]
+    }
+  ],
+  "inventoryCategories": [
+    {
+      "code": "og_speculum",
+      "name": "Speculum and Examination Supplies"
+    },
+    {
+      "code": "og_contraception",
+      "name": "Contraceptive Devices"
+    },
+    {
+      "code": "og_colposcopy",
+      "name": "Colposcopy Consumables"
+    },
+    {
+      "code": "og_ultrasound",
+      "name": "Ultrasound Supplies"
+    }
+  ],
+  "codeSets": {
+    "icd10": [
+      "Z34.90",
+      "N92.0",
+      "N95.1",
+      "N80.9",
+      "N83.20",
+      "Z30.09",
+      "O26.90",
+      "N93.9"
+    ],
+    "cpt": [
+      "99204",
+      "99213",
+      "76805",
+      "57454",
+      "58100"
+    ]
+  },
+  "settings": {
+    "defaultAppointmentDuration": 20,
+    "slotIntervalMinutes": 10
+  },
+  "reports": {
+    "show": [
+      "clinical",
+      "operational"
+    ]
+  }
+}

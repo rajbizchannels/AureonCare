@@ -1,0 +1,270 @@
+{
+  "code": "vascular_surgery",
+  "version": 1,
+  "label": "Vascular Surgery",
+  "description": "Starting configuration for a vascular service: clinic and duplex appointment types, with an arterial, venous and aneurysm-surveillance catalogue.",
+  "modules": {
+    "hide": [
+      "camps"
+    ]
+  },
+  "terminology": {
+    "provider": "Vascular Surgeon",
+    "providers": "Vascular Surgeons"
+  },
+  "appointmentTypes": [
+    {
+      "name": "New Patient Consultation",
+      "durationMinutes": 40,
+      "color": "#2563EB",
+      "displayOrder": 10
+    },
+    {
+      "name": "Follow-up Consultation",
+      "durationMinutes": 20,
+      "color": "#0EA5E9",
+      "displayOrder": 20
+    },
+    {
+      "name": "Duplex Ultrasound",
+      "durationMinutes": 45,
+      "color": "#14B8A6",
+      "displayOrder": 30
+    },
+    {
+      "name": "Aneurysm Surveillance",
+      "durationMinutes": 30,
+      "color": "#8B5CF6",
+      "displayOrder": 40
+    },
+    {
+      "name": "Varicose Vein Procedure",
+      "durationMinutes": 60,
+      "color": "#F59E0B",
+      "displayOrder": 50
+    },
+    {
+      "name": "Wound and Ulcer Clinic",
+      "durationMinutes": 30,
+      "color": "#64748B",
+      "displayOrder": 60
+    }
+  ],
+  "serviceCategories": [
+    {
+      "name": "Consultations",
+      "icon": "stethoscope",
+      "displayOrder": 10
+    },
+    {
+      "name": "Arterial Disease",
+      "icon": "activity",
+      "displayOrder": 20
+    },
+    {
+      "name": "Venous Disease",
+      "icon": "droplet",
+      "displayOrder": 30
+    },
+    {
+      "name": "Surveillance",
+      "icon": "search",
+      "displayOrder": 40
+    }
+  ],
+  "offerings": [
+    {
+      "name": "New Patient Vascular Consultation",
+      "categoryName": "Consultations",
+      "durationMinutes": 40,
+      "cptCodes": [
+        "99204"
+      ]
+    },
+    {
+      "name": "Follow-up Vascular Consultation",
+      "categoryName": "Consultations",
+      "durationMinutes": 20,
+      "cptCodes": [
+        "99213"
+      ]
+    },
+    {
+      "name": "Carotid Duplex Ultrasound",
+      "categoryName": "Surveillance",
+      "durationMinutes": 45,
+      "cptCodes": [
+        "93880"
+      ]
+    },
+    {
+      "name": "Venous Duplex Ultrasound",
+      "categoryName": "Venous Disease",
+      "durationMinutes": 45,
+      "cptCodes": [
+        "93970"
+      ]
+    },
+    {
+      "name": "Ankle Brachial Pressure Index",
+      "categoryName": "Arterial Disease",
+      "durationMinutes": 30
+    },
+    {
+      "name": "Claudication Assessment",
+      "categoryName": "Arterial Disease",
+      "durationMinutes": 40
+    },
+    {
+      "name": "Abdominal Aortic Aneurysm Surveillance",
+      "categoryName": "Surveillance",
+      "durationMinutes": 30
+    },
+    {
+      "name": "Varicose Vein Assessment",
+      "categoryName": "Venous Disease",
+      "durationMinutes": 30
+    },
+    {
+      "name": "Endovenous Ablation",
+      "categoryName": "Venous Disease",
+      "durationMinutes": 60,
+      "consentFormRequired": true,
+      "requiresPreparation": true,
+      "preparationInstructions": "Wear loose trousers or a skirt. You will be given compression stockings to wear afterwards, usually for a week or two."
+    },
+    {
+      "name": "Leg Ulcer Assessment",
+      "categoryName": "Venous Disease",
+      "durationMinutes": 40
+    },
+    {
+      "name": "Compression Bandaging",
+      "categoryName": "Venous Disease",
+      "durationMinutes": 30
+    },
+    {
+      "name": "Diabetic Foot Vascular Review",
+      "categoryName": "Arterial Disease",
+      "durationMinutes": 30
+    }
+  ],
+  "formTemplates": [
+    {
+      "slug": "vascular-intake",
+      "name": "Vascular Intake",
+      "templateType": "onboarding",
+      "categorySlug": "onboarding",
+      "version": "1.0",
+      "languages": [
+        "en"
+      ],
+      "complianceTags": [
+        "HIPAA"
+      ],
+      "fields": [
+        {
+          "id": "main_problem",
+          "type": "checkboxes",
+          "label": "What brings you in?",
+          "options": [
+            "Leg pain on walking",
+            "Leg pain at rest",
+            "Varicose veins",
+            "Leg ulcer",
+            "Swelling",
+            "Aneurysm follow-up",
+            "Cold or discoloured foot"
+          ],
+          "required": true
+        },
+        {
+          "id": "walking_distance",
+          "type": "text",
+          "label": "How far can you walk before the pain stops you?"
+        },
+        {
+          "id": "rest_pain",
+          "type": "checkbox",
+          "label": "Does the pain wake you at night?"
+        },
+        {
+          "id": "ulcer_duration",
+          "type": "text",
+          "label": "If you have an ulcer, how long has it been there?"
+        },
+        {
+          "id": "risk_factors",
+          "type": "checkboxes",
+          "label": "Do any of these apply?",
+          "options": [
+            "Smoker",
+            "Ex-smoker",
+            "Diabetes",
+            "High blood pressure",
+            "High cholesterol",
+            "Previous heart attack or stroke"
+          ]
+        },
+        {
+          "id": "dvt_history",
+          "type": "checkbox",
+          "label": "Have you ever had a clot in the leg or lung?"
+        },
+        {
+          "id": "previous_vascular",
+          "type": "textarea",
+          "label": "Previous vascular surgery or stents"
+        },
+        {
+          "id": "medications",
+          "type": "textarea",
+          "label": "Current medicines, including blood thinners",
+          "required": true
+        }
+      ]
+    }
+  ],
+  "inventoryCategories": [
+    {
+      "code": "vasc_compression",
+      "name": "Compression Bandaging and Hosiery"
+    },
+    {
+      "code": "vasc_ablation",
+      "name": "Ablation Consumables"
+    },
+    {
+      "code": "vasc_dressings",
+      "name": "Ulcer Dressings"
+    }
+  ],
+  "codeSets": {
+    "icd10": [
+      "I70.219",
+      "I83.90",
+      "I71.4",
+      "I87.2",
+      "L97.909",
+      "I82.409",
+      "E11.51",
+      "I65.29"
+    ],
+    "cpt": [
+      "99204",
+      "99213",
+      "93880",
+      "93970"
+    ]
+  },
+  "settings": {
+    "defaultAppointmentDuration": 25,
+    "slotIntervalMinutes": 15
+  },
+  "reports": {
+    "show": [
+      "clinical",
+      "operational"
+    ]
+  }
+}
