@@ -46,3 +46,10 @@ docs/demo/video-library/wave3/
 !.env.example
 .vercel
 .env*
+mobile/package.json
+package-lock.json
+package.json
+mobile/package.json
+mobile/package.json
+package-lock.json
+package.json
