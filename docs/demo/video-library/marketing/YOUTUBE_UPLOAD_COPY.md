@@ -211,7 +211,7 @@ Upload `m05-cant-collect-what-you-cant-see.thumbnail.png` and `m05-cant-collect-
 
 ---
 
-## M6 — m06-where-does-tuesday-go `00:26`
+## M6 — m06-where-does-tuesday-go `00:25`
 
 ### Title `43 chars`
 
@@ -301,7 +301,7 @@ Upload `m08-prior-auth-without-the-fax.thumbnail.png` and `m08-prior-auth-withou
 
 ---
 
-## M9 — m09-have-you-ever-put-one-back `00:16`
+## M9 — m09-have-you-ever-put-one-back `00:20`
 
 ### Title `45 chars`
 

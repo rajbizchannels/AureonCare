@@ -1682,6 +1682,36 @@ class Director {
     await this.page.evaluate(() => window.__demo.caption('')).catch(() => {});
   }
 
+  /**
+   * Marks the moment a reel's 9:16 cover is taken from.
+   *
+   * A no-op in a normal recording, on purpose: the cover needs the overlay
+   * hidden, and hiding it mid-recording would flash the caption off in the
+   * finished video. Instead captureReelCover() runs the script a second time,
+   * silently, and this is where that pass stops and takes its still. The
+   * captions are the reason for the second pass at all — a caption stays up
+   * until the next line replaces it, so a finished reel has almost no frame
+   * without a sentence of narration frozen across the product.
+   */
+  async cover() {
+    if (!this.spec.coverFile || this.coverTaken) return;
+    await this.captureCover();
+    // Nothing after the cover moment matters to the still.
+    throw { __probeDone: true };
+  }
+
+  async captureCover() {
+    await this.clearCaption();
+    await this.page.addStyleTag({ content: '[id^="demo-"]{visibility:hidden!important}' });
+    // Let a report or list that the last action triggered finish redrawing.
+    await sleep(1200);
+    await this.page.screenshot({
+      path: this.spec.coverFile,
+      clip: { x: 0, y: 0, ...(this.spec.viewport || VIEWPORT) },
+    });
+    this.coverTaken = true;
+  }
+
   /** Full-screen branded card. `bullets` renders a recap list. */
   /**
    * `keep` leaves the card on screen instead of clearing it. A closing card
@@ -2151,6 +2181,56 @@ function composeVertical(videoIn, framePng, videoOut, fps) {
   ], { stdio: 'ignore' });
 }
 
+/**
+ * The 9:16 cover for a reel: the reel's own surround, with a clean still of the
+ * product in the band the footage plays in.
+ *
+ * Same geometry as composeVertical — still scaled to 1080x608 and seated at
+ * y=756 — so the cover is the reel's first impression rather than a separate
+ * design. The headline sits in the top band, which survives the 3:4 centre crop
+ * Instagram applies on a profile grid (y 240-1680).
+ */
+async function renderReelCover(context, spec, stillPng, file) {
+  const page = await context.newPage();
+  await page.setViewportSize({ width: 1080, height: 1920 });
+  const still = `data:image/png;base64,${fs.readFileSync(stillPng).toString('base64')}`;
+  await page.setContent(
+    `<body style="margin:0;background:${BRAND.ink}">`
+    + '<div style="position:relative;width:1080px;height:1920px;overflow:hidden">'
+    + `<img src="${still}" alt="" style="position:absolute;left:0;top:756px;width:1080px;height:608px">`
+    + `<div style="position:absolute;inset:0">${REEL_FRAME_HTML(spec)}</div>`
+    + '</div></body>',
+    { waitUntil: 'load' }
+  );
+  await page.screenshot({ path: file, clip: { x: 0, y: 0, width: 1080, height: 1920 } });
+  await page.close();
+}
+
+/**
+ * Runs a reel's script a second time, silently, to take its cover still at the
+ * d.cover() mark, then composes <slug>-9x16.thumbnail.png beside the reel.
+ */
+async function captureReelCover(spec, outDir = outDirFor(spec)) {
+  const still = path.join(require('os').tmpdir(), `${spec.slug}.cover-still.png`);
+  try { fs.unlinkSync(still); } catch (_) { /* none left over */ }
+  await record({ ...spec, skipOutputs: true, silent: true, coverFile: still });
+  if (!fs.existsSync(still)) throw new Error(`${spec.id}: the cover pass did not produce a still`);
+
+  const { chromium } = loadPlaywright();
+  const browser = await chromium.launch({ args: ['--no-sandbox'] });
+  const context = await browser.newContext({ viewport: { width: 1080, height: 1920 } });
+  const file = path.join(outDir, `${spec.slug}-9x16.thumbnail.png`);
+  try {
+    await renderReelCover(context, spec, still, file);
+  } finally {
+    await context.close();
+    await browser.close();
+    fs.unlinkSync(still);
+  }
+  console.log(`  ${spec.id} cover     →  ${path.basename(file)}`);
+  return file;
+}
+
 async function renderThumbnail(context, spec, file) {
   const page = await context.newPage();
   await page.setViewportSize({ width: 1280, height: 720 });
@@ -2276,6 +2356,8 @@ async function record(spec) {
   try {
     if (spec.skipOutputs) {
       await spec.run(d, page, { store, fixtures: F, sleep });
+      // A reel with no d.cover() call gets its cover from where it ends.
+      if (spec.coverFile && !d.coverTaken) await d.captureCover();
       throw { __probeDone: true };
     }
     d.videoStart = d.now();
@@ -2410,6 +2492,10 @@ async function record(spec) {
         composeVertical(mp4, framePng, vertical, FPS);
         fs.unlinkSync(framePng);
         console.log(`  ${spec.id} vertical  →  ${path.basename(vertical)}`);
+
+        // Re-cut alongside the reel every time, so the cover can never show a
+        // headline the reel itself no longer carries.
+        await captureReelCover(spec, OUT_DIR);
       }
     }
   }
@@ -2417,4 +2503,4 @@ async function record(spec) {
   if (failure) throw failure;
 }
 
-module.exports = { record, sleep, Director, outDirFor, BASE_URL, API_BASE, ts };
+module.exports = { record, captureReelCover, sleep, Director, outDirFor, BASE_URL, API_BASE, ts };

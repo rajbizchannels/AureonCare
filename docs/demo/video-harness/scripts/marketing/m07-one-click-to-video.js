@@ -58,6 +58,8 @@ module.exports = {
 
     await d.scrollBy(280);
     await d.say('The room is made, and it lands on the visit.', 2400);
+    // Cover: the created session on the visit — the reel's whole claim.
+    await d.cover();
     await d.say('Nobody pasted anything.', 2000);
   },
 };
