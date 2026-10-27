@@ -1,5 +1,5 @@
 0:00 Booked
-0:30 Seen on video
-0:48 Documented
-1:04 Claimed
-1:30 Paid
+0:28 Seen on video
+0:45 Documented
+1:00 Claimed
+1:24 Paid

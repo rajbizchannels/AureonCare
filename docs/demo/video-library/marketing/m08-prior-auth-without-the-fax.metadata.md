@@ -35,7 +35,7 @@ AureonCare, prior authorization, pre-authorization, medical billing, revenue cyc
 | Thumbnail | m08-prior-auth-without-the-fax.thumbnail.png |
 | Subtitles | m08-prior-auth-without-the-fax.srt |
 | End screen | Link to the next video in the playlist |
-| Duration | 0:27 |
+| Duration | 0:28 |
 | Resolution | 1920x1080, 30fps, H.264 |
 | Audio | Narration, AAC 160k, normalised to -16 LUFS |
 
