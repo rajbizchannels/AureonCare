@@ -15,7 +15,7 @@ Chapters:
 0:18 Who is on duty
 0:33 The gate
 0:50 The queue
-1:01 What it was worth
+1:00 What it was worth
 
 Subtitles: upload m10-two-hundred-people-in-a-field.srt as the English track — do not rely on auto-captions.
 Narration: spoken track included (google / en-US-Neural2-D).
