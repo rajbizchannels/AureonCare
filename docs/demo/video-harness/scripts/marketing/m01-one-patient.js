@@ -24,7 +24,9 @@ module.exports = {
   audience: 'Practice owner, COO',
   intro: 'A single visit travels the whole system: booked, seen on video, documented, claimed, paid.',
   journey: 'Book → video visit → chart → claim → payment posted',
-  youtubeTitle: 'One patient, booking to bank deposit — AureonCare in 90 seconds',
+  // No running time in the title. It said "in 90 seconds" for a cut that runs
+  // two minutes, and the length moves every time the film is re-recorded.
+  youtubeTitle: 'One patient, booking to bank deposit | AureonCare',
   // No chapter list here. This description used to end with one, hardcoded,
   // and it went stale the moment the cut was re-recorded — it read 0:25 for a
   // beat that now lands at 0:29, which as a YouTube chapter is a link to the
@@ -139,7 +141,7 @@ module.exports = {
     const payer = claimSelects.nth(1);
     if (await d.exists(payer)) {
       const options = await payer.locator('option').allTextContents();
-      const target = options.find((o) => /Blue Cross/i.test(o));
+      const target = options.find((o) => /Northbeam/i.test(o));
       if (target) await d.select(payer, { label: target });
     }
 
