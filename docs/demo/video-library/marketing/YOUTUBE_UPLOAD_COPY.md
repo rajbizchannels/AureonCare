@@ -39,12 +39,12 @@ Try it: https://app.aureoncare.tech
 
 ---
 
-## M1 — m01-one-patient-booking-to-paid `01:59`
+## M1 — m01-one-patient-booking-to-paid `01:55`
 
-### Title `63 chars`
+### Title `49 chars`
 
 ```
-One patient, booking to bank deposit — AureonCare in 90 seconds
+One patient, booking to bank deposit | AureonCare
 ```
 
 ### Description
@@ -55,10 +55,10 @@ One patient crosses the whole practice: a telehealth visit booked at the front d
 No cuts between modules and no switching systems — the continuity is the point.
 
 0:00 Booked
-0:30 Seen on video
-0:48 Documented
-1:04 Claimed
-1:30 Paid
+0:28 Seen on video
+0:46 Documented
+1:01 Claimed
+1:26 Paid
 
 Try it: https://app.aureoncare.tech
 ```
@@ -77,10 +77,10 @@ Upload `m01-one-patient-booking-to-paid.thumbnail.png` and `m01-one-patient-book
 
 ## M2 — m02-friday-cancellation `01:02`
 
-### Title `70 chars`
+### Title `56 chars`
 
 ```
-Friday 4:07pm, your 3:30 cancels — AureonCare front desk in 60 seconds
+Friday 4:07pm, your 3:30 cancels | AureonCare front desk
 ```
 
 ### Description
@@ -92,7 +92,7 @@ No phone tree, no re-typing, no empty hour.
 
 0:00 The cancellation
 0:21 The queue
-0:43 The paperwork
+0:44 The paperwork
 
 Try it: https://app.aureoncare.tech
 ```
@@ -109,7 +109,7 @@ Upload `m02-friday-cancellation.thumbnail.png` and `m02-friday-cancellation.srt`
 
 ---
 
-## M3 — m03-chart-it-and-go `01:25`
+## M3 — m03-chart-it-and-go `01:24`
 
 ### Title `72 chars`
 
@@ -126,7 +126,7 @@ Diagnoses, prescriptions and lab orders are tabs of the same chart, so an order 
 
 0:00 The chart
 0:14 The note
-0:42 The order
+0:45 The order
 
 Try it: https://app.aureoncare.tech
 ```
@@ -177,7 +177,7 @@ Upload `m04-who-opened-that-chart.thumbnail.png` and `m04-who-opened-that-chart.
 
 ---
 
-## M5 — m05-cant-collect-what-you-cant-see `01:04`
+## M5 — m05-cant-collect-what-you-cant-see `01:03`
 
 ### Title `69 chars`
 
@@ -194,7 +194,7 @@ Synthetic data throughout; no real patient information appears.
 
 0:00 The queue
 0:13 Nothing gets lost
-0:41 On the books
+0:40 On the books
 
 Try it: https://app.aureoncare.tech
 ```
@@ -271,7 +271,7 @@ Upload `m07-one-click-to-video.thumbnail.png` and `m07-one-click-to-video.srt`.
 
 ---
 
-## M8 — m08-prior-auth-without-the-fax `00:27`
+## M8 — m08-prior-auth-without-the-fax `00:28`
 
 ### Title `47 chars`
 
@@ -352,7 +352,7 @@ Planning that knows a camp takes clinicians away from the clinic, and says which
 0:18 Who is on duty
 0:33 The gate
 0:50 The queue
-1:01 What it was worth
+1:00 What it was worth
 
 Try it: https://app.aureoncare.tech
 ```

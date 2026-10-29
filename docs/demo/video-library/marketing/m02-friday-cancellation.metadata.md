@@ -1,8 +1,8 @@
 # M2 — Friday, 4:07pm — the 3:30 just cancelled
 
-## YouTube title (70 chars)
+## YouTube title (56 chars)
 
-Friday 4:07pm, your 3:30 cancels — AureonCare front desk in 60 seconds
+Friday 4:07pm, your 3:30 cancels | AureonCare front desk
 
 ## Description
 
@@ -13,7 +13,7 @@ No phone tree, no re-typing, no empty hour.
 Chapters:
 0:00 The cancellation
 0:21 The queue
-0:43 The paperwork
+0:44 The paperwork
 
 Subtitles: upload m02-friday-cancellation.srt as the English track — do not rely on auto-captions.
 Narration: spoken track included (google / en-US-Neural2-D).

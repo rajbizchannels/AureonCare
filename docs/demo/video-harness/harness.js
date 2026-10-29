@@ -201,6 +201,30 @@ function upsertPermission(rows, body) {
 const PATIENT_KEYS = ['patient_id', 'patientId', 'patient'];
 
 /**
+ * The next number in a record's own sequence: one past the highest already in
+ * the table for that stem, zero-padded to the table's width — PO-2026-0043
+ * after PO-2026-0042, the way a real backend's sequence would mint it.
+ *
+ * Every site used to build these from `_nextId % 1000`. _nextId starts at
+ * 90000, so the first record a recording created came out two digits long and
+ * sat on screen beside seeded four-digit rows — a sequence running backwards.
+ *
+ * Records the product numbers on the server (claims, pre-authorizations, lab
+ * orders, denials, postings, quotes, invoices) use its PREFIX-YYYY-NNNNNN
+ * format — see PRODUCT_WIDTH and backend/utils/recordNumbers.js. The rest keep
+ * the demo's own four-digit stems.
+ */
+const PRODUCT_WIDTH = 6;
+function nextNumber(rows, field, stem, width = 4) {
+  const pattern = new RegExp(`^${stem.replace(/[-]/g, '\\-')}-(\\d+)$`);
+  const highest = (rows || []).reduce((max, row) => {
+    const hit = pattern.exec(String((row && row[field]) || ''));
+    return hit ? Math.max(max, Number(hit[1])) : max;
+  }, 0);
+  return `${stem}-${String(highest + 1).padStart(width, '0')}`;
+}
+
+/**
  * Operational reports are requested with `days=N` — 7, 30, 90, 180, 365 or
  * `all` — or with startDate/endDate when the range selector is set to Custom.
  * Honouring it matters beyond tidiness: a script that selects "Last 90 Days"
@@ -487,10 +511,10 @@ async function handleApi(route, store) {
     if (method === 'GET' && !billing[2]) return json(filterByQuery(rows, url));
     if (method === 'POST' && key) {
       const numberField = billing[1] === 'quotes' ? 'quote_number' : 'invoice_number';
-      const prefix = billing[1] === 'quotes' ? 'QT' : 'INV';
+      const prefix = billing[1] === 'quotes' ? 'QTE' : 'INV';
       const created = {
         id: store._nextId++, created_at: new Date().toISOString(), ...body,
-        [numberField]: body[numberField] || `${prefix}-2026-0${store._nextId % 1000}`,
+        [numberField]: body[numberField] || nextNumber(rows, numberField, `${prefix}-2026`, PRODUCT_WIDTH),
         status: body.status || 'draft',
       };
       rows.unshift(created);
@@ -698,7 +722,7 @@ async function handleApi(route, store) {
   }
   if (p === '/inventory/suppliers') {
     if (method === 'POST') {
-      const created = { id: store._nextId++, status: 'active', supplier_number: `SUP-0${store._nextId % 100}`, ...body };
+      const created = { id: store._nextId++, status: 'active', supplier_number: nextNumber(store._invSuppliers, 'supplier_number', 'SUP', 3), ...body };
       store._invSuppliers.push(created);
       return json(created);
     }
@@ -708,7 +732,7 @@ async function handleApi(route, store) {
     if (method === 'POST') {
       const created = {
         id: store._nextId++,
-        item_number: `ITM-0${store._nextId % 1000}`,
+        item_number: nextNumber(store._invItems, 'item_number', 'ITM'),
         current_stock: Number(body.current_stock || body.opening_stock || 0),
         status: 'active',
         ...body,
@@ -742,7 +766,7 @@ async function handleApi(route, store) {
       }
       const created = {
         id: store._nextId++,
-        movement_number: `MV-2026-0${store._nextId % 1000}`,
+        movement_number: nextNumber(store._invMovements, 'movement_number', 'MV-2026'),
         item_name: item ? item.name : '',
         item_sku: item ? item.sku : '',
         unit_of_measure: item ? item.unit_of_measure : '',
@@ -798,7 +822,7 @@ async function handleApi(route, store) {
       });
       const created = {
         id: store._nextId++,
-        po_number: `PO-2026-0${store._nextId % 1000}`,
+        po_number: nextNumber(store._invOrders, 'po_number', 'PO-2026'),
         supplier_name: supplier ? supplier.name : '',
         status: 'pending',
         order_date: new Date().toISOString(),
@@ -830,7 +854,7 @@ async function handleApi(route, store) {
     if (method === 'POST') {
       const created = {
         id: store._nextId++,
-        entryNumber: `JE-2026-0${store._nextId % 1000}`,
+        entryNumber: nextNumber(store._journalEntries, 'entryNumber', 'JE-2026'),
         entryDate: new Date().toISOString().slice(0, 10),
         entryType: 'manual',
         status: 'draft',
@@ -863,7 +887,7 @@ async function handleApi(route, store) {
     if (method === 'POST') {
       const created = {
         id: store._nextId++,
-        [numberField]: `${prefix}-2026-0${store._nextId % 1000}`,
+        [numberField]: nextNumber(rows, numberField, `${prefix}-2026`),
         status: body.status || (acctSub[1] === 'statements' ? 'draft' : 'open'),
         ...body,
       };
@@ -1240,7 +1264,10 @@ async function handleApi(route, store) {
     if (action === 'promote') {
       const pid = store._nextId++;
       row.patientId = pid;
-      row.mrn = `MRN-1003${pid % 100}`;
+      // Promotion makes a patient, so the MRN continues the patients' own
+      // sequence rather than a camp-only format nothing else on screen uses.
+      const known = [...store.patients, ...Object.values(store._campRegistrations).flat()];
+      row.mrn = nextNumber(known, 'mrn', 'MRN-2026', 3);
       row.status = row.status === 'registered' ? 'in_progress' : row.status;
       return json({ success: true, registration: row, patient: { id: pid, mrn: row.mrn, name: row.fullName } });
     }
@@ -1293,26 +1320,28 @@ async function handleApi(route, store) {
           }
         }
         if (resource === 'patients') {
-          created.mrn = created.mrn || `MRN-2026-${String(store._nextId).slice(-3)}`;
+          created.mrn = created.mrn || nextNumber(rows, 'mrn', 'MRN-2026', 3);
           created.status = created.status || 'active';
         }
         if (resource === 'claims') {
-          created.claim_number = created.claim_number || `CLM-2026-0${store._nextId % 1000}`;
+          // The server numbers a claim when the form sends none, as it now does.
+          created.claim_number = created.claim_number
+            || nextNumber(rows, 'claim_number', 'CLM-2026', PRODUCT_WIDTH);
           created.status = created.status || 'draft';
         }
         // Wave 2 resources are identified on screen by their number, so a record
         // created during a recording has to get one or the video shows a blank.
         const NUMBERED = {
           preapprovals: ['preapproval_number', 'PA', 'pending'],
-          denials: ['denial_number', 'DN', 'open'],
-          'payment-postings': ['posting_number', 'PP', 'posted'],
-          quotes: ['quote_number', 'QT', 'draft'],
+          denials: ['denial_number', 'DEN', 'open'],
+          'payment-postings': ['posting_number', 'POST', 'posted'],
+          quotes: ['quote_number', 'QTE', 'draft'],
           invoices: ['invoice_number', 'INV', 'draft'],
           'lab-orders': ['order_number', 'LAB', 'ordered'],
         };
         if (NUMBERED[resource]) {
           const [field, prefix, fallbackStatus] = NUMBERED[resource];
-          created[field] = created[field] || `${prefix}-2026-0${store._nextId % 1000}`;
+          created[field] = created[field] || nextNumber(rows, field, `${prefix}-2026`, PRODUCT_WIDTH);
           created.status = created.status || fallbackStatus;
         }
         // Tables render joined display names, which a real backend returns and a
@@ -1324,12 +1353,6 @@ async function handleApi(route, store) {
             .find((ip) => String(ip.id) === String(created.insurance_payer_id));
           if (pt) created.patient_name = `${pt.first_name} ${pt.last_name}`;
           if (payer) created.insurance_payer_name = payer.name;
-          // The form mints its own number as `PA-<epoch millis>`, which lands a
-          // thirteen-digit timestamp in a column of PA-2026-00xx. A real
-          // backend owns this sequence, so the demo one does too.
-          if (/^PA-\d{10,}$/.test(String(created.preapproval_number || ''))) {
-            created.preapproval_number = `PA-2026-0${store._nextId % 1000}`;
-          }
         }
         if (resource === 'payment-postings' || resource === 'denials') {
           const pt = store.patients.find((p) => String(p.id) === String(created.patient_id));
@@ -1827,8 +1850,16 @@ class Director {
   /** Click if the target shows up; returns false and moves on if it does not. */
   async maybeClick(locator, opts = {}) {
     if (!(await this.exists(locator, opts.timeout || 3500))) return false;
-    await this.click(locator.first(), opts);
-    return true;
+    try {
+      await this.click(locator.first(), opts);
+      return true;
+    } catch (err) {
+      // A self-dismissing dialog (the lab order's "OK") can close while the
+      // click is still waiting for it to settle. Gone is the outcome a click
+      // would have produced, so only fail if the target is still there.
+      if (await this.exists(locator, 500)) throw err;
+      return false;
+    }
   }
 
   /** Date, time and number inputs: set the value directly, never keystroke it. */

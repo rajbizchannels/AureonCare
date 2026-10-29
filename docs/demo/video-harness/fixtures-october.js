@@ -238,7 +238,7 @@ const campRegistrations = {
     {
       id: 8102, campId: 501, tokenNo: 93, fullName: 'Thomas Boateng', phone: '(503) 555-0714',
       ageYears: 61, gender: 'male', city: 'Gresham', status: 'in_progress',
-      consentGivenAt: iso(Date.now() - 38 * 60000), patientId: 1, mrn: 'MRN-100241',
+      consentGivenAt: iso(Date.now() - 38 * 60000), patientId: 1, mrn: 'MRN-2025-041',
     },
     {
       id: 8103, campId: 501, tokenNo: 92, fullName: 'Leila Haddad', phone: '(503) 555-0222',
@@ -248,7 +248,7 @@ const campRegistrations = {
     {
       id: 8104, campId: 501, tokenNo: 91, fullName: 'Grace Mwangi', phone: '(503) 555-0455',
       ageYears: 47, gender: 'female', city: 'Gresham', status: 'completed',
-      consentGivenAt: iso(Date.now() - 95 * 60000), patientId: 2, mrn: 'MRN-100198',
+      consentGivenAt: iso(Date.now() - 95 * 60000), patientId: 2, mrn: 'MRN-2025-037',
     },
     {
       id: 8105, campId: 501, tokenNo: 90, fullName: 'Hector Salazar', phone: '(503) 555-0607',

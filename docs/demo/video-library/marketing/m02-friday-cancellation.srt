@@ -1,39 +1,39 @@
 1
-00:00:00,192 --> 00:00:05,092
+00:00:01,654 --> 00:00:06,554
 4:07pm. Friday. — Your 3:30 just cancelled.
 
 2
-00:00:08,503 --> 00:00:14,001
+00:00:09,815 --> 00:00:15,227
 One patient cancels.
 
 3
-00:00:14,001 --> 00:00:23,850
+00:00:15,227 --> 00:00:24,415
 Thirty seconds of admin. That is the whole cancellation.
 
 4
-00:00:23,850 --> 00:00:26,979
+00:00:24,415 --> 00:00:27,542
 The waitlist already knows who wanted that slot.
 
 5
-00:00:26,979 --> 00:00:33,604
+00:00:27,542 --> 00:00:34,223
 Priority and flexibility decide who gets called — not who asked first.
 
 6
-00:00:33,604 --> 00:00:40,867
+00:00:34,223 --> 00:00:41,174
 Notify marks the entry called, so nobody rings them twice.
 
 7
-00:00:40,867 --> 00:00:46,635
+00:00:41,174 --> 00:00:46,709
 They accept. The entry leaves the queue.
 
 8
-00:00:46,635 --> 00:00:50,495
+00:00:46,709 --> 00:00:50,546
 Their intake goes out on its own.
 
 9
-00:00:50,495 --> 00:00:54,277
+00:00:50,546 --> 00:00:54,366
 Answers land on the chart before the visit, not during it.
 
 10
-00:00:54,398 --> 00:00:58,968
+00:00:54,509 --> 00:00:59,079
 The slot refills itself. — Front desk, 4:08pm.

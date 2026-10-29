@@ -52,7 +52,7 @@ module.exports = {
     const payer = selects.nth(1);
     if (await d.exists(payer)) {
       const options = await payer.locator('option').allTextContents();
-      const target = options.find((o) => /Blue Cross/i.test(o));
+      const target = options.find((o) => /Northbeam/i.test(o));
       if (target) await d.select(payer, { label: target });
     }
 

@@ -347,17 +347,17 @@ const accounts = [
 ];
 
 const journalEntries = [
-  { id: 7601, entryNumber: 'JE-2026-0311', entryDate: day(-1), entryType: 'automatic', description: 'Insurance payments posted — Blue Cross remittance', referenceNumber: 'ERA-88214', totalDebit: 4820, totalCredit: 4820, status: 'posted' },
+  { id: 7601, entryNumber: 'JE-2026-0311', entryDate: day(-1), entryType: 'automatic', description: 'Insurance payments posted — Northbeam remittance', referenceNumber: 'ERA-88214', totalDebit: 4820, totalCredit: 4820, status: 'posted' },
   { id: 7602, entryNumber: 'JE-2026-0312', entryDate: day(0), entryType: 'automatic', description: 'Supplier invoice — Cascade Medical Supply', referenceNumber: 'BILL-2026-0067', totalDebit: 372, totalCredit: 372, status: 'draft' },
   { id: 7603, entryNumber: 'JE-2026-0310', entryDate: day(-3), entryType: 'manual', description: 'Payroll accrual — first half of the month', referenceNumber: 'PAY-2026-06A', totalDebit: 18640, totalCredit: 18640, status: 'posted' },
   { id: 7604, entryNumber: 'JE-2026-0309', entryDate: day(-5), entryType: 'automatic', description: 'Patient card payments — daily settlement', referenceNumber: 'STRIPE-0605', totalDebit: 2140, totalCredit: 2140, status: 'posted' },
 ];
 
 const receivables = [
-  { id: 7501, arNumber: 'AR-2026-0188', arType: 'insurance', payerName: 'Blue Cross Blue Shield', patientName: 'Sarah Williams', originalAmount: 18400, paidAmount: 5800, balanceDue: 12600, dueDate: day(9), agingBucket: 'current', status: 'partial' },
-  { id: 7502, arNumber: 'AR-2026-0174', arType: 'insurance', payerName: 'Aetna', patientName: 'Marcus Boone', originalAmount: 9800, paidAmount: 0, balanceDue: 9800, dueDate: day(-12), agingBucket: '1-30', status: 'overdue' },
+  { id: 7501, arNumber: 'AR-2026-0188', arType: 'insurance', payerName: 'Northbeam Health Plan', patientName: 'Sarah Williams', originalAmount: 18400, paidAmount: 5800, balanceDue: 12600, dueDate: day(9), agingBucket: 'current', status: 'partial' },
+  { id: 7502, arNumber: 'AR-2026-0174', arType: 'insurance', payerName: 'Wrenfield Mutual', patientName: 'Marcus Boone', originalAmount: 9800, paidAmount: 0, balanceDue: 9800, dueDate: day(-12), agingBucket: '1-30', status: 'overdue' },
   { id: 7503, arNumber: 'AR-2026-0190', arType: 'patient', patientName: 'Priya Nandakumar', originalAmount: 180, paidAmount: 0, balanceDue: 180, dueDate: day(14), agingBucket: 'current', status: 'open' },
-  { id: 7504, arNumber: 'AR-2026-0151', arType: 'insurance', payerName: 'United Healthcare', patientName: 'James Okonjo', originalAmount: 6400, paidAmount: 0, balanceDue: 6400, dueDate: day(-48), agingBucket: '31-60', status: 'overdue' },
+  { id: 7504, arNumber: 'AR-2026-0151', arType: 'insurance', payerName: 'Copperleaf Health', patientName: 'James Okonjo', originalAmount: 6400, paidAmount: 0, balanceDue: 6400, dueDate: day(-48), agingBucket: '31-60', status: 'overdue' },
 ];
 
 const payables = [
@@ -375,7 +375,7 @@ const reconciliations = [
 const statements = [
   { id: 7201, statementNumber: 'ST-2026-0044', statementType: 'patient', patientName: 'Sarah Williams', periodStart: day(-30), periodEnd: day(0), previousBalance: 60, charges: 240, payments: 240, currentBalance: 60, status: 'sent' },
   { id: 7202, statementNumber: 'ST-2026-0045', statementType: 'patient', patientName: 'Marcus Boone', periodStart: day(-30), periodEnd: day(0), previousBalance: 0, charges: 120, payments: 120, currentBalance: 0, status: 'paid' },
-  { id: 7203, statementNumber: 'ST-2026-0046', statementType: 'payer', payerName: 'Aetna', periodStart: day(-30), periodEnd: day(0), previousBalance: 4200, charges: 9800, payments: 4200, currentBalance: 9800, status: 'draft' },
+  { id: 7203, statementNumber: 'ST-2026-0046', statementType: 'payer', payerName: 'Wrenfield Mutual', periodStart: day(-30), periodEnd: day(0), previousBalance: 4200, charges: 9800, payments: 4200, currentBalance: 9800, status: 'draft' },
 ];
 
 /** AccountsView overview cards. */
@@ -431,7 +431,7 @@ const fhirStats = {
  */
 const fhirTrackingErrors = [
   {
-    id: 6802, tracking_number: 'LAB-2026-0210', resource_type: 'ServiceRequest',
+    id: 6802, tracking_number: 'LAB-2026-000210', resource_type: 'ServiceRequest',
     current_status: 'rejected', vendor_name: 'Labcorp',
     last_error_code: 'MISSING_NPI', error_severity: 'error',
     error_title: 'Lab order rejected by the receiving system',
@@ -464,8 +464,8 @@ const fhirTrackingErrors = [
 
 /** Detail view for one tracking number, keyed by tracking_number. */
 const fhirTrackingRecords = {
-  'LAB-2026-0210': {
-    id: 6802, tracking_number: 'LAB-2026-0210', resource_type: 'ServiceRequest', resource_id: '7702',
+  'LAB-2026-000210': {
+    id: 6802, tracking_number: 'LAB-2026-000210', resource_type: 'ServiceRequest', resource_id: '7702',
     current_status: 'rejected', vendor_name: 'Labcorp', patient_name: 'Priya Nandakumar',
     created_at: at(-1, 11), updated_at: at(-1, 11, 2),
     events: [
