@@ -13,6 +13,9 @@ import { useAudit } from '../hooks/useAudit';
 import { useApp } from '../context/AppContext';
 import { useShellTab } from '../hooks/useShellTab';
 import ThemedSelect from '../components/forms/ThemedSelect';
+import { getTranslations } from '../config/translations';
+
+const useT = () => getTranslations(useApp().language);
 
 // ─── Shared UI primitives ─────────────────────────────────────────────────────
 
@@ -32,6 +35,26 @@ const Toggle = ({ value, onChange, label, disabled }) => (
 );
 
 const Badge = ({ status }) => {
+  const t = useT();
+  const STATUS_LABELS = {
+    draft:        t.draft || 'Draft',
+    posted:       t.posted || 'Posted',
+    voided:       t.acctVoided || 'Voided',
+    reversed:     t.reversed || 'Reversed',
+    open:         t.acctOpen || 'Open',
+    partial:      t.acctPartial || 'Partial',
+    paid:         t.paid || 'Paid',
+    written_off:  t.writtenOff || 'Written Off',
+    disputed:     t.disputed || 'Disputed',
+    collections:  t.collections || 'Collections',
+    pending:      t.pending || 'Pending',
+    approved:     t.acctApproved || 'Approved',
+    completed:    t.completed || 'Completed',
+    in_progress:  t.inProgress || 'In Progress',
+    discrepancy:  t.discrepancy || 'Discrepancy',
+    sent:         t.sent || 'Sent',
+    cancelled:    t.cancelled || 'Cancelled',
+  };
   const map = {
     draft:        'bg-gray-100 text-gray-700',
     posted:       'bg-green-100 text-green-700',
@@ -53,7 +76,7 @@ const Badge = ({ status }) => {
   };
   return (
     <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${map[status] || 'bg-gray-100 text-gray-600'}`}>
-      {status?.replace(/_/g, ' ')}
+      {STATUS_LABELS[status] || status?.replace(/_/g, ' ')}
     </span>
   );
 };
@@ -151,9 +174,60 @@ const Table = ({ headers, children, empty, theme }) => (
   </div>
 );
 
+// ─── Label maps (plain helpers; receive t) ────────────────────────────────────
+
+const getAccountTypeLabels = (t) => ({
+  asset:            t.acctTypeAsset || 'Asset',
+  liability:        t.acctTypeLiability || 'Liability',
+  equity:           t.acctTypeEquity || 'Equity',
+  revenue:          t.acctTypeRevenue || 'Revenue',
+  expense:          t.acctTypeExpense || 'Expense',
+  contra_asset:     t.acctTypeContraAsset || 'Contra Asset',
+  contra_liability: t.acctTypeContraLiability || 'Contra Liability',
+  contra_revenue:   t.acctTypeContraRevenue || 'Contra Revenue',
+});
+
+const getEntryTypeLabels = (t) => ({
+  manual:       t.acctEntryManual || 'Manual',
+  adjusting:    t.acctEntryAdjusting || 'Adjusting',
+  closing:      t.acctEntryClosing || 'Closing',
+  reversing:    t.acctEntryReversing || 'Reversing',
+  auto_billing: t.acctEntryAutoBilling || 'Auto Billing',
+  auto_rcm:     t.acctEntryAutoRcm || 'Auto RCM',
+  auto_payment: t.acctEntryAutoPayment || 'Auto Payment',
+});
+
+const getPartyTypeLabels = (t) => ({
+  patient:     t.patient || 'Patient',
+  insurance:   t.insurance || 'Insurance',
+  vendor:      t.acctVendor || 'Vendor',
+  refund:      t.acctRefund || 'Refund',
+  employee:    t.acctEmployee || 'Employee',
+  bank:        t.acctBank || 'Bank',
+  internal:    t.acctInternal || 'Internal',
+  other:       t.other || 'Other',
+});
+
+const getStatusLabels = (t) => ({
+  draft:       t.draft || 'Draft',
+  posted:      t.posted || 'Posted',
+  voided:      t.acctVoided || 'Voided',
+  reversed:    t.reversed || 'Reversed',
+  open:        t.acctOpen || 'Open',
+  partial:     t.acctPartial || 'Partial',
+  paid:        t.paid || 'Paid',
+  written_off: t.writtenOff || 'Written Off',
+  disputed:    t.disputed || 'Disputed',
+  collections: t.collections || 'Collections',
+  pending:     t.pending || 'Pending',
+  approved:    t.acctApproved || 'Approved',
+});
+
 // ─── Sub-forms ────────────────────────────────────────────────────────────────
 
 const AccountForm = ({ accounts, onSave, onClose, initial }) => {
+  const t = useT();
+  const ACCOUNT_TYPE_LABELS = getAccountTypeLabels(t);
   const [form, setForm] = useState({
     accountName: initial?.accountName || '',
     accountType: initial?.accountType || 'asset',
@@ -176,8 +250,8 @@ const AccountForm = ({ accounts, onSave, onClose, initial }) => {
 
   const validate = () => {
     const e = {};
-    if (!form.accountName.trim()) e.accountName = 'Account name is required';
-    if (!form.accountType) e.accountType = 'Account type is required';
+    if (!form.accountName.trim()) e.accountName = t.acctAccountNameRequired || 'Account name is required';
+    if (!form.accountType) e.accountType = t.acctAccountTypeRequired || 'Account type is required';
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -192,71 +266,80 @@ const AccountForm = ({ accounts, onSave, onClose, initial }) => {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
-        <FormField label="Account Name" required error={errors.accountName}>
-          <Input value={form.accountName} onChange={e => setForm(f => ({ ...f, accountName: e.target.value }))} placeholder="e.g. Checking Account" />
+        <FormField label={t.accountName || 'Account Name'} required error={errors.accountName}>
+          <Input value={form.accountName} onChange={e => setForm(f => ({ ...f, accountName: e.target.value }))} placeholder={t.acctAccountNamePlaceholder || 'e.g. Checking Account'} />
         </FormField>
-        <FormField label="Account Type" required error={errors.accountType}>
+        <FormField label={t.accountType || 'Account Type'} required error={errors.accountType}>
           <Select value={form.accountType} onChange={e => {
-            const t = e.target.value;
-            setForm(f => ({ ...f, accountType: t, normalBalance: normalBalanceDefault[t] || 'debit' }));
+            const typ = e.target.value;
+            setForm(f => ({ ...f, accountType: typ, normalBalance: normalBalanceDefault[typ] || 'debit' }));
           }}>
-            {['asset','liability','equity','revenue','expense','contra_asset','contra_liability','contra_revenue'].map(t => (
-              <option key={t} value={t}>{t.replace(/_/g, ' ')}</option>
+            {['asset','liability','equity','revenue','expense','contra_asset','contra_liability','contra_revenue'].map(typ => (
+              <option key={typ} value={typ}>{ACCOUNT_TYPE_LABELS[typ] || typ.replace(/_/g, ' ')}</option>
             ))}
           </Select>
         </FormField>
-        <FormField label="Account Subtype">
-          <Input value={form.accountSubtype} onChange={e => setForm(f => ({ ...f, accountSubtype: e.target.value }))} placeholder="e.g. current_asset" />
+        <FormField label={t.accountSubtype || 'Account Subtype'}>
+          <Input value={form.accountSubtype} onChange={e => setForm(f => ({ ...f, accountSubtype: e.target.value }))} placeholder={t.acctSubtypePlaceholder || 'e.g. current_asset'} />
         </FormField>
-        <FormField label="Normal Balance" required>
+        <FormField label={t.normalBalance || 'Normal Balance'} required>
           <Select value={form.normalBalance} onChange={e => setForm(f => ({ ...f, normalBalance: e.target.value }))}>
-            <option value="debit">Debit</option>
-            <option value="credit">Credit</option>
+            <option value="debit">{t.debit || 'Debit'}</option>
+            <option value="credit">{t.credit || 'Credit'}</option>
           </Select>
         </FormField>
-        <FormField label="Parent Account">
+        <FormField label={t.parentAccount || 'Parent Account'}>
           <Select value={form.parentAccountId} onChange={e => setForm(f => ({ ...f, parentAccountId: e.target.value }))}>
-            <option value="">— None —</option>
+            <option value="">{t.acctNoneOption || '— None —'}</option>
             {accounts.filter(a => a.id !== initial?.id).map(a => (
               <option key={a.id} value={a.id}>{a.accountNumber} — {a.accountName}</option>
             ))}
           </Select>
         </FormField>
-        <FormField label="Currency">
+        <FormField label={t.currency || 'Currency'}>
           <Select value={form.currency} onChange={e => setForm(f => ({ ...f, currency: e.target.value }))}>
             {['USD','EUR','GBP','CAD','AUD'].map(c => <option key={c} value={c}>{c}</option>)}
           </Select>
         </FormField>
       </div>
       {!initial && (
-        <FormField label="Opening Balance">
+        <FormField label={t.openingBalance || 'Opening Balance'}>
           <Input type="number" step="0.01" value={form.openingBalance} onChange={e => setForm(f => ({ ...f, openingBalance: e.target.value }))} />
         </FormField>
       )}
-      <FormField label="Description">
-        <Textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Account description..." />
+      <FormField label={t.description || 'Description'}>
+        <Textarea value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder={t.acctAccountDescriptionPlaceholder || 'Account description...'} />
       </FormField>
       <div className="space-y-2">
-        <p className="text-xs font-medium text-gray-600 dark:text-slate-400">Module Integrations</p>
+        <p className="text-xs font-medium text-gray-600 dark:text-slate-400">{t.acctModuleIntegrations || 'Module Integrations'}</p>
         <div className="grid grid-cols-2 gap-3">
-          <Toggle value={form.linkedToAr} onChange={v => setForm(f => ({ ...f, linkedToAr: v }))} label="Link to Accounts Receivable" />
-          <Toggle value={form.linkedToAp} onChange={v => setForm(f => ({ ...f, linkedToAp: v }))} label="Link to Accounts Payable" />
-          <Toggle value={form.linkedToBilling} onChange={v => setForm(f => ({ ...f, linkedToBilling: v }))} label="Link to Billing Module" />
-          <Toggle value={form.linkedToClaims} onChange={v => setForm(f => ({ ...f, linkedToClaims: v }))} label="Link to RCM/Claims" />
+          <Toggle value={form.linkedToAr} onChange={v => setForm(f => ({ ...f, linkedToAr: v }))} label={t.acctLinkToAR || 'Link to Accounts Receivable'} />
+          <Toggle value={form.linkedToAp} onChange={v => setForm(f => ({ ...f, linkedToAp: v }))} label={t.acctLinkToAP || 'Link to Accounts Payable'} />
+          <Toggle value={form.linkedToBilling} onChange={v => setForm(f => ({ ...f, linkedToBilling: v }))} label={t.acctLinkToBilling || 'Link to Billing Module'} />
+          <Toggle value={form.linkedToClaims} onChange={v => setForm(f => ({ ...f, linkedToClaims: v }))} label={t.acctLinkToClaims || 'Link to RCM/Claims'} />
         </div>
       </div>
       {initial && (
-        <Toggle value={form.isActive} onChange={v => setForm(f => ({ ...f, isActive: v }))} label="Account is Active" />
+        <Toggle value={form.isActive} onChange={v => setForm(f => ({ ...f, isActive: v }))} label={t.acctAccountIsActive || 'Account is Active'} />
       )}
       <div className="flex gap-2 pt-2 justify-end">
-        <Btn variant="secondary" type="button" onClick={onClose}>Cancel</Btn>
-        <Btn variant="primary" type="submit" icon={Save} disabled={saving}>{saving ? 'Saving…' : initial ? 'Update Account' : 'Create Account'}</Btn>
+        <Btn variant="secondary" type="button" onClick={onClose}>{t.cancel || 'Cancel'}</Btn>
+        <Btn variant="primary" type="submit" icon={Save} disabled={saving}>{saving ? (t.saving || 'Saving...') : initial ? (t.acctUpdateAccount || 'Update Account') : (t.acctCreateAccount || 'Create Account')}</Btn>
       </div>
     </form>
   );
 };
 
 const JournalEntryForm = ({ accounts, onSave, onClose, currency = 'USD' }) => {
+  const t = useT();
+  const ENTRY_TYPE_LABELS = getEntryTypeLabels(t);
+  const REFERENCE_TYPE_LABELS = {
+    claim:       t.claim || 'Claim',
+    payment:     t.acctPayment || 'Payment',
+    invoice:     t.invoice || 'Invoice',
+    patient:     t.patient || 'Patient',
+    appointment: t.appointment || 'Appointment',
+  };
   const [form, setForm] = useState({ entryDate: new Date().toISOString().split('T')[0], description: '', entryType: 'manual', referenceType: '', referenceNumber: '', notes: '' });
   const [lines, setLines] = useState([{ accountId: '', entryType: 'debit', amount: '', description: '' }, { accountId: '', entryType: 'credit', amount: '', description: '' }]);
   const [errors, setErrors] = useState({});
@@ -272,11 +355,11 @@ const JournalEntryForm = ({ accounts, onSave, onClose, currency = 'USD' }) => {
 
   const validate = () => {
     const e = {};
-    if (!form.entryDate) e.entryDate = 'Entry date is required';
-    if (!form.description.trim()) e.description = 'Description is required';
-    if (lines.length < 2) e.lines = 'At least 2 lines required';
-    if (!isBalanced) e.balance = 'Debits and credits must balance';
-    for (const l of lines) { if (!l.accountId || !l.amount) { e.lines = 'All lines need an account and amount'; break; } }
+    if (!form.entryDate) e.entryDate = t.acctEntryDateRequired || 'Entry date is required';
+    if (!form.description.trim()) e.description = t.acctDescriptionRequired || 'Description is required';
+    if (lines.length < 2) e.lines = t.acctAtLeastTwoLines || 'At least 2 lines required';
+    if (!isBalanced) e.balance = t.acctDebitsCreditsMustBalance || 'Debits and credits must balance';
+    for (const l of lines) { if (!l.accountId || !l.amount) { e.lines = t.acctLinesNeedAccountAmount || 'All lines need an account and amount'; break; } }
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -291,35 +374,35 @@ const JournalEntryForm = ({ accounts, onSave, onClose, currency = 'USD' }) => {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
-        <FormField label="Entry Date" required error={errors.entryDate}>
+        <FormField label={t.entryDate || 'Entry Date'} required error={errors.entryDate}>
           <Input type="date" value={form.entryDate} onChange={e => setForm(f => ({ ...f, entryDate: e.target.value }))} />
         </FormField>
-        <FormField label="Entry Type">
+        <FormField label={t.entryType || 'Entry Type'}>
           <Select value={form.entryType} onChange={e => setForm(f => ({ ...f, entryType: e.target.value }))}>
-            {['manual','adjusting','closing','reversing','auto_billing','auto_rcm','auto_payment'].map(t => (
-              <option key={t} value={t}>{t.replace(/_/g, ' ')}</option>
+            {['manual','adjusting','closing','reversing','auto_billing','auto_rcm','auto_payment'].map(typ => (
+              <option key={typ} value={typ}>{ENTRY_TYPE_LABELS[typ] || typ.replace(/_/g, ' ')}</option>
             ))}
           </Select>
         </FormField>
-        <FormField label="Description" required error={errors.description} className="col-span-2">
-          <Input value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Journal entry description" />
+        <FormField label={t.description || 'Description'} required error={errors.description} className="col-span-2">
+          <Input value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder={t.acctJournalEntryDescriptionPlaceholder || 'Journal entry description'} />
         </FormField>
-        <FormField label="Reference Type">
+        <FormField label={t.referenceType || 'Reference Type'}>
           <Select value={form.referenceType} onChange={e => setForm(f => ({ ...f, referenceType: e.target.value }))}>
-            <option value="">None</option>
-            {['claim','payment','invoice','patient','appointment'].map(t => <option key={t} value={t}>{t}</option>)}
+            <option value="">{t.acctNoReference || 'None'}</option>
+            {['claim','payment','invoice','patient','appointment'].map(typ => <option key={typ} value={typ}>{REFERENCE_TYPE_LABELS[typ] || typ}</option>)}
           </Select>
         </FormField>
-        <FormField label="Reference #">
-          <Input value={form.referenceNumber} onChange={e => setForm(f => ({ ...f, referenceNumber: e.target.value }))} placeholder="Optional reference" />
+        <FormField label={t.referenceNumber || 'Reference #'}>
+          <Input value={form.referenceNumber} onChange={e => setForm(f => ({ ...f, referenceNumber: e.target.value }))} placeholder={t.acctOptionalReference || 'Optional reference'} />
         </FormField>
       </div>
 
       <div className="space-y-2">
         <div className="flex items-center justify-between">
-          <p className="text-xs font-medium text-gray-600 dark:text-slate-400">Journal Lines</p>
+          <p className="text-xs font-medium text-gray-600 dark:text-slate-400">{t.acctJournalLines || 'Journal Lines'}</p>
           <button type="button" onClick={addLine} className="text-xs text-emerald-600 hover:text-emerald-700 flex items-center gap-1">
-            <Plus size={12} /> Add Line
+            <Plus size={12} /> {t.acctAddLine || 'Add Line'}
           </button>
         </div>
         {errors.lines && <p className="text-xs text-red-500">{errors.lines}</p>}
@@ -327,7 +410,7 @@ const JournalEntryForm = ({ accounts, onSave, onClose, currency = 'USD' }) => {
           <div key={i} className="grid grid-cols-12 gap-2 items-start">
             <div className="col-span-5">
               <Select value={line.accountId} onChange={e => updateLine(i, 'accountId', e.target.value)}>
-                <option value="">Select account…</option>
+                <option value="">{t.acctSelectAccount || 'Select account…'}</option>
                 {accounts.filter(a => a.isActive).map(a => (
                   <option key={a.id} value={a.id}>{a.accountNumber} — {a.accountName}</option>
                 ))}
@@ -335,12 +418,12 @@ const JournalEntryForm = ({ accounts, onSave, onClose, currency = 'USD' }) => {
             </div>
             <div className="col-span-2">
               <Select value={line.entryType} onChange={e => updateLine(i, 'entryType', e.target.value)}>
-                <option value="debit">Debit</option>
-                <option value="credit">Credit</option>
+                <option value="debit">{t.debit || 'Debit'}</option>
+                <option value="credit">{t.credit || 'Credit'}</option>
               </Select>
             </div>
             <div className="col-span-3">
-              <Input type="number" step="0.01" min="0" placeholder="Amount" value={line.amount} onChange={e => updateLine(i, 'amount', e.target.value)} />
+              <Input type="number" step="0.01" min="0" placeholder={t.amount || 'Amount'} value={line.amount} onChange={e => updateLine(i, 'amount', e.target.value)} />
             </div>
             <div className="col-span-1">
               {lines.length > 2 && (
@@ -352,24 +435,25 @@ const JournalEntryForm = ({ accounts, onSave, onClose, currency = 'USD' }) => {
           </div>
         ))}
         <div className={`flex gap-6 text-sm px-2 py-1.5 rounded-lg ${isBalanced ? 'bg-green-50 dark:bg-green-900/20' : 'bg-red-50 dark:bg-red-900/20'}`}>
-          <span>Debit: <strong className="text-green-700">{formatCurrency(totalDebit, currency)}</strong></span>
-          <span>Credit: <strong className="text-red-600">{formatCurrency(totalCredit, currency)}</strong></span>
+          <span>{t.debit || 'Debit'}: <strong className="text-green-700">{formatCurrency(totalDebit, currency)}</strong></span>
+          <span>{t.credit || 'Credit'}: <strong className="text-red-600">{formatCurrency(totalCredit, currency)}</strong></span>
           {isBalanced
-            ? <span className="text-green-600 flex items-center gap-1"><CheckCircle size={13} />Balanced</span>
-            : <span className="text-red-600">Not balanced (diff: {formatCurrency(Math.abs(totalDebit - totalCredit), currency)})</span>}
+            ? <span className="text-green-600 flex items-center gap-1"><CheckCircle size={13} />{t.acctBalanced || 'Balanced'}</span>
+            : <span className="text-red-600">{(t.acctNotBalancedDiff || 'Not balanced (diff: {amount})').replace('{amount}', formatCurrency(Math.abs(totalDebit - totalCredit), currency))}</span>}
         </div>
       </div>
 
-      <FormField label="Notes"><Textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} /></FormField>
+      <FormField label={t.notes || 'Notes'}><Textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} /></FormField>
       <div className="flex gap-2 pt-2 justify-end">
-        <Btn variant="secondary" type="button" onClick={onClose}>Cancel</Btn>
-        <Btn variant="primary" type="submit" icon={Save} disabled={saving || !isBalanced}>{saving ? 'Saving…' : 'Create Entry'}</Btn>
+        <Btn variant="secondary" type="button" onClick={onClose}>{t.cancel || 'Cancel'}</Btn>
+        <Btn variant="primary" type="submit" icon={Save} disabled={saving || !isBalanced}>{saving ? (t.saving || 'Saving...') : (t.acctCreateEntry || 'Create Entry')}</Btn>
       </div>
     </form>
   );
 };
 
 const ARForm = ({ accounts, onSave, onClose }) => {
+  const t = useT();
   const [form, setForm] = useState({ arType: 'patient', patientName: '', payerName: '', originalAmount: '', dueDate: '', serviceDate: '', notes: '', accountId: '' });
   const [saving, setSaving] = useState(false);
 
@@ -383,44 +467,45 @@ const ARForm = ({ accounts, onSave, onClose }) => {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
-        <FormField label="AR Type" required>
+        <FormField label={t.arType || 'AR Type'} required>
           <Select value={form.arType} onChange={e => setForm(f => ({ ...f, arType: e.target.value }))}>
-            <option value="patient">Patient</option>
-            <option value="insurance">Insurance</option>
-            <option value="other">Other</option>
+            <option value="patient">{t.patient || 'Patient'}</option>
+            <option value="insurance">{t.insurance || 'Insurance'}</option>
+            <option value="other">{t.other || 'Other'}</option>
           </Select>
         </FormField>
         {form.arType === 'patient'
-          ? <FormField label="Patient Name"><Input value={form.patientName} onChange={e => setForm(f => ({ ...f, patientName: e.target.value }))} /></FormField>
-          : <FormField label="Payer Name"><Input value={form.payerName} onChange={e => setForm(f => ({ ...f, payerName: e.target.value }))} /></FormField>}
-        <FormField label="Original Amount" required>
+          ? <FormField label={t.acctPatientName || 'Patient Name'}><Input value={form.patientName} onChange={e => setForm(f => ({ ...f, patientName: e.target.value }))} /></FormField>
+          : <FormField label={t.payerName || 'Payer Name'}><Input value={form.payerName} onChange={e => setForm(f => ({ ...f, payerName: e.target.value }))} /></FormField>}
+        <FormField label={t.originalAmount || 'Original Amount'} required>
           <Input type="number" step="0.01" min="0" value={form.originalAmount} onChange={e => setForm(f => ({ ...f, originalAmount: e.target.value }))} placeholder="0.00" />
         </FormField>
-        <FormField label="Due Date" required>
+        <FormField label={t.dueDate || 'Due Date'} required>
           <Input type="date" value={form.dueDate} onChange={e => setForm(f => ({ ...f, dueDate: e.target.value }))} />
         </FormField>
-        <FormField label="Service Date">
+        <FormField label={t.serviceDate || 'Service Date'}>
           <Input type="date" value={form.serviceDate} onChange={e => setForm(f => ({ ...f, serviceDate: e.target.value }))} />
         </FormField>
-        <FormField label="GL Account" className="col-span-2">
+        <FormField label={t.glAccount || 'GL Account'} className="col-span-2">
           <Select value={form.accountId} onChange={e => setForm(f => ({ ...f, accountId: e.target.value }))}>
-            <option value="">Select account…</option>
+            <option value="">{t.acctSelectAccount || 'Select account…'}</option>
             {accounts.filter(a => a.linkedToAr).map(a => (
               <option key={a.id} value={a.id}>{a.accountNumber} — {a.accountName}</option>
             ))}
           </Select>
         </FormField>
       </div>
-      <FormField label="Notes"><Textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} /></FormField>
+      <FormField label={t.notes || 'Notes'}><Textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} /></FormField>
       <div className="flex gap-2 pt-2 justify-end">
-        <Btn variant="secondary" type="button" onClick={onClose}>Cancel</Btn>
-        <Btn variant="primary" type="submit" icon={Save} disabled={saving}>{saving ? 'Saving…' : 'Create AR Record'}</Btn>
+        <Btn variant="secondary" type="button" onClick={onClose}>{t.cancel || 'Cancel'}</Btn>
+        <Btn variant="primary" type="submit" icon={Save} disabled={saving}>{saving ? (t.saving || 'Saving...') : (t.acctCreateARRecord || 'Create AR Record')}</Btn>
       </div>
     </form>
   );
 };
 
 const APForm = ({ accounts, onSave, onClose }) => {
+  const t = useT();
   const [form, setForm] = useState({ apType: 'vendor', vendorName: '', vendorReference: '', invoiceAmount: '', invoiceDate: '', dueDate: '', expenseCategory: '', department: '', notes: '', accountId: '' });
   const [saving, setSaving] = useState(false);
 
@@ -434,54 +519,56 @@ const APForm = ({ accounts, onSave, onClose }) => {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
-        <FormField label="AP Type" required>
+        <FormField label={t.apType || 'AP Type'} required>
           <Select value={form.apType} onChange={e => setForm(f => ({ ...f, apType: e.target.value }))}>
-            <option value="vendor">Vendor</option>
-            <option value="refund">Refund</option>
-            <option value="employee">Employee</option>
-            <option value="other">Other</option>
+            <option value="vendor">{t.acctVendor || 'Vendor'}</option>
+            <option value="refund">{t.acctRefund || 'Refund'}</option>
+            <option value="employee">{t.acctEmployee || 'Employee'}</option>
+            <option value="other">{t.other || 'Other'}</option>
           </Select>
         </FormField>
-        <FormField label="Vendor Name" required>
-          <Input value={form.vendorName} onChange={e => setForm(f => ({ ...f, vendorName: e.target.value }))} placeholder="Vendor or payee name" />
+        <FormField label={t.vendorName || 'Vendor Name'} required>
+          <Input value={form.vendorName} onChange={e => setForm(f => ({ ...f, vendorName: e.target.value }))} placeholder={t.acctVendorNamePlaceholder || 'Vendor or payee name'} />
         </FormField>
-        <FormField label="Vendor Invoice #">
+        <FormField label={t.vendorInvoiceNumber || 'Vendor Invoice #'}>
           <Input value={form.vendorReference} onChange={e => setForm(f => ({ ...f, vendorReference: e.target.value }))} />
         </FormField>
-        <FormField label="Invoice Amount" required>
+        <FormField label={t.acctInvoiceAmount || 'Invoice Amount'} required>
           <Input type="number" step="0.01" min="0" value={form.invoiceAmount} onChange={e => setForm(f => ({ ...f, invoiceAmount: e.target.value }))} placeholder="0.00" />
         </FormField>
-        <FormField label="Invoice Date" required>
+        <FormField label={t.acctInvoiceDate || 'Invoice Date'} required>
           <Input type="date" value={form.invoiceDate} onChange={e => setForm(f => ({ ...f, invoiceDate: e.target.value }))} />
         </FormField>
-        <FormField label="Due Date" required>
+        <FormField label={t.dueDate || 'Due Date'} required>
           <Input type="date" value={form.dueDate} onChange={e => setForm(f => ({ ...f, dueDate: e.target.value }))} />
         </FormField>
-        <FormField label="Expense Category">
-          <Input value={form.expenseCategory} onChange={e => setForm(f => ({ ...f, expenseCategory: e.target.value }))} placeholder="e.g. Medical Supplies" />
+        <FormField label={t.expenseCategory || 'Expense Category'}>
+          <Input value={form.expenseCategory} onChange={e => setForm(f => ({ ...f, expenseCategory: e.target.value }))} placeholder={t.acctExpenseCategoryPlaceholder || 'e.g. Medical Supplies'} />
         </FormField>
-        <FormField label="Department">
-          <Input value={form.department} onChange={e => setForm(f => ({ ...f, department: e.target.value }))} placeholder="e.g. Radiology" />
+        <FormField label={t.acctDepartment || 'Department'}>
+          <Input value={form.department} onChange={e => setForm(f => ({ ...f, department: e.target.value }))} placeholder={t.acctDepartmentPlaceholder || 'e.g. Radiology'} />
         </FormField>
-        <FormField label="GL Account" className="col-span-2">
+        <FormField label={t.glAccount || 'GL Account'} className="col-span-2">
           <Select value={form.accountId} onChange={e => setForm(f => ({ ...f, accountId: e.target.value }))}>
-            <option value="">Select account…</option>
+            <option value="">{t.acctSelectAccount || 'Select account…'}</option>
             {accounts.filter(a => a.linkedToAp || a.accountType === 'liability').map(a => (
               <option key={a.id} value={a.id}>{a.accountNumber} — {a.accountName}</option>
             ))}
           </Select>
         </FormField>
       </div>
-      <FormField label="Notes"><Textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} /></FormField>
+      <FormField label={t.notes || 'Notes'}><Textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} /></FormField>
       <div className="flex gap-2 pt-2 justify-end">
-        <Btn variant="secondary" type="button" onClick={onClose}>Cancel</Btn>
-        <Btn variant="primary" type="submit" icon={Save} disabled={saving}>{saving ? 'Saving…' : 'Create AP Record'}</Btn>
+        <Btn variant="secondary" type="button" onClick={onClose}>{t.cancel || 'Cancel'}</Btn>
+        <Btn variant="primary" type="submit" icon={Save} disabled={saving}>{saving ? (t.saving || 'Saving...') : (t.acctCreateAPRecord || 'Create AP Record')}</Btn>
       </div>
     </form>
   );
 };
 
 const ReconciliationForm = ({ accounts, onSave, onClose }) => {
+  const t = useT();
+  const PARTY_TYPE_LABELS = getPartyTypeLabels(t);
   const [form, setForm] = useState({ accountId: '', reconciliationType: 'bank', periodStart: '', periodEnd: '', statementBalance: '', notes: '' });
   const [saving, setSaving] = useState(false);
 
@@ -495,39 +582,47 @@ const ReconciliationForm = ({ accounts, onSave, onClose }) => {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
-        <FormField label="Account" required>
+        <FormField label={t.acctAccount || 'Account'} required>
           <Select value={form.accountId} onChange={e => setForm(f => ({ ...f, accountId: e.target.value }))}>
-            <option value="">Select account…</option>
+            <option value="">{t.acctSelectAccount || 'Select account…'}</option>
             {accounts.filter(a => a.isActive).map(a => (
               <option key={a.id} value={a.id}>{a.accountNumber} — {a.accountName}</option>
             ))}
           </Select>
         </FormField>
-        <FormField label="Type" required>
+        <FormField label={t.type || 'Type'} required>
           <Select value={form.reconciliationType} onChange={e => setForm(f => ({ ...f, reconciliationType: e.target.value }))}>
-            {['bank','insurance','patient','vendor'].map(t => <option key={t} value={t}>{t}</option>)}
+            {['bank','insurance','patient','vendor'].map(typ => <option key={typ} value={typ}>{PARTY_TYPE_LABELS[typ] || typ}</option>)}
           </Select>
         </FormField>
-        <FormField label="Period Start" required>
+        <FormField label={t.acctPeriodStart || 'Period Start'} required>
           <Input type="date" value={form.periodStart} onChange={e => setForm(f => ({ ...f, periodStart: e.target.value }))} />
         </FormField>
-        <FormField label="Period End" required>
+        <FormField label={t.acctPeriodEnd || 'Period End'} required>
           <Input type="date" value={form.periodEnd} onChange={e => setForm(f => ({ ...f, periodEnd: e.target.value }))} />
         </FormField>
-        <FormField label="Statement Balance" required className="col-span-2">
-          <Input type="number" step="0.01" value={form.statementBalance} onChange={e => setForm(f => ({ ...f, statementBalance: e.target.value }))} placeholder="Balance per bank/payer statement" />
+        <FormField label={t.acctStatementBalance || 'Statement Balance'} required className="col-span-2">
+          <Input type="number" step="0.01" value={form.statementBalance} onChange={e => setForm(f => ({ ...f, statementBalance: e.target.value }))} placeholder={t.acctStatementBalancePlaceholder || 'Balance per bank/payer statement'} />
         </FormField>
       </div>
-      <FormField label="Notes"><Textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} /></FormField>
+      <FormField label={t.notes || 'Notes'}><Textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} /></FormField>
       <div className="flex gap-2 pt-2 justify-end">
-        <Btn variant="secondary" type="button" onClick={onClose}>Cancel</Btn>
-        <Btn variant="primary" type="submit" icon={Save} disabled={saving}>{saving ? 'Saving…' : 'Start Reconciliation'}</Btn>
+        <Btn variant="secondary" type="button" onClick={onClose}>{t.cancel || 'Cancel'}</Btn>
+        <Btn variant="primary" type="submit" icon={Save} disabled={saving}>{saving ? (t.saving || 'Saving...') : (t.acctStartReconciliation || 'Start Reconciliation')}</Btn>
       </div>
     </form>
   );
 };
 
 const StatementForm = ({ onSave, onClose, currency = 'USD' }) => {
+  const t = useT();
+  const PARTY_TYPE_LABELS = getPartyTypeLabels(t);
+  const AMOUNT_FIELD_LABELS = {
+    previousBalance: t.acctPreviousBalance || 'Previous Balance',
+    charges:         t.acctCharges || 'Charges',
+    payments:        t.payments || 'Payments',
+    adjustments:     t.acctAdjustments || 'Adjustments',
+  };
   const [form, setForm] = useState({ statementType: 'patient', recipientName: '', recipientEmail: '', statementDate: new Date().toISOString().split('T')[0], periodStart: '', periodEnd: '', dueDate: '', previousBalance: 0, charges: 0, payments: 0, adjustments: 0, notes: '' });
   const [saving, setSaving] = useState(false);
   const currentBalance = parseFloat(form.previousBalance) + parseFloat(form.charges) - parseFloat(form.payments) - parseFloat(form.adjustments);
@@ -542,44 +637,44 @@ const StatementForm = ({ onSave, onClose, currency = 'USD' }) => {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-2 gap-4">
-        <FormField label="Statement Type" required>
+        <FormField label={t.acctStatementType || 'Statement Type'} required>
           <Select value={form.statementType} onChange={e => setForm(f => ({ ...f, statementType: e.target.value }))}>
-            {['patient','insurance','vendor','internal'].map(t => <option key={t} value={t}>{t}</option>)}
+            {['patient','insurance','vendor','internal'].map(typ => <option key={typ} value={typ}>{PARTY_TYPE_LABELS[typ] || typ}</option>)}
           </Select>
         </FormField>
-        <FormField label="Statement Date" required>
+        <FormField label={t.acctStatementDate || 'Statement Date'} required>
           <Input type="date" value={form.statementDate} onChange={e => setForm(f => ({ ...f, statementDate: e.target.value }))} />
         </FormField>
-        <FormField label="Recipient Name">
+        <FormField label={t.acctRecipientName || 'Recipient Name'}>
           <Input value={form.recipientName} onChange={e => setForm(f => ({ ...f, recipientName: e.target.value }))} />
         </FormField>
-        <FormField label="Recipient Email">
+        <FormField label={t.acctRecipientEmail || 'Recipient Email'}>
           <Input type="email" value={form.recipientEmail} onChange={e => setForm(f => ({ ...f, recipientEmail: e.target.value }))} />
         </FormField>
-        <FormField label="Period Start" required>
+        <FormField label={t.acctPeriodStart || 'Period Start'} required>
           <Input type="date" value={form.periodStart} onChange={e => setForm(f => ({ ...f, periodStart: e.target.value }))} />
         </FormField>
-        <FormField label="Period End" required>
+        <FormField label={t.acctPeriodEnd || 'Period End'} required>
           <Input type="date" value={form.periodEnd} onChange={e => setForm(f => ({ ...f, periodEnd: e.target.value }))} />
         </FormField>
-        <FormField label="Due Date">
+        <FormField label={t.dueDate || 'Due Date'}>
           <Input type="date" value={form.dueDate} onChange={e => setForm(f => ({ ...f, dueDate: e.target.value }))} />
         </FormField>
         <div />
         {['previousBalance','charges','payments','adjustments'].map(field => (
-          <FormField key={field} label={field.replace(/([A-Z])/g, ' $1').replace(/^\w/, c => c.toUpperCase())}>
+          <FormField key={field} label={AMOUNT_FIELD_LABELS[field] || field.replace(/([A-Z])/g, ' $1').replace(/^\w/, c => c.toUpperCase())}>
             <Input type="number" step="0.01" min="0" value={form[field]} onChange={e => setForm(f => ({ ...f, [field]: e.target.value }))} />
           </FormField>
         ))}
       </div>
       <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-lg p-3 text-sm">
-        <span className="font-medium">Current Balance: </span>
+        <span className="font-medium">{t.acctCurrentBalance || 'Current Balance'}: </span>
         <span className={currentBalance > 0 ? 'text-red-600 font-bold' : 'text-green-600 font-bold'}>{formatCurrency(currentBalance, currency)}</span>
       </div>
-      <FormField label="Notes"><Textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} /></FormField>
+      <FormField label={t.notes || 'Notes'}><Textarea value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} /></FormField>
       <div className="flex gap-2 pt-2 justify-end">
-        <Btn variant="secondary" type="button" onClick={onClose}>Cancel</Btn>
-        <Btn variant="primary" type="submit" icon={Save} disabled={saving}>{saving ? 'Saving…' : 'Create Statement'}</Btn>
+        <Btn variant="secondary" type="button" onClick={onClose}>{t.cancel || 'Cancel'}</Btn>
+        <Btn variant="primary" type="submit" icon={Save} disabled={saving}>{saving ? (t.saving || 'Saving...') : (t.acctCreateStatement || 'Create Statement')}</Btn>
       </div>
     </form>
   );
@@ -598,9 +693,34 @@ const TABS = [
 ];
 
 export default function AccountsView({ theme, api, user, addNotification, setCurrentModule, currency = 'USD', activeTab: shellTab, onTabChange }) {
+  const t = useT();
+  const ACCOUNT_TYPE_LABELS = getAccountTypeLabels(t);
+  const ENTRY_TYPE_LABELS = getEntryTypeLabels(t);
+  const PARTY_TYPE_LABELS = getPartyTypeLabels(t);
+  const STATUS_LABELS = getStatusLabels(t);
+  const TAB_LABELS = {
+    overview:   t.overviewTab || 'Overview',
+    accounts:   t.chartOfAccounts || 'Chart of Accounts',
+    journal:    t.journal || 'Journal',
+    ar:         t.receivables || 'Receivables',
+    ap:         t.payables || 'Payables',
+    reconcile:  t.reconciliation || 'Reconciliation',
+    statements: t.statements || 'Statements',
+  };
+  const AGING_LABELS = {
+    current:     t.acctAgingCurrent || 'Current',
+    days1_30:    t.acctAging1to30 || '1-30 Days',
+    days31_60:   t.acctAging31to60 || '31-60 Days',
+    days61_90:   t.acctAging61to90 || '61-90 Days',
+    days91_120:  t.acctAging91to120 || '91-120 Days',
+    days120Plus: t.acctAging120Plus || '120+ Days',
+  };
   // Stable ref so addNotification never triggers fetchData recreation
   const notifyRef = useRef(addNotification);
   useEffect(() => { notifyRef.current = addNotification; }, [addNotification]);
+  // Same pattern for translations, so a language switch doesn't recreate fetchData
+  const tRef = useRef(t);
+  useEffect(() => { tRef.current = t; }, [t]);
 
   const [activeTab, setActiveTab, tabsInShell] = useShellTab(shellTab, onTabChange, 'overview');
   const [loading, setLoading] = useState(false);
@@ -692,7 +812,8 @@ export default function AccountsView({ theme, api, user, addNotification, setCur
       }
     } catch (err) {
       console.error('Error loading accounts data:', err);
-      notifyRef.current('error', 'Failed to load data');
+      const t = tRef.current;
+      notifyRef.current('error', t.acctFailedToLoadData || 'Failed to load data');
     } finally {
       setLoading(false);
     }
@@ -708,8 +829,8 @@ export default function AccountsView({ theme, api, user, addNotification, setCur
       setAccounts(prev => [...prev, created]);
       setShowAccountForm(false);
       logCreate('Account', form, { module: 'Accounts' });
-      addNotification('success', `Account ${created.accountNumber} created`);
-    } catch (err) { addNotification('error', err.message || 'Failed to create account'); }
+      addNotification('success', (t.acctAccountCreated || 'Account {number} created').replace('{number}', created.accountNumber));
+    } catch (err) { addNotification('error', err.message || t.acctFailedToCreateAccount || 'Failed to create account'); }
   };
 
   const handleUpdateAccount = async (form) => {
@@ -718,16 +839,16 @@ export default function AccountsView({ theme, api, user, addNotification, setCur
       setAccounts(prev => prev.map(a => a.id === updated.id ? updated : a));
       setEditingAccount(null);
       logUpdate('Account', editingAccount, form, { module: 'Accounts' });
-      addNotification('success', 'Account updated');
-    } catch (err) { addNotification('error', err.message || 'Failed to update account'); }
+      addNotification('success', t.acctAccountUpdated || 'Account updated');
+    } catch (err) { addNotification('error', err.message || t.acctFailedToUpdateAccount || 'Failed to update account'); }
   };
 
   const handleToggleAccount = async (acct) => {
     try {
       const updated = await api.updateAccount(acct.id, { isActive: !acct.isActive });
       setAccounts(prev => prev.map(a => a.id === updated.id ? updated : a));
-      addNotification('success', `Account ${updated.isActive ? 'activated' : 'deactivated'}`);
-    } catch (err) { addNotification('error', 'Failed to toggle account status'); }
+      addNotification('success', updated.isActive ? (t.acctAccountActivated || 'Account activated') : (t.acctAccountDeactivated || 'Account deactivated'));
+    } catch (err) { addNotification('error', t.acctFailedToToggleAccount || 'Failed to toggle account status'); }
   };
 
   const handleCreateJE = async (form) => {
@@ -736,25 +857,25 @@ export default function AccountsView({ theme, api, user, addNotification, setCur
       setJournalEntries(prev => [created, ...prev]);
       setShowJEForm(false);
       logCreate('JournalEntry', form, { module: 'Accounts' });
-      addNotification('success', `Journal entry ${created.entryNumber} created`);
-    } catch (err) { addNotification('error', err.message || 'Failed to create journal entry'); }
+      addNotification('success', (t.acctJournalEntryCreated || 'Journal entry {number} created').replace('{number}', created.entryNumber));
+    } catch (err) { addNotification('error', err.message || t.acctFailedToCreateJournalEntry || 'Failed to create journal entry'); }
   };
 
   const handlePostJE = async (id) => {
     try {
       const updated = await api.postJournalEntry(id);
       setJournalEntries(prev => prev.map(je => je.id === id ? updated : je));
-      addNotification('success', 'Journal entry posted');
-    } catch (err) { addNotification('error', err.message || 'Failed to post journal entry'); }
+      addNotification('success', t.acctJournalEntryPosted || 'Journal entry posted');
+    } catch (err) { addNotification('error', err.message || t.acctFailedToPostJournalEntry || 'Failed to post journal entry'); }
   };
 
   const handleVoidJE = async (id) => {
-    if (!window.confirm('Void this journal entry? This action reverses all account balance changes.')) return;
+    if (!window.confirm(t.acctConfirmVoidJournalEntry || 'Void this journal entry? This action reverses all account balance changes.')) return;
     try {
       const updated = await api.voidJournalEntry(id);
       setJournalEntries(prev => prev.map(je => je.id === id ? updated : je));
-      addNotification('success', 'Journal entry voided');
-    } catch (err) { addNotification('error', err.message || 'Failed to void journal entry'); }
+      addNotification('success', t.acctJournalEntryVoided || 'Journal entry voided');
+    } catch (err) { addNotification('error', err.message || t.acctFailedToVoidJournalEntry || 'Failed to void journal entry'); }
   };
 
   const handleCreateAR = async (form) => {
@@ -763,8 +884,8 @@ export default function AccountsView({ theme, api, user, addNotification, setCur
       setReceivables(prev => [created, ...prev]);
       setShowARForm(false);
       logCreate('AccountReceivable', form, { module: 'Accounts' });
-      addNotification('success', `AR record ${created.arNumber} created`);
-    } catch (err) { addNotification('error', err.message || 'Failed to create AR record'); }
+      addNotification('success', (t.acctARRecordCreated || 'AR record {number} created').replace('{number}', created.arNumber));
+    } catch (err) { addNotification('error', err.message || t.acctFailedToCreateARRecord || 'Failed to create AR record'); }
   };
 
   const handleCreateAP = async (form) => {
@@ -773,16 +894,16 @@ export default function AccountsView({ theme, api, user, addNotification, setCur
       setPayables(prev => [created, ...prev]);
       setShowAPForm(false);
       logCreate('AccountPayable', form, { module: 'Accounts' });
-      addNotification('success', `AP record ${created.apNumber} created`);
-    } catch (err) { addNotification('error', err.message || 'Failed to create AP record'); }
+      addNotification('success', (t.acctAPRecordCreated || 'AP record {number} created').replace('{number}', created.apNumber));
+    } catch (err) { addNotification('error', err.message || t.acctFailedToCreateAPRecord || 'Failed to create AP record'); }
   };
 
   const handleApproveAP = async (id) => {
     try {
       const updated = await api.updateAccountPayable(id, { status: 'approved' });
       setPayables(prev => prev.map(ap => ap.id === id ? updated : ap));
-      addNotification('success', 'AP record approved');
-    } catch (err) { addNotification('error', 'Failed to approve AP record'); }
+      addNotification('success', t.acctAPRecordApproved || 'AP record approved');
+    } catch (err) { addNotification('error', t.acctFailedToApproveAPRecord || 'Failed to approve AP record'); }
   };
 
   const handleCreateRec = async (form) => {
@@ -790,16 +911,16 @@ export default function AccountsView({ theme, api, user, addNotification, setCur
       const created = await api.createReconciliation(form);
       setReconciliations(prev => [created, ...prev]);
       setShowRecForm(false);
-      addNotification('success', `Reconciliation ${created.reconciliationNumber} started`);
-    } catch (err) { addNotification('error', err.message || 'Failed to start reconciliation'); }
+      addNotification('success', (t.acctReconciliationStarted || 'Reconciliation {number} started').replace('{number}', created.reconciliationNumber));
+    } catch (err) { addNotification('error', err.message || t.acctFailedToStartReconciliation || 'Failed to start reconciliation'); }
   };
 
   const handleCompleteRec = async (id) => {
     try {
       const updated = await api.updateReconciliation(id, { status: 'completed' });
       setReconciliations(prev => prev.map(r => r.id === id ? updated : r));
-      addNotification('success', 'Reconciliation completed');
-    } catch (err) { addNotification('error', 'Failed to complete reconciliation'); }
+      addNotification('success', t.acctReconciliationCompleted || 'Reconciliation completed');
+    } catch (err) { addNotification('error', t.acctFailedToCompleteReconciliation || 'Failed to complete reconciliation'); }
   };
 
   const handleCreateStatement = async (form) => {
@@ -807,16 +928,16 @@ export default function AccountsView({ theme, api, user, addNotification, setCur
       const created = await api.createAccountStatement(form);
       setStatements(prev => [created, ...prev]);
       setShowStmForm(false);
-      addNotification('success', `Statement ${created.statementNumber} created`);
-    } catch (err) { addNotification('error', err.message || 'Failed to create statement'); }
+      addNotification('success', (t.acctStatementCreated || 'Statement {number} created').replace('{number}', created.statementNumber));
+    } catch (err) { addNotification('error', err.message || t.acctFailedToCreateStatement || 'Failed to create statement'); }
   };
 
   const handleSendStatement = async (id) => {
     try {
       const updated = await api.sendAccountStatement(id);
       setStatements(prev => prev.map(s => s.id === id ? updated : s));
-      addNotification('success', 'Statement marked as sent');
-    } catch (err) { addNotification('error', 'Failed to send statement'); }
+      addNotification('success', t.acctStatementMarkedSent || 'Statement marked as sent');
+    } catch (err) { addNotification('error', t.acctFailedToSendStatement || 'Failed to send statement'); }
   };
 
   // ── Filtered data ─────────────────────────────────────────────────────────────
@@ -864,20 +985,20 @@ export default function AccountsView({ theme, api, user, addNotification, setCur
   const renderOverview = () => (
     <div className="space-y-6">
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <StatCard label="Total AR" value={formatCurrency(dashboard?.totalAR || 0, currency)} sub={`${dashboard?.arCount || 0} open records`} icon={TrendingUp} color="bg-blue-100 text-blue-600" />
-        <StatCard label="Total AP" value={formatCurrency(dashboard?.totalAP || 0, currency)} sub={`${dashboard?.apCount || 0} pending`} icon={TrendingDown} color="bg-red-100 text-red-600" />
-        <StatCard label="Cash Balance" value={formatCurrency(dashboard?.cashBalance || 0, currency)} icon={Wallet} color="bg-green-100 text-green-600" />
-        <StatCard label="Draft Entries" value={dashboard?.draftJournalEntries || 0} sub="pending posting" icon={FileText} color="bg-yellow-100 text-yellow-600" />
+        <StatCard label={t.acctTotalAR || 'Total AR'} value={formatCurrency(dashboard?.totalAR || 0, currency)} sub={(t.acctOpenRecordsCount || '{count} open records').replace('{count}', dashboard?.arCount || 0)} icon={TrendingUp} color="bg-blue-100 text-blue-600" />
+        <StatCard label={t.acctTotalAP || 'Total AP'} value={formatCurrency(dashboard?.totalAP || 0, currency)} sub={(t.acctPendingCount || '{count} pending').replace('{count}', dashboard?.apCount || 0)} icon={TrendingDown} color="bg-red-100 text-red-600" />
+        <StatCard label={t.acctCashBalance || 'Cash Balance'} value={formatCurrency(dashboard?.cashBalance || 0, currency)} icon={Wallet} color="bg-green-100 text-green-600" />
+        <StatCard label={t.acctDraftEntries || 'Draft Entries'} value={dashboard?.draftJournalEntries || 0} sub={t.acctPendingPosting || 'pending posting'} icon={FileText} color="bg-yellow-100 text-yellow-600" />
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className={`rounded-xl border p-5 ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
-          <h3 className={`font-semibold mb-4 flex items-center gap-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}><Activity size={16} />Quick Actions</h3>
+          <h3 className={`font-semibold mb-4 flex items-center gap-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}><Activity size={16} />{t.quickActions || 'Quick Actions'}</h3>
           <div className="grid grid-cols-2 gap-3">
             {[
-              { label: 'New Journal Entry', icon: FileText, tab: 'journal', form: () => setShowJEForm(true) },
-              { label: 'New AR Record',     icon: TrendingUp, tab: 'ar',     form: () => setShowARForm(true) },
-              { label: 'New AP Record',     icon: TrendingDown, tab: 'ap',   form: () => setShowAPForm(true) },
-              { label: 'New Statement',     icon: Receipt, tab: 'statements', form: () => setShowStmForm(true) },
+              { label: t.acctNewJournalEntry || 'New Journal Entry', icon: FileText, tab: 'journal', form: () => setShowJEForm(true) },
+              { label: t.acctNewARRecord || 'New AR Record',     icon: TrendingUp, tab: 'ar',     form: () => setShowARForm(true) },
+              { label: t.acctNewAPRecord || 'New AP Record',     icon: TrendingDown, tab: 'ap',   form: () => setShowAPForm(true) },
+              { label: t.acctNewStatement || 'New Statement',     icon: Receipt, tab: 'statements', form: () => setShowStmForm(true) },
             ].map(a => (
               <button key={a.label} onClick={() => { setActiveTab(a.tab); setTimeout(() => a.form(), 200); }}
                 className={`flex items-center gap-2 p-3 rounded-lg border transition-colors text-sm ${
@@ -891,14 +1012,21 @@ export default function AccountsView({ theme, api, user, addNotification, setCur
           </div>
         </div>
         <div className={`rounded-xl border p-5 ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
-          <h3 className={`font-semibold mb-4 flex items-center gap-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}><BookOpen size={16} />Account Summary</h3>
+          <h3 className={`font-semibold mb-4 flex items-center gap-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}><BookOpen size={16} />{t.acctAccountSummary || 'Account Summary'}</h3>
           <div className="space-y-2">
             {['asset','liability','equity','revenue','expense'].map(type => {
+              const pluralLabels = {
+                asset:     t.acctAssets || 'Assets',
+                liability: t.acctLiabilities || 'Liabilities',
+                equity:    t.acctTypeEquity || 'Equity',
+                revenue:   t.acctTypeRevenue || 'Revenue',
+                expense:   t.acctExpenses || 'Expenses',
+              };
               const typeAccts = accounts.filter(a => a.accountType === type && a.isActive);
               const total = typeAccts.reduce((s, a) => s + parseFloat(a.currentBalance || 0), 0);
               return (
                 <div key={type} className={`flex items-center justify-between py-1.5 border-b last:border-0 ${theme === 'dark' ? 'border-slate-700' : 'border-gray-100'}`}>
-                  <span className={`text-sm capitalize ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{type}s ({typeAccts.length})</span>
+                  <span className={`text-sm capitalize ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{pluralLabels[type] || `${type}s`} ({typeAccts.length})</span>
                   <span className={`text-sm font-semibold ${type === 'expense' || type === 'liability' ? 'text-red-600' : 'text-green-600'}`}>{formatCurrency(total, currency)}</span>
                 </div>
               );
@@ -907,16 +1035,16 @@ export default function AccountsView({ theme, api, user, addNotification, setCur
         </div>
       </div>
       <div className={`rounded-xl border p-5 ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
-        <h3 className={`font-semibold mb-3 flex items-center gap-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}><Layers size={16} />Module Integrations</h3>
+        <h3 className={`font-semibold mb-3 flex items-center gap-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}><Layers size={16} />{t.acctModuleIntegrations || 'Module Integrations'}</h3>
         <div className="flex flex-wrap gap-3">
           {[
-            { label: 'RCM / Claims',       count: accounts.filter(a => a.linkedToClaims).length,  color: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
-            { label: 'Billing',            count: accounts.filter(a => a.linkedToBilling).length, color: 'bg-blue-100 text-blue-700 border-blue-200' },
-            { label: 'Accounts Receivable',count: accounts.filter(a => a.linkedToAr).length,      color: 'bg-green-100 text-green-700 border-green-200' },
-            { label: 'Accounts Payable',   count: accounts.filter(a => a.linkedToAp).length,      color: 'bg-red-100 text-red-700 border-red-200' },
+            { label: t.acctRcmClaims || 'RCM / Claims',       count: accounts.filter(a => a.linkedToClaims).length,  color: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
+            { label: t.billing || 'Billing',            count: accounts.filter(a => a.linkedToBilling).length, color: 'bg-blue-100 text-blue-700 border-blue-200' },
+            { label: t.accountsReceivable || 'Accounts Receivable',count: accounts.filter(a => a.linkedToAr).length,      color: 'bg-green-100 text-green-700 border-green-200' },
+            { label: t.accountsPayable || 'Accounts Payable',   count: accounts.filter(a => a.linkedToAp).length,      color: 'bg-red-100 text-red-700 border-red-200' },
           ].map(b => (
             <div key={b.label} className={`px-4 py-2 rounded-full border text-sm font-medium ${b.color}`}>
-              {b.label}: {b.count} accounts
+              {b.label}: {(t.acctAccountsCount || '{count} accounts').replace('{count}', b.count)}
             </div>
           ))}
         </div>
@@ -929,22 +1057,22 @@ export default function AccountsView({ theme, api, user, addNotification, setCur
       <div className="flex flex-wrap gap-3 items-center">
         <div className="relative flex-1 min-w-48">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <Input className="pl-8" placeholder="Search accounts…" value={acctSearch} onChange={e => setAcctSearch(e.target.value)} />
+          <Input className="pl-8" placeholder={t.acctSearchAccounts || 'Search accounts…'} value={acctSearch} onChange={e => setAcctSearch(e.target.value)} />
         </div>
         <Select className="w-44" value={acctTypeFilter} onChange={e => setAcctTypeFilter(e.target.value)}>
-          <option value="">All Types</option>
-          {['asset','liability','equity','revenue','expense','contra_asset','contra_liability','contra_revenue'].map(t => (
-            <option key={t} value={t}>{t.replace(/_/g,' ')}</option>
+          <option value="">{t.allTypes || 'All Types'}</option>
+          {['asset','liability','equity','revenue','expense','contra_asset','contra_liability','contra_revenue'].map(typ => (
+            <option key={typ} value={typ}>{ACCOUNT_TYPE_LABELS[typ] || typ.replace(/_/g,' ')}</option>
           ))}
         </Select>
-        <Toggle value={showInactiveAccts} onChange={setShowInactiveAccts} label="Show Inactive" />
+        <Toggle value={showInactiveAccts} onChange={setShowInactiveAccts} label={t.acctShowInactive || 'Show Inactive'} />
         {can('chart_of_accounts','create') && (
-          <Btn variant="primary" icon={Plus} onClick={() => setShowAccountForm(true)}>New Account</Btn>
+          <Btn variant="primary" icon={Plus} onClick={() => setShowAccountForm(true)}>{t.acctNewAccount || 'New Account'}</Btn>
         )}
       </div>
 
-      <Table theme={theme} headers={['#','Account Name','Type','Subtype','Balance','Integrations','Status','Actions']}
-        empty={filteredAccounts.length === 0 ? 'No accounts found' : null}>
+      <Table theme={theme} headers={['#', t.accountName || 'Account Name', t.type || 'Type', t.acctSubtype || 'Subtype', t.balance || 'Balance', t.integrations || 'Integrations', t.status || 'Status', t.actions || 'Actions']}
+        empty={filteredAccounts.length === 0 ? (t.acctNoAccountsFound || 'No accounts found') : null}>
         {filteredAccounts.map(acct => (
           <tr key={acct.id} className={theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-50'}>
             <td className={`px-4 py-3 font-mono text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{acct.accountNumber}</td>
@@ -952,7 +1080,7 @@ export default function AccountsView({ theme, api, user, addNotification, setCur
               <div className={`font-medium text-sm ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{acct.accountName}</div>
               {acct.parentName && <div className="text-xs text-gray-400">↳ {acct.parentName}</div>}
             </td>
-            <td className={`px-4 py-3 text-xs capitalize ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{acct.accountType?.replace(/_/g,' ')}</td>
+            <td className={`px-4 py-3 text-xs capitalize ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{ACCOUNT_TYPE_LABELS[acct.accountType] || acct.accountType?.replace(/_/g,' ')}</td>
             <td className={`px-4 py-3 text-xs ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>{acct.accountSubtype?.replace(/_/g,' ') || '—'}</td>
             <td className="px-4 py-3 text-sm font-medium">
               <span className={parseFloat(acct.currentBalance) < 0 ? 'text-red-600' : theme === 'dark' ? 'text-white' : 'text-gray-900'}>
@@ -961,9 +1089,9 @@ export default function AccountsView({ theme, api, user, addNotification, setCur
             </td>
             <td className="px-4 py-3">
               <div className="flex gap-1 flex-wrap">
-                {acct.linkedToAr      && <span className="px-1.5 py-0.5 text-xs bg-green-100 text-green-700 rounded">AR</span>}
-                {acct.linkedToAp      && <span className="px-1.5 py-0.5 text-xs bg-red-100 text-red-700 rounded">AP</span>}
-                {acct.linkedToBilling && <span className="px-1.5 py-0.5 text-xs bg-blue-100 text-blue-700 rounded">Billing</span>}
+                {acct.linkedToAr      && <span className="px-1.5 py-0.5 text-xs bg-green-100 text-green-700 rounded">{t.acctArShort || 'AR'}</span>}
+                {acct.linkedToAp      && <span className="px-1.5 py-0.5 text-xs bg-red-100 text-red-700 rounded">{t.acctApShort || 'AP'}</span>}
+                {acct.linkedToBilling && <span className="px-1.5 py-0.5 text-xs bg-blue-100 text-blue-700 rounded">{t.billing || 'Billing'}</span>}
                 {acct.linkedToClaims  && <span className="px-1.5 py-0.5 text-xs bg-yellow-100 text-yellow-700 rounded">RCM</span>}
               </div>
             </td>
@@ -986,25 +1114,25 @@ export default function AccountsView({ theme, api, user, addNotification, setCur
       <div className="flex flex-wrap gap-3 items-center">
         <div className="relative flex-1 min-w-48">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <Input className="pl-8" placeholder="Search journal entries…" value={jeSearch} onChange={e => setJeSearch(e.target.value)} />
+          <Input className="pl-8" placeholder={t.acctSearchJournalEntries || 'Search journal entries…'} value={jeSearch} onChange={e => setJeSearch(e.target.value)} />
         </div>
         <Select className="w-36" value={jeStatusFilter} onChange={e => setJeStatusFilter(e.target.value)}>
-          <option value="">All Status</option>
-          {['draft','posted','voided','reversed'].map(s => <option key={s} value={s}>{s}</option>)}
+          <option value="">{t.allStatuses || 'All Statuses'}</option>
+          {['draft','posted','voided','reversed'].map(s => <option key={s} value={s}>{STATUS_LABELS[s] || s}</option>)}
         </Select>
-        <Toggle value={showVoidedJE} onChange={setShowVoidedJE} label="Show Voided" />
+        <Toggle value={showVoidedJE} onChange={setShowVoidedJE} label={t.acctShowVoided || 'Show Voided'} />
         {can('journal_entries','create') && (
-          <Btn variant="primary" icon={Plus} onClick={() => setShowJEForm(true)}>New Entry</Btn>
+          <Btn variant="primary" icon={Plus} onClick={() => setShowJEForm(true)}>{t.acctNewEntry || 'New Entry'}</Btn>
         )}
       </div>
 
-      <Table theme={theme} headers={['Entry #','Date','Type','Description','Debit','Credit','Ref','Status','Actions']}
-        empty={filteredJE.length === 0 ? 'No journal entries found' : null}>
+      <Table theme={theme} headers={[t.acctEntryNumber || 'Entry #', t.date || 'Date', t.type || 'Type', t.description || 'Description', t.debit || 'Debit', t.credit || 'Credit', t.acctRef || 'Ref', t.status || 'Status', t.actions || 'Actions']}
+        empty={filteredJE.length === 0 ? (t.acctNoJournalEntriesFound || 'No journal entries found') : null}>
         {filteredJE.map(je => (
           <tr key={je.id} className={theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-50'}>
             <td className={`px-4 py-3 font-mono text-xs ${theme === 'dark' ? 'text-slate-300' : ''}`}>{je.entryNumber}</td>
             <td className={`px-4 py-3 text-sm ${theme === 'dark' ? 'text-slate-300' : ''}`}>{formatDate(je.entryDate)}</td>
-            <td className={`px-4 py-3 text-xs capitalize ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>{je.entryType?.replace(/_/g,' ')}</td>
+            <td className={`px-4 py-3 text-xs capitalize ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>{ENTRY_TYPE_LABELS[je.entryType] || je.entryType?.replace(/_/g,' ')}</td>
             <td className={`px-4 py-3 text-sm max-w-48 truncate ${theme === 'dark' ? 'text-slate-300' : ''}`}>{je.description}</td>
             <td className="px-4 py-3 text-sm font-medium text-green-600">{formatCurrency(je.totalDebit, currency)}</td>
             <td className="px-4 py-3 text-sm font-medium text-red-500">{formatCurrency(je.totalCredit, currency)}</td>
@@ -1013,7 +1141,7 @@ export default function AccountsView({ theme, api, user, addNotification, setCur
             <td className="px-4 py-3">
               <div className="flex gap-1">
                 {je.status === 'draft' && can('journal_entries','approve') && (
-                  <Btn variant="success" size="xs" icon={Check} onClick={() => handlePostJE(je.id)}>Post</Btn>
+                  <Btn variant="success" size="xs" icon={Check} onClick={() => handlePostJE(je.id)}>{t.acctPost || 'Post'}</Btn>
                 )}
                 {['draft','posted'].includes(je.status) && can('journal_entries','delete') && (
                   <Btn variant="ghost" size="xs" icon={XCircle} onClick={() => handleVoidJE(je.id)} />
@@ -1031,14 +1159,14 @@ export default function AccountsView({ theme, api, user, addNotification, setCur
       <div className="flex flex-wrap gap-3 items-center">
         <div className="relative flex-1 min-w-48">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <Input className="pl-8" placeholder="Search AR records…" value={arSearch} onChange={e => setArSearch(e.target.value)} />
+          <Input className="pl-8" placeholder={t.acctSearchARRecords || 'Search AR records…'} value={arSearch} onChange={e => setArSearch(e.target.value)} />
         </div>
         <Select className="w-36" value={arStatusFilter} onChange={e => setArStatusFilter(e.target.value)}>
-          <option value="">All Status</option>
-          {['open','partial','paid','written_off','disputed','collections'].map(s => <option key={s} value={s}>{s}</option>)}
+          <option value="">{t.allStatuses || 'All Statuses'}</option>
+          {['open','partial','paid','written_off','disputed','collections'].map(s => <option key={s} value={s}>{STATUS_LABELS[s] || s}</option>)}
         </Select>
         {can('accounts_receivable','create') && (
-          <Btn variant="primary" icon={Plus} onClick={() => setShowARForm(true)}>New AR Record</Btn>
+          <Btn variant="primary" icon={Plus} onClick={() => setShowARForm(true)}>{t.acctNewARRecord || 'New AR Record'}</Btn>
         )}
       </div>
 
@@ -1052,25 +1180,25 @@ export default function AccountsView({ theme, api, user, addNotification, setCur
             .reduce((s, r) => s + parseFloat(r.balanceDue || 0), 0);
           return (
             <div key={b.key} className={`rounded-lg border p-3 text-center ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`}>
-              <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>{b.label}</p>
+              <p className={`text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>{AGING_LABELS[b.key] || b.label}</p>
               <p className={`font-bold text-sm mt-1 ${theme === 'dark' ? 'text-white' : ''}`}>{formatCurrency(total, currency)}</p>
             </div>
           );
         })}
       </div>
 
-      <Table theme={theme} headers={['AR #','Type','Patient/Payer','Original','Paid','Balance','Due Date','Aging','Status','Actions']}
-        empty={filteredAR.length === 0 ? 'No AR records found' : null}>
+      <Table theme={theme} headers={[t.acctArNumber || 'AR #', t.type || 'Type', t.acctPatientPayer || 'Patient/Payer', t.acctOriginal || 'Original', t.paid || 'Paid', t.balance || 'Balance', t.dueDate || 'Due Date', t.acctAging || 'Aging', t.status || 'Status', t.actions || 'Actions']}
+        empty={filteredAR.length === 0 ? (t.acctNoARRecordsFound || 'No AR records found') : null}>
         {filteredAR.map(ar => (
           <tr key={ar.id} className={theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-50'}>
             <td className={`px-4 py-3 font-mono text-xs ${theme === 'dark' ? 'text-slate-300' : ''}`}>{ar.arNumber}</td>
-            <td className={`px-4 py-3 text-xs capitalize ${theme === 'dark' ? 'text-slate-400' : ''}`}>{ar.arType}</td>
+            <td className={`px-4 py-3 text-xs capitalize ${theme === 'dark' ? 'text-slate-400' : ''}`}>{PARTY_TYPE_LABELS[ar.arType] || ar.arType}</td>
             <td className={`px-4 py-3 text-sm ${theme === 'dark' ? 'text-slate-300' : ''}`}>{ar.patientName || ar.payerName || '—'}</td>
             <td className={`px-4 py-3 text-sm ${theme === 'dark' ? 'text-slate-300' : ''}`}>{formatCurrency(ar.originalAmount, currency)}</td>
             <td className="px-4 py-3 text-sm text-green-500">{formatCurrency(ar.paidAmount || 0, currency)}</td>
             <td className="px-4 py-3 text-sm font-medium text-red-500">{formatCurrency(ar.balanceDue || 0, currency)}</td>
             <td className={`px-4 py-3 text-sm ${theme === 'dark' ? 'text-slate-300' : ''}`}>{formatDate(ar.dueDate)}</td>
-            <td className={`px-4 py-3 text-xs ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>{ar.agingBucket?.replace(/_/g,' ') || 'current'}</td>
+            <td className={`px-4 py-3 text-xs ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>{AGING_LABELS[ar.agingBucket || 'current'] || ar.agingBucket?.replace(/_/g,' ')}</td>
             <td className="px-4 py-3"><Badge status={ar.status} /></td>
             <td className="px-4 py-3">
               {can('accounts_receivable','edit') && (
@@ -1088,23 +1216,23 @@ export default function AccountsView({ theme, api, user, addNotification, setCur
       <div className="flex flex-wrap gap-3 items-center">
         <div className="relative flex-1 min-w-48">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-          <Input className="pl-8" placeholder="Search AP records…" value={apSearch} onChange={e => setApSearch(e.target.value)} />
+          <Input className="pl-8" placeholder={t.acctSearchAPRecords || 'Search AP records…'} value={apSearch} onChange={e => setApSearch(e.target.value)} />
         </div>
         <Select className="w-36" value={apStatusFilter} onChange={e => setApStatusFilter(e.target.value)}>
-          <option value="">All Status</option>
-          {['pending','approved','partial','paid','voided','disputed'].map(s => <option key={s} value={s}>{s}</option>)}
+          <option value="">{t.allStatuses || 'All Statuses'}</option>
+          {['pending','approved','partial','paid','voided','disputed'].map(s => <option key={s} value={s}>{STATUS_LABELS[s] || s}</option>)}
         </Select>
         {can('accounts_payable','create') && (
-          <Btn variant="primary" icon={Plus} onClick={() => setShowAPForm(true)}>New AP Record</Btn>
+          <Btn variant="primary" icon={Plus} onClick={() => setShowAPForm(true)}>{t.acctNewAPRecord || 'New AP Record'}</Btn>
         )}
       </div>
 
-      <Table theme={theme} headers={['AP #','Type','Vendor','Invoice Amt','Balance','Invoice Date','Due Date','Status','Actions']}
-        empty={filteredAP.length === 0 ? 'No AP records found' : null}>
+      <Table theme={theme} headers={[t.acctApNumber || 'AP #', t.type || 'Type', t.acctVendor || 'Vendor', t.acctInvoiceAmt || 'Invoice Amt', t.balance || 'Balance', t.acctInvoiceDate || 'Invoice Date', t.dueDate || 'Due Date', t.status || 'Status', t.actions || 'Actions']}
+        empty={filteredAP.length === 0 ? (t.acctNoAPRecordsFound || 'No AP records found') : null}>
         {filteredAP.map(ap => (
           <tr key={ap.id} className={theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-50'}>
             <td className={`px-4 py-3 font-mono text-xs ${theme === 'dark' ? 'text-slate-300' : ''}`}>{ap.apNumber}</td>
-            <td className={`px-4 py-3 text-xs capitalize ${theme === 'dark' ? 'text-slate-400' : ''}`}>{ap.apType}</td>
+            <td className={`px-4 py-3 text-xs capitalize ${theme === 'dark' ? 'text-slate-400' : ''}`}>{PARTY_TYPE_LABELS[ap.apType] || ap.apType}</td>
             <td className={`px-4 py-3 text-sm font-medium ${theme === 'dark' ? 'text-white' : ''}`}>{ap.vendorName}</td>
             <td className={`px-4 py-3 text-sm ${theme === 'dark' ? 'text-slate-300' : ''}`}>{formatCurrency(ap.invoiceAmount, currency)}</td>
             <td className="px-4 py-3 text-sm font-medium text-red-500">{formatCurrency(ap.balanceDue || 0, currency)}</td>
@@ -1114,7 +1242,7 @@ export default function AccountsView({ theme, api, user, addNotification, setCur
             <td className="px-4 py-3">
               <div className="flex gap-1">
                 {ap.status === 'pending' && can('accounts_payable','approve') && (
-                  <Btn variant="success" size="xs" icon={Check} onClick={() => handleApproveAP(ap.id)}>Approve</Btn>
+                  <Btn variant="success" size="xs" icon={Check} onClick={() => handleApproveAP(ap.id)}>{t.acctApprove || 'Approve'}</Btn>
                 )}
                 {can('accounts_payable','edit') && (
                   <Btn variant="ghost" size="xs" icon={Edit} onClick={() => {}} />
@@ -1130,19 +1258,19 @@ export default function AccountsView({ theme, api, user, addNotification, setCur
   const renderReconciliation = () => (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <div className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>{reconciliations.length} reconciliation(s)</div>
+        <div className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>{(t.acctReconciliationsCount || '{count} reconciliation(s)').replace('{count}', reconciliations.length)}</div>
         {can('reconciliation','create') && (
-          <Btn variant="primary" icon={Plus} onClick={() => setShowRecForm(true)}>Start Reconciliation</Btn>
+          <Btn variant="primary" icon={Plus} onClick={() => setShowRecForm(true)}>{t.acctStartReconciliation || 'Start Reconciliation'}</Btn>
         )}
       </div>
 
-      <Table theme={theme} headers={['Rec #','Account','Type','Period','Statement Bal','System Bal','Discrepancy','Status','Actions']}
-        empty={reconciliations.length === 0 ? 'No reconciliations found' : null}>
+      <Table theme={theme} headers={[t.acctRecNumber || 'Rec #', t.acctAccount || 'Account', t.type || 'Type', t.acctPeriod || 'Period', t.acctStatementBal || 'Statement Bal', t.acctSystemBal || 'System Bal', t.discrepancy || 'Discrepancy', t.status || 'Status', t.actions || 'Actions']}
+        empty={reconciliations.length === 0 ? (t.acctNoReconciliationsFound || 'No reconciliations found') : null}>
         {reconciliations.map(rec => (
           <tr key={rec.id} className={theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-50'}>
             <td className={`px-4 py-3 font-mono text-xs ${theme === 'dark' ? 'text-slate-300' : ''}`}>{rec.reconciliationNumber}</td>
             <td className={`px-4 py-3 text-sm ${theme === 'dark' ? 'text-slate-300' : ''}`}>{rec.accountName}</td>
-            <td className={`px-4 py-3 text-xs capitalize ${theme === 'dark' ? 'text-slate-400' : ''}`}>{rec.reconciliationType}</td>
+            <td className={`px-4 py-3 text-xs capitalize ${theme === 'dark' ? 'text-slate-400' : ''}`}>{PARTY_TYPE_LABELS[rec.reconciliationType] || rec.reconciliationType}</td>
             <td className={`px-4 py-3 text-xs ${theme === 'dark' ? 'text-slate-400' : ''}`}>{formatDate(rec.periodStart)} – {formatDate(rec.periodEnd)}</td>
             <td className={`px-4 py-3 text-sm ${theme === 'dark' ? 'text-slate-300' : ''}`}>{formatCurrency(rec.statementBalance, currency)}</td>
             <td className={`px-4 py-3 text-sm ${theme === 'dark' ? 'text-slate-300' : ''}`}>{formatCurrency(rec.systemBalance, currency)}</td>
@@ -1154,7 +1282,7 @@ export default function AccountsView({ theme, api, user, addNotification, setCur
             <td className="px-4 py-3"><Badge status={rec.status} /></td>
             <td className="px-4 py-3">
               {rec.status === 'in_progress' && can('reconciliation','approve') && (
-                <Btn variant="success" size="xs" icon={CheckCircle} onClick={() => handleCompleteRec(rec.id)}>Complete</Btn>
+                <Btn variant="success" size="xs" icon={CheckCircle} onClick={() => handleCompleteRec(rec.id)}>{t.acctComplete || 'Complete'}</Btn>
               )}
             </td>
           </tr>
@@ -1166,18 +1294,18 @@ export default function AccountsView({ theme, api, user, addNotification, setCur
   const renderStatements = () => (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
-        <div className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>{statements.length} statement(s)</div>
+        <div className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>{(t.acctStatementsCount || '{count} statement(s)').replace('{count}', statements.length)}</div>
         {can('statements','create') && (
-          <Btn variant="primary" icon={Plus} onClick={() => setShowStmForm(true)}>New Statement</Btn>
+          <Btn variant="primary" icon={Plus} onClick={() => setShowStmForm(true)}>{t.acctNewStatement || 'New Statement'}</Btn>
         )}
       </div>
 
-      <Table theme={theme} headers={['Stmt #','Type','Recipient','Period','Prev Bal','Charges','Payments','Balance','Status','Actions']}
-        empty={statements.length === 0 ? 'No statements found' : null}>
+      <Table theme={theme} headers={[t.acctStmtNumber || 'Stmt #', t.type || 'Type', t.acctRecipient || 'Recipient', t.acctPeriod || 'Period', t.acctPrevBal || 'Prev Bal', t.acctCharges || 'Charges', t.payments || 'Payments', t.balance || 'Balance', t.status || 'Status', t.actions || 'Actions']}
+        empty={statements.length === 0 ? (t.acctNoStatementsFound || 'No statements found') : null}>
         {statements.map(s => (
           <tr key={s.id} className={theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-50'}>
             <td className={`px-4 py-3 font-mono text-xs ${theme === 'dark' ? 'text-slate-300' : ''}`}>{s.statementNumber}</td>
-            <td className={`px-4 py-3 text-xs capitalize ${theme === 'dark' ? 'text-slate-400' : ''}`}>{s.statementType}</td>
+            <td className={`px-4 py-3 text-xs capitalize ${theme === 'dark' ? 'text-slate-400' : ''}`}>{PARTY_TYPE_LABELS[s.statementType] || s.statementType}</td>
             <td className={`px-4 py-3 text-sm ${theme === 'dark' ? 'text-slate-300' : ''}`}>{s.patientName || s.payerName || s.recipientName || '—'}</td>
             <td className={`px-4 py-3 text-xs ${theme === 'dark' ? 'text-slate-400' : ''}`}>{formatDate(s.periodStart)} – {formatDate(s.periodEnd)}</td>
             <td className={`px-4 py-3 text-sm ${theme === 'dark' ? 'text-slate-300' : ''}`}>{formatCurrency(s.previousBalance, currency)}</td>
@@ -1188,7 +1316,7 @@ export default function AccountsView({ theme, api, user, addNotification, setCur
             <td className="px-4 py-3">
               <div className="flex gap-1">
                 {s.status === 'draft' && can('statements','edit') && (
-                  <Btn variant="primary" size="xs" icon={Send} onClick={() => handleSendStatement(s.id)}>Send</Btn>
+                  <Btn variant="primary" size="xs" icon={Send} onClick={() => handleSendStatement(s.id)}>{t.acctSend || 'Send'}</Btn>
                 )}
                 {can('statements','export') && (
                   <Btn variant="ghost" size="xs" icon={Printer} onClick={() => {}} />
@@ -1226,7 +1354,7 @@ export default function AccountsView({ theme, api, user, addNotification, setCur
             }`}
           >
             <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
-            {loading ? 'Loading…' : 'Refresh'}
+            {loading ? `${t.loading || 'Loading'}…` : (t.refresh || 'Refresh')}
           </button>
         </div>
 
@@ -1242,7 +1370,7 @@ export default function AccountsView({ theme, api, user, addNotification, setCur
                     ? 'text-slate-400 hover:text-white'
                     : 'text-gray-600 hover:text-gray-900'
               }`}>
-              <tab.icon size={14} />{tab.label}
+              <tab.icon size={14} />{TAB_LABELS[tab.id] || tab.label}
             </button>
           ))}
         </div>
@@ -1253,44 +1381,44 @@ export default function AccountsView({ theme, api, user, addNotification, setCur
       <div className="flex-1 overflow-y-auto p-6">
         {loading ? (
           <div className={`flex items-center justify-center h-48 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>
-            <RefreshCw size={24} className="animate-spin mr-2" /> Loading…
+            <RefreshCw size={24} className="animate-spin mr-2" /> {t.loading || 'Loading'}…
           </div>
         ) : tabContent[activeTab]?.()}
       </div>
 
       {/* Modals */}
       {showAccountForm && (
-        <Modal title="New Account" onClose={() => setShowAccountForm(false)}>
+        <Modal title={t.acctNewAccount || 'New Account'} onClose={() => setShowAccountForm(false)}>
           <AccountForm accounts={accounts} onSave={handleCreateAccount} onClose={() => setShowAccountForm(false)} />
         </Modal>
       )}
       {editingAccount && (
-        <Modal title={`Edit Account — ${editingAccount.accountNumber}`} onClose={() => setEditingAccount(null)}>
+        <Modal title={(t.acctEditAccountTitle || 'Edit Account — {number}').replace('{number}', editingAccount.accountNumber)} onClose={() => setEditingAccount(null)}>
           <AccountForm accounts={accounts} initial={editingAccount} onSave={handleUpdateAccount} onClose={() => setEditingAccount(null)} />
         </Modal>
       )}
       {showJEForm && (
-        <Modal title="New Journal Entry" wide onClose={() => setShowJEForm(false)}>
+        <Modal title={t.acctNewJournalEntry || 'New Journal Entry'} wide onClose={() => setShowJEForm(false)}>
           <JournalEntryForm accounts={accounts} onSave={handleCreateJE} onClose={() => setShowJEForm(false)} currency={currency} />
         </Modal>
       )}
       {showARForm && (
-        <Modal title="New Accounts Receivable Record" onClose={() => setShowARForm(false)}>
+        <Modal title={t.acctNewARRecordTitle || 'New Accounts Receivable Record'} onClose={() => setShowARForm(false)}>
           <ARForm accounts={accounts} onSave={handleCreateAR} onClose={() => setShowARForm(false)} />
         </Modal>
       )}
       {showAPForm && (
-        <Modal title="New Accounts Payable Record" onClose={() => setShowAPForm(false)}>
+        <Modal title={t.acctNewAPRecordTitle || 'New Accounts Payable Record'} onClose={() => setShowAPForm(false)}>
           <APForm accounts={accounts} onSave={handleCreateAP} onClose={() => setShowAPForm(false)} />
         </Modal>
       )}
       {showRecForm && (
-        <Modal title="Start Reconciliation" onClose={() => setShowRecForm(false)}>
+        <Modal title={t.acctStartReconciliation || 'Start Reconciliation'} onClose={() => setShowRecForm(false)}>
           <ReconciliationForm accounts={accounts} onSave={handleCreateRec} onClose={() => setShowRecForm(false)} />
         </Modal>
       )}
       {showStmForm && (
-        <Modal title="New Statement" onClose={() => setShowStmForm(false)}>
+        <Modal title={t.acctNewStatement || 'New Statement'} onClose={() => setShowStmForm(false)}>
           <StatementForm onSave={handleCreateStatement} onClose={() => setShowStmForm(false)} currency={currency} />
         </Modal>
       )}
