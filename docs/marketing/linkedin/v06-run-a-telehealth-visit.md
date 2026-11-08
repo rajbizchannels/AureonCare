@@ -131,6 +131,8 @@ Paste at the very bottom, after the body:
 ```
 Create a telehealth session in a workspace of your own: https://app.aureoncare.tech
 
+We are opening AureonCare to our first clinics and hospitals, and early partners get preferential terms along with direct access to the team building it. If that is you, start at https://app.aureoncare.tech or reply to this issue and we will take it from there.
+
 Subscribe to Running the Practice for a new walkthrough each month.
 ```
 
