@@ -85,7 +85,7 @@ const DiagnosisForm = ({
     const loadLaboratories = async () => {
       try {
         const labs = await api.getLaboratories(true); // Only active laboratories
-        setLaboratories(labs);
+        setLaboratories(Array.isArray(labs) ? labs : []);
       } catch (error) {
         console.error('Error loading laboratories:', error);
       } finally {
@@ -595,6 +595,50 @@ const DiagnosisForm = ({
                 )}
               </div>
 
+              {/* ── Visit details ── */}
+              <h3 className={`pt-2 text-xs font-semibold uppercase tracking-wide ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                {t.dxSectionVisit || 'Visit details'}
+              </h3>
+
+              {/* Row: Provider, Date */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Provider (Read-only, shows logged-in user) */}
+                <div>
+                  <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                    Provider
+                  </label>
+                  <div className={`w-full px-3 py-2 border rounded-lg ${
+                    theme === 'dark'
+                      ? 'bg-slate-800/50 border-slate-600 text-gray-300'
+                      : 'bg-gray-50 border-gray-300 text-gray-700'
+                  }`}>
+                    {user ? `${user.first_name || user.firstName || ''} ${user.last_name || user.lastName || ''}`.trim() || 'Current User' : 'Not specified'}
+                  </div>
+                </div>
+
+                {/* Diagnosis Date */}
+                <div>
+                  <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                    Diagnosis Date
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.diagnosedDate}
+                    onChange={(e) => setFormData({ ...formData, diagnosedDate: e.target.value })}
+                    className={`w-full px-3 py-2 border rounded-lg outline-none transition-colors ${
+                      theme === 'dark'
+                        ? 'bg-slate-800 border-slate-600 text-white focus:border-blue-500'
+                        : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500'
+                    }`}
+                  />
+                </div>
+              </div>
+
+              {/* ── Diagnosis & notes ── */}
+              <h3 className={`pt-2 text-xs font-semibold uppercase tracking-wide ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                {t.dxSectionAssessment || 'Diagnosis & notes'}
+              </h3>
+
               {/* Diagnosis Name */}
               <div>
                 <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
@@ -614,9 +658,36 @@ const DiagnosisForm = ({
                 />
               </div>
 
-              {/* ICD Codes */}
-              <div className="flex justify-end -mb-2">
-                {/* AI suggests codes with the supporting sentence; the user picks codes below */}
+              {/* SOAP Notes */}
+              <div>
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <label className={`block text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                    <div className="flex items-center gap-2">
+                      <FileText className="w-4 h-4" />
+                      SOAP Notes
+                    </div>
+                  </label>
+                  {/* AI drafts a SOAP note from the visit text; only on click, inserted only after review */}
+                  <AIAssistButton featureKey="ambient_scribe" theme={theme} t={t}
+                    patientId={formData.patientId || null} entityType="diagnosis" entityId={editDiagnosis?.id || null}
+                    getInput={() => formData.soapNotes || ''}
+                    onApply={(text) => setFormData((prev) => ({ ...prev, soapNotes: text }))} />
+                </div>
+                <textarea
+                  value={formData.soapNotes}
+                  onChange={(e) => setFormData({ ...formData, soapNotes: e.target.value })}
+                  placeholder="Subjective: Patient's symptoms and complaints&#10;Objective: Measurable findings and observations&#10;Assessment: Clinical diagnosis and evaluation&#10;Plan: Treatment plan and next steps"
+                  rows={6}
+                  className={`w-full px-3 py-2 border rounded-lg outline-none transition-colors font-mono text-sm ${
+                    theme === 'dark'
+                      ? 'bg-slate-800 border-slate-600 text-white placeholder-gray-500 focus:border-blue-500'
+                      : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400 focus:border-blue-500'
+                  }`}
+                />
+              </div>
+
+              {/* Suggest codes sits under the note it reads; the user still picks codes below */}
+              <div className="flex flex-wrap items-center gap-2 -mt-1">
                 <AIAssistButton featureKey="coding_suggestions" theme={theme} t={t}
                   patientId={formData.patientId || null} entityType="diagnosis" entityId={editDiagnosis?.id || null}
                   labelKey="aiSuggestCodes" label="Suggest codes"
@@ -624,7 +695,17 @@ const DiagnosisForm = ({
                     formData.diagnosisName && `Diagnosis: ${formData.diagnosisName}`,
                     formData.soapNotes && `Note:\n${formData.soapNotes}`,
                   ].filter(Boolean).join('\n\n')} />
+                <span className={`text-xs ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
+                  {t.aiSuggestCodesHint || 'Uses the diagnosis name and SOAP note above'}
+                </span>
               </div>
+
+              {/* ── Codes & status ── */}
+              <h3 className={`pt-2 text-xs font-semibold uppercase tracking-wide ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                {t.dxSectionCoding || 'Codes & status'}
+              </h3>
+
+              {/* ICD Codes */}
               <MedicalCodeMultiSelect
                 theme={theme}
                 api={api}
@@ -645,6 +726,46 @@ const DiagnosisForm = ({
                 label="CPT Procedure Codes"
                 placeholder="Search for CPT codes by code or description..."
               />
+
+              {/* Row: Severity, Status */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Severity */}
+                <div>
+                  <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                    Severity
+                  </label>
+                  <ThemedSelect
+                    theme={theme}
+                    value={formData.severity}
+                    onChange={(e) => setFormData({ ...formData, severity: e.target.value })}
+                  >
+                    <option value="Mild">Mild</option>
+                    <option value="Moderate">Moderate</option>
+                    <option value="Severe">Severe</option>
+                  </ThemedSelect>
+                </div>
+
+                {/* Status */}
+                <div>
+                  <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                    Status
+                  </label>
+                  <ThemedSelect
+                    theme={theme}
+                    value={formData.status}
+                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                  >
+                    <option value="Active">Active</option>
+                    <option value="Resolved">Resolved</option>
+                    <option value="Chronic">Chronic</option>
+                  </ThemedSelect>
+                </div>
+              </div>
+
+              {/* ── Orders ── */}
+              <h3 className={`pt-2 text-xs font-semibold uppercase tracking-wide ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+                {t.dxSectionOrders || 'Orders'}
+              </h3>
 
               {/* Medications */}
               <div>
@@ -1022,103 +1143,6 @@ const DiagnosisForm = ({
                       {laboratories.length === 0 ? 'No Labs Available' : 'Add Lab Order'}
                     </button>
                   </div>
-              </div>
-
-              {/* Row: Provider, Date */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Provider (Read-only, shows logged-in user) */}
-                <div>
-                  <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                    Provider
-                  </label>
-                  <div className={`w-full px-3 py-2 border rounded-lg ${
-                    theme === 'dark'
-                      ? 'bg-slate-800/50 border-slate-600 text-gray-300'
-                      : 'bg-gray-50 border-gray-300 text-gray-700'
-                  }`}>
-                    {user ? `${user.first_name || user.firstName || ''} ${user.last_name || user.lastName || ''}`.trim() || 'Current User' : 'Not specified'}
-                  </div>
-                </div>
-
-                {/* Diagnosis Date */}
-                <div>
-                  <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                    Diagnosis Date
-                  </label>
-                  <input
-                    type="date"
-                    value={formData.diagnosedDate}
-                    onChange={(e) => setFormData({ ...formData, diagnosedDate: e.target.value })}
-                    className={`w-full px-3 py-2 border rounded-lg outline-none transition-colors ${
-                      theme === 'dark'
-                        ? 'bg-slate-800 border-slate-600 text-white focus:border-blue-500'
-                        : 'bg-white border-gray-300 text-gray-900 focus:border-blue-500'
-                    }`}
-                  />
-                </div>
-              </div>
-
-              {/* Row: Severity, Status */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {/* Severity */}
-                <div>
-                  <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                    Severity
-                  </label>
-                  <ThemedSelect
-                    theme={theme}
-                    value={formData.severity}
-                    onChange={(e) => setFormData({ ...formData, severity: e.target.value })}
-                  >
-                    <option value="Mild">Mild</option>
-                    <option value="Moderate">Moderate</option>
-                    <option value="Severe">Severe</option>
-                  </ThemedSelect>
-                </div>
-
-                {/* Status */}
-                <div>
-                  <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                    Status
-                  </label>
-                  <ThemedSelect
-                    theme={theme}
-                    value={formData.status}
-                    onChange={(e) => setFormData({ ...formData, status: e.target.value })}
-                  >
-                    <option value="Active">Active</option>
-                    <option value="Resolved">Resolved</option>
-                    <option value="Chronic">Chronic</option>
-                  </ThemedSelect>
-                </div>
-              </div>
-
-              {/* SOAP Notes */}
-              <div>
-                <div className="flex items-center justify-between gap-2 mb-2">
-                  <label className={`block text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                    <div className="flex items-center gap-2">
-                      <FileText className="w-4 h-4" />
-                      SOAP Notes
-                    </div>
-                  </label>
-                  {/* AI drafts a SOAP note from the visit text; only on click, inserted only after review */}
-                  <AIAssistButton featureKey="ambient_scribe" theme={theme} t={t}
-                    patientId={formData.patientId || null} entityType="diagnosis" entityId={editDiagnosis?.id || null}
-                    getInput={() => formData.soapNotes || ''}
-                    onApply={(text) => setFormData((prev) => ({ ...prev, soapNotes: text }))} />
-                </div>
-                <textarea
-                  value={formData.soapNotes}
-                  onChange={(e) => setFormData({ ...formData, soapNotes: e.target.value })}
-                  placeholder="Subjective: Patient's symptoms and complaints&#10;Objective: Measurable findings and observations&#10;Assessment: Clinical diagnosis and evaluation&#10;Plan: Treatment plan and next steps"
-                  rows={6}
-                  className={`w-full px-3 py-2 border rounded-lg outline-none transition-colors font-mono text-sm ${
-                    theme === 'dark'
-                      ? 'bg-slate-800 border-slate-600 text-white placeholder-gray-500 focus:border-blue-500'
-                      : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400 focus:border-blue-500'
-                  }`}
-                />
               </div>
 
               {/* Attach Forms to Patient (Optional) */}

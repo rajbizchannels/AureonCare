@@ -1,6 +1,11 @@
 export const translations = {
   en: {
     // AI integrations (Integrations page)
+    dxSectionVisit: "Visit details",
+    dxSectionAssessment: "Diagnosis & notes",
+    dxSectionCoding: "Codes & status",
+    dxSectionOrders: "Orders",
+    aiSuggestCodesHint: "Uses the diagnosis name and SOAP note above",
     aiAssist: "AI assist",
     aiAssistTitle: "AI assist: {feature}",
     aiAssistNoAutostart: "Nothing is sent until you press Generate. Patient identifiers are replaced with placeholders first.",
@@ -1970,6 +1975,11 @@ export const translations = {
   },
   es: {
     // AI integrations (Integrations page)
+    dxSectionVisit: "Datos de la visita",
+    dxSectionAssessment: "Diagnóstico y notas",
+    dxSectionCoding: "Códigos y estado",
+    dxSectionOrders: "Órdenes",
+    aiSuggestCodesHint: "Usa el nombre del diagnóstico y la nota SOAP de arriba",
     aiAssist: "Asistencia IA",
     aiAssistTitle: "Asistencia IA: {feature}",
     aiAssistNoAutostart: "No se envía nada hasta que pulse Generar. Antes se sustituyen los identificadores del paciente por marcadores.",
@@ -3939,6 +3949,11 @@ export const translations = {
   },
   fr: {
     // AI integrations (Integrations page)
+    dxSectionVisit: "Détails de la consultation",
+    dxSectionAssessment: "Diagnostic et notes",
+    dxSectionCoding: "Codes et statut",
+    dxSectionOrders: "Prescriptions et examens",
+    aiSuggestCodesHint: "Utilise le nom du diagnostic et la note SOAP ci-dessus",
     aiAssist: "Aide IA",
     aiAssistTitle: "Aide IA : {feature}",
     aiAssistNoAutostart: "Rien n’est envoyé tant que vous n’appuyez pas sur Générer. Les identifiants du patient sont d’abord remplacés par des marqueurs.",
@@ -5908,6 +5923,11 @@ export const translations = {
   },
   de: {
     // AI integrations (Integrations page)
+    dxSectionVisit: "Besuchsdetails",
+    dxSectionAssessment: "Diagnose & Notizen",
+    dxSectionCoding: "Codes & Status",
+    dxSectionOrders: "Verordnungen",
+    aiSuggestCodesHint: "Nutzt Diagnosename und SOAP-Notiz oben",
     aiAssist: "KI-Hilfe",
     aiAssistTitle: "KI-Hilfe: {feature}",
     aiAssistNoAutostart: "Es wird nichts gesendet, bis Sie auf Erzeugen tippen. Patientenkennungen werden vorher durch Platzhalter ersetzt.",
@@ -7877,6 +7897,11 @@ export const translations = {
   },
   ar: {
     // AI integrations (Integrations page)
+    dxSectionVisit: "تفاصيل الزيارة",
+    dxSectionAssessment: "التشخيص والملاحظات",
+    dxSectionCoding: "الرموز والحالة",
+    dxSectionOrders: "الطلبات",
+    aiSuggestCodesHint: "يستخدم اسم التشخيص وملاحظة SOAP أعلاه",
     aiAssist: "مساعدة الذكاء الاصطناعي",
     aiAssistTitle: "مساعدة الذكاء الاصطناعي: {feature}",
     aiAssistNoAutostart: "لا يُرسَل شيء حتى تضغط على إنشاء. تُستبدل معرّفات المريض بعناصر نائبة أولًا.",
