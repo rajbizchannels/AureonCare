@@ -150,6 +150,8 @@ Try it on a workspace of your own: https://app.aureoncare.tech
 
 Watch the full two-minute tour: [ VIDEO 1 LINK ]
 
+We are opening AureonCare to our first clinics and hospitals, and early partners get preferential terms along with direct access to the team building it. If that is you, start at https://app.aureoncare.tech or reply to this issue and we will take it from there.
+
 Subscribe to Running the Practice for a new walkthrough each month.
 ```
 

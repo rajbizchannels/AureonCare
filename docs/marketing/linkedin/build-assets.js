@@ -150,7 +150,11 @@ const statementCard = (kick, statement, sub) => frame(1200, 675, '70px 76px', `
   </div>
   ${rule()}`);
 
-/** Closing call to action. One destination, nothing competing with it. */
+/**
+ * Closing call to action. One destination, nothing competing with it, and the
+ * founding-partner line where the tagline used to sit — it is the last thing
+ * read, and it is substantive where the tagline was decorative.
+ */
 const ctaCard = (line) => frame(1200, 675, '70px 76px', `
   <img src="${BRAND.logo}" alt="AureonCare" style="height:62px;align-self:flex-start;">
   <div>
@@ -162,7 +166,10 @@ const ctaCard = (line) => frame(1200, 675, '70px 76px', `
       background:linear-gradient(90deg,${BRAND.amberLight} 6%,${BRAND.tealLight} 78%);
       -webkit-background-clip:text;-webkit-text-fill-color:transparent;">${APP_URL}</div>
   </div>
-  ${footnote('Health &nbsp;|&nbsp; Efficiency &nbsp;|&nbsp; Growth')}`);
+  <span style="align-self:flex-start;font-size:24px;font-weight:700;color:${BRAND.ink};
+    background:${BRAND.amber};border-radius:999px;padding:15px 32px;">
+    Now onboarding our first clinics and hospitals
+  </span>`);
 
 /** Two or three labelled columns with a coloured bar above each. */
 const columns = (items) => `
@@ -533,7 +540,67 @@ const v06 = {
     'Create a telehealth session in your own workspace.') },
 };
 
-const ISSUES = { v01, v02, v03, v04, v05, v06 };
+/* ─────────────────────────────────────────────────────────────────────────────
+ * Issue 07 — Create and submit a claim (video V07)
+ * ────────────────────────────────────────────────────────────────────────── */
+
+const v07 = {
+  '01-cover.png': { w: 1200, h: 627, html: () => coverCard(
+    'Issue 07',
+    'Create and<br>submit a claim',
+    'What you are billing, why, and the check payers run on both.'
+  ) },
+
+  /* The queue, read by status. Denial gets the brand's attention colour. */
+  '02-four-statuses.png': { w: 1200, h: 675, html: () => {
+    /* A hollow dot reads as "in flight", a solid one as "settled". */
+    const status = (label, note, accent, hollow) => `
+      <div style="flex:1;border-radius:20px;border:1px solid ${accent}3d;
+        background:${accent}12;padding:28px 24px;display:flex;flex-direction:column;gap:18px;">
+        <div style="width:16px;height:16px;border-radius:999px;box-sizing:border-box;
+          ${hollow ? `border:4px solid ${accent};` : `background:${accent};`}"></div>
+        <div style="font-size:27px;font-weight:700;">${label}</div>
+        <div style="font-size:20px;color:${BRAND.slate};line-height:1.35;">${note}</div>
+      </div>`;
+
+    return card('The queue', `
+      ${headline('Status is the whole story')}
+      <div style="display:flex;gap:22px;margin-top:54px;">
+        ${status('Draft', 'Not sent yet', BRAND.slate, true)}
+        ${status('Submitted', 'Waiting on<br>the payer', BRAND.tealLight, true)}
+        ${status('Paid', 'Settled', BRAND.teal)}
+        ${status('Denied', 'Needs work', BRAND.amber)}
+      </div>`,
+      'Billing &#9656; Claims &mdash; every claim, and where it has got to');
+  } },
+
+  '03-what-and-why.png': { w: 1200, h: 675, html: () => statementCard(
+    'The one rule',
+    'The procedure is what.<br>The diagnosis is why.',
+    'Payers check that the two agree. Codes are searched rather than remembered '
+    + '&mdash; type the code or the words and pick from the list &mdash; but '
+    + 'picking a pair that does not hang together is what gets a claim denied.',
+  ) },
+
+  '04-draft-then-send.png': { w: 1200, h: 675, html: () => card('Submitting', `
+    ${headline('Nothing leaves until<br>you send it', 900)}
+    ${columns([
+      ['Created as a draft', 'Nothing has gone anywhere.<br>Drafts are safe to fix', BRAND.amber],
+      ['Submit EDI 837', 'Sends it to the clearinghouse<br>in the format payers expect', BRAND.teal],
+    ])}`,
+    'It comes back paid, or denied with a reason &mdash; and a denial goes straight to the Denials queue') },
+
+  '05-recap.png': { w: 1200, h: 675, html: () => recapCard([
+    'Billing &#9656; Claims is the money pipeline, read by status',
+    'Pick the patient and the claim inherits their insurance',
+    'Code it, check it as a draft, then Submit EDI 837',
+  ], 'Video 7 of 8 &nbsp;&middot;&nbsp; 2 min 20 s &nbsp;&middot;&nbsp; AureonCare Getting Started') },
+
+  '06-cta.png': { w: 1200, h: 675, html: () => ctaCard(
+    'Build and submit a claim in your own workspace.') },
+};
+
+const ISSUES = { v01, v02, v03, v04, v05, v06, v07 };
 
 /** Shared across issues, so it sits at the root of assets/ rather than in one. */
 const SHARED = { 'newsletter-logo.png': { w: 300, h: 300, html: logoSquare } };
