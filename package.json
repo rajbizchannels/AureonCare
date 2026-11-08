@@ -32,7 +32,7 @@
     "test:specialty": "node backend/test/specialty/packs.test.js",
     "test:forms": "node backend/test/forms/linkage.test.js",
     "test:subscription-changes": "node backend/test/billing/subscription-changes.test.js",
-    "test:frontend": "cd frontend && CI=true npm test -- --watchAll=false"
+    "test:frontend": "cd frontend && CI=true npm test -- --watchAll=false",
     "test:record-numbers": "node backend/test/records/numbers.test.js",
     "test:ai": "node backend/test/ai/ai.test.js",
     "test:ai-anonymizer": "node backend/test/ai/anonymizer.test.js"
