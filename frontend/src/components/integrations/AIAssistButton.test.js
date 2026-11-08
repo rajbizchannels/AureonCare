@@ -100,34 +100,84 @@ test('the draft is shown formatted, with an Edit view', async () => {
   expect(screen.getByLabelText(/draft text/i)).toHaveValue('## Reply\nPlease **rest** and drink water.');
 });
 
-test('accepted SOAP is inserted as plain text and only ticked codes are transferred', async () => {
-  api.getAIFeatures.mockResolvedValue(enabled('ambient_scribe'));
-  api.searchMedicalCodes.mockImplementation(async (code) => (
-    code === 'G44.209' ? [{ code: 'G44.209', description: 'Tension-type headache, unspecified, not intractable', type: 'ICD-10' }]
-      : code === '99213' ? [{ code: '99213', description: 'Office visit est. patient', type: 'CPT' }] : []
-  ));
+const SCRIBE_DRAFT = '## SOAP Note\n### Subjective\nHeadache.\n## Suggested codes\n- ICD-10 `G44.209` — Tension headache\n- CPT `99213` — Office visit\n- ICD-10 `Z99.99` — Made up';
+const codeLookup = async (code) => (
+  code === 'G44.209' ? [{ code: 'G44.209', description: 'Tension-type headache, unspecified, not intractable', type: 'ICD-10' }]
+    : code === '99213' ? [{ code: '99213', description: 'Office visit est. patient', type: 'CPT' }] : []
+);
+
+test('SOAP dialog shows Update SOAP text and the code list before anything is accepted', async () => {
+  api.getAIFeatures.mockResolvedValue(enabled('ambient_scribe', { attestationRequired: true }));
+  api.searchMedicalCodes.mockImplementation(codeLookup);
   const onApply = jest.fn();
   const onApplyCodes = jest.fn();
   render(<AIAssistButton featureKey="ambient_scribe" getInput={() => 'x'} onApply={onApply} onApplyCodes={onApplyCodes}
-    applyTransform={(md) => md.split('## Suggested codes')[0].replace(/[#*]/g, '').trim()} />);
+    applyLabel="Update SOAP text" applyTransform={(md) => md.split('## Suggested codes')[0].replace(/[#*]/g, '').trim()} />);
   fireEvent.click(await screen.findByRole('button', { name: /ai assist/i }));
-  const draft = '## SOAP Note\n### Subjective\nHeadache.\n## Suggested codes\n- ICD-10 `G44.209` — Tension headache\n- CPT `99213` — Office visit\n- ICD-10 `Z99.99` — Made up';
-  api.runAIFeature.mockResolvedValue({ id: 's6', draft, canReview: true, phiTokensCount: 0 });
+  api.runAIFeature.mockResolvedValue({ id: 's6', draft: SCRIBE_DRAFT, canReview: true, attestationRequired: true, phiTokensCount: 0 });
   fireEvent.click(screen.getByRole('button', { name: /generate draft/i }));
-  api.reviewAISuggestion.mockResolvedValue({ status: 'accepted', finalText: draft });
-  fireEvent.click(await screen.findByRole('button', { name: /accept & insert/i }));
 
-  await waitFor(() => expect(onApply).toHaveBeenCalledWith('SOAP Note\n Subjective\nHeadache.'));
+  // Both actions are on the draft view itself.
+  const update = await screen.findByRole('button', { name: /update soap text/i });
   const add = await screen.findByRole('button', { name: /add selected codes/i });
-  const boxes = screen.getAllByRole('checkbox');
-  expect(boxes.map((b) => b.checked)).toEqual([true, false, true]); // ICD first; Z99.99 is not in the code list
-  expect(onApplyCodes).not.toHaveBeenCalled();
+  expect(screen.getByRole('checkbox', { name: /G44.209/ })).toBeChecked();
+  expect(screen.getByRole('checkbox', { name: /99213/ })).toBeChecked();
+  expect(screen.getByRole('checkbox', { name: /Z99.99/ })).not.toBeChecked(); // not in the code list
+  expect(update).toBeDisabled(); // sign-off first
+  expect(add).toBeDisabled();
+  expect(api.reviewAISuggestion).not.toHaveBeenCalled();
+
+  fireEvent.click(screen.getByRole('checkbox', { name: /take responsibility/i }));
+  api.reviewAISuggestion.mockResolvedValue({ status: 'accepted', finalText: SCRIBE_DRAFT });
+
   fireEvent.click(add);
-  expect(onApplyCodes).toHaveBeenCalledWith({
+  await waitFor(() => expect(onApplyCodes).toHaveBeenCalledWith({
     icd: [{ code: 'G44.209', description: 'Tension-type headache, unspecified, not intractable', type: 'ICD-10' }],
     cpt: [{ code: '99213', description: 'Office visit est. patient', type: 'CPT' }],
-  });
-  expect(screen.getByText(/2 code\(s\) added/i)).toBeInTheDocument();
+  }));
+  expect(await screen.findByText(/2 code\(s\) added/i)).toBeInTheDocument();
+
+  // The other action still works after acceptance, without a second review.
+  fireEvent.click(screen.getByRole('button', { name: /update soap text/i }));
+  await waitFor(() => expect(onApply).toHaveBeenCalledWith('SOAP Note\n Subjective\nHeadache.'));
+  expect(api.reviewAISuggestion).toHaveBeenCalledTimes(1);
+  expect(api.reviewAISuggestion).toHaveBeenCalledWith('s6', expect.objectContaining({ action: 'accept', attested: true }));
+});
+
+test('Suggest codes dialog shows the code list and add button right away', async () => {
+  api.getAIFeatures.mockResolvedValue(enabled('coding_suggestions', { attestationRequired: true }));
+  api.searchMedicalCodes.mockImplementation(codeLookup);
+  const onApplyCodes = jest.fn();
+  render(<AIAssistButton featureKey="coding_suggestions" getInput={() => 'x'} onApplyCodes={onApplyCodes} />);
+  fireEvent.click(await screen.findByRole('button', { name: /ai assist/i }));
+  const draft = '### ICD-10\n- `G44.209` — Tension headache — "headache"\n### CPT\n- `99213` — Office visit — "seen today"';
+  api.runAIFeature.mockResolvedValue({ id: 's7', draft, canReview: true, attestationRequired: true, phiTokensCount: 0 });
+  fireEvent.click(screen.getByRole('button', { name: /generate draft/i }));
+
+  const add = await screen.findByRole('button', { name: /add selected codes/i });
+  expect(screen.getByTestId('ai-code-transfer')).toHaveTextContent('G44.209');
+  expect(screen.getByTestId('ai-code-transfer')).toHaveTextContent('99213');
+  fireEvent.click(screen.getByRole('checkbox', { name: /99213/ })); // untick the CPT code
+  fireEvent.click(screen.getByRole('checkbox', { name: /take responsibility/i }));
+  api.reviewAISuggestion.mockResolvedValue({ status: 'accepted', finalText: draft });
+  fireEvent.click(add);
+  await waitFor(() => expect(onApplyCodes).toHaveBeenCalledWith({
+    icd: [{ code: 'G44.209', description: 'Tension-type headache, unspecified, not intractable', type: 'ICD-10' }],
+    cpt: [],
+  }));
+});
+
+test('editing the draft refreshes the code list', async () => {
+  api.getAIFeatures.mockResolvedValue(enabled('coding_suggestions'));
+  api.searchMedicalCodes.mockImplementation(codeLookup);
+  render(<AIAssistButton featureKey="coding_suggestions" getInput={() => 'x'} onApplyCodes={jest.fn()} />);
+  fireEvent.click(await screen.findByRole('button', { name: /ai assist/i }));
+  api.runAIFeature.mockResolvedValue({ id: 's8', draft: '- ICD-10 `G44.209` — Tension headache', canReview: true, phiTokensCount: 0 });
+  fireEvent.click(screen.getByRole('button', { name: /generate draft/i }));
+  await screen.findByRole('checkbox', { name: /G44.209/ });
+  fireEvent.click(screen.getByRole('tab', { name: /edit/i }));
+  fireEvent.change(screen.getByLabelText(/draft text/i), { target: { value: '- ICD-10 `G44.209` — Tension headache\n- CPT `99213` — Visit' } });
+  expect(await screen.findByRole('checkbox', { name: /99213/ })).toBeChecked();
 });
 
 test('a failed feature check is retried instead of hiding the button for a minute', async () => {

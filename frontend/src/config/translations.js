@@ -1,6 +1,10 @@
 export const translations = {
   en: {
     // AI integrations (Integrations page)
+    aiUpdateSoap: "Update SOAP text",
+    aiAcceptedLocked: "Accepted. The text is locked; you can still use the actions below.",
+    aiCheckingCodes: "Checking codes against your code list...",
+    aiDone: "Done",
     aiViewFormatted: "Formatted",
     aiViewEdit: "Edit",
     aiTransferCodesTitle: "Add suggested codes to the form",
@@ -1985,6 +1989,10 @@ export const translations = {
   },
   es: {
     // AI integrations (Integrations page)
+    aiUpdateSoap: "Actualizar texto SOAP",
+    aiAcceptedLocked: "Aceptado. El texto queda bloqueado; aún puede usar las acciones de abajo.",
+    aiCheckingCodes: "Comprobando los códigos en su lista...",
+    aiDone: "Listo",
     aiViewFormatted: "Con formato",
     aiViewEdit: "Editar",
     aiTransferCodesTitle: "Añadir los códigos sugeridos al formulario",
@@ -3969,6 +3977,10 @@ export const translations = {
   },
   fr: {
     // AI integrations (Integrations page)
+    aiUpdateSoap: "Mettre à jour le texte SOAP",
+    aiAcceptedLocked: "Accepté. Le texte est verrouillé ; vous pouvez encore utiliser les actions ci-dessous.",
+    aiCheckingCodes: "Vérification des codes dans votre liste...",
+    aiDone: "Terminé",
     aiViewFormatted: "Mis en forme",
     aiViewEdit: "Modifier",
     aiTransferCodesTitle: "Ajouter les codes suggérés au formulaire",
@@ -5953,6 +5965,10 @@ export const translations = {
   },
   de: {
     // AI integrations (Integrations page)
+    aiUpdateSoap: "SOAP-Text übernehmen",
+    aiAcceptedLocked: "Angenommen. Der Text ist gesperrt; die Aktionen unten sind weiter nutzbar.",
+    aiCheckingCodes: "Codes werden mit Ihrer Codeliste abgeglichen...",
+    aiDone: "Fertig",
     aiViewFormatted: "Formatiert",
     aiViewEdit: "Bearbeiten",
     aiTransferCodesTitle: "Vorgeschlagene Codes ins Formular übernehmen",
@@ -7937,6 +7953,10 @@ export const translations = {
   },
   ar: {
     // AI integrations (Integrations page)
+    aiUpdateSoap: "تحديث نص SOAP",
+    aiAcceptedLocked: "تم القبول. النص مقفل، ولا يزال بإمكانك استخدام الإجراءات أدناه.",
+    aiCheckingCodes: "جارٍ التحقق من الرموز في قائمتك...",
+    aiDone: "تم",
     aiViewFormatted: "منسّق",
     aiViewEdit: "تعديل",
     aiTransferCodesTitle: "إضافة الرموز المقترحة إلى النموذج",
