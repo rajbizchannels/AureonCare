@@ -13,20 +13,42 @@ the new hire.
 | 04 | V04 — Read your day on the dashboard | *pending* | [`v04-read-your-day-on-the-dashboard.md`](v04-read-your-day-on-the-dashboard.md) |
 | 05 | V05 — Document a visit | *pending* | [`v05-document-a-visit.md`](v05-document-a-visit.md) |
 | 06 | V06 — Run a telehealth visit | *pending* | [`v06-run-a-telehealth-visit.md`](v06-run-a-telehealth-visit.md) |
+| 07 | V07 — Create and submit a claim | *pending* | [`v07-create-and-submit-a-claim.md`](v07-create-and-submit-a-claim.md) |
 
 Each issue file is a publishing document, not a draft: fenced blocks are pasted
 verbatim into LinkedIn, everything outside them is production notes. Assets are
 listed at the bottom of each issue with the point in the article they belong at.
 
-Every issue closes on the same call to action, `https://app.aureoncare.tech`,
-carried by a matching `06-cta.png` card. Keep that consistent as issues are
-added — a newsletter that sends readers somewhere different each month teaches
-them to ignore the ending.
+## The onboarding CTA
+
+Every issue closes on the same two things, and they are shared wording on
+purpose — a standing offer repeated verbatim reads as a programme, the same
+offer reworded each month reads as improvisation.
+
+1. `https://app.aureoncare.tech`, carried by the `06-cta.png` card.
+2. The founding-partner paragraph:
+
+> We are opening AureonCare to our first clinics and hospitals, and early
+> partners get preferential terms along with direct access to the team building
+> it. If that is you, start at https://app.aureoncare.tech or reply to this
+> issue and we will take it from there.
+
+The CTA card carries the same message as an amber pill: **Now onboarding our
+first clinics and hospitals.** It replaced the decorative "Health | Efficiency |
+Growth" tagline there, so the card did not get busier.
+
+**"Preferential terms" is deliberately unquantified**, because no specific offer
+was given to write down. If there is a real one — a discount, a free period, a
+waived implementation fee — replace the phrase in all seven issues and in
+`ctaCard`, and regenerate. A concrete offer converts better than a vague one,
+and it is the first thing a prospect will ask in any case. Change it in one
+place or none: half the issues promising something different is worse than
+either.
 
 Each issue also links its source video, on its own line so LinkedIn renders a
 preview card rather than blue text. From Issue 03 the link is repeated through
 the body with an explicit invitation to watch, rather than parked at the end.
-Video URLs are published without their `?si=` share token. Issues 01 and 04–06
+Video URLs are published without their `?si=` share token. Issues 01 and 04–07
 carry `[ VIDEO n LINK ]` placeholders until their URLs are supplied.
 
 **Named third parties need checking before publication.** Issue 06 mentions
@@ -34,6 +56,12 @@ Google Meet, because the video's banner shows it. It is worded as the platform
 *connected in the demo*, not as the platform AureonCare uses. Keep that
 distinction in any issue that names an outside product — tightening it into a
 commitment is easy to do and hard to walk back once published.
+
+**Regulated subject matter stays descriptive.** Issue 07 covers claims coding
+and gives no coding advice, no example ICD-10/CPT pairings and no denial-rate
+figures; Issue 05 covers clinical documentation and gives no clinical guidance
+beyond what the video states. Both say so in their own sourcing notes. Hold that
+line: the series teaches the software, not the profession.
 
 Issues 01–04 are written for the front desk and the practice manager. Issue 05
 is the first written for clinicians, and the register shifts with it — less
