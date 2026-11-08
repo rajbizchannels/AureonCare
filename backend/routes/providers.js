@@ -83,6 +83,50 @@ router.get('/', authenticate, async (req, res) => {
   }
 });
 
+/**
+ * The providers a booking screen may offer — every active provider in the caller's
+ * practice, name and specialization only.
+ *
+ * WHY THIS IS SEPARATE from GET /. That route is provider MANAGEMENT, and it restricts a
+ * caller whose role is `doctor` to their own record. For managing provider profiles that
+ * is a defensible rule. For scheduling it is not: it meant a doctor opening the
+ * appointment form saw exactly one provider in the dropdown — themselves — and could not
+ * book a colleague's clinic at all. (A patient of the same practice, meanwhile, already
+ * receives the full list with licence numbers and phone numbers through GET /, so the
+ * restriction was never protecting provider details from the practice's own clinicians.)
+ *
+ * Rather than widen a permission someone may have set deliberately, this adds the narrow
+ * listing scheduling actually needs. It returns FEWER fields than GET / — no licence
+ * number, no contact details — so a doctor gains a colleague's name and specialty and
+ * nothing else.
+ *
+ * Declared before GET /:id, or Express would route /bookable into it as an id.
+ */
+router.get('/bookable', authenticate, async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    const practiceId = requirePractice(req, res);
+    if (!practiceId) return;
+
+    // providers.id = users.id (migration 025), so the join is the practice scope.
+    // Inactive users are excluded: a departed clinician must not be bookable, which is the
+    // one thing this list has to get right.
+    const result = await pool.query(`
+      SELECT p.id, p.first_name, p.last_name, p.specialization, u.role
+        FROM providers p
+        JOIN users u ON p.id = u.id
+       WHERE u.practice_id = $1
+         AND u.status = 'active'
+       ORDER BY p.last_name, p.first_name ASC
+    `, [practiceId]);
+
+    res.json(result.rows.map(toCamelCase));
+  } catch (error) {
+    console.error('Error fetching bookable providers:', error);
+    res.status(500).json({ error: 'Failed to fetch bookable providers' });
+  }
+});
+
 // Get single provider (requires authentication)
 router.get('/:id', authenticate, async (req, res) => {
   try {

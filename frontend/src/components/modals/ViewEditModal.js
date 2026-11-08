@@ -8,6 +8,9 @@ import ConfirmationModal from './ConfirmationModal';
 import { useAudit } from '../../hooks/useAudit';
 import { isProvider, isPatient } from '../../utils/rolePermissions';
 import ThemedSelect from '../../components/forms/ThemedSelect';
+import {
+  withFallback, bookableProviders, participantName,
+} from '../../utils/appointmentParticipants';
 
 const ViewEditModal = ({
   theme,
@@ -46,6 +49,8 @@ const ViewEditModal = ({
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
   const [appointmentTypes, setAppointmentTypes] = useState([]);
+  const [bookable, setBookable] = useState([]);
+  const [offerings, setOfferings] = useState([]);
 
   // Get setLanguage from AppContext for updating language preference
   const { setLanguage } = useApp();
@@ -148,6 +153,26 @@ const ViewEditModal = ({
     if (editingItem?.type === 'appointment') {
       fetchAppointmentTypes();
     }
+  }, [api, editingItem?.type]);
+
+  // The providers and services an appointment can be moved to.
+  //
+  // Both were missing here. The provider dropdown was built from the `users` prop alone —
+  // /api/users, which is admin-only, so a doctor reassigning an appointment saw an empty
+  // list — and there was no service field at all, so an offering chosen when the
+  // appointment was booked could never afterwards be seen or corrected.
+  useEffect(() => {
+    if (editingItem?.type !== 'appointment') return undefined;
+    let live = true;
+    api.getBookableProviders()
+      .then((rows) => { if (live) setBookable(Array.isArray(rows) ? rows : []); })
+      .catch((error) => console.error('Error fetching bookable providers:', error));
+    // is_active only, for the same reason as the new-appointment form: available_online is
+    // about patient self-booking and filtering on it hides in-clinic-only services.
+    api.getOfferings({ is_active: true })
+      .then((rows) => { if (live) setOfferings(Array.isArray(rows) ? rows : []); })
+      .catch((error) => console.error('Error fetching offerings:', error));
+    return () => { live = false; };
   }, [api, editingItem?.type]);
 
   // Fetch prescriptions for patient when viewing
@@ -387,6 +412,31 @@ const ViewEditModal = ({
   const isView = currentView === 'view';
   const { type, data } = editingItem;
 
+  // ── the two participants an appointment can be moved between ────────────────────────
+  //
+  // Each list carries the appointment's CURRENT choice even when the source lists do not,
+  // so opening an appointment never shows a blank where it has a value. Without that, an
+  // appointment whose provider has since left the practice — or whose provider simply is
+  // not in the prop the host screen passed — opened with an empty Provider box, and the
+  // obvious reading of an empty box is "this appointment has no provider".
+  const appointmentPatientId = editData.patientId || editData.patient_id || null;
+  const appointmentPatient = appointmentPatientId
+    ? { id: appointmentPatientId, name: editData.patient, mrn: editData.mrn }
+    : null;
+
+  const appointmentProviderId = editData.providerId || editData.provider_id || null;
+  const appointmentProviders = withFallback(
+    bookableProviders({ fetched: bookable, passed: users, currentUser: user }),
+    appointmentProviderId
+      ? {
+        id: appointmentProviderId,
+        first_name: editData.provider_first_name,
+        last_name: editData.provider_last_name,
+        name: editData.doctor || editData.provider_name,
+      }
+      : null,
+  );
+
   // Handle adding/updating preferred pharmacy
   const handleAddPreferredPharmacy = async () => {
     if (!selectedPharmacyId || !editingItem?.data?.id) {
@@ -442,6 +492,9 @@ const ViewEditModal = ({
           appointmentData.appointment_type = editData.type;
           appointmentData.patient_id = editData.patientId || editData.patient_id;
           appointmentData.provider_id = editData.providerId || editData.provider_id;
+          // Empty string means "no service" to the select but is not a uuid; send null so
+          // the column is cleared rather than the update failing on a cast.
+          appointmentData.offering_id = editData.offering_id || null;
 
           // Auto-update status to completed if appointment is in the past and currently scheduled
           const now = new Date();
@@ -645,9 +698,12 @@ const ViewEditModal = ({
                       }}
                     >
                       <option value="">{t.selectPatient || 'Select Patient'}</option>
-                      {patients.map(p => (
+                      {/* The appointment's own patient is added when the list does not
+                          hold them, so an appointment never opens showing a blank patient
+                          it in fact has. */}
+                      {withFallback(patients, appointmentPatient).map(p => (
                         <option key={p.id} value={p.id}>
-                          {p.name || `${p.first_name} ${p.last_name}` || `${p.firstName} ${p.lastName}`} {p.mrn ? `- ${p.mrn}` : ''}
+                          {participantName(p)}{p.mrn ? ` - ${p.mrn}` : ''}
                         </option>
                       ))}
                     </ThemedSelect>
@@ -661,16 +717,21 @@ const ViewEditModal = ({
                     <ThemedSelect
                       theme={theme}
                       focusClass="focus:border-cyan-500"
-                      value={editData.providerId || editData.provider_id}
+                      value={editData.providerId || editData.provider_id || ''}
                       onChange={(e) => {
-                        const provider = users?.find(u => u.id.toString() === e.target.value);
-                        setEditData({...editData, providerId: e.target.value, provider_id: e.target.value, doctor: provider ? `${provider.first_name || provider.firstName} ${provider.last_name || provider.lastName}` : ''});
+                        const provider = appointmentProviders.find(u => String(u.id) === e.target.value);
+                        setEditData({...editData, providerId: e.target.value, provider_id: e.target.value, doctor: participantName(provider)});
                       }}
                     >
                       <option value="">{t.selectProvider || 'Select Provider'}</option>
-                      {users?.filter(u => u.role === 'doctor' || u.role === 'physician' || u.role === 'provider' || u.role === 'admin').map(provider => (
+                      {/* Same rule as the new-appointment form, from the shared helper.
+                          This list used to come from the `users` prop filtered on
+                          doctor/physician/provider/admin: it offered admins, dropped every
+                          providers-table row (those carry no role), and on a non-admin
+                          account the prop itself is empty. */}
+                      {appointmentProviders.map(provider => (
                         <option key={provider.id} value={provider.id}>
-                          {`${provider.first_name || provider.firstName} ${provider.last_name || provider.lastName}`.trim() || provider.email}
+                          {participantName(provider)}
                         </option>
                       ))}
                     </ThemedSelect>
@@ -717,6 +778,40 @@ const ViewEditModal = ({
                       {appointmentTypes.map(type => (
                         <option key={type.id} value={type.name}>
                           {type.name}
+                        </option>
+                      ))}
+                    </ThemedSelect>
+                  )}
+                </div>
+                <div>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                    {t.service || 'Service/Offering'} <span className="text-gray-400 text-xs">({t.optional || 'Optional'})</span>
+                  </label>
+                  {/* New here. A service could be chosen when booking and never seen or
+                      corrected afterwards, so a booking made against the wrong offering
+                      stayed that way. */}
+                  {isView ? (
+                    <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                      {offerings.find(o => String(o.id) === String(editData.offering_id))?.name
+                        || t.notApplicable || 'N/A'}
+                    </p>
+                  ) : (
+                    <ThemedSelect
+                      theme={theme}
+                      focusClass="focus:border-cyan-500"
+                      value={editData.offering_id || ''}
+                      onChange={(e) => setEditData({
+                        ...editData,
+                        offering_id: e.target.value || null,
+                        // Keep the duration in step with the service, as booking does.
+                        duration: offerings.find(o => String(o.id) === e.target.value)?.duration_minutes
+                          || editData.duration,
+                      })}
+                    >
+                      <option value="">{t.selectService || 'Select a service (optional)'}</option>
+                      {offerings.map(o => (
+                        <option key={o.id} value={o.id}>
+                          {o.name}{o.duration_minutes ? ` (${o.duration_minutes} min)` : ''}
                         </option>
                       ))}
                     </ThemedSelect>

@@ -4,40 +4,9 @@ import ConfirmationModal from '../modals/ConfirmationModal';
 import { useAudit } from '../../hooks/useAudit';
 import { toLocalDateTimeString } from '../../utils/formatters';
 import ThemedSelect from './ThemedSelect';
-
-// Which roles can hold an appointment. The provider list and the "default to whoever is
-// booking" rule read the same constant, so the person defaulted into the field is always
-// someone the field can actually offer.
-const PROVIDER_ROLES = ['physician', 'doctor'];
-
-const roleOf = (u) => u?.role || u?.activeRole || u?.active_role || null;
-
-/**
- * Is this row from a provider list a provider?
- *
- * Lenient about a missing role on purpose: some callers pass rows from the providers
- * table, which carries no role column because every row in it is a provider.
- */
-const isProviderRow = (u) => {
-  const role = roleOf(u);
-  return role ? PROVIDER_ROLES.includes(role) : true;
-};
-
-/**
- * Is the SIGNED-IN user a provider?
- *
- * Strict, unlike isProviderRow: the signed-in user always has a role, and the leniency
- * that is right for a providers-table row would quietly default a receptionist into the
- * provider field — booking the appointment against the person at the front desk.
- */
-const isProviderUser = (u) => PROVIDER_ROLES.includes(roleOf(u));
-
-/** Append `extra` unless the list already has a row with that id. */
-const withFallback = (list, extra) => {
-  const rows = list || [];
-  if (!extra?.id) return rows;
-  return rows.some((r) => String(r.id) === String(extra.id)) ? rows : [...rows, extra];
-};
+import {
+  isProviderUser, withFallback, bookableProviders, participantName as nameOf,
+} from '../../utils/appointmentParticipants';
 
 const NewAppointmentForm = ({ theme, api, patients, users, patient, user, onClose, onSuccess, addNotification, t }) => {
   const { logFormView, logCreate, logError, startAction } = useAudit();
@@ -65,6 +34,7 @@ const NewAppointmentForm = ({ theme, api, patients, users, patient, user, onClos
   const [conflictError, setConflictError] = useState(null);
   const [offerings, setOfferings] = useState([]);
   const [appointmentTypes, setAppointmentTypes] = useState([]);
+  const [fetchedProviders, setFetchedProviders] = useState([]);
 
   // Log form view on mount
   useEffect(() => {
@@ -84,7 +54,12 @@ const NewAppointmentForm = ({ theme, api, patients, users, patient, user, onClos
   useEffect(() => {
     const fetchOfferings = async () => {
       try {
-        const data = await api.getOfferings({ is_active: true, available_online: true });
+        // NOT filtered by available_online. That flag means "a patient may book this
+        // through the portal"; this form is staff booking in the clinic, and filtering on
+        // it hid every in-clinic-only service — a practice whose services are all
+        // internal saw an empty Services dropdown and concluded the field was broken.
+        // No other caller of getOfferings sends this filter, the patient portal included.
+        const data = await api.getOfferings({ is_active: true });
         // Guarded because the whole form is rendered from this: a response that is not an
         // array (an error body, a 204, a shape change) reached `offerings.map` and took
         // the entire appointment form down with a white screen, rather than costing one
@@ -95,6 +70,19 @@ const NewAppointmentForm = ({ theme, api, patients, users, patient, user, onClos
       }
     };
     fetchOfferings();
+  }, [api]);
+
+  // Who can be booked. Fetched here rather than relying on the `users` prop: on the
+  // dashboard and the practice calendar that prop comes from /api/users, which is
+  // admin-only — for a doctor it came back 403 and empty, so the provider dropdown held
+  // nothing but the placeholder. Best-effort: the prop still contributes, so a failure
+  // here degrades to the old list rather than emptying the field.
+  useEffect(() => {
+    let live = true;
+    api.getBookableProviders()
+      .then((rows) => { if (live) setFetchedProviders(Array.isArray(rows) ? rows : []); })
+      .catch((error) => console.error('Error fetching bookable providers:', error));
+    return () => { live = false; };
   }, [api]);
 
   // Fetch appointment types
@@ -148,11 +136,13 @@ const NewAppointmentForm = ({ theme, api, patients, users, patient, user, onClos
       setFormData(prev => ({ ...prev, providerId: String(user.id) }));
       return;
     }
-    const firstProvider = (users || []).find(isProviderRow);
+    // Falls back over the same merged list the dropdown offers, so the default is never a
+    // provider the field cannot show.
+    const firstProvider = bookableProviders({ fetched: fetchedProviders, passed: users, currentUser: user })[0];
     if (firstProvider) {
       setFormData(prev => ({ ...prev, providerId: String(firstProvider.id) }));
     }
-  }, [users, user, formData.providerId]);
+  }, [users, user, fetchedProviders, formData.providerId]);
 
   // Auto-update duration when offering is selected
   useEffect(() => {
@@ -164,16 +154,7 @@ const NewAppointmentForm = ({ theme, api, patients, users, patient, user, onClos
     }
   }, [formData.offeringId, offerings]);
 
-  const nameOf = (p) =>
-    `${p.first_name || p.firstName || ''} ${p.last_name || p.lastName || ''}`.trim() || p.email || '—';
-
-  // Only providers can hold an appointment, but the person defaulted into the field has to
-  // be offered by it as well, or the form would show a name the dropdown cannot produce —
-  // and changing away from it would be a one-way door.
-  const providers = withFallback(
-    (users || []).filter(isProviderRow),
-    isProviderUser(user) ? user : null,
-  );
+  const providers = bookableProviders({ fetched: fetchedProviders, passed: users, currentUser: user });
 
   // Likewise for the patient: a chart-side booking arrives with one patient and, before
   // this change, a patient list of exactly that patient. Both the default and a real
