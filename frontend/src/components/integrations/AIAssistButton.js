@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { Sparkles, X, Bot, AlertTriangle, Copy, Check, Eye, Pencil, ShieldCheck, ListPlus } from 'lucide-react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { Sparkles, X, Bot, AlertTriangle, Copy, Check, Eye, Pencil, ShieldCheck, ListPlus, FileInput } from 'lucide-react';
 import api from '../../api/apiService';
 import { useOptionalApp } from '../../context/AppContext';
 import { getTranslations } from '../../config/translations';
@@ -11,9 +11,12 @@ import { MarkdownView, toPlainText, extractCodes } from './markdown';
 //  * Never starts on its own: opening the dialog shows the text that WOULD be sent;
 //    nothing goes to the AI until the user presses Generate.
 //  * The draft is shown as formatted Markdown, with an Edit view.
-//  * Human in the loop: the user accepts, edits or rejects the draft (clinical features
-//    also need the sign-off box). Only an accepted draft reaches `onApply` (as plain text)
-//    or `onApplyCodes` (only the codes the user ticks). The form is still saved as usual.
+//  * The actions sit on the draft itself:
+//      - "Update SOAP text" / "Accept & insert"  -> onApply (plain text)
+//      - "Add selected codes"                    -> onApplyCodes (only the ticked codes)
+//    The first action a reviewer takes records their acceptance (with the sign-off box for
+//    clinical features); after that the text is locked and the other action can still be
+//    used. The form is saved as usual — nothing here saves a record.
 
 // Shared across every button on the page; refreshed at most once a minute. A failed load
 // is not cached, so a slow first request cannot hide the buttons for a minute.
@@ -59,6 +62,8 @@ const AIAssistButton = ({
   getInput,           // () => string: the context offered to the AI (user can edit it)
   onApply,            // (text) => void: receives the ACCEPTED text only
   applyTransform,     // (markdown) => string: what onApply receives; default = plain text
+  applyLabelKey,      // translation key for the insert button (e.g. "Update SOAP text")
+  applyLabel,         // English fallback for the insert button
   onApplyCodes,       // ({icd, cpt}) => void: receives only the codes the user ticked
   label,              // English fallback for the button text
   labelKey,           // translation key for the button text
@@ -82,10 +87,14 @@ const AIAssistButton = ({
   const [view, setView] = useState('formatted');  // 'formatted' | 'edit'
   const [attested, setAttested] = useState(false);
   const [reason, setReason] = useState('');
-  const [done, setDone] = useState(null);         // { status, finalText }
+  const [accepted, setAccepted] = useState(null); // review result once accepted
+  const [rejected, setRejected] = useState(false);
+  const [applied, setApplied] = useState(false);  // text inserted into the form
   const [copied, setCopied] = useState(false);
   const [codes, setCodes] = useState([]);         // [{type, code, description, verified, official, checked}]
+  const [checkingCodes, setCheckingCodes] = useState(false);
   const [codesAdded, setCodesAdded] = useState(0);
+  const verifyRun = useRef(0);
 
   useEffect(() => {
     let alive = true;
@@ -96,11 +105,35 @@ const AIAssistButton = ({
     return () => { alive = false; };
   }, [featureKey]);
 
+  // List the codes in the draft as soon as it arrives (and again after edits), each
+  // checked against the practice's code list. Only found codes are pre-ticked; a choice
+  // the user already made for a code is kept.
+  useEffect(() => {
+    if (!onApplyCodes || !draft || accepted || rejected) return undefined;
+    const run = ++verifyRun.current;
+    const timer = setTimeout(async () => {
+      const found = extractCodes(text);
+      const list = [
+        ...found.icd.map((c) => ({ ...c, type: 'icd' })),
+        ...found.cpt.map((c) => ({ ...c, type: 'cpt' })),
+      ];
+      setCheckingCodes(true);
+      const rows = await Promise.all(list.map(async (c) => ({ ...c, official: await verifyCode(c.code, c.type) })));
+      if (run !== verifyRun.current) return;
+      setCodes((prev) => rows.map((c) => {
+        const before = prev.find((p) => p.type === c.type && p.code === c.code);
+        return { ...c, verified: !!c.official, checked: before ? before.checked : !!c.official };
+      }));
+      setCheckingCodes(false);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [text, draft, accepted, rejected, onApplyCodes]);
+
   if (!feature) return null;
 
   const featureName = tr(`aiFeat_${featureKey}`, featureKey.replace(/_/g, ' '));
   const input_ = `w-full px-3 py-2 rounded-lg text-sm border focus:outline-none focus:ring-2 focus:ring-indigo-500 ${dark ? 'bg-slate-900 text-white border-slate-700' : 'bg-white text-gray-900 border-gray-300'}`;
-  const panel = `w-full px-3 py-2 rounded-lg border max-h-[45vh] overflow-y-auto ${dark ? 'bg-slate-900 border-slate-700' : 'bg-gray-50 border-gray-300'}`;
+  const panel = `w-full px-3 py-2 rounded-lg border max-h-[40vh] overflow-y-auto ${dark ? 'bg-slate-900 border-slate-700' : 'bg-gray-50 border-gray-300'}`;
   const muted = `text-xs ${dark ? 'text-slate-400' : 'text-gray-500'}`;
   const btn = 'px-3 py-2 rounded-lg text-sm flex items-center justify-center gap-2 transition-colors disabled:opacity-50 disabled:cursor-not-allowed';
   const btnPrimary = `${btn} bg-indigo-500 hover:bg-indigo-600 text-white`;
@@ -110,7 +143,8 @@ const AIAssistButton = ({
     // Prefill only — nothing is sent yet.
     setInput(typeof getInput === 'function' ? String(getInput() || '') : '');
     setDraft(null); setText(''); setView('formatted'); setAttested(false); setReason('');
-    setDone(null); setError(null); setCopied(false); setCodes([]); setCodesAdded(0);
+    setAccepted(null); setRejected(false); setApplied(false); setError(null); setCopied(false);
+    setCodes([]); setCodesAdded(0); setCheckingCodes(false);
     setOpen(true);
   };
 
@@ -130,48 +164,33 @@ const AIAssistButton = ({
     }
   };
 
-  /** After acceptance: list the codes in the approved text, checked against the code list. */
-  const prepareCodes = async (finalText) => {
-    const found = extractCodes(finalText);
-    const list = [
-      ...found.icd.map((c) => ({ ...c, type: 'icd' })),
-      ...found.cpt.map((c) => ({ ...c, type: 'cpt' })),
-    ];
-    if (!list.length) return;
-    const checked = await Promise.all(list.map(async (c) => {
-      const official = await verifyCode(c.code, c.type);
-      // Only codes found in the practice's code list are ticked by default.
-      return { ...c, official, verified: !!official, checked: !!official };
-    }));
-    setCodes(checked);
+  /** Record the reviewer's acceptance once; later actions reuse it. */
+  const ensureAccepted = async () => {
+    if (accepted) return accepted;
+    const res = await api.reviewAISuggestion(draft.id, {
+      action: text !== draft.draft ? 'edit' : 'accept',
+      finalText: text,
+      attested,
+    });
+    setAccepted(res);
+    setView('formatted');
+    return res;
   };
 
-  const review = async (action) => {
+  const act = async (fn) => {
     setBusy(true); setError(null);
-    try {
-      const res = await api.reviewAISuggestion(draft.id, {
-        action: action === 'accept' && text !== draft.draft ? 'edit' : action,
-        finalText: text,
-        reason,
-        attested,
-      });
-      if (res.status !== 'rejected') {
-        if (typeof onApply === 'function') {
-          const value = typeof applyTransform === 'function' ? applyTransform(res.finalText) : toPlainText(res.finalText);
-          if (value) onApply(value);
-        }
-        // Check codes before showing the outcome, so "no codes" never flashes.
-        if (typeof onApplyCodes === 'function') await prepareCodes(res.finalText || '');
-      }
-      setDone(res);
-    } catch (e) {
-      setError(e.message);
-    } finally {
-      setBusy(false);
-    }
+    try { await fn(); } catch (e) { setError(e.message); } finally { setBusy(false); }
   };
 
-  const addCodes = () => {
+  const applyText = () => act(async () => {
+    const res = await ensureAccepted();
+    const value = typeof applyTransform === 'function' ? applyTransform(res.finalText) : toPlainText(res.finalText);
+    if (value) onApply(value);
+    setApplied(true);
+  });
+
+  const addCodes = () => act(async () => {
+    await ensureAccepted();
     const pickRow = (c) => ({
       code: c.official ? c.official.code : c.code,
       description: (c.official && c.official.description) || c.description || '',
@@ -183,18 +202,27 @@ const AIAssistButton = ({
       cpt: chosen.filter((c) => c.type === 'cpt').map(pickRow),
     });
     setCodesAdded(chosen.length);
-  };
+  });
+
+  const acceptOnly = () => act(async () => { await ensureAccepted(); });
+
+  const reject = () => act(async () => {
+    await api.reviewAISuggestion(draft.id, { action: 'reject', reason });
+    setRejected(true);
+  });
 
   const copy = async () => {
     try {
-      await navigator.clipboard.writeText(done?.finalText || text);
+      await navigator.clipboard.writeText((accepted && accepted.finalText) || text);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch { /* clipboard blocked */ }
   };
 
   const hasUnknownTokens = /\[\[[A-Z_]+_\d+\]\]/.test(text);
-  const canEdit = draft && draft.canReview && !done;
+  const canEdit = draft && draft.canReview && !accepted && !rejected;
+  const signOffMissing = draft && draft.attestationRequired && !attested && !accepted;
+  const hasActions = !!onApply || !!onApplyCodes;
 
   const ViewToggle = () => (
     <div className="inline-flex rounded-lg overflow-hidden border border-current/20 text-xs" role="tablist">
@@ -207,6 +235,10 @@ const AIAssistButton = ({
       ))}
     </div>
   );
+
+  const applyButtonLabel = applyLabelKey
+    ? tr(applyLabelKey, applyLabel || 'Accept & insert')
+    : (applyLabel || tr('aiAcceptInsert', 'Accept & insert'));
 
   return (
     <>
@@ -259,8 +291,16 @@ const AIAssistButton = ({
               </>
             )}
 
-            {/* Step 2: review the draft. */}
-            {draft && !done && (
+            {/* Rejected: nothing changes. */}
+            {draft && rejected && (
+              <div className="space-y-3">
+                <p className="text-sm">{tr('aiDraftRejected', 'Draft rejected. Nothing was changed.')}</p>
+                <button type="button" className={btnPrimary} onClick={() => setOpen(false)}>{tr('aiClose', 'Close')}</button>
+              </div>
+            )}
+
+            {/* Step 2: the draft, with its actions. */}
+            {draft && !rejected && (
               <>
                 <div className="flex items-start gap-2 p-2 rounded bg-indigo-500/10 text-indigo-400 text-xs">
                   <Bot className="w-4 h-4 shrink-0" />{tr('aiDraftBanner', 'AI-generated draft. Check every fact before you accept it.')}
@@ -278,105 +318,115 @@ const AIAssistButton = ({
                     <AlertTriangle className="w-4 h-4 shrink-0" />{tr('aiUnknownTokens', 'The draft contains placeholders that could not be matched. Replace them before accepting.')}
                   </div>
                 )}
-                {view === 'formatted' || !draft.canReview ? (
-                  <div className={panel} data-testid="ai-draft-formatted"><MarkdownView text={text} /></div>
-                ) : (
+                {view === 'edit' && canEdit ? (
                   <textarea aria-label={tr('aiDraftText', 'Draft text')} rows={12} className={`${input_} font-mono`} value={text}
                     onChange={(e) => setText(e.target.value)} />
+                ) : (
+                  <div className={panel} data-testid="ai-draft-formatted"><MarkdownView text={text} /></div>
                 )}
 
-                {draft.canReview ? (
+                {!draft.canReview && (
+                  <p className={muted}>{tr('aiSentToQueue', 'You cannot approve this type of draft. It is waiting in the Review queue for a reviewer with the right role.')}</p>
+                )}
+
+                {draft.canReview && (
                   <>
-                    {draft.attestationRequired && (
+                    {draft.attestationRequired && !accepted && (
                       <label className="flex items-start gap-2">
                         <input type="checkbox" className="mt-0.5 rounded" checked={attested} onChange={(e) => setAttested(e.target.checked)} />
                         <span className="text-sm">{tr('aiAttestText', 'I reviewed this draft and take responsibility for its content.')}</span>
                       </label>
                     )}
-                    <div>
-                      <label className={`block text-xs font-medium mb-1 ${dark ? 'text-slate-400' : 'text-gray-600'}`} htmlFor={`ai-assist-reason-${featureKey}`}>
-                        {tr('aiRejectReason', 'Reason (required to reject)')}
-                      </label>
-                      <input id={`ai-assist-reason-${featureKey}`} className={input_} value={reason} onChange={(e) => setReason(e.target.value)} />
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <button type="button" className={btnPrimary} disabled={busy || (draft.attestationRequired && !attested)} onClick={() => review('accept')}>
-                        {onApply
-                          ? (text !== draft.draft ? tr('aiAcceptEditedInsert', 'Save edits & insert') : tr('aiAcceptInsert', 'Accept & insert'))
-                          : (text !== draft.draft ? tr('aiAcceptEdited', 'Save edits & accept') : tr('aiAccept', 'Accept'))}
-                      </button>
-                      <button type="button" className={btnSecondary} disabled={busy || !reason.trim()} onClick={() => review('reject')}>
-                        {tr('aiReject', 'Reject')}
-                      </button>
-                    </div>
-                  </>
-                ) : (
-                  <p className={muted}>{tr('aiSentToQueue', 'You cannot approve this type of draft. It is waiting in the Review queue for a reviewer with the right role.')}</p>
-                )}
-              </>
-            )}
-
-            {/* Step 3: outcome, and optional transfer of codes. */}
-            {done && (
-              <div className="space-y-3">
-                {done.status === 'rejected' ? (
-                  <p className="text-sm">{tr('aiDraftRejected', 'Draft rejected. Nothing was changed.')}</p>
-                ) : (
-                  <>
-                    {onApply ? (
-                      <p className="text-sm text-green-500">{tr('aiInsertedSaveReminder', 'Inserted into the form. Review it and save the form as usual.')}</p>
-                    ) : (
-                      <p className="text-sm text-green-500">{tr('aiAcceptedCopyHint', 'Accepted. Copy the text to use it.')}</p>
-                    )}
-                    {!onApply && (
-                      <>
-                        <div className={panel}><MarkdownView text={done.finalText || ''} /></div>
-                        <button type="button" className={btnSecondary} onClick={copy}>
-                          {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}{copied ? tr('aiCopied', 'Copied') : tr('aiCopy', 'Copy')}
-                        </button>
-                      </>
+                    {accepted && (
+                      <p className="text-xs text-green-500 flex items-center gap-1"><ShieldCheck className="w-3.5 h-3.5" />{tr('aiAcceptedLocked', 'Accepted. The text is locked; you can still use the actions below.')}</p>
                     )}
 
-                    {onApplyCodes && codes.length > 0 && (
-                      <div className={`rounded-lg border p-3 space-y-2 ${dark ? 'border-slate-700' : 'border-gray-300'}`}>
+                    {/* Codes in the draft, ready to add to the form. */}
+                    {onApplyCodes && (
+                      <div className={`rounded-lg border p-3 space-y-2 ${dark ? 'border-slate-700' : 'border-gray-300'}`} data-testid="ai-code-transfer">
                         <div className="flex items-center gap-2 font-medium text-sm"><ListPlus className="w-4 h-4 text-indigo-400" />{tr('aiTransferCodesTitle', 'Add suggested codes to the form')}</div>
-                        <p className={muted}>{tr('aiTransferCodesHint', 'Codes found in your code list are ticked. Codes not found are left unticked — check them before adding.')}</p>
-                        <ul className="space-y-1">
-                          {codes.map((c, idx) => (
-                            <li key={`${c.type}-${c.code}`}>
-                              <label className="flex items-start gap-2 text-sm">
-                                <input type="checkbox" className="mt-0.5 rounded" checked={c.checked} disabled={codesAdded > 0}
-                                  onChange={(e) => setCodes((list) => list.map((x, i) => (i === idx ? { ...x, checked: e.target.checked } : x)))} />
-                                <span className="min-w-0">
-                                  <span className="font-mono font-semibold">{c.code}</span>
-                                  <span className={`ml-2 px-1.5 py-0.5 rounded text-[10px] ${c.type === 'cpt' ? 'bg-sky-500/20 text-sky-500' : 'bg-violet-500/20 text-violet-500'}`}>{c.type === 'cpt' ? 'CPT' : 'ICD-10'}</span>
-                                  <span className="ml-2">{(c.official && c.official.description) || c.description}</span>
-                                  <span className={`block text-xs ${c.verified ? 'text-green-500' : 'text-amber-500'}`}>
-                                    {c.verified
-                                      ? <><ShieldCheck className="inline w-3 h-3 mr-1" />{tr('aiCodeVerified', 'Found in your code list')}</>
-                                      : <><AlertTriangle className="inline w-3 h-3 mr-1" />{tr('aiCodeNotFound', 'Not found in your code list')}</>}
-                                  </span>
-                                </span>
-                              </label>
-                            </li>
-                          ))}
-                        </ul>
-                        {codesAdded > 0 ? (
-                          <p className="text-sm text-green-500">{fill(tr('aiCodesAdded', '{n} code(s) added to the form. Save the form as usual.'), { n: codesAdded })}</p>
+                        {checkingCodes && codes.length === 0 ? (
+                          <p className={muted}>{tr('aiCheckingCodes', 'Checking codes against your code list...')}</p>
+                        ) : codes.length === 0 ? (
+                          <p className={muted}>{tr('aiNoCodesFound', 'No ICD-10 or CPT codes were found in the draft.')}</p>
                         ) : (
-                          <button type="button" className={btnPrimary} disabled={!codes.some((c) => c.checked)} onClick={addCodes}>
-                            <ListPlus className="w-4 h-4" />{tr('aiAddSelectedCodes', 'Add selected codes to ICD-10 / CPT fields')}
-                          </button>
+                          <>
+                            <p className={muted}>{tr('aiTransferCodesHint', 'Codes found in your code list are ticked. Codes not found are left unticked — check them before adding.')}</p>
+                            <ul className="space-y-1">
+                              {codes.map((c, idx) => (
+                                <li key={`${c.type}-${c.code}`}>
+                                  <label className="flex items-start gap-2 text-sm">
+                                    <input type="checkbox" className="mt-0.5 rounded" checked={c.checked} disabled={codesAdded > 0}
+                                      aria-label={`${c.code} ${c.type === 'cpt' ? 'CPT' : 'ICD-10'}`}
+                                      onChange={(e) => setCodes((list) => list.map((x, i) => (i === idx ? { ...x, checked: e.target.checked } : x)))} />
+                                    <span className="min-w-0">
+                                      <span className="font-mono font-semibold">{c.code}</span>
+                                      <span className={`ml-2 px-1.5 py-0.5 rounded text-[10px] ${c.type === 'cpt' ? 'bg-sky-500/20 text-sky-500' : 'bg-violet-500/20 text-violet-500'}`}>{c.type === 'cpt' ? 'CPT' : 'ICD-10'}</span>
+                                      <span className="ml-2">{(c.official && c.official.description) || c.description}</span>
+                                      <span className={`block text-xs ${c.verified ? 'text-green-500' : 'text-amber-500'}`}>
+                                        {c.verified
+                                          ? <><ShieldCheck className="inline w-3 h-3 mr-1" />{tr('aiCodeVerified', 'Found in your code list')}</>
+                                          : <><AlertTriangle className="inline w-3 h-3 mr-1" />{tr('aiCodeNotFound', 'Not found in your code list')}</>}
+                                      </span>
+                                    </span>
+                                  </label>
+                                </li>
+                              ))}
+                            </ul>
+                            {codesAdded > 0 ? (
+                              <p className="text-sm text-green-500">{fill(tr('aiCodesAdded', '{n} code(s) added to the form. Save the form as usual.'), { n: codesAdded })}</p>
+                            ) : (
+                              <button type="button" className={btnPrimary} disabled={busy || signOffMissing || !codes.some((c) => c.checked)} onClick={addCodes}>
+                                <ListPlus className="w-4 h-4" />{tr('aiAddSelectedCodes', 'Add selected codes to ICD-10 / CPT fields')}
+                              </button>
+                            )}
+                          </>
                         )}
                       </div>
                     )}
-                    {onApplyCodes && codes.length === 0 && (
-                      <p className={muted}>{tr('aiNoCodesFound', 'No ICD-10 or CPT codes were found in the draft.')}</p>
+
+                    {/* Text actions. */}
+                    <div className="flex flex-wrap gap-2">
+                      {onApply && (applied ? (
+                        <p className="text-sm text-green-500 self-center">{tr('aiInsertedSaveReminder', 'Inserted into the form. Review it and save the form as usual.')}</p>
+                      ) : (
+                        <button type="button" className={btnPrimary} disabled={busy || signOffMissing} onClick={applyText}>
+                          <FileInput className="w-4 h-4" />{applyButtonLabel}
+                        </button>
+                      ))}
+                      {!hasActions && !accepted && (
+                        <button type="button" className={btnPrimary} disabled={busy || signOffMissing} onClick={acceptOnly}>
+                          {text !== draft.draft ? tr('aiAcceptEdited', 'Save edits & accept') : tr('aiAccept', 'Accept')}
+                        </button>
+                      )}
+                      {!hasActions && accepted && (
+                        <button type="button" className={btnSecondary} onClick={copy}>
+                          {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}{copied ? tr('aiCopied', 'Copied') : tr('aiCopy', 'Copy')}
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Reject, until something has been accepted. */}
+                    {!accepted && (
+                      <div className="flex flex-wrap items-end gap-2">
+                        <div className="flex-1 min-w-[12rem]">
+                          <label className={`block text-xs font-medium mb-1 ${dark ? 'text-slate-400' : 'text-gray-600'}`} htmlFor={`ai-assist-reason-${featureKey}`}>
+                            {tr('aiRejectReason', 'Reason (required to reject)')}
+                          </label>
+                          <input id={`ai-assist-reason-${featureKey}`} className={input_} value={reason} onChange={(e) => setReason(e.target.value)} />
+                        </div>
+                        <button type="button" className={btnSecondary} disabled={busy || !reason.trim()} onClick={reject}>
+                          {tr('aiReject', 'Reject')}
+                        </button>
+                      </div>
                     )}
                   </>
                 )}
-                <button type="button" className={btnPrimary} onClick={() => setOpen(false)}>{tr('aiClose', 'Close')}</button>
-              </div>
+
+                {(accepted || !draft.canReview) && (
+                  <button type="button" className={btnSecondary} onClick={() => setOpen(false)}>{tr('aiDone', 'Done')}</button>
+                )}
+              </>
             )}
           </div>
         </div>

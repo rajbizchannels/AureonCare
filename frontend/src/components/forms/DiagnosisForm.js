@@ -680,6 +680,7 @@ const DiagnosisForm = ({
                     patientId={formData.patientId || null} entityType="diagnosis" entityId={editDiagnosis?.id || null}
                     getInput={() => formData.soapNotes || ''}
                     applyTransform={(md) => toPlainText(extractSoap(md) || md)}
+                    applyLabelKey="aiUpdateSoap" applyLabel="Update SOAP text"
                     onApply={(text) => setFormData((prev) => ({ ...prev, soapNotes: text }))}
                     onApplyCodes={({ icd, cpt }) => setFormData((prev) => ({
                       ...prev, icdCodes: mergeCodes(prev.icdCodes, icd), cptCodes: mergeCodes(prev.cptCodes, cpt),
