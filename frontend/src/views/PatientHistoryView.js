@@ -1556,13 +1556,16 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, initia
 
       {/* Inline Forms Area - Between tabs and content */}
       <div className={`${frame} py-6`}>
-        {/* Appointment Form - shown when adding new appointment */}
+        {/* Appointment Form - shown when adding new appointment.
+            `patients` is the full list, not just this one: `patient` is the DEFAULT
+            selection and the booking can still be reassigned. Passing only [patientData]
+            left the dropdown with nothing to change to. */}
         {showAppointmentForm && (
           <div className={`mb-6 p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-white border-gray-300'}`}>
             <NewAppointmentForm
               theme={theme}
               api={api}
-              patients={[patientData]}
+              patients={patients.length ? patients : [patientData]}
               patient={patientData}
               users={providers}
               user={user}

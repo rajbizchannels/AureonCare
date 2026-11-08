@@ -386,11 +386,14 @@ const DashboardView = ({
       {/* Forms - Quick actions are now in header dropdown */}
       {showForm === 'appointment' && (
         <div className={`mb-6 rounded-xl border overflow-hidden ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
+          {/* `user` is passed so a doctor booking from their dashboard is defaulted into
+              the provider field instead of whichever provider happens to come first. */}
           <NewAppointmentForm
             theme={theme}
             api={api}
             patients={patients}
             users={users}
+            user={user}
             onClose={() => setShowForm(null)}
             onSuccess={(newAppointment) => {
               setAppointments([...appointments, newAppointment]);
