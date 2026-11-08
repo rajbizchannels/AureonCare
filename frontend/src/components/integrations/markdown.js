@@ -265,12 +265,23 @@ function sectionItems(md, re) {
 
 /**
  * Medications from a "## Medications" section.
- * Expected line: - `Drug name` strength — dose and frequency — duration
- * @returns {Array<{name, strength, instructions}>}
+ * Expected line: - `Drug name` strength — dose and frequency — duration [generic: X; class: Y]
+ * @returns {Array<{name, strength, instructions, generic, drugClass}>}
  */
 export function extractMedications(md) {
   const seen = new Set();
-  return sectionItems(md, MED_HEADING).map((item) => {
+  return sectionItems(md, MED_HEADING).map((raw) => {
+    // Optional trailing "[generic: X; class: Y]" used to find similar medications.
+    let generic = '';
+    let drugClass = '';
+    const meta = raw.match(/\[([^\]]*(?:generic|class)[^\]]*)\]\s*$/i);
+    const item = meta ? raw.slice(0, meta.index).trim() : raw;
+    if (meta) {
+      const g = meta[1].match(/generic\s*:\s*([^;|]+)/i);
+      const c = meta[1].match(/class\s*:\s*([^;|]+)/i);
+      generic = g ? g[1].trim() : '';
+      drugClass = c ? c[1].trim() : '';
+    }
     const code = item.match(/`([^`]+)`/);
     const parts = stripInline(item).split(/\s+[—–]\s+|\s+-\s+|\s*;\s*/).map((x) => x.trim()).filter(Boolean);
     let head = code ? code[1].trim() : parts[0] || '';
@@ -288,7 +299,7 @@ export function extractMedications(md) {
       rest = rest.slice(atRestStart[0].length);
     }
     const name = head.replace(/[`*]+/g, '').trim();
-    return { name, strength, instructions: rest.replace(/^[\s—–-]+/, '').trim() };
+    return { name, strength, instructions: rest.replace(/^[\s—–-]+/, '').replace(/[\s—–-]+$/, '').trim(), generic, drugClass };
   }).filter((m) => {
     const key = m.name.toLowerCase();
     if (!m.name || seen.has(key)) return false;

@@ -1,6 +1,6 @@
 import React from 'react';
 import '@testing-library/jest-dom';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import api from '../../api/apiService';
 import AIAssistButton, { invalidateAIFeatureCache } from './AIAssistButton';
 
@@ -227,7 +227,7 @@ test('medications and lab tests can be sent to the form from the SOAP dialog', a
   api.reviewAISuggestion.mockResolvedValue({ status: 'accepted', finalText: PLAN_DRAFT });
   fireEvent.click(screen.getByRole('button', { name: /send selected to prescriptions/i }));
   await waitFor(() => expect(onApplyMedications).toHaveBeenCalledWith([
-    { name: 'Ibuprofen', strength: '400 mg', instructions: '1 tablet every 8 hours — 5 days', match: { id: 'm2', drug_name: 'Ibuprofen', strength: '400 mg' } },
+    { name: 'Ibuprofen', strength: '400 mg', instructions: '1 tablet every 8 hours — 5 days', match: { id: 'm2', drug_name: 'Ibuprofen', strength: '400 mg' }, matchType: 'name' },
   ]));
 
   fireEvent.click(screen.getByRole('checkbox', { name: 'Thyroid panel' })); // reviewer opts in
@@ -237,4 +237,50 @@ test('medications and lab tests can be sent to the form from the SOAP dialog', a
     { name: 'Thyroid panel', cpt: null, match: { code: '84443', description: 'TSH' } },
   ]));
   expect(api.reviewAISuggestion).toHaveBeenCalledTimes(1); // one acceptance for all actions
+});
+
+test('a medication not in the drug list is matched by generic, or offers similar ones to pick', async () => {
+  api.getAIFeatures.mockResolvedValue(enabled('ambient_scribe'));
+  const lipitor = { id: 'a1', drug_name: 'Atorvastatin 20mg', strength: '20mg', drug_class: 'Statin' };
+  const simva = { id: 'a2', drug_name: 'Simvastatin 20mg', strength: '20mg', drug_class: 'Statin' };
+  const amox = { id: 'b1', drug_name: 'Amoxicillin 500mg', generic_name: 'Amoxicillin', strength: '500mg' };
+  api.searchMedications.mockImplementation(async (q, drugClass) => {
+    if (drugClass === 'Statin') return [lipitor, simva];
+    if (q === 'Amoxicillin') return [amox];
+    return [];
+  });
+  api.searchMedicalCodes.mockResolvedValue([]);
+  const draft = [
+    '## Medications',
+    '- `Crestor` 10 mg — once daily [generic: Rosuvastatin; class: Statin]',
+    '- `Amoxil` 500 mg — three times daily [generic: Amoxicillin; class: Penicillin Antibiotic]',
+    '- `Unknownex` 1 mg — daily',
+  ].join('\n');
+  const onApplyMedications = jest.fn();
+  render(<AIAssistButton featureKey="ambient_scribe" getInput={() => 'x'} onApplyMedications={onApplyMedications} />);
+  fireEvent.click(await screen.findByRole('button', { name: /ai assist/i }));
+  api.runAIFeature.mockResolvedValue({ id: 's10', draft, canReview: true, phiTokensCount: 0 });
+  fireEvent.click(screen.getByRole('button', { name: /generate draft/i }));
+
+  // Amoxil -> same generic in stock: ticked.
+  expect(await screen.findByRole('checkbox', { name: 'Amoxil' })).toBeChecked();
+  expect(screen.getByText(/same medicine \(generic\)/i)).toBeInTheDocument();
+  // Crestor -> not stocked: unticked, with similar statins offered, nothing chosen for the user.
+  expect(screen.getByRole('checkbox', { name: 'Crestor' })).not.toBeChecked();
+  const group = screen.getByRole('radiogroup', { name: /similar medications for crestor/i });
+  expect(group).toHaveTextContent('Atorvastatin 20mg');
+  expect(group).toHaveTextContent('Simvastatin 20mg');
+  // Unknownex -> nothing similar.
+  expect(screen.getByRole('checkbox', { name: 'Unknownex' })).not.toBeChecked();
+
+  fireEvent.click(within(group).getByRole('radio', { name: /atorvastatin/i }));
+  expect(screen.getByRole('checkbox', { name: 'Crestor' })).toBeChecked();
+  expect(screen.getByText(/alternative chosen: atorvastatin 20mg/i)).toBeInTheDocument();
+
+  api.reviewAISuggestion.mockResolvedValue({ status: 'accepted', finalText: draft });
+  fireEvent.click(screen.getByRole('button', { name: /send selected to prescriptions/i }));
+  await waitFor(() => expect(onApplyMedications).toHaveBeenCalledWith([
+    expect.objectContaining({ name: 'Crestor', match: lipitor, matchType: 'alternative' }),
+    expect.objectContaining({ name: 'Amoxil', match: amox, matchType: 'generic' }),
+  ]));
 });

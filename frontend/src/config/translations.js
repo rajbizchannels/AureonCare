@@ -1,6 +1,12 @@
 export const translations = {
   en: {
     // AI integrations (Integrations page)
+    aiMedSimilarFor: "Similar medications for {drug}",
+    aiMedSimilarHint: "Not in your drug list. Similar medications you stock — pick one only if it is clinically appropriate:",
+    aiMedGeneric: "Same medicine (generic) in your drug list: {drug}",
+    aiMedAlternativeChosen: "Alternative chosen: {drug} — confirm when prescribing",
+    aiMedNotFoundPickSimilar: "Not found — choose a similar medication above, or search in ePrescribe",
+    dxAlternativeTo: "alternative to {drug}",
     aiTransferMedsTitle: "Send medications to Prescriptions",
     aiTransferMedsHint: "Medications found in your drug list are ticked. Each one opens in ePrescribe for you to complete and check.",
     aiNoMedsFound: "No medications were found in the draft.",
@@ -2010,6 +2016,12 @@ export const translations = {
   },
   es: {
     // AI integrations (Integrations page)
+    aiMedSimilarFor: "Medicamentos similares a {drug}",
+    aiMedSimilarHint: "No está en su lista. Medicamentos similares que tiene — elija uno solo si es clínicamente adecuado:",
+    aiMedGeneric: "Mismo medicamento (genérico) en su lista: {drug}",
+    aiMedAlternativeChosen: "Alternativa elegida: {drug} — confírmela al prescribir",
+    aiMedNotFoundPickSimilar: "No encontrado: elija un medicamento similar arriba o búsquelo en ePrescribe",
+    dxAlternativeTo: "alternativa a {drug}",
     aiTransferMedsTitle: "Enviar medicamentos a Recetas",
     aiTransferMedsHint: "Los medicamentos encontrados en su lista están marcados. Cada uno se abre en ePrescribe para completarlo y revisarlo.",
     aiNoMedsFound: "No se encontraron medicamentos en el borrador.",
@@ -4019,6 +4031,12 @@ export const translations = {
   },
   fr: {
     // AI integrations (Integrations page)
+    aiMedSimilarFor: "Médicaments similaires à {drug}",
+    aiMedSimilarHint: "Absent de votre liste. Médicaments similaires disponibles — n’en choisissez un que s’il est cliniquement approprié :",
+    aiMedGeneric: "Même médicament (générique) dans votre liste : {drug}",
+    aiMedAlternativeChosen: "Alternative choisie : {drug} — à confirmer lors de la prescription",
+    aiMedNotFoundPickSimilar: "Introuvable — choisissez un médicament similaire ci-dessus ou recherchez dans ePrescribe",
+    dxAlternativeTo: "alternative à {drug}",
     aiTransferMedsTitle: "Envoyer les médicaments aux Prescriptions",
     aiTransferMedsHint: "Les médicaments trouvés dans votre liste sont cochés. Chacun s’ouvre dans ePrescribe pour être complété et vérifié.",
     aiNoMedsFound: "Aucun médicament trouvé dans le brouillon.",
@@ -6028,6 +6046,12 @@ export const translations = {
   },
   de: {
     // AI integrations (Integrations page)
+    aiMedSimilarFor: "Ähnliche Medikamente zu {drug}",
+    aiMedSimilarHint: "Nicht in Ihrer Liste. Ähnliche vorrätige Medikamente – nur wählen, wenn klinisch angemessen:",
+    aiMedGeneric: "Gleicher Wirkstoff (Generikum) in Ihrer Liste: {drug}",
+    aiMedAlternativeChosen: "Alternative gewählt: {drug} – beim Verordnen bestätigen",
+    aiMedNotFoundPickSimilar: "Nicht gefunden – oben ein ähnliches wählen oder in ePrescribe suchen",
+    dxAlternativeTo: "Alternative zu {drug}",
     aiTransferMedsTitle: "Medikamente an Verordnungen senden",
     aiTransferMedsHint: "Medikamente aus Ihrer Liste sind angehakt. Jedes öffnet sich in ePrescribe zum Vervollständigen und Prüfen.",
     aiNoMedsFound: "Im Entwurf wurden keine Medikamente gefunden.",
@@ -8037,6 +8061,12 @@ export const translations = {
   },
   ar: {
     // AI integrations (Integrations page)
+    aiMedSimilarFor: "أدوية مشابهة لـ {drug}",
+    aiMedSimilarHint: "غير موجود في قائمتك. أدوية مشابهة متوفرة لديك — اختر أحدها فقط إن كان مناسبًا سريريًا:",
+    aiMedGeneric: "الدواء نفسه (اسم علمي) في قائمتك: {drug}",
+    aiMedAlternativeChosen: "تم اختيار بديل: {drug} — أكّده عند الوصف",
+    aiMedNotFoundPickSimilar: "غير موجود — اختر دواءً مشابهًا أعلاه أو ابحث في الوصفة الإلكترونية",
+    dxAlternativeTo: "بديل عن {drug}",
     aiTransferMedsTitle: "إرسال الأدوية إلى الوصفات",
     aiTransferMedsHint: "الأدوية الموجودة في قائمتك محدّدة. يُفتح كل منها في الوصفة الإلكترونية لإكماله والتحقق منه.",
     aiNoMedsFound: "لم يُعثر على أدوية في المسودة.",

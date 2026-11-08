@@ -106,8 +106,8 @@ Start ibuprofen, order labs.
 
 test('extractMedications reads name, strength and instructions', () => {
   expect(extractMedications(FULL)).toEqual([
-    { name: 'Ibuprofen', strength: '400 mg', instructions: '1 tablet every 8 hours with food — 5 days' },
-    { name: 'Paracetamol', strength: '500 mg', instructions: '2 tablets when needed — 3 days' },
+    { name: 'Ibuprofen', strength: '400 mg', instructions: '1 tablet every 8 hours with food — 5 days', generic: '', drugClass: '' },
+    { name: 'Paracetamol', strength: '500 mg', instructions: '2 tablets when needed — 3 days', generic: '', drugClass: '' },
   ]);
 });
 
@@ -134,4 +134,11 @@ test('extractSoap stops before the medication and lab sections', () => {
   const soap = extractSoap(FULL);
   expect(soap).toMatch(/Start ibuprofen/);
   expect(soap).not.toMatch(/400 mg|85025/);
+});
+
+test('extractMedications reads the generic name and drug class', () => {
+  const md = '## Medications\n- `Crestor` 10 mg — once daily — 30 days [generic: Rosuvastatin; class: Statin]';
+  expect(extractMedications(md)).toEqual([
+    { name: 'Crestor', strength: '10 mg', instructions: 'once daily — 30 days', generic: 'Rosuvastatin', drugClass: 'Statin' },
+  ]);
 });
