@@ -1,7 +1,7 @@
 import React from 'react';
 import '@testing-library/jest-dom';
 import { render, screen } from '@testing-library/react';
-import { MarkdownView, toPlainText, extractSoap, extractCodes, parseBlocks } from './markdown';
+import { MarkdownView, toPlainText, extractSoap, extractCodes, extractMedications, extractLabTests, parseBlocks } from './markdown';
 
 const SCRIBE = `## SOAP Note
 ### Subjective
@@ -85,4 +85,53 @@ test('vitals and dates are not mistaken for codes', () => {
 test('parseBlocks copes with empty input', () => {
   expect(parseBlocks('')).toEqual([]);
   expect(toPlainText(null)).toBe('');
+});
+
+// ── medications + lab tests ─────────────────────────────────────────────────────
+const FULL = `## SOAP Note
+### Plan
+Start ibuprofen, order labs.
+## Suggested codes
+- ICD-10 \`G44.209\` — Tension-type headache
+- CPT \`99213\` — Office visit
+## Medications
+- \`Ibuprofen\` 400 mg — 1 tablet every 8 hours with food — 5 days
+- Paracetamol 500 mg - 2 tablets when needed - 3 days
+- None
+## Lab tests
+- Complete blood count — CPT \`85025\`
+- Comprehensive metabolic panel (CPT 80053)
+- Thyroid stimulating hormone
+`;
+
+test('extractMedications reads name, strength and instructions', () => {
+  expect(extractMedications(FULL)).toEqual([
+    { name: 'Ibuprofen', strength: '400 mg', instructions: '1 tablet every 8 hours with food — 5 days' },
+    { name: 'Paracetamol', strength: '500 mg', instructions: '2 tablets when needed — 3 days' },
+  ]);
+});
+
+test('extractLabTests reads test names and lab CPT codes', () => {
+  expect(extractLabTests(FULL)).toEqual([
+    { name: 'Complete blood count', cpt: '85025' },
+    { name: 'Comprehensive metabolic panel', cpt: '80053' },
+    { name: 'Thyroid stimulating hormone', cpt: null },
+  ]);
+});
+
+test('lab test CPT codes are not mixed into the diagnosis codes', () => {
+  const { icd, cpt } = extractCodes(FULL);
+  expect(icd.map((c) => c.code)).toEqual(['G44.209']);
+  expect(cpt.map((c) => c.code)).toEqual(['99213']);
+});
+
+test('no medication or lab sections means nothing to transfer', () => {
+  expect(extractMedications('## SOAP Note\nAll well.')).toEqual([]);
+  expect(extractLabTests('## SOAP Note\nAll well.')).toEqual([]);
+});
+
+test('extractSoap stops before the medication and lab sections', () => {
+  const soap = extractSoap(FULL);
+  expect(soap).toMatch(/Start ibuprofen/);
+  expect(soap).not.toMatch(/400 mg|85025/);
 });

@@ -207,9 +207,13 @@ export function extractCodes(md) {
     const line = raw.replace(/^\s*([-*+]|\d+[.)])\s+/, '').trim();
     if (!line) return;
     if (/^#{1,6}\s/.test(raw.trim())) {
-      section = /cpt|procedure/i.test(line) ? 'cpt' : /icd|diagnos/i.test(line) ? 'icd' : section;
+      // Medication and lab-test sections are read by their own helpers; a lab test's CPT
+      // code is an order, not a procedure code for this diagnosis.
+      section = isOrderHeading(line) ? 'skip'
+        : /cpt|procedure/i.test(line) ? 'cpt' : /icd|diagnos/i.test(line) ? 'icd' : section === 'skip' ? null : section;
       return;
     }
+    if (section === 'skip') return;
     if (isTableSep(raw)) return;
     const text = isTableRow(raw) ? cells(raw).join(' — ') : line;
     const saysCpt = /\bCPT\b/i.test(text);
@@ -234,4 +238,87 @@ export function extractCodes(md) {
     else if (!tryIcd()) tryCpt();
   });
   return { icd: [...icd.values()], cpt: [...cpt.values()] };
+}
+
+// ── medications + lab tests ───────────────────────────────────────────────────────
+
+const MED_HEADING = /medication|prescri|\bdrugs?\b|\brx\b/i;
+const LAB_HEADING = /\blab|tests?\b|investigation|diagnostics?\b|work-?up/i;
+function isOrderHeading(line) {
+  return (MED_HEADING.test(line) || LAB_HEADING.test(line)) && !/icd|cpt|code/i.test(line);
+}
+
+/** List items under headings matching `re`, until the next heading. */
+function sectionItems(md, re) {
+  const out = [];
+  let inSection = false;
+  String(md || '').split(/\r?\n/).forEach((raw) => {
+    const t = raw.trim();
+    if (/^#{1,6}\s/.test(t)) { inSection = re.test(t) && !/icd|cpt|code/i.test(t); return; }
+    if (!inSection || !t) return;
+    const m = t.match(/^([-*+]|\d+[.)])\s+(.*)$/);
+    if (m) out.push(m[2].trim());
+    else if (isTableRow(t) && !isTableSep(t)) out.push(cells(t).join(' — '));
+  });
+  return out.filter((x) => !/^(none|n\/a|no (medications?|tests?))\.?$/i.test(stripInline(x)));
+}
+
+/**
+ * Medications from a "## Medications" section.
+ * Expected line: - `Drug name` strength — dose and frequency — duration
+ * @returns {Array<{name, strength, instructions}>}
+ */
+export function extractMedications(md) {
+  const seen = new Set();
+  return sectionItems(md, MED_HEADING).map((item) => {
+    const code = item.match(/`([^`]+)`/);
+    const parts = stripInline(item).split(/\s+[—–]\s+|\s+-\s+|\s*;\s*/).map((x) => x.trim()).filter(Boolean);
+    let head = code ? code[1].trim() : parts[0] || '';
+    let rest = code ? stripInline(item).replace(code[1], '').replace(/^[\s:—–-]+/, '') : parts.slice(1).join(' — ');
+    // "Drug 500 mg" -> name "Drug", strength "500 mg"
+    const UNIT = '(?:mg|mcg|µg|g|ml|mL|units?|iu|IU|%)';
+    const inHead = head.match(new RegExp(`\\s+(\\d+(?:\\.\\d+)?\\s*${UNIT}(?:\\s*\\/\\s*\\d*\\s*(?:mg|ml|mL))?)(?![A-Za-z])`));
+    const atRestStart = rest.match(new RegExp(`^(\\d+(?:\\.\\d+)?\\s*${UNIT})(?![A-Za-z])\\s*[—–-]?\\s*`));
+    let strength = '';
+    if (inHead) {
+      strength = inHead[1].trim();
+      head = head.replace(inHead[0], '').trim();
+    } else if (atRestStart) {
+      strength = atRestStart[1].trim();
+      rest = rest.slice(atRestStart[0].length);
+    }
+    const name = head.replace(/[`*]+/g, '').trim();
+    return { name, strength, instructions: rest.replace(/^[\s—–-]+/, '').trim() };
+  }).filter((m) => {
+    const key = m.name.toLowerCase();
+    if (!m.name || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+/**
+ * Lab tests from a "## Lab tests" section.
+ * Expected line: - Test name — CPT `CODE` (the code is optional)
+ * @returns {Array<{name, cpt}>}
+ */
+export function extractLabTests(md) {
+  const seen = new Set();
+  return sectionItems(md, LAB_HEADING).map((item) => {
+    const plain = stripInline(item);
+    const code = plain.match(/\b(8\d{4})\b/);
+    const name = plain
+      .replace(/\(?\s*CPT[:\s]*\d{5}\s*\)?/i, '')
+      .replace(code ? code[1] : /$^/, '')
+      .split(/\s+[—–]\s+|\s+-\s+/)[0]
+      .replace(/[()[\]]/g, '')
+      .replace(/[\s,;:.—–-]+$/, '')
+      .trim();
+    return { name, cpt: code ? code[1] : null };
+  }).filter((t) => {
+    const key = (t.cpt || t.name).toLowerCase();
+    if (!t.name || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }

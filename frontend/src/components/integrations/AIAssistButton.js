@@ -1,9 +1,9 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { Sparkles, X, Bot, AlertTriangle, Copy, Check, Eye, Pencil, ShieldCheck, ListPlus, FileInput } from 'lucide-react';
+import { Sparkles, X, Bot, AlertTriangle, Copy, Check, Eye, Pencil, ShieldCheck, ListPlus, FileInput, Pill, Microscope } from 'lucide-react';
 import api from '../../api/apiService';
 import { useOptionalApp } from '../../context/AppContext';
 import { getTranslations } from '../../config/translations';
-import { MarkdownView, toPlainText, extractCodes } from './markdown';
+import { MarkdownView, toPlainText, extractCodes, extractMedications, extractLabTests } from './markdown';
 
 // "AI assist" button placed next to a field or screen.
 //
@@ -52,6 +52,80 @@ async function verifyCode(code, type) {
   }
 }
 
+/** Find a suggested medication in the drug list (ePrescribe needs a real entry). */
+async function matchMedication(med) {
+  try {
+    const rows = await api.searchMedications(med.name, null, null, 20);
+    if (!Array.isArray(rows) || !rows.length) return null;
+    const name = med.name.toLowerCase();
+    const named = rows.filter((r) => [r.drug_name, r.brand_name, r.generic_name]
+      .some((n) => n && String(n).toLowerCase().startsWith(name)));
+    const pool = named.length ? named : [];
+    const num = (med.strength || '').match(/\d+(?:\.\d+)?/);
+    return (num && pool.find((r) => String(r.strength || '').includes(num[0]))) || pool[0] || null;
+  } catch {
+    return null;
+  }
+}
+
+/** Find a lab test's CPT code: by the code the AI gave, else by the test name (80000-89999). */
+async function matchLabTest(test) {
+  const isLab = (r) => { const n = parseInt(r.code, 10); return n >= 80000 && n <= 89999; };
+  try {
+    if (test.cpt) {
+      const rows = await api.searchMedicalCodes(test.cpt, 'cpt');
+      const hit = (rows || []).find((r) => String(r.code) === test.cpt);
+      if (hit) return { match: hit, matchedBy: 'code' };
+    }
+    const rows = await api.searchMedicalCodes(test.name, 'cpt');
+    const hit = (rows || []).filter(isLab)[0];
+    return hit ? { match: hit, matchedBy: 'name' } : { match: null, matchedBy: null };
+  } catch {
+    return { match: null, matchedBy: null };
+  }
+}
+
+/** A checkable list of AI suggestions with one "add" button. */
+const TransferPanel = ({ dark, icon: Icon, title, testId, hint, items, checking, checkingText, emptyText, onToggle,
+  addedCount, addedText, buttonLabel, disabled, onAdd, muted, btnPrimary }) => (
+  <div className={`rounded-lg border p-3 space-y-2 ${dark ? 'border-slate-700' : 'border-gray-300'}`} data-testid={testId}>
+    <div className="flex items-center gap-2 font-medium text-sm"><Icon className="w-4 h-4 text-indigo-400" />{title}</div>
+    {checking && items.length === 0 ? (
+      <p className={muted}>{checkingText}</p>
+    ) : items.length === 0 ? (
+      <p className={muted}>{emptyText}</p>
+    ) : (
+      <>
+        {hint && <p className={muted}>{hint}</p>}
+        <ul className="space-y-1">
+          {items.map((it, idx) => (
+            <li key={it.key}>
+              <label className="flex items-start gap-2 text-sm">
+                <input type="checkbox" className="mt-0.5 rounded" checked={it.checked} disabled={addedCount > 0}
+                  aria-label={it.ariaLabel} onChange={(e) => onToggle(idx, e.target.checked)} />
+                <span className="min-w-0">
+                  {it.content}
+                  <span className={`block text-xs ${it.verified ? 'text-green-500' : 'text-amber-500'}`}>
+                    {it.verified ? <ShieldCheck className="inline w-3 h-3 mr-1" /> : <AlertTriangle className="inline w-3 h-3 mr-1" />}
+                    {it.status}
+                  </span>
+                </span>
+              </label>
+            </li>
+          ))}
+        </ul>
+        {addedCount > 0 ? (
+          <p className="text-sm text-green-500">{addedText}</p>
+        ) : (
+          <button type="button" className={btnPrimary} disabled={disabled || !items.some((it) => it.checked)} onClick={onAdd}>
+            <Icon className="w-4 h-4" />{buttonLabel}
+          </button>
+        )}
+      </>
+    )}
+  </div>
+);
+
 const AIAssistButton = ({
   featureKey,
   theme,
@@ -65,6 +139,8 @@ const AIAssistButton = ({
   applyLabelKey,      // translation key for the insert button (e.g. "Update SOAP text")
   applyLabel,         // English fallback for the insert button
   onApplyCodes,       // ({icd, cpt}) => void: receives only the codes the user ticked
+  onApplyMedications, // ([{name, strength, instructions, match}]) => void: ticked medications
+  onApplyLabTests,    // ([{name, cpt, match}]) => void: ticked lab tests
   label,              // English fallback for the button text
   labelKey,           // translation key for the button text
   className = '',
@@ -94,6 +170,10 @@ const AIAssistButton = ({
   const [codes, setCodes] = useState([]);         // [{type, code, description, verified, official, checked}]
   const [checkingCodes, setCheckingCodes] = useState(false);
   const [codesAdded, setCodesAdded] = useState(0);
+  const [meds, setMeds] = useState([]);           // [{name, strength, instructions, match, verified, checked}]
+  const [medsAdded, setMedsAdded] = useState(0);
+  const [labs, setLabs] = useState([]);           // [{name, cpt, match, matchedBy, verified, checked}]
+  const [labsAdded, setLabsAdded] = useState(0);
   const verifyRun = useRef(0);
 
   useEffect(() => {
@@ -109,15 +189,33 @@ const AIAssistButton = ({
   // checked against the practice's code list. Only found codes are pre-ticked; a choice
   // the user already made for a code is kept.
   useEffect(() => {
-    if (!onApplyCodes || !draft || accepted || rejected) return undefined;
+    if ((!onApplyCodes && !onApplyMedications && !onApplyLabTests) || !draft || accepted || rejected) return undefined;
     const run = ++verifyRun.current;
+    const keep = (prev, key, fallback) => { const b = prev.find((p) => p.key === key); return b ? b.checked : fallback; };
     const timer = setTimeout(async () => {
+      setCheckingCodes(true);
+      if (onApplyMedications) {
+        const found = await Promise.all(extractMedications(text).map(async (m) => ({ ...m, match: await matchMedication(m) })));
+        if (run !== verifyRun.current) return;
+        setMeds((prev) => found.map((m) => {
+          const key = m.name.toLowerCase();
+          return { ...m, key, verified: !!m.match, checked: keep(prev, key, !!m.match) };
+        }));
+      }
+      if (onApplyLabTests) {
+        const found = await Promise.all(extractLabTests(text).map(async (l) => ({ ...l, ...(await matchLabTest(l)) })));
+        if (run !== verifyRun.current) return;
+        setLabs((prev) => found.map((l) => {
+          const key = (l.cpt || l.name).toLowerCase();
+          return { ...l, key, verified: !!l.match, checked: keep(prev, key, l.matchedBy === 'code') };
+        }));
+      }
+      if (!onApplyCodes) { setCheckingCodes(false); return; }
       const found = extractCodes(text);
       const list = [
         ...found.icd.map((c) => ({ ...c, type: 'icd' })),
         ...found.cpt.map((c) => ({ ...c, type: 'cpt' })),
       ];
-      setCheckingCodes(true);
       const rows = await Promise.all(list.map(async (c) => ({ ...c, official: await verifyCode(c.code, c.type) })));
       if (run !== verifyRun.current) return;
       setCodes((prev) => rows.map((c) => {
@@ -127,7 +225,7 @@ const AIAssistButton = ({
       setCheckingCodes(false);
     }, 400);
     return () => clearTimeout(timer);
-  }, [text, draft, accepted, rejected, onApplyCodes]);
+  }, [text, draft, accepted, rejected, onApplyCodes, onApplyMedications, onApplyLabTests]);
 
   if (!feature) return null;
 
@@ -145,6 +243,7 @@ const AIAssistButton = ({
     setDraft(null); setText(''); setView('formatted'); setAttested(false); setReason('');
     setAccepted(null); setRejected(false); setApplied(false); setError(null); setCopied(false);
     setCodes([]); setCodesAdded(0); setCheckingCodes(false);
+    setMeds([]); setMedsAdded(0); setLabs([]); setLabsAdded(0);
     setOpen(true);
   };
 
@@ -204,6 +303,20 @@ const AIAssistButton = ({
     setCodesAdded(chosen.length);
   });
 
+  const addMeds = () => act(async () => {
+    await ensureAccepted();
+    const chosen = meds.filter((m) => m.checked);
+    onApplyMedications(chosen.map(({ name, strength, instructions, match }) => ({ name, strength, instructions, match })));
+    setMedsAdded(chosen.length);
+  });
+
+  const addLabs = () => act(async () => {
+    await ensureAccepted();
+    const chosen = labs.filter((l) => l.checked);
+    onApplyLabTests(chosen.map(({ name, cpt, match }) => ({ name, cpt, match })));
+    setLabsAdded(chosen.length);
+  });
+
   const acceptOnly = () => act(async () => { await ensureAccepted(); });
 
   const reject = () => act(async () => {
@@ -222,7 +335,7 @@ const AIAssistButton = ({
   const hasUnknownTokens = /\[\[[A-Z_]+_\d+\]\]/.test(text);
   const canEdit = draft && draft.canReview && !accepted && !rejected;
   const signOffMissing = draft && draft.attestationRequired && !attested && !accepted;
-  const hasActions = !!onApply || !!onApplyCodes;
+  const hasActions = !!onApply || !!onApplyCodes || !!onApplyMedications || !!onApplyLabTests;
 
   const ViewToggle = () => (
     <div className="inline-flex rounded-lg overflow-hidden border border-current/20 text-xs" role="tablist">
@@ -383,6 +496,50 @@ const AIAssistButton = ({
                           </>
                         )}
                       </div>
+                    )}
+
+                    {/* Medications -> Prescriptions. ePrescribe opens prefilled from the form. */}
+                    {onApplyMedications && (
+                      <TransferPanel dark={dark} icon={Pill} testId="ai-med-transfer" muted={muted} btnPrimary={btnPrimary}
+                        title={tr('aiTransferMedsTitle', 'Send medications to Prescriptions')}
+                        hint={tr('aiTransferMedsHint', 'Medications found in your drug list are ticked. Each one opens in ePrescribe for you to complete and check.')}
+                        checking={checkingCodes} checkingText={tr('aiCheckingCodes', 'Checking codes against your code list...')}
+                        emptyText={tr('aiNoMedsFound', 'No medications were found in the draft.')}
+                        items={meds.map((m) => ({
+                          key: m.key, checked: m.checked, verified: m.verified, ariaLabel: m.name,
+                          content: <><span className="font-semibold">{m.name}</span>{m.strength ? ` ${m.strength}` : ''}{m.instructions ? <span className={muted}> — {m.instructions}</span> : null}</>,
+                          status: m.verified
+                            ? fill(tr('aiMedFound', 'Found in drug list: {drug}'), { drug: [m.match.drug_name || m.match.brand_name, m.match.strength].filter(Boolean).join(' ') })
+                            : tr('aiMedNotFound', 'Not found in your drug list — search for it in ePrescribe'),
+                        }))}
+                        onToggle={(idx, v) => setMeds((list) => list.map((x, i) => (i === idx ? { ...x, checked: v } : x)))}
+                        addedCount={medsAdded}
+                        addedText={fill(tr('aiMedsAdded', '{n} medication(s) sent to Prescriptions. Open each one to prescribe.'), { n: medsAdded })}
+                        buttonLabel={tr('aiAddSelectedMeds', 'Send selected to Prescriptions')}
+                        disabled={busy || signOffMissing} onAdd={addMeds} />
+                    )}
+
+                    {/* Lab tests -> Lab Orders. */}
+                    {onApplyLabTests && (
+                      <TransferPanel dark={dark} icon={Microscope} testId="ai-lab-transfer" muted={muted} btnPrimary={btnPrimary}
+                        title={tr('aiTransferLabsTitle', 'Add tests to Lab Orders')}
+                        hint={tr('aiTransferLabsHint', 'Tests matched by CPT code are ticked. Tests matched only by name are left unticked — check them first. Choose the laboratory on each order.')}
+                        checking={checkingCodes} checkingText={tr('aiCheckingCodes', 'Checking codes against your code list...')}
+                        emptyText={tr('aiNoLabsFound', 'No lab tests were found in the draft.')}
+                        items={labs.map((l) => ({
+                          key: l.key, checked: l.checked, verified: l.matchedBy === 'code', ariaLabel: l.name,
+                          content: <><span className="font-semibold">{l.name}</span>{l.match ? <span className="ml-2 font-mono text-xs">CPT {l.match.code}</span> : null}</>,
+                          status: l.matchedBy === 'code'
+                            ? fill(tr('aiLabMatchedCode', 'Matched by CPT code: {desc}'), { desc: l.match.description || l.match.code })
+                            : l.matchedBy === 'name'
+                              ? fill(tr('aiLabMatchedName', 'Matched by name only: {desc}'), { desc: l.match.description || l.match.code })
+                              : tr('aiLabNoMatch', 'No lab CPT code found — the order is added without a code'),
+                        }))}
+                        onToggle={(idx, v) => setLabs((list) => list.map((x, i) => (i === idx ? { ...x, checked: v } : x)))}
+                        addedCount={labsAdded}
+                        addedText={fill(tr('aiLabsAdded', '{n} lab order(s) added. Choose a laboratory for each, then save.'), { n: labsAdded })}
+                        buttonLabel={tr('aiAddSelectedLabs', 'Add selected tests to Lab Orders')}
+                        disabled={busy || signOffMissing} onAdd={addLabs} />
                     )}
 
                     {/* Text actions. */}

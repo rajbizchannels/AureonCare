@@ -64,6 +64,9 @@ const DiagnosisForm = ({
   // ePrescribe modal state
   const [showEPrescribeForm, setShowEPrescribeForm] = useState(false);
   const [preSelectedMedication, setPreSelectedMedication] = useState(null);
+  // Medications an accepted AI draft suggested; each opens in ePrescribe when the
+  // prescriber chooses to prescribe it. Nothing is prescribed automatically.
+  const [aiMedSuggestions, setAiMedSuggestions] = useState([]);
 
   // Optional forms to assign to patient
   const [showFormsSection, setShowFormsSection] = useState(false);
@@ -293,6 +296,11 @@ const DiagnosisForm = ({
 
     if (!formData.patientId) {
       addNotification('alert', 'Patient information is required.');
+      return;
+    }
+
+    if (formData.labOrders.some((o) => !o.laboratoryId)) {
+      addNotification('alert', t.dxChooseLabForOrders || 'Choose a laboratory for each lab order.');
       return;
     }
 
@@ -684,6 +692,28 @@ const DiagnosisForm = ({
                     onApply={(text) => setFormData((prev) => ({ ...prev, soapNotes: text }))}
                     onApplyCodes={({ icd, cpt }) => setFormData((prev) => ({
                       ...prev, icdCodes: mergeCodes(prev.icdCodes, icd), cptCodes: mergeCodes(prev.cptCodes, cpt),
+                    }))}
+                    onApplyMedications={(list) => setAiMedSuggestions((prev) => [
+                      ...prev,
+                      ...list.filter((m) => !prev.some((p) => p.name.toLowerCase() === m.name.toLowerCase())),
+                    ])}
+                    onApplyLabTests={(tests) => setFormData((prev) => ({
+                      ...prev,
+                      labOrders: [
+                        ...prev.labOrders,
+                        ...tests.map((test) => ({
+                          cptCodes: test.match ? [{ code: test.match.code, description: test.match.description || test.name }] : [],
+                          // One laboratory on file: use it. Otherwise the user picks.
+                          laboratoryId: laboratories.length === 1 ? laboratories[0].id : '',
+                          priority: 'routine',
+                          instructions: `${t.dxAiSuggestedTest || 'AI-suggested test'}: ${test.name}`,
+                          status: 'one-time',
+                          statusDate: new Date().toISOString().split('T')[0],
+                          frequency: '',
+                          class: 'clinic-collect',
+                          recipients: [],
+                        })),
+                      ],
                     }))} />
                 </div>
                 <textarea
@@ -820,6 +850,44 @@ const DiagnosisForm = ({
                     }}
                     addNotification={addNotification}
                   />
+                </div>
+              )}
+
+              {/* AI-suggested medications waiting for the prescriber */}
+              {aiMedSuggestions.length > 0 && !showEPrescribeForm && (
+                <div className={`rounded-lg border p-3 space-y-2 ${theme === 'dark' ? 'border-indigo-500/40 bg-indigo-500/5' : 'border-indigo-200 bg-indigo-50/50'}`}
+                  data-testid="ai-med-suggestions">
+                  <p className={`text-xs font-medium ${theme === 'dark' ? 'text-indigo-300' : 'text-indigo-700'}`}>
+                    {t.dxAiSuggestedMeds || 'AI-suggested medications — prescribe each one to check dose and interactions'}
+                  </p>
+                  {aiMedSuggestions.map((med) => (
+                    <div key={med.name} className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                      <span className={theme === 'dark' ? 'text-slate-200' : 'text-gray-800'}>
+                        <span className="font-semibold">{med.name}</span>{med.strength ? ` ${med.strength}` : ''}
+                        {med.instructions ? <span className={theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}> — {med.instructions}</span> : null}
+                      </span>
+                      <span className="flex gap-2">
+                        <button type="button"
+                          onClick={() => {
+                            if (!formData.patientId) { addNotification('error', 'Please select Patient'); return; }
+                            if (!med.match) {
+                              addNotification('alert', `${t.dxSearchInEprescribe || 'Search for this medication in ePrescribe'}: ${med.name}`);
+                            }
+                            setPreSelectedMedication(med.match || null);
+                            setShowEPrescribeForm(true);
+                            setAiMedSuggestions((list) => list.filter((m) => m.name !== med.name));
+                          }}
+                          className="px-2.5 py-1 rounded-md text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white">
+                          {t.dxPrescribe || 'Prescribe'}
+                        </button>
+                        <button type="button"
+                          onClick={() => setAiMedSuggestions((list) => list.filter((m) => m.name !== med.name))}
+                          className={`px-2.5 py-1 rounded-md text-xs ${theme === 'dark' ? 'bg-slate-700 text-slate-200' : 'bg-gray-200 text-gray-700'}`}>
+                          {t.dxDismiss || 'Dismiss'}
+                        </button>
+                      </span>
+                    </div>
+                  ))}
                 </div>
               )}
 
