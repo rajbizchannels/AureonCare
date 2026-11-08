@@ -86,19 +86,25 @@ const FEATURES = [
     key: 'ambient_scribe', module: 'ehr', risk: 'high', sendsPhi: true,
     reviewerRoles: ['doctor', 'provider'], attestationRequired: true,
     tokensIn: 7000, tokensOut: 1000, monthlyUses: 4400, extraCostKey: 'speechToText',
-    promptVersion: 'scribe-v1',
-    system: 'You draft a SOAP note (Subjective, Objective, Assessment, Plan) from a visit transcript. '
-      + 'Only use facts stated in the transcript. Mark anything uncertain with "[verify]". '
-      + 'Do not invent vitals, doses or diagnoses.',
+    promptVersion: 'scribe-v2',
+    system: 'You draft a SOAP note from a visit transcript. Only use facts stated in the transcript. '
+      + 'Mark anything uncertain with "[verify]". Do not invent vitals, doses or diagnoses.\n'
+      + 'Answer in Markdown with exactly this layout:\n'
+      + '## SOAP Note\n### Subjective\n...\n### Objective\n...\n### Assessment\n...\n### Plan\n...\n'
+      + '## Suggested codes\n'
+      + '- ICD-10 `CODE` — description — "supporting sentence from the transcript"\n'
+      + '- CPT `CODE` — description — "supporting sentence from the transcript"\n'
+      + 'Only list codes the transcript supports; leave the codes section empty if none.',
   },
   {
     key: 'coding_suggestions', module: 'ehr', risk: 'high', sendsPhi: true,
     reviewerRoles: ['doctor', 'provider', 'billing_manager'], attestationRequired: true,
     tokensIn: 4000, tokensOut: 300, monthlyUses: 4400,
-    promptVersion: 'coding-v1',
-    system: 'Suggest ICD-10 and CPT codes for the signed note. For each code give the code, '
-      + 'its description and the exact sentence from the note that supports it. '
-      + 'If the note does not support a code, do not suggest it.',
+    promptVersion: 'coding-v2',
+    system: 'Suggest ICD-10 and CPT codes for the note. If the note does not support a code, do not suggest it.\n'
+      + 'Answer in Markdown with exactly this layout, one code per line:\n'
+      + '### ICD-10\n- `CODE` — description — "exact supporting sentence from the note"\n'
+      + '### CPT\n- `CODE` — description — "exact supporting sentence from the note"',
   },
   {
     key: 'claim_scrubbing', module: 'rcm', risk: 'medium', sendsPhi: true,
@@ -188,7 +194,8 @@ const FEATURES = [
 const TOKEN_INSTRUCTION =
   'Some details were replaced with placeholders such as [[PATIENT_NAME_1]] or [[DATE_2]] to protect privacy. '
   + 'Copy placeholders exactly as written wherever you refer to them. Never guess or invent the real value. '
-  + 'Your output is a draft that a qualified person will review before it is used.';
+  + 'Your output is a draft that a qualified person will review before it is used. '
+  + 'Format your answer in Markdown (headings, bullet lists, **bold** for key findings); do not use HTML.';
 
 const EXTRA_COSTS = {
   // Speech-to-text for the ambient scribe is billed by the audio vendor, not per token.

@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import AIAssistButton from '../integrations/AIAssistButton';
+import { extractSoap, toPlainText } from '../integrations/markdown';
+
 import { Activity, X, Save, Calendar, FileText, Pill, Microscope, Plus, Trash2, Search, ClipboardList, ChevronDown, ChevronUp } from 'lucide-react';
 import { FORM_TEMPLATES } from '../../data/formTemplates';
 import MedicalCodeMultiSelect from './MedicalCodeMultiSelect';
@@ -9,6 +11,12 @@ import ResultRecipientsMultiSelect from './ResultRecipientsMultiSelect';
 import ConfirmationModal from '../modals/ConfirmationModal';
 import EPrescribeModal from '../modals/ePrescribeModal';
 import { useAudit } from '../../hooks/useAudit';
+
+// Add AI-suggested codes the reviewer ticked, skipping any already on the form.
+const mergeCodes = (existing = [], incoming = []) => {
+  const have = new Set(existing.map((c) => String(c.code).toUpperCase()));
+  return [...existing, ...incoming.filter((c) => !have.has(String(c.code).toUpperCase()))];
+};
 
 const DiagnosisForm = ({
   theme,
@@ -671,7 +679,11 @@ const DiagnosisForm = ({
                   <AIAssistButton featureKey="ambient_scribe" theme={theme} t={t}
                     patientId={formData.patientId || null} entityType="diagnosis" entityId={editDiagnosis?.id || null}
                     getInput={() => formData.soapNotes || ''}
-                    onApply={(text) => setFormData((prev) => ({ ...prev, soapNotes: text }))} />
+                    applyTransform={(md) => toPlainText(extractSoap(md) || md)}
+                    onApply={(text) => setFormData((prev) => ({ ...prev, soapNotes: text }))}
+                    onApplyCodes={({ icd, cpt }) => setFormData((prev) => ({
+                      ...prev, icdCodes: mergeCodes(prev.icdCodes, icd), cptCodes: mergeCodes(prev.cptCodes, cpt),
+                    }))} />
                 </div>
                 <textarea
                   value={formData.soapNotes}
@@ -694,7 +706,10 @@ const DiagnosisForm = ({
                   getInput={() => [
                     formData.diagnosisName && `Diagnosis: ${formData.diagnosisName}`,
                     formData.soapNotes && `Note:\n${formData.soapNotes}`,
-                  ].filter(Boolean).join('\n\n')} />
+                  ].filter(Boolean).join('\n\n')}
+                  onApplyCodes={({ icd, cpt }) => setFormData((prev) => ({
+                    ...prev, icdCodes: mergeCodes(prev.icdCodes, icd), cptCodes: mergeCodes(prev.cptCodes, cpt),
+                  }))} />
                 <span className={`text-xs ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
                   {t.aiSuggestCodesHint || 'Uses the diagnosis name and SOAP note above'}
                 </span>

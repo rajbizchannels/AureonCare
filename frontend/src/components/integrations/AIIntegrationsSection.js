@@ -6,6 +6,7 @@ import {
 import api from '../../api/apiService';
 import Toggle from '../Toggle';
 import { invalidateAIFeatureCache } from './AIAssistButton';
+import { MarkdownView } from './markdown';
 
 // AI section of the Integrations page.
 //
@@ -467,6 +468,7 @@ const AIReviewQueue = ({ theme, tr, featureName, features, styles }) => {
   const [attest, setAttest] = useState({});
   const [reasons, setReasons] = useState({});
   const [busy, setBusy] = useState({});
+  const [viewMode, setViewMode] = useState({}); // per draft: 'formatted' (default) | 'edit'
   const [newDraft, setNewDraft] = useState({ feature: '', input: '', patientId: '' });
   const [generating, setGenerating] = useState(false);
 
@@ -598,8 +600,25 @@ const AIReviewQueue = ({ theme, tr, featureName, features, styles }) => {
                 <AlertTriangle className="w-4 h-4 shrink-0" />{tr('aiUnknownTokens', 'The draft contains placeholders that could not be matched. Replace them before accepting.')}
               </div>
             )}
-            <textarea aria-label={tr('aiDraftText', 'Draft text')} rows={8} className={`${input} font-mono`} readOnly={!pending || !item.canReview}
-              value={text} onChange={(e) => setEdits((m) => ({ ...m, [item.id]: e.target.value }))} />
+            {pending && item.canReview && (
+              <div className="flex justify-end">
+                <div className="inline-flex rounded-lg overflow-hidden border border-current/20 text-xs" role="tablist">
+                  {[['formatted', tr('aiViewFormatted', 'Formatted')], ['edit', tr('aiViewEdit', 'Edit')]].map(([v, lbl]) => (
+                    <button key={v} type="button" role="tab" aria-selected={(viewMode[item.id] || 'formatted') === v}
+                      onClick={() => setViewMode((m) => ({ ...m, [item.id]: v }))}
+                      className={`px-2.5 py-1 ${(viewMode[item.id] || 'formatted') === v ? 'bg-indigo-500 text-white' : ''}`}>{lbl}</button>
+                  ))}
+                </div>
+              </div>
+            )}
+            {pending && item.canReview && viewMode[item.id] === 'edit' ? (
+              <textarea aria-label={tr('aiDraftText', 'Draft text')} rows={10} className={`${input} font-mono`}
+                value={text} onChange={(e) => setEdits((m) => ({ ...m, [item.id]: e.target.value }))} />
+            ) : (
+              <div className={`px-3 py-2 rounded-lg border max-h-80 overflow-y-auto ${dark ? 'bg-slate-900 border-slate-700' : 'bg-white border-gray-300'}`}>
+                <MarkdownView text={text} />
+              </div>
+            )}
 
             {pending && item.canReview && (
               <>
