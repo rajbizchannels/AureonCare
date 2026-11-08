@@ -5,11 +5,53 @@ import { useAudit } from '../../hooks/useAudit';
 import { toLocalDateTimeString } from '../../utils/formatters';
 import ThemedSelect from './ThemedSelect';
 
+// Which roles can hold an appointment. The provider list and the "default to whoever is
+// booking" rule read the same constant, so the person defaulted into the field is always
+// someone the field can actually offer.
+const PROVIDER_ROLES = ['physician', 'doctor'];
+
+const roleOf = (u) => u?.role || u?.activeRole || u?.active_role || null;
+
+/**
+ * Is this row from a provider list a provider?
+ *
+ * Lenient about a missing role on purpose: some callers pass rows from the providers
+ * table, which carries no role column because every row in it is a provider.
+ */
+const isProviderRow = (u) => {
+  const role = roleOf(u);
+  return role ? PROVIDER_ROLES.includes(role) : true;
+};
+
+/**
+ * Is the SIGNED-IN user a provider?
+ *
+ * Strict, unlike isProviderRow: the signed-in user always has a role, and the leniency
+ * that is right for a providers-table row would quietly default a receptionist into the
+ * provider field — booking the appointment against the person at the front desk.
+ */
+const isProviderUser = (u) => PROVIDER_ROLES.includes(roleOf(u));
+
+/** Append `extra` unless the list already has a row with that id. */
+const withFallback = (list, extra) => {
+  const rows = list || [];
+  if (!extra?.id) return rows;
+  return rows.some((r) => String(r.id) === String(extra.id)) ? rows : [...rows, extra];
+};
+
 const NewAppointmentForm = ({ theme, api, patients, users, patient, user, onClose, onSuccess, addNotification, t }) => {
   const { logFormView, logCreate, logError, startAction } = useAudit();
   const [formData, setFormData] = useState({
-    patientId: patient?.id || '',
-    providerId: user?.id || '',
+    // Both of these are DEFAULTS, not decisions — see the fields themselves.
+    //
+    // patientId is stringified because everything downstream compares it as a string
+    // (`p.id.toString() === formData.patientId`). Left as the number it arrives as, those
+    // comparisons silently miss and the success notification says "appointment scheduled
+    // with patient" instead of naming them.
+    patientId: patient?.id != null ? String(patient.id) : '',
+    // Deliberately NOT seeded from `user`: the signed-in user is only the right default
+    // when they are a provider, and that is decided below once the provider list is known.
+    providerId: '',
     date: '',
     time: '',
     type: '',
@@ -43,7 +85,11 @@ const NewAppointmentForm = ({ theme, api, patients, users, patient, user, onClos
     const fetchOfferings = async () => {
       try {
         const data = await api.getOfferings({ is_active: true, available_online: true });
-        setOfferings(data);
+        // Guarded because the whole form is rendered from this: a response that is not an
+        // array (an error body, a 204, a shape change) reached `offerings.map` and took
+        // the entire appointment form down with a white screen, rather than costing one
+        // optional field.
+        setOfferings(Array.isArray(data) ? data : []);
       } catch (error) {
         console.error('Error fetching offerings:', error);
       }
@@ -87,20 +133,26 @@ const NewAppointmentForm = ({ theme, api, patients, users, patient, user, onClos
     fetchAppointmentTypes();
   }, [api]);
 
-  // Set default provider to first available doctor when users are loaded
+  // Default the provider to whoever is booking, when they are one.
+  //
+  // A doctor scheduling an appointment is nearly always scheduling it for themselves, so
+  // they should not have to find their own name in a list. Previously this picked the
+  // FIRST doctor in the list regardless of who was signed in: right in a single-provider
+  // practice, arbitrary in any other, and a doctor booking their own clinic had to correct
+  // it every time. The signed-in user wins where they qualify; the first-provider fallback
+  // is kept for everyone else, because for a one-doctor practice it is still the only
+  // sensible answer.
   useEffect(() => {
-    if (users && users.length > 0 && !formData.providerId) {
-      const doctorRoles = ['physician', 'doctor'];
-      const firstDoctor = users.find(u => {
-        const hasRole = u.role || u.activeRole || u.active_role;
-        if (!hasRole) return true; // No role info = from providers table, all are doctors
-        return doctorRoles.includes(u.role) || doctorRoles.includes(u.activeRole) || doctorRoles.includes(u.active_role);
-      });
-      if (firstDoctor) {
-        setFormData(prev => ({ ...prev, providerId: firstDoctor.id }));
-      }
+    if (formData.providerId) return;
+    if (isProviderUser(user)) {
+      setFormData(prev => ({ ...prev, providerId: String(user.id) }));
+      return;
     }
-  }, [users, formData.providerId]);
+    const firstProvider = (users || []).find(isProviderRow);
+    if (firstProvider) {
+      setFormData(prev => ({ ...prev, providerId: String(firstProvider.id) }));
+    }
+  }, [users, user, formData.providerId]);
 
   // Auto-update duration when offering is selected
   useEffect(() => {
@@ -111,6 +163,23 @@ const NewAppointmentForm = ({ theme, api, patients, users, patient, user, onClos
       }
     }
   }, [formData.offeringId, offerings]);
+
+  const nameOf = (p) =>
+    `${p.first_name || p.firstName || ''} ${p.last_name || p.lastName || ''}`.trim() || p.email || '—';
+
+  // Only providers can hold an appointment, but the person defaulted into the field has to
+  // be offered by it as well, or the form would show a name the dropdown cannot produce —
+  // and changing away from it would be a one-way door.
+  const providers = withFallback(
+    (users || []).filter(isProviderRow),
+    isProviderUser(user) ? user : null,
+  );
+
+  // Likewise for the patient: a chart-side booking arrives with one patient and, before
+  // this change, a patient list of exactly that patient. Both the default and a real
+  // choice are needed, so fall back to the booked-for patient when the full list has not
+  // arrived. Declared above the handlers, which close over it.
+  const patientOptions = withFallback(patients, patient);
 
   // ESC key handler
   useEffect(() => {
@@ -178,8 +247,12 @@ const NewAppointmentForm = ({ theme, api, patients, users, patient, user, onClos
         },
       });
 
-      const patient = patients.find(p => p.id.toString() === formData.patientId);
-      const patientName = patient ? `${patient.first_name} ${patient.last_name}` : t.patient || 'patient';
+      // Look in the options actually offered, not in `patients`, and do not shadow the
+      // `patient` prop with a local of the same name: booked from a chart the prop is the
+      // only row available, so searching `patients` alone could miss and announce
+      // "appointment scheduled with patient".
+      const bookedFor = patientOptions.find(p => String(p.id) === String(formData.patientId));
+      const patientName = bookedFor ? nameOf(bookedFor) : t.patient || 'patient';
       await addNotification('appointment', `${t.newAppointmentScheduledWith || 'New appointment scheduled with'} ${patientName}`);
 
       // Show success confirmation
@@ -210,16 +283,6 @@ const NewAppointmentForm = ({ theme, api, patients, users, patient, user, onClos
       });
     }
   };
-
-  // Filter providers from users - only show doctors/physicians
-  // If entries lack a role field (e.g. data from providers table), include them all
-  // since the providers table only contains doctors by definition
-  const doctorRoles = ['physician', 'doctor'];
-  const providers = users?.filter(u => {
-    const hasRole = u.role || u.activeRole || u.active_role;
-    if (!hasRole) return true; // No role info = from providers table, include all
-    return doctorRoles.includes(u.role) || doctorRoles.includes(u.activeRole) || doctorRoles.includes(u.active_role);
-  }) || [];
 
   return (
     <>
@@ -320,24 +383,24 @@ const NewAppointmentForm = ({ theme, api, patients, users, patient, user, onClos
                 <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                   {t.patient || 'Patient'} <span className="text-red-400">*</span>
                 </label>
-                {patient ? (
-                  <div className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}>
-                    {patient.first_name} {patient.last_name} - {patient.mrn || 'N/A'}
-                  </div>
-                ) : (
-                  <ThemedSelect
-                    theme={theme}
-                    focusClass="focus:border-cyan-500"
-                    required
-                    value={formData.patientId}
-                    onChange={(e) => setFormData({...formData, patientId: e.target.value})}
-                  >
-                    <option value="">{t.selectPatient || 'Select Patient'}</option>
-                    {patients.map(p => (
-                      <option key={p.id} value={p.id}>{p.first_name} {p.last_name} - {p.mrn}</option>
-                    ))}
-                  </ThemedSelect>
-                )}
+                {/* Pre-selected when a patient is in context, never locked. Booking from a
+                    patient's chart used to render this as read-only text, so correcting the
+                    wrong patient meant abandoning the form and starting again from a screen
+                    that did not know who it was for. */}
+                <ThemedSelect
+                  theme={theme}
+                  focusClass="focus:border-cyan-500"
+                  required
+                  value={formData.patientId}
+                  onChange={(e) => setFormData({...formData, patientId: e.target.value})}
+                >
+                  <option value="">{t.selectPatient || 'Select Patient'}</option>
+                  {patientOptions.map(p => (
+                    <option key={p.id} value={p.id}>
+                      {nameOf(p)}{p.mrn ? ` - ${p.mrn}` : ''}
+                    </option>
+                  ))}
+                </ThemedSelect>
               </div>
 
               <div>
@@ -432,25 +495,26 @@ const NewAppointmentForm = ({ theme, api, patients, users, patient, user, onClos
                 <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
                   {t.provider || 'Provider'}
                 </label>
-                {user ? (
-                  <div className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-gray-100 border-gray-300 text-gray-900'}`}>
-                    {`${user.first_name || user.firstName || ''} ${user.last_name || user.lastName || ''}`.trim() || user.email}
-                  </div>
-                ) : (
-                  <ThemedSelect
-                    theme={theme}
-                    focusClass="focus:border-cyan-500"
-                    value={formData.providerId}
-                    onChange={(e) => setFormData({...formData, providerId: e.target.value})}
-                  >
-                    <option value="">{t.selectProvider || 'Select Provider'}</option>
-                    {providers.map(provider => (
-                      <option key={provider.id} value={provider.id}>
-                        {`${provider.first_name || provider.firstName || ''} ${provider.last_name || provider.lastName || ''}`.trim() || provider.email}
-                      </option>
-                    ))}
-                  </ThemedSelect>
-                )}
+                {/* Defaults to the signed-in provider, and stays editable so a doctor can
+                    book on a colleague's behalf. It used to be read-only whenever a caller
+                    passed the signed-in user, which also meant a receptionist booking from
+                    a chart had the appointment pinned to themselves. */}
+                <ThemedSelect
+                  theme={theme}
+                  focusClass="focus:border-cyan-500"
+                  value={formData.providerId}
+                  onChange={(e) => setFormData({...formData, providerId: e.target.value})}
+                >
+                  <option value="">{t.selectProvider || 'Select Provider'}</option>
+                  {providers.map(provider => (
+                    <option key={provider.id} value={provider.id}>
+                      {nameOf(provider)}
+                      {isProviderUser(user) && String(provider.id) === String(user.id)
+                        ? ` (${t.you || 'you'})`
+                        : ''}
+                    </option>
+                  ))}
+                </ThemedSelect>
               </div>
             </div>
 
