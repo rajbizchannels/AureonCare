@@ -2291,6 +2291,41 @@ const api = {
     return response.json();
   },
 
+  // AI integrations (bring-your-own-key, feature switches, human review)
+  aiRequest: async (path, options = {}) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/ai${path}`, options);
+    let body = null;
+    try { body = await response.json(); } catch (e) { body = null; }
+    if (!response.ok) {
+      const err = new Error((body && (body.message || body.error)) || 'AI request failed');
+      err.code = body && body.error;
+      err.status = response.status;
+      throw err;
+    }
+    return body;
+  },
+  getAICatalog: () => api.aiRequest('/catalog'),
+  getAIProviders: () => api.aiRequest('/providers'),
+  saveAIProvider: (provider, settings) => api.aiRequest(`/providers/${provider}`, {
+    method: 'PUT', body: JSON.stringify(settings)
+  }),
+  toggleAIProvider: (provider, isEnabled) => api.aiRequest(`/providers/${provider}/toggle`, {
+    method: 'PATCH', body: JSON.stringify({ is_enabled: isEnabled })
+  }),
+  testAIProvider: (provider) => api.aiRequest(`/providers/${provider}/test`, { method: 'POST' }),
+  removeAIProviderKey: (provider) => api.aiRequest(`/providers/${provider}/key`, { method: 'DELETE' }),
+  getAIFeatures: () => api.aiRequest('/features'),
+  updateAIFeature: (key, settings) => api.aiRequest(`/features/${key}`, {
+    method: 'PATCH', body: JSON.stringify(settings)
+  }),
+  runAIFeature: (key, payload) => api.aiRequest(`/features/${key}/run`, {
+    method: 'POST', body: JSON.stringify(payload)
+  }),
+  getAISuggestions: (status = 'pending') => api.aiRequest(`/suggestions?status=${encodeURIComponent(status)}`),
+  reviewAISuggestion: (id, review) => api.aiRequest(`/suggestions/${id}/review`, {
+    method: 'POST', body: JSON.stringify(review)
+  }),
+
   // Lab Orders
   getLabOrders: async (filters = {}) => {
     const params = new URLSearchParams(filters);

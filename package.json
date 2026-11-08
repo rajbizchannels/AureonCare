@@ -32,9 +32,12 @@
     "test:specialty": "node backend/test/specialty/packs.test.js",
     "test:forms": "node backend/test/forms/linkage.test.js",
     "test:subscription-changes": "node backend/test/billing/subscription-changes.test.js",
-    "test:record-numbers": "node backend/test/records/numbers.test.js"
+    "test:record-numbers": "node backend/test/records/numbers.test.js",
+    "test:ai": "node backend/test/ai/ai.test.js",
+    "test:ai-anonymizer": "node backend/test/ai/anonymizer.test.js"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^1.6.0",
     "@azure/msal-browser": "^4.25.1",
     "@azure/msal-node": "^3.8.0",
     "@azure/msal-react": "^3.0.20",

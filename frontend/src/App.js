@@ -659,7 +659,7 @@ function App() {
       case 'crm':
         return <CRMView theme={theme} api={api} setShowForm={handleSetShowForm} setCurrentModule={setCurrentModule} currentModule={currentModule} crmRefreshKey={crmRefreshKey} t={t} />;
       case 'integrations':
-        return <IntegrationsView theme={theme} setCurrentModule={setCurrentModule} />;
+        return <IntegrationsView theme={theme} setCurrentModule={setCurrentModule} t={t} user={user} />;
       case 'clinicalServices':
         return (
           <ClinicalServicesView
@@ -1311,7 +1311,8 @@ function App() {
               'offering': 'clinicalServices',
               'campaign': 'crm',
               'preapproval': 'rcm',
-              'denial': 'rcm'
+              'denial': 'rcm',
+              'ai_suggestion': 'integrations'
             };
 
             // A patient's results are their own records; every one of them

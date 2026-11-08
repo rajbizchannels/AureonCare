@@ -2,8 +2,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { ToggleLeft, ToggleRight, ChevronDown, ChevronUp, Save } from 'lucide-react';
 import api from '../api/apiService';
 import { useAudit } from '../hooks/useAudit';
+import AIIntegrationsSection from '../components/integrations/AIIntegrationsSection';
 
-const IntegrationsView = ({ theme, setCurrentModule, t }) => {
+const IntegrationsView = ({ theme, setCurrentModule, t, user }) => {
+  const isAdmin = user?.role === 'admin';
   const [vendorIntegrations, setVendorIntegrations] = useState([]);
   const [telehealthProviders, setTelehealthProviders] = useState([]);
   const [stripeSettings, setStripeSettings] = useState(null);
@@ -960,6 +962,9 @@ const IntegrationsView = ({ theme, setCurrentModule, t }) => {
           </div>
         </div>
       </div>
+
+      {/* AI: bring-your-own-key providers, feature switches with cost guidance, review queue */}
+      <AIIntegrationsSection theme={theme} t={t} isAdmin={isAdmin} />
     </div>
   );
 };
