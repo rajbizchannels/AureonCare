@@ -863,7 +863,16 @@ const DiagnosisForm = ({
                   {aiMedSuggestions.map((med) => (
                     <div key={med.name} className="flex flex-wrap items-center justify-between gap-2 text-sm">
                       <span className={theme === 'dark' ? 'text-slate-200' : 'text-gray-800'}>
-                        <span className="font-semibold">{med.name}</span>{med.strength ? ` ${med.strength}` : ''}
+                        {med.matchType === 'alternative' && med.match ? (
+                          <>
+                            <span className="font-semibold">{med.match.drug_name || med.match.brand_name}</span>
+                            <span className="ml-1 px-1.5 py-0.5 rounded text-[10px] bg-amber-500/20 text-amber-600">
+                              {(t.dxAlternativeTo || 'alternative to {drug}').replace('{drug}', `${med.name}${med.strength ? ` ${med.strength}` : ''}`)}
+                            </span>
+                          </>
+                        ) : (
+                          <><span className="font-semibold">{med.name}</span>{med.strength ? ` ${med.strength}` : ''}</>
+                        )}
                         {med.instructions ? <span className={theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}> — {med.instructions}</span> : null}
                       </span>
                       <span className="flex gap-2">

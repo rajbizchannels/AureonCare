@@ -86,7 +86,7 @@ const FEATURES = [
     key: 'ambient_scribe', module: 'ehr', risk: 'high', sendsPhi: true,
     reviewerRoles: ['doctor', 'provider'], attestationRequired: true,
     tokensIn: 7000, tokensOut: 1000, monthlyUses: 4400, extraCostKey: 'speechToText',
-    promptVersion: 'scribe-v3',
+    promptVersion: 'scribe-v4',
     system: 'You draft a SOAP note from a visit transcript. Only use facts stated in the transcript. '
       + 'Mark anything uncertain with "[verify]". Do not invent vitals, doses or diagnoses.\n'
       + 'Answer in Markdown with exactly this layout:\n'
@@ -95,7 +95,7 @@ const FEATURES = [
       + '- ICD-10 `CODE` — description — "supporting sentence from the transcript"\n'
       + '- CPT `CODE` — description — "supporting sentence from the transcript"\n'
       + '## Medications\n'
-      + '- `Drug name` strength — dose and frequency — duration\n'
+      + '- `Drug name` strength — dose and frequency — duration [generic: generic name; class: drug class]\n'
       + '## Lab tests\n'
       + '- Test name — CPT `CODE`\n'
       + 'Only list codes, medications and tests the transcript supports. Write "None" under a section '

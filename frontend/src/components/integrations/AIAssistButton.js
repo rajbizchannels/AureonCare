@@ -52,20 +52,52 @@ async function verifyCode(code, type) {
   }
 }
 
-/** Find a suggested medication in the drug list (ePrescribe needs a real entry). */
-async function matchMedication(med) {
+const drugLabel = (r) => [r.drug_name || r.brand_name, r.strength && !String(r.drug_name || '').includes(String(r.strength).replace(/\s/g, '')) ? r.strength : null]
+  .filter(Boolean).join(' ');
+
+/** Pick the row whose strength matches the suggested one, else the first. */
+function bestStrength(rows, strength) {
+  const num = (strength || '').match(/\d+(?:\.\d+)?/);
+  return (num && rows.find((r) => String(r.strength || r.drug_name || '').includes(num[0]))) || rows[0] || null;
+}
+
+async function searchDrugs(query, drugClass) {
   try {
-    const rows = await api.searchMedications(med.name, null, null, 20);
-    if (!Array.isArray(rows) || !rows.length) return null;
-    const name = med.name.toLowerCase();
-    const named = rows.filter((r) => [r.drug_name, r.brand_name, r.generic_name]
-      .some((n) => n && String(n).toLowerCase().startsWith(name)));
-    const pool = named.length ? named : [];
-    const num = (med.strength || '').match(/\d+(?:\.\d+)?/);
-    return (num && pool.find((r) => String(r.strength || '').includes(num[0]))) || pool[0] || null;
+    const rows = await api.searchMedications(query || null, drugClass || null, null, 20);
+    return Array.isArray(rows) ? rows : [];
   } catch {
-    return null;
+    return [];
   }
+}
+
+/**
+ * Find a suggested medication in the drug list (ePrescribe needs a real entry).
+ *   1. by name (brand or drug name)          -> matchType 'name'
+ *   2. by the generic name the AI gave       -> matchType 'generic'
+ *   3. otherwise, similar medications the practice stocks: same drug class, or a
+ *      similar name -> `alternatives`, which the reviewer may pick from (never automatic).
+ */
+async function matchMedication(med) {
+  const startsWith = (rows, q) => rows.filter((r) => [r.drug_name, r.brand_name, r.generic_name]
+    .some((n) => n && String(n).toLowerCase().startsWith(q.toLowerCase())));
+
+  const byName = startsWith(await searchDrugs(med.name), med.name);
+  if (byName.length) return { match: bestStrength(byName, med.strength), matchType: 'name', alternatives: [] };
+
+  if (med.generic) {
+    const byGeneric = startsWith(await searchDrugs(med.generic), med.generic);
+    if (byGeneric.length) return { match: bestStrength(byGeneric, med.strength), matchType: 'generic', alternatives: [] };
+  }
+
+  const seen = new Set();
+  const alternatives = [];
+  const add = (rows) => rows.forEach((r) => {
+    const key = r.id || r.ndc_code || r.drug_name;
+    if (!seen.has(key) && alternatives.length < 5) { seen.add(key); alternatives.push(r); }
+  });
+  if (med.drugClass) add(await searchDrugs(null, med.drugClass));
+  if (alternatives.length < 5 && med.name.length >= 4) add(await searchDrugs(med.name.slice(0, 4)));
+  return { match: null, matchType: null, alternatives };
 }
 
 /** Find a lab test's CPT code: by the code the AI gave, else by the test name (80000-89999). */
@@ -195,11 +227,14 @@ const AIAssistButton = ({
     const timer = setTimeout(async () => {
       setCheckingCodes(true);
       if (onApplyMedications) {
-        const found = await Promise.all(extractMedications(text).map(async (m) => ({ ...m, match: await matchMedication(m) })));
+        const found = await Promise.all(extractMedications(text).map(async (m) => ({ ...m, ...(await matchMedication(m)) })));
         if (run !== verifyRun.current) return;
         setMeds((prev) => found.map((m) => {
           const key = m.name.toLowerCase();
-          return { ...m, key, verified: !!m.match, checked: keep(prev, key, !!m.match) };
+          const before = prev.find((p) => p.key === key);
+          // Keep an alternative the reviewer already picked.
+          if (before && before.matchType === 'alternative') return { ...m, key, match: before.match, matchType: 'alternative', verified: false, checked: before.checked };
+          return { ...m, key, verified: !!m.match, checked: keep(prev, key, m.matchType === 'name' || m.matchType === 'generic') };
         }));
       }
       if (onApplyLabTests) {
@@ -306,7 +341,7 @@ const AIAssistButton = ({
   const addMeds = () => act(async () => {
     await ensureAccepted();
     const chosen = meds.filter((m) => m.checked);
-    onApplyMedications(chosen.map(({ name, strength, instructions, match }) => ({ name, strength, instructions, match })));
+    onApplyMedications(chosen.map(({ name, strength, instructions, match, matchType }) => ({ name, strength, instructions, match, matchType })));
     setMedsAdded(chosen.length);
   });
 
@@ -505,12 +540,38 @@ const AIAssistButton = ({
                         hint={tr('aiTransferMedsHint', 'Medications found in your drug list are ticked. Each one opens in ePrescribe for you to complete and check.')}
                         checking={checkingCodes} checkingText={tr('aiCheckingCodes', 'Checking codes against your code list...')}
                         emptyText={tr('aiNoMedsFound', 'No medications were found in the draft.')}
-                        items={meds.map((m) => ({
-                          key: m.key, checked: m.checked, verified: m.verified, ariaLabel: m.name,
-                          content: <><span className="font-semibold">{m.name}</span>{m.strength ? ` ${m.strength}` : ''}{m.instructions ? <span className={muted}> — {m.instructions}</span> : null}</>,
-                          status: m.verified
-                            ? fill(tr('aiMedFound', 'Found in drug list: {drug}'), { drug: [m.match.drug_name || m.match.brand_name, m.match.strength].filter(Boolean).join(' ') })
-                            : tr('aiMedNotFound', 'Not found in your drug list — search for it in ePrescribe'),
+                        items={meds.map((m, mi) => ({
+                          key: m.key, checked: m.checked, verified: m.matchType === 'name' || m.matchType === 'generic', ariaLabel: m.name,
+                          content: (
+                            <>
+                              <span className="font-semibold">{m.name}</span>{m.strength ? ` ${m.strength}` : ''}
+                              {m.instructions ? <span className={muted}> — {m.instructions}</span> : null}
+                              {!m.match && m.alternatives && m.alternatives.length > 0 && medsAdded === 0 && (
+                                <span className="block mt-1" role="radiogroup" aria-label={fill(tr('aiMedSimilarFor', 'Similar medications for {drug}'), { drug: m.name })}>
+                                  <span className={`block ${muted}`}>{tr('aiMedSimilarHint', 'Not in your drug list. Similar medications you stock — pick one only if it is clinically appropriate:')}</span>
+                                  {m.alternatives.map((alt) => (
+                                    <button key={alt.id || alt.ndc_code || alt.drug_name} type="button" role="radio" aria-checked="false"
+                                      onClick={(e) => {
+                                        e.preventDefault();
+                                        setMeds((list) => list.map((x, i) => (i === mi ? { ...x, match: alt, matchType: 'alternative', checked: true } : x)));
+                                      }}
+                                      className={`mr-2 mt-1 px-2 py-0.5 rounded-md border text-xs ${dark ? 'border-slate-600 hover:bg-slate-800' : 'border-gray-300 hover:bg-gray-100'}`}>
+                                      {drugLabel(alt)}{alt.drug_class ? <span className={muted}> · {alt.drug_class}</span> : null}
+                                    </button>
+                                  ))}
+                                </span>
+                              )}
+                            </>
+                          ),
+                          status: m.matchType === 'name'
+                            ? fill(tr('aiMedFound', 'Found in drug list: {drug}'), { drug: drugLabel(m.match) })
+                            : m.matchType === 'generic'
+                              ? fill(tr('aiMedGeneric', 'Same medicine (generic) in your drug list: {drug}'), { drug: drugLabel(m.match) })
+                              : m.matchType === 'alternative'
+                                ? fill(tr('aiMedAlternativeChosen', 'Alternative chosen: {drug} — confirm when prescribing'), { drug: drugLabel(m.match) })
+                                : m.alternatives && m.alternatives.length
+                                  ? tr('aiMedNotFoundPickSimilar', 'Not found — choose a similar medication above, or search in ePrescribe')
+                                  : tr('aiMedNotFound', 'Not found in your drug list — search for it in ePrescribe'),
                         }))}
                         onToggle={(idx, v) => setMeds((list) => list.map((x, i) => (i === idx ? { ...x, checked: v } : x)))}
                         addedCount={medsAdded}
