@@ -42,6 +42,9 @@ beforeEach(() => {
     getOfferings: jest.fn().mockResolvedValue([]),
     getAppointmentTypes: jest.fn().mockResolvedValue([{ id: 1, name: 'Follow-up', durationMinutes: 20 }]),
     createAppointment: jest.fn().mockResolvedValue({ id: 'appt-1' }),
+    // Empty by default so the existing checks exercise the `users` prop on its own; the
+    // tests that care about the endpoint set their own value.
+    getBookableProviders: jest.fn().mockResolvedValue([]),
   };
 });
 
@@ -182,6 +185,84 @@ describe('the provider the appointment is with', () => {
     const fromProvidersTable = { id: 'p-1', first_name: 'Nia', last_name: 'Shah' };
     renderForm({ users: [fromProvidersTable] });
     await waitFor(() => expect(fieldCombobox('Provider')).toHaveTextContent('Nia Shah'));
+  });
+});
+
+describe('where the provider list comes from', () => {
+  test('lists the practice providers even when the users prop is empty', async () => {
+    // The reported bug. On the dashboard and the practice calendar the `users` prop is
+    // /api/users, which is admin-only — a doctor got 403 and an empty array, so the
+    // dropdown held nothing but "Select Provider".
+    api.getBookableProviders.mockResolvedValue([
+      { id: 'p-1', firstName: 'Nia', lastName: 'Shah', specialization: 'Cardiology' },
+      { id: 'p-2', firstName: 'Omar', lastName: 'Diaz', specialization: 'Dermatology' },
+    ]);
+    renderForm({ users: [], user: RECEPTIONIST });
+    const provider = fieldCombobox('Provider');
+    await waitFor(() => expect(provider).toHaveTextContent('Nia Shah'));
+    const options = await openOptions(provider);
+    expect(within(options).getByText(/Omar Diaz/)).toBeInTheDocument();
+  });
+
+  test('shows colleagues to a signed-in doctor, with the doctor still defaulted', async () => {
+    // /api/providers returns only the caller when their role is doctor, which is why the
+    // dropdown has to come from the bookable endpoint instead.
+    api.getBookableProviders.mockResolvedValue([
+      { id: DR_ONE.id, firstName: 'Asha', lastName: 'Rao' },
+      { id: DR_TWO.id, firstName: 'Ben', lastName: 'Cole' },
+    ]);
+    const { container } = renderForm({ users: [], user: DR_TWO });
+    const provider = fieldCombobox('Provider');
+    await waitFor(() => expect(provider).toHaveTextContent('Ben Cole'));
+    // The default is set synchronously from the signed-in user, so it is already on screen
+    // before the fetch resolves. Wait for the fetched list itself, or this opens a dropdown
+    // that legitimately holds only the default and the check means nothing.
+    await waitFor(() => expect(container.querySelector(`option[value="${DR_ONE.id}"]`)).toBeTruthy());
+    const options = await openOptions(provider);
+    expect(within(options).getByText(/Asha Rao/)).toBeInTheDocument();
+  });
+
+  test('does not duplicate a provider that both sources return', async () => {
+    api.getBookableProviders.mockResolvedValue([{ id: DR_ONE.id, firstName: 'Asha', lastName: 'Rao' }]);
+    renderForm({ users: [DR_ONE], user: RECEPTIONIST });
+    const provider = fieldCombobox('Provider');
+    await waitFor(() => expect(provider).toHaveTextContent('Asha Rao'));
+    const options = await openOptions(provider);
+    expect(within(options).getAllByText(/Asha Rao/)).toHaveLength(1);
+  });
+
+  test('keeps working from the users prop when the endpoint fails', async () => {
+    api.getBookableProviders.mockRejectedValue(new Error('boom'));
+    renderForm({ user: DR_TWO });
+    await waitFor(() => expect(fieldCombobox('Provider')).toHaveTextContent('Ben Cole'));
+  });
+});
+
+describe('the services dropdown', () => {
+  test('asks for active services without filtering on online bookability', async () => {
+    // available_online means "a patient may book this through the portal". Filtering on it
+    // hid every in-clinic-only service from staff, so a practice whose services are all
+    // internal saw an empty dropdown.
+    renderForm();
+    await waitFor(() => expect(api.getOfferings).toHaveBeenCalled());
+    expect(api.getOfferings).toHaveBeenCalledWith({ is_active: true });
+  });
+
+  test('lists a service that is not bookable online', async () => {
+    api.getOfferings.mockResolvedValue([
+      { id: 10, name: 'In-clinic only procedure', duration_minutes: 45, available_online: false },
+    ]);
+    const { container } = renderForm();
+    await waitFor(() => expect(container.querySelector('option[value="10"]')).toBeTruthy());
+    const options = await openOptions(fieldCombobox('Service'));
+    expect(within(options).getByText(/In-clinic only procedure/)).toBeInTheDocument();
+  });
+
+  test('survives a services response that is not a list', async () => {
+    // This used to reach `offerings.map` and take the whole form down with a white screen.
+    api.getOfferings.mockResolvedValue({ error: 'nope' });
+    renderForm({ patient: PATIENTS[0] });
+    await waitFor(() => expect(fieldCombobox('Patient')).toHaveTextContent('Ada Lovelace'));
   });
 });
 

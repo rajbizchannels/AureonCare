@@ -63,7 +63,11 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
   let {
     patient_id, user_id, provider_id, practice_id, appointment_type,
-    start_time, end_time, duration_minutes, reason, notes, status
+    start_time, end_time, duration_minutes, reason, notes, status,
+    // The booking form has offered a Service field all along, and this route dropped it
+    // on the floor: the column was simply absent from the INSERT, so every appointment
+    // was stored with no service however carefully one was chosen.
+    offering_id
   } = req.body;
 
   try {
@@ -262,11 +266,11 @@ router.post('/', async (req, res) => {
     const result = await pool.query(
       `INSERT INTO appointments
        (patient_id, provider_id, practice_id, appointment_type, start_time, end_time,
-        duration_minutes, reason, notes, status, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())
+        duration_minutes, reason, notes, status, offering_id, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), NOW())
        RETURNING *`,
       [patient_id, provider_id, practice_id, appointment_type, start_time, end_time,
-       duration_minutes, reason, notes, status || 'scheduled']
+       duration_minutes, reason, notes, status || 'scheduled', offering_id || null]
     );
 
     const newAppointment = result.rows[0];
@@ -416,8 +420,13 @@ router.patch('/:id/status', async (req, res) => {
 router.put('/:id', async (req, res) => {
   const {
     patient_id, provider_id, practice_id, appointment_type,
-    start_time, end_time, duration_minutes, reason, notes, status
+    start_time, end_time, duration_minutes, reason, notes, status, offering_id
   } = req.body;
+
+  // Whether the caller SENT offering_id, which is not the same as its value: null means
+  // "clear the service", absent means "leave it alone". Without the distinction, adding
+  // this column to the update would wipe the service on any caller that does not send it.
+  const setsOffering = Object.prototype.hasOwnProperty.call(req.body || {}, 'offering_id');
 
   try {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
@@ -493,11 +502,14 @@ router.put('/:id', async (req, res) => {
       `UPDATE appointments
        SET patient_id = $1, provider_id = $2, practice_id = $3, appointment_type = $4,
            start_time = $5, end_time = $6, duration_minutes = $7, reason = $8,
-           notes = $9, status = $10, updated_at = NOW()
+           notes = $9, status = $10,
+           offering_id = CASE WHEN $12 THEN $13::uuid ELSE offering_id END,
+           updated_at = NOW()
        WHERE id::text = $11::text
        RETURNING *`,
       [patient_id, provider_id, practice_id, appointment_type, start_time, end_time,
-       duration_minutes, reason, notes, status, req.params.id]
+       duration_minutes, reason, notes, status, req.params.id,
+       setsOffering, offering_id || null]
     );
 
     // Re-query with JOINs to include patient and doctor names (matches GET response format)

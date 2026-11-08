@@ -802,6 +802,17 @@ const api = {
     }
     return response.json();
   },
+  // Every active provider in the practice, for a booking screen's dropdown. getProviders
+  // is the MANAGEMENT list and returns only the caller's own record when they are a
+  // doctor, which left a doctor unable to book a colleague.
+  getBookableProviders: async () => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/providers/bookable`);
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      throw new Error(body.message || body.error || 'Failed to fetch bookable providers');
+    }
+    return response.json();
+  },
   getProvider: async (id) => {
     const response = await authenticatedFetch(`${API_BASE_URL}/providers/${id}`);
     if (!response.ok) throw new Error('Failed to fetch provider');
