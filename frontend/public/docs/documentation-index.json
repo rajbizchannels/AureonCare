@@ -1,6 +1,6 @@
 {
   "version": "1.5",
-  "lastUpdated": "2026-10-19",
+  "lastUpdated": "2026-11-08",
   "sections": [
     {
       "id": "getting-started",
@@ -1459,6 +1459,46 @@
           "roles": [
             "admin"
           ]
+        },
+        {
+          "id": "ai-integrations",
+          "title": "AI Integrations (Bring Your Own Key)",
+          "path": "/docs/index.html#ai-integrations",
+          "url": "/docs/index.html#ai-integrations",
+          "keywords": [
+            "ai",
+            "artificial intelligence",
+            "llm",
+            "byok",
+            "bring your own key",
+            "api key",
+            "anthropic",
+            "claude",
+            "openai",
+            "azure",
+            "gemini",
+            "mistral",
+            "offline",
+            "ollama",
+            "anonymization",
+            "phi",
+            "baa",
+            "dpa",
+            "review queue",
+            "human in the loop",
+            "ambient scribe",
+            "cost"
+          ],
+          "summary": "Connect your own AI provider key, switch AI features on or off with cost guidance, and review every AI draft before it is used. Patient identifiers are anonymized before sending.",
+          "content": "**AI Integrations (Settings → Integrations → AI Integrations)**\n\nAureonCare can use an AI provider to prepare drafts for your team. Every AI result is a **draft**: nothing is saved to a chart, claim or message until a person with the right role accepts it.\n\n**1. Connect a provider (bring your own key)**\n1. Open the **Providers (your own key)** tab (admins only).\n2. Expand a provider: Anthropic Claude, OpenAI, Azure OpenAI, Google Gemini, Mistral AI (EU) or Offline / self-hosted.\n3. Paste your **API key**. For Azure, also enter the endpoint and deployment name. For Offline, enter your model server URL (for example http://ollama:11434/v1).\n4. Tick **A BAA (US) / DPA (EU) is signed with this provider**. Features that use patient data cannot be switched on without it. Offline servers do not need it.\n5. Click **Save**, then **Test connection**. The test only lists models — no patient data is sent and it costs nothing.\n6. Switch the provider **on**.\n\nThe key is stored encrypted and is never shown again. Usage is billed by the provider to **your own account**. Leave the key field blank when saving to keep the existing key; use **Remove key** to delete it.\n\n**2. Turn features on or off**\nOpen **Features & cost**. For each feature you can:\n• Choose the provider and model\n• See **cost guidance**: estimated cost per use and per month for a typical 10-provider clinic, based on list prices (your invoice is the source of truth)\n• See this month's drafts, cost and review outcomes\n• Set a **monthly limit** (the feature pauses when it is reached; admins are notified at 80% and 100%)\n• Switch the feature **on/off**\n\nFeatures: Ambient scribe, ICD-10/CPT code suggestions, Claim scrubbing & denial appeals, Prior-authorization drafts, Fax/PDF data extraction, Patient message reply drafts, Chart summary & Q&A copilot, Lab results in plain language, No-show risk & waitlist fill, Inventory demand forecast, In-app help assistant, Medical camp triage summaries.\n\n**3. Patient privacy (anonymization)**\nBefore any text is sent, AureonCare replaces patient identifiers — name, MRN, date of birth, phone, email, address, insurance ID, SSN, dates, URLs and long ID numbers — with placeholders such as [[PATIENT_NAME_1]]. The provider only sees placeholders. When the answer returns, the real values are put back so the reviewer reads a normal draft. The mapping is stored encrypted for each request so auditors can see which values were withheld.\n\nPattern matching cannot catch every identifier in free text (for example a relative's first name), which is why a BAA/DPA is still required and every result is reviewed.\n\n**4. Review queue (human in the loop)**\nOpen **Review queue**. Each draft shows the feature, patient, provider/model and how many identifiers were anonymized.\n• **Accept** — use the draft as written\n• Edit the text, then **Save edits & accept**\n• **Reject** — a reason is required\nClinical drafts (scribe, coding, prior authorization, lab explanations, camp summaries) also need the sign-off box: \"I reviewed this draft and take responsibility for its content.\" Drafts expire (72 hours by default) and can no longer be accepted.\n\nOnly the roles listed under **Human review** can act on a draft. Reviewers get a notification when a draft is ready; the requester is told when it is reviewed.\n\n**5. Audit and search**\nEvery change (key saved or removed, provider tested, feature on/off, limits) and every draft (created, accepted, edited, rejected) is recorded in **Audit Logs** under module AI. Drafts are searchable from global search by feature, status or patient name.",
+          "roles": [
+            "admin",
+            "doctor",
+            "provider",
+            "nurse",
+            "receptionist",
+            "billing_manager"
+          ]
         }
       ]
     },
@@ -1608,6 +1648,11 @@
       "title": "Clinic Settings",
       "content": "Update practice information including currency. Currency changes apply across all financial modules immediately.",
       "articleId": "settings"
+    },
+    "integrations": {
+      "title": "Integrations & AI",
+      "content": "Connect vendors, telehealth and payment providers. In AI Integrations, add your own AI key, switch features on or off with cost guidance, and review AI drafts before they are used.",
+      "articleId": "ai-integrations"
     }
   },
   "onboarding": {
