@@ -70,10 +70,10 @@ module.exports = {
     await d.step('Step 4 — Insurance');
     const payer = page.locator('form select').nth(1);
     if (await d.exists(payer)) {
-      await d.select(payer, { label: 'Blue Cross Blue Shield (BCBS001)' });
+      await d.select(payer, { label: 'Northbeam Health Plan (NBHP001)' });
     }
     const policy = page.locator('input[placeholder="Enter insurance ID"]');
-    if (await d.exists(policy)) await d.type(policy, 'BCBS-44120');
+    if (await d.exists(policy)) await d.type(policy, 'NBHP-44120');
     await d.say(
       'Insurance is what claims are built from. A record without it will bill as self-pay.',
       3600

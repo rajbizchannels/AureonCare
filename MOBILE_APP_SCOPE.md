@@ -13,7 +13,7 @@ authorisation model as the web app.
 |---|---|
 | Don't crowd the interface | Max 5 bottom-tab destinations; everything else lives behind a **More** sheet. The web three-pane shell (`PrimaryNav` → `SecondaryNav` → content) collapses to **tabs → list → detail**. |
 | Theme parity with web | Same tokens as `frontend/src`: dark `slate-950 / slate-900` surfaces, `slate-700` borders, `cyan-500 → blue-500` gradient accent, `rounded-xl` cards, Lucide icons. Light mode mirrors `gray-100 / white`. |
-| One app, two audiences | Role decides the shell at login: **Patient mode** for `patient`, **Staff mode** for `admin / doctor / nurse / receptionist / billing_manager / crm_manager / staff` (`frontend/src/utils/rolePermissions.js`). |
+| One app, four shells | Role decides the shell at login — **patient**, **clinician** (`doctor`, `nurse`), **frontdesk** (`receptionist`, `staff`, `billing_manager`, `crm_manager`) and **admin** — and every tab inside a shell is then filtered against the same matrix the web app uses (`frontend/src/utils/rolePermissions.js`, ported to `mobile/src/lib/permissions.ts`). One binary, because a role belongs to the account, not the install. |
 | Plan gating is server-truth | Reuse the tier lists in `frontend/src/config/planFeatures.js` (`essentials / clinical_pro / enterprise / onprem`). A module hidden by plan or role on web stays hidden on mobile. |
 | Phone is for *doing*, tablet is for *working* | Phone = read, confirm, capture, join. Tablet = the above plus data-entry screens with multi-select and coding pickers. |
 
@@ -167,12 +167,33 @@ Ship them tablet-only in v1; revisit for phone once the core is stable.
 
 ---
 
+## 5a. What the web app gained since this doc, and where it lands
+
+The web client picked up multi-tenancy, two-factor, locations, medical camps, a
+form-management module, a reporting revamp and a platform operator console. Not all of
+it belongs on a phone, and one piece belongs there more than it does on the web.
+
+| Web addition | Mobile treatment |
+|---|---|
+| **Medical camps** (`camps.js`, `camp-registrations.js`, `camp-reports.js`) | **Built, and this is the headline.** A camp is a field site with a folding table and no desktop — the registration desk, the station board and the attendee list are the one place the app is the *primary* tool rather than a companion. Planning, staffing, supply allocation and the sponsor report stay web-only: they are pre-trip desk work. |
+| **Two-factor + session idle policy** (migration 081) | **Built, including enrolment.** The web flow enrols by showing a QR code, which a phone cannot scan from its own screen; mobile shows the base32 key to copy instead, so a phone is a sufficient device for a practice that mandates 2FA. Idle sign-out is named on the sign-in screen rather than happening silently. |
+| **Form management** (`form-management.js`, eSignature) | **Partly.** Outstanding and completed forms are listed both ways round, and document-backed requests can be acknowledged — those are the ones that hold a visit up. Filling in a *template* form and signing stay web: the builder has conditional fields, repeating groups and typed validation, and a renderer that supported some of that would produce submissions that look complete and are not. |
+| **Locations / sites** (`locations.js`) | **Read-only**, under Practice. Camps and schedules name their site; editing sites is admin desk work. |
+| **Multi-tenancy** (SEC-05, migrations 063–074) | **Surfaced, not managed.** A staff account that does not resolve to a provisioned schema fails identically on every clinical read, so the app would just look broken. Practice reads `/auth/tenant-status` and says which it is. |
+| **Reporting revamp** (25+ reports, custom builder) | **Web-only.** These are wide tables and cross-filtered charts; the phone equivalents already exist as the Today and Revenue cycle summaries. |
+| **Platform operator console** (`platform.js`, billing ledger, coupons) | **Web-only, and not a practice surface at all** — it is for AureonCare staff administering tenants. |
+| **Self-serve signup, invites, domain join** (`signup.js`, `invites.js`, `teamAccess.js`) | **Web-only.** Onboarding happens once, from an email link, on whatever device opened it. |
+| **Specialty configuration wizard** (`practiceSetup.js`) | **Web-only.** A setup wizard run once per practice. |
+| **Tasks, notifications** | **Built.** Tasks list with mark-done; the notification centre, which matters more here than on the web because push is not registered yet. |
+
+---
+
 ## 6. Deliberately web-only ❌
 
 Administrative and configuration surfaces. Deep-link to the hosted web app instead of
 rebuilding them — this is the main thing keeping the mobile UI uncrowded.
 
-- Admin panel, user management, roles & permissions (`AdminPanelView.js`, `roles.js`, `permissions.js`)
+- User management, roles & permissions, invites (`AdminPanelView.js`, `roles.js`, `permissions.js`, `invites.js`) — admins get a read-only **Practice** screen on mobile (tenant health, sites, what their role grants); everything that *changes* an account stays web
 - Subscription plans and licensing (`plans.js`, `licenses.js`)
 - Integrations & OAuth connection setup (`IntegrationsView.js`, `integrationOAuth.js`)
 - Telehealth provider credentials (`telehealthSettings.js`)
@@ -183,6 +204,11 @@ rebuilding them — this is the main thing keeping the mobile UI uncrowded.
 - Accounting ledger: chart of accounts, journal, reconciliation, statements (`AccountsView.js`)
 - EDI, insurance payer setup (`edi.js`, `insurance-payers.js`)
 - Clinic settings, working hours, appointment types setup (`clinicSettings.js`, `appointment-types.js`)
+- Site (location) creation and editing (`locations.js`) — listed read-only on mobile
+- Camp planning, staffing, supply allocation and sponsor reporting (`CampPlanningPanel.js`, `camp-reports.js`) — the desk and board *are* on mobile
+- Self-serve signup, staff invitations, domain join approval (`signup.js`, `invites.js`, `teamAccess.js`)
+- Specialty configuration wizard (`PracticeSetupWizardView.js`, `practiceSetup.js`)
+- Platform operator console: tenants, plans, coupons, billing ledger (`platform.js`)
 
 ---
 

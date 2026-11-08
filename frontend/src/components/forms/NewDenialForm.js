@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import AIAssistButton from '../integrations/AIAssistButton';
 import { AlertCircle, X, Save, Flag } from 'lucide-react';
 import ConfirmationModal from '../modals/ConfirmationModal';
 import { useAudit } from '../../hooks/useAudit';
@@ -516,9 +517,25 @@ const NewDenialForm = ({ theme, api, patients, claims, insurancePayers, onClose,
 
         {/* Notes */}
         <div>
-          <label className={`block text-sm font-medium mb-2 ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>
-            Notes
-          </label>
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <label className={`block text-sm font-medium ${isDark ? 'text-gray-200' : 'text-gray-700'}`}>
+              Notes
+            </label>
+            {/* AI reviews the denial and drafts an appeal; only on click, inserted only after review */}
+            <AIAssistButton featureKey="claim_scrubbing" theme={theme}
+              patientId={formData.patientId || null} entityType="claim" entityId={formData.claimId || null}
+              labelKey="aiDraftAppeal" label="Draft appeal"
+              getInput={() => {
+                const claim = (claims || []).find((c) => String(c.id) === String(formData.claimId));
+                return [
+                  claim && `Claim: ${claim.claim_number || claim.claimNumber || claim.id}, amount ${claim.amount || ''}, codes ${claim.diagnosis_codes || claim.diagnosisCodes || ''} ${claim.procedure_codes || claim.procedureCodes || ''}`,
+                  `Denial reason: ${formData.denial_reason_code || ''} ${formData.denial_reason_description || ''}`,
+                  formData.denial_amount && `Denied amount: ${formData.denial_amount}`,
+                  formData.notes && `Notes: ${formData.notes}`,
+                ].filter(Boolean).join('\n');
+              }}
+              onApply={(text) => setFormData((prev) => ({ ...prev, notes: text }))} />
+          </div>
           <textarea
             value={formData.notes}
             onChange={(e) => setFormData({ ...formData, notes: e.target.value })}

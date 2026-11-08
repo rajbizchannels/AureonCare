@@ -5,7 +5,7 @@ import { useSession } from '@/context/SessionContext';
 import { useActivePatient } from '@/context/ActivePatientContext';
 import { SplitView } from '@/components/SplitView';
 import { Card, Chip, EmptyState, ErrorNote, Loading, SectionLabel } from '@/components/ui';
-import { formatDate, fullName, useResource } from '@/lib/useResource';
+import { formatDate, fullName, humanStatus, useResource } from '@/lib/useResource';
 import { useLayout } from '@/lib/device';
 import { palette, radius, space, tint, type } from '@/theme/tokens';
 import type { Diagnosis, MedicalRecord, PatientRow, Prescription } from '@/lib/api';
@@ -171,7 +171,7 @@ const PatientSummary: React.FC<{ patient: PatientRow; onBack: () => void }> = ({
                   </Text>
                   <Text style={styles.meta}>{[p.dosage, p.frequency].filter(Boolean).join(' · ')}</Text>
                 </View>
-                {p.status ? <Chip label={p.status} tone="neutral" /> : null}
+                {p.status ? <Chip label={humanStatus(p.status)} tone="neutral" /> : null}
               </View>
             ))
           )}
@@ -192,7 +192,7 @@ const PatientSummary: React.FC<{ patient: PatientRow; onBack: () => void }> = ({
                     {[d.diagnosis_code, formatDate(d.diagnosed_date)].filter(Boolean).join(' · ')}
                   </Text>
                 </View>
-                {d.status ? <Chip label={d.status} tone="neutral" /> : null}
+                {d.status ? <Chip label={humanStatus(d.status)} tone="neutral" /> : null}
               </View>
             ))
           )}

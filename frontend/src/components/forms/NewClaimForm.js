@@ -321,10 +321,11 @@ const NewClaimForm = ({ theme, api, patients, claims, editingClaim, onClose, onS
         await addNotification('success', `Claim updated successfully for ${patientName}`);
       } else {
         // Create new claim
-        const claimNo = `CLM-2024-${String(claims.length + 1).padStart(3, '0')}`;
-        claimData.claim_number = claimNo;
+        // The server assigns the claim number (CLM-YYYY-NNNNNN). Counting the
+        // claims this screen had loaded gave two users the same number.
         claimData.status = 'pending';
         claim = await api.createClaim(claimData);
+        const claimNo = claim?.claim_number || '';
 
         // Log creation
         logCreate('NewClaimForm', claimData, {

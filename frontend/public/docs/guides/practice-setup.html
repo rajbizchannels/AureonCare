@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Practice Setup Wizard - AureonCare</title>
+    <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+    <header class="doc-header">
+        <div class="doc-header-content">
+            <div class="doc-header-left">
+                <a href="/" class="home-button">
+                    <svg class="home-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                    </svg>
+                    Back to AureonCare
+                </a>
+                <div class="doc-header-title">
+                    <h1>&#129520; Practice Setup Wizard</h1>
+                    <p>Configure AureonCare for your specialty</p>
+                </div>
+            </div>
+            <span class="version-badge">v1.5</span>
+        </div>
+    </header>
+    <div class="doc-container">
+        <a href="../index.html" class="back-link">&larr; Back to Documentation</a>
+        <div class="article-card">
+            <h1>Practice Setup Wizard</h1>
+            <p>Found under <strong>Settings &rarr; Practice &rarr; Practice Setup</strong>. Administrators only.</p>
+            <p>A new practice starts generic: every module visible, every menu item present, no services defined. The Practice Setup Wizard configures AureonCare for what your practice actually does.</p>
+
+            <h2>The Six Steps</h2>
+            <table>
+                <tr><th>Step</th><th>What it does</th></tr>
+                <tr><td>1. Profile</td><td>Practice name, address, contact details</td></tr>
+                <tr><td>2. Specialty</td><td>Choose one or more specialties</td></tr>
+                <tr><td>3. Services</td><td>Review the starter services your specialty suggests</td></tr>
+                <tr><td>4. Providers</td><td>Add clinicians and their specialties</td></tr>
+                <tr><td>5. Forms</td><td>Review the intake and clinical forms your specialty suggests</td></tr>
+                <tr><td>6. Review</td><td>See everything that will change, then apply</td></tr>
+            </table>
+            <p>You can leave the wizard at any step and return &mdash; your progress is saved.</p>
+
+            <h2>Specialty Packs</h2>
+            <p>A specialty pack is a starting configuration: suggested services, forms, and terminology for a kind of practice.</p>
+            <table>
+                <tr><th>Pack</th><th>Covers</th></tr>
+                <tr><td>Behavioural Health</td><td>Counselling and behavioural health practice</td></tr>
+                <tr><td>Dentistry</td><td>General dental practice, chair-side appointments</td></tr>
+                <tr><td>Ophthalmology</td><td>Refraction and investigation workflows</td></tr>
+                <tr><td>Paediatrics</td><td>Well-child visits and immunisation schedules</td></tr>
+            </table>
+            <p>Choosing a pack does not commit you to it. Step 6 shows exactly what would be created or changed before anything happens.</p>
+
+            <h2>What a Pack Will and Will Not Do</h2>
+            <p><strong>A pack will:</strong></p>
+            <ul>
+                <li>Create services, forms and terminology you do not already have</li>
+                <li>Hide modules your specialty typically does not use</li>
+            </ul>
+            <p><strong>A pack will never:</strong></p>
+            <ul>
+                <li>Overwrite anything you have edited &mdash; it reports a <strong>conflict</strong> and leaves your version alone</li>
+                <li>Take ownership of a service or form it did not create</li>
+                <li>Reveal a module your subscription tier or your role does not permit</li>
+            </ul>
+            <p>That last point matters. Specialty can only ever <em>narrow</em> the menu, never widen it. A pack cannot be used to reach a feature your plan does not include.</p>
+
+            <h2>Module Visibility</h2>
+            <p>From V1.5 there are three filters on what you see:</p>
+            <pre><code>visible  =  (what your plan includes  &cap;  what your role permits)
+            minus  (what your specialty hides, unless an admin pinned it back)</code></pre>
+
+            <h3>Pinning a Module Back</h3>
+            <p>If your specialty hid something you do use:</p>
+            <ol>
+                <li>Go to <strong>Settings &rarr; Practice &rarr; Practice Setup</strong></li>
+                <li>Open <strong>Hidden modules</strong></li>
+                <li>Click <strong>Pin</strong> next to the module</li>
+                <li>It reappears for everyone whose plan and role allow it</li>
+            </ol>
+            <p><strong>Tip:</strong> Hiding is a convenience, not a restriction. Anything your plan covers can always be pinned back.</p>
+
+            <h2>Re-running the Wizard</h2>
+            <p>You can run the wizard again at any time &mdash; to add a second specialty, or after a pack update. Re-running:</p>
+            <ul>
+                <li>Shows a fresh preview of what would change</li>
+                <li>Still refuses to touch anything you have edited since</li>
+                <li>Leaves your pinned modules pinned</li>
+            </ul>
+
+            <h2>Best Practices</h2>
+            <ul>
+                <li>&#10003; Run the wizard before adding real patient data</li>
+                <li>&#10003; Read the Step 6 preview properly &mdash; it is the last point before changes apply</li>
+                <li>&#10003; Adjust seeded services and forms afterwards; they are starting points, not rules</li>
+                <li>&#10003; Pin back any module your specialty hid but you actually use</li>
+                <li>&#10007; Don't expect a pack to overwrite your edits &mdash; it is designed not to</li>
+                <li>&#10007; Don't choose a specialty you do not practise just to get one of its forms; copy the form instead</li>
+            </ul>
+
+            <h2>Related Guides</h2>
+            <ul>
+                <li><a href="locations.html">Locations</a></li>
+                <li><a href="form-management.html">Form Management</a></li>
+                <li><a href="practice-settings.html">Practice Settings</a></li>
+            </ul>
+        </div>
+    </div>
+    <footer style="background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); color: white; padding: 2rem; text-align: center; margin-top: 3rem;">
+        <p>AureonCare v1.5 - Practice Setup Wizard</p>
+    </footer>
+</body>
+</html>

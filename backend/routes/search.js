@@ -80,6 +80,35 @@ router.get('/', async (req, res) => {
         'Patients'
     );
 
+    // Search AI drafts (the human-in-the-loop review queue). Draft text is encrypted at
+    // rest, so this matches the feature, status and linked patient, not the draft body.
+    // Kept near the top: the searches share one tenant transaction, so a failing query
+    // further down aborts everything queued after it.
+    pushIf('patients',
+        () => pool.query(`
+          SELECT
+            s.id,
+            s.feature_key,
+            s.status,
+            s.created_at,
+            s.expires_at,
+            p.first_name as patient_first_name,
+            p.last_name as patient_last_name,
+            'ai_suggestion' as result_type,
+            'integrations' as module
+          FROM ai_suggestions s
+          LEFT JOIN patients p ON p.id = s.patient_id
+          WHERE
+            LOWER(REPLACE(s.feature_key, '_', ' ')) LIKE LOWER($1)
+            OR LOWER(s.status) LIKE LOWER($1)
+            OR LOWER(COALESCE(p.first_name || ' ' || p.last_name, '')) LIKE LOWER($1)
+            OR LOWER('ai draft') LIKE LOWER($1)
+          ORDER BY s.created_at DESC
+          LIMIT $2
+        `, [`%${searchQuery}%`, searchLimit]),
+        'AI Drafts'
+    );
+
     // Search Appointments
     pushIf('appointments',
         () => pool.query(`
@@ -639,6 +668,8 @@ function getDisplayName(result) {
       return result.name || result.code || 'Coupon';
     case 'billing_payment':
       return `Payment #${result.payment_number || 'N/A'}`;
+    case 'ai_suggestion':
+      return `AI draft - ${String(result.feature_key || '').replace(/_/g, ' ')}`;
     default:
       return 'Unknown';
   }
@@ -649,6 +680,8 @@ function getDisplayName(result) {
  */
 function getDisplaySubtitle(result) {
   switch (result.result_type) {
+    case 'ai_suggestion':
+      return `${result.patient_first_name ? `Patient: ${result.patient_first_name} ${result.patient_last_name} - ` : ''}${result.status || 'pending'}`;
     case 'patient':
       return `MRN: ${result.mrn || 'N/A'}`;
     case 'appointment':

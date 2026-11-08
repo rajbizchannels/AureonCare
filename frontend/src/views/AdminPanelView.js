@@ -72,6 +72,7 @@ import IntegrationCard from '../components/IntegrationCard';
 import AuditLogsTab from '../components/admin/AuditLogsTab';
 import ArchiveManagementTab from '../components/admin/ArchiveManagementTab';
 import LocationsTab from '../components/admin/LocationsTab';
+import AIIntegrationsSection from '../components/integrations/AIIntegrationsSection';
 import { useClinicSettings } from '../hooks/useClinicSettings';
 import { apiFetch } from '../api/apiService';
 import { useShellTab } from '../hooks/useShellTab';
@@ -3798,6 +3799,9 @@ const AdminPanelView = ({
           )}
         </div>
       </div>
+
+      {/* AI: bring-your-own-key providers, feature switches with cost guidance, review queue */}
+      <AIIntegrationsSection theme={theme} t={t} isAdmin={isAdmin(user)} />
     </div>
   );
 

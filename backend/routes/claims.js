@@ -5,6 +5,7 @@ router.use(authenticate);
 router.use(require('../middleware/planEnforcement').enforceActiveBilling); // SEC-05 S11: read-only when subscription past_due/canceled
 const vendorIntegrationManager = require('../services/vendorIntegrations');
 const notificationService = require('../services/notificationService');
+const { insertNumbered } = require('../utils/recordNumbers');
 
 // Get all claims
 router.get('/', async (req, res) => {
@@ -63,15 +64,20 @@ router.post('/', async (req, res) => {
   try {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
 
-    const result = await pool.query(
+    const insertClaim = (q, number) => q.query(
       `INSERT INTO claims
        (claim_number, patient_id, payer, amount, status,
         service_date, diagnosis_codes, procedure_codes, notes, preapproval_id, created_at, updated_at)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())
        RETURNING *`,
-      [claim_number, patient_id, payer, amount, status || 'pending',
+      [number, patient_id, payer, amount, status || 'pending',
        service_date, diagnosis_codes, procedure_codes, notes, preapproval_id || null]
     );
+    // The server numbers new claims (utils/recordNumbers.js explains why the browser no
+    // longer does). An explicit number is still honoured, for imports and integrations.
+    const result = claim_number
+      ? await insertClaim(pool, claim_number)
+      : await insertNumbered(pool, { table: 'claims', column: 'claim_number', prefix: 'CLM' }, insertClaim);
 
     const claim = result.rows[0];
 

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { fullName, isUpcoming, formatDate, formatTime } from '../src/lib/useResource.ts';
+import { fullName, isToday, isUpcoming, formatDate, formatTime } from '../src/lib/useResource.ts';
 
 test('fullName joins what is present', () => {
   assert.equal(fullName('Ada', 'Okonkwo'), 'Ada Okonkwo');
@@ -20,6 +20,24 @@ test('isUpcoming splits future from past', () => {
   const past = new Date(Date.now() - 3600_000).toISOString();
   assert.equal(isUpcoming(future), true);
   assert.equal(isUpcoming(past), false);
+});
+
+test('isToday is a calendar-day test, not a 24-hour window', () => {
+  const now = new Date();
+  // One minute past midnight today is still today; one minute before was not.
+  const justAfterMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 1);
+  const justBeforeMidnight = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0);
+  justBeforeMidnight.setMinutes(-1);
+
+  assert.equal(isToday(justAfterMidnight.toISOString()), true);
+  assert.equal(isToday(justBeforeMidnight.toISOString()), false);
+  assert.equal(isToday(new Date(now.getTime() + 36 * 3600_000).toISOString()), false);
+});
+
+test('isToday rejects nothing-shaped input rather than throwing', () => {
+  for (const bad of [null, undefined, '', 'not-a-date']) {
+    assert.equal(isToday(bad), false, String(bad));
+  }
 });
 
 test('date and time formatters return empty for missing or unparseable input', () => {

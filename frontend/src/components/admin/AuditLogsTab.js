@@ -20,6 +20,10 @@ import {
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react';
+import { getTranslations } from '../../config/translations';
+import { useApp } from '../../context/AppContext';
+
+const useT = () => getTranslations(useApp().language);
 
 /**
  * AuditLogsTab - Comprehensive audit log viewer for AdminPanel
@@ -32,6 +36,27 @@ import {
  * - Real-time refresh
  */
 const AuditLogsTab = ({ theme, api, addNotification }) => {
+  const t = useT();
+
+  const STATUS_LABELS = {
+    success: t.success || 'Success',
+    error: t.error || 'Error',
+    warning: t.warning || 'Warning',
+  };
+  const ACTION_LABELS = {
+    view: t.view || 'View',
+    create: t.create || 'Create',
+    update: t.update || 'Update',
+    delete: t.delete || 'Delete',
+    submit: t.auditSubmit || 'Submit',
+    open: t.auditOpen || 'Open',
+    close: t.close || 'Close',
+  };
+  const RESOURCE_TYPE_LABELS = {
+    form: t.auditForm || 'Form',
+    modal: t.auditModal || 'Modal',
+    view: t.view || 'View',
+  };
   const [auditLogs, setAuditLogs] = useState([]);
   const [loading, setLoading] = useState(false);
   const [pagination, setPagination] = useState({
@@ -86,14 +111,14 @@ const AuditLogsTab = ({ theme, api, addNotification }) => {
       // Check if migration is needed
       if (error.message && (error.message.includes('503') || error.message.includes('table not found'))) {
         setMigrationNeeded(true);
-        addNotification('warning', 'Audit logs table not found. Please run the database migration.');
+        addNotification('warning', t.auditTableNotFound || 'Audit logs table not found. Please run the database migration.');
       } else {
-        addNotification('error', 'Failed to load audit logs');
+        addNotification('error', t.auditFailedToLoad || 'Failed to load audit logs');
       }
     } finally {
       setLoading(false);
     }
-  }, [api, filters, pagination.limit, pagination.offset, addNotification]);
+  }, [api, filters, pagination.limit, pagination.offset, addNotification, t]);
 
   // Load statistics
   const loadStats = useCallback(async () => {
@@ -151,10 +176,10 @@ const AuditLogsTab = ({ theme, api, addNotification }) => {
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
 
-      addNotification('success', 'Audit logs exported successfully');
+      addNotification('success', t.auditExportSuccess || 'Audit logs exported successfully');
     } catch (error) {
       console.error('Error exporting logs:', error);
-      addNotification('error', 'Failed to export audit logs');
+      addNotification('error', t.auditExportFailed || 'Failed to export audit logs');
     }
   };
 
@@ -180,7 +205,7 @@ const AuditLogsTab = ({ theme, api, addNotification }) => {
         }`}
       >
         <Icon className="w-3 h-3" />
-        {status}
+        {STATUS_LABELS[status] || status}
       </span>
     );
   };
@@ -201,6 +226,10 @@ const AuditLogsTab = ({ theme, api, addNotification }) => {
     return <Icon className="w-4 h-4" />;
   };
 
+  const [migrationHintBefore, migrationHintAfter = ''] = (
+    t.auditAfterMigration || 'After running the migration, click the {button} button above to load audit logs.'
+  ).split('{button}');
+
   return (
     <div className={`p-6 ${theme === 'dark' ? 'bg-slate-900' : 'bg-gray-50'}`}>
       {/* Header */}
@@ -209,10 +238,10 @@ const AuditLogsTab = ({ theme, api, addNotification }) => {
           <FileText className={`w-8 h-8 ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`} />
           <div>
             <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              Audit Logs
+              {t.auditLogs || 'Audit Logs'}
             </h2>
             <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-              Track all user activities and system events
+              {t.trackUserActivities || 'Track all user activities and system events'}
             </p>
           </div>
         </div>
@@ -227,7 +256,7 @@ const AuditLogsTab = ({ theme, api, addNotification }) => {
             }`}
           >
             <Filter className="w-4 h-4" />
-            Filters
+            {t.filters || 'Filters'}
           </button>
 
           <button
@@ -239,7 +268,7 @@ const AuditLogsTab = ({ theme, api, addNotification }) => {
             }`}
           >
             <Download className="w-4 h-4" />
-            Export
+            {t.export || 'Export'}
           </button>
 
           <button
@@ -255,7 +284,7 @@ const AuditLogsTab = ({ theme, api, addNotification }) => {
             } ${loading ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
+            {t.refresh || 'Refresh'}
           </button>
         </div>
       </div>
@@ -273,7 +302,7 @@ const AuditLogsTab = ({ theme, api, addNotification }) => {
             <div className="flex items-center justify-between">
               <div>
                 <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                  Total Actions
+                  {t.totalActions || 'Total Actions'}
                 </p>
                 <p className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                   {stats.total_actions || 0}
@@ -293,7 +322,7 @@ const AuditLogsTab = ({ theme, api, addNotification }) => {
             <div className="flex items-center justify-between">
               <div>
                 <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                  Unique Users
+                  {t.uniqueUsers || 'Unique Users'}
                 </p>
                 <p className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                   {stats.unique_users || 0}
@@ -313,7 +342,7 @@ const AuditLogsTab = ({ theme, api, addNotification }) => {
             <div className="flex items-center justify-between">
               <div>
                 <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                  Forms Submitted
+                  {t.formsSubmitted || 'Forms Submitted'}
                 </p>
                 <p className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                   {stats.form_actions || 0}
@@ -333,7 +362,7 @@ const AuditLogsTab = ({ theme, api, addNotification }) => {
             <div className="flex items-center justify-between">
               <div>
                 <p className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                  Errors
+                  {t.auditErrors || 'Errors'}
                 </p>
                 <p className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                   {stats.errors || 0}
@@ -357,13 +386,13 @@ const AuditLogsTab = ({ theme, api, addNotification }) => {
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
             <div>
               <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                User Email
+                {t.userEmail || 'User Email'}
               </label>
               <input
                 type="text"
                 value={filters.user_email}
                 onChange={(e) => handleFilterChange('user_email', e.target.value)}
-                placeholder="Search by email..."
+                placeholder={t.searchByEmail || 'Search by email...'}
                 className={`w-full px-3 py-2 border rounded-lg ${
                   theme === 'dark'
                     ? 'bg-slate-900 border-slate-600 text-white'
@@ -374,49 +403,49 @@ const AuditLogsTab = ({ theme, api, addNotification }) => {
 
             <div>
               <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                Action Type
+                {t.actionType || 'Action Type'}
               </label>
               <ThemedSelect
                 theme={theme}
                 value={filters.action_type}
                 onChange={(e) => handleFilterChange('action_type', e.target.value)}
               >
-                <option value="">All Actions</option>
-                <option value="view">View</option>
-                <option value="create">Create</option>
-                <option value="update">Update</option>
-                <option value="delete">Delete</option>
-                <option value="submit">Submit</option>
-                <option value="open">Open</option>
-                <option value="close">Close</option>
+                <option value="">{t.allActions || 'All Actions'}</option>
+                <option value="view">{t.view || 'View'}</option>
+                <option value="create">{t.create || 'Create'}</option>
+                <option value="update">{t.update || 'Update'}</option>
+                <option value="delete">{t.delete || 'Delete'}</option>
+                <option value="submit">{t.auditSubmit || 'Submit'}</option>
+                <option value="open">{t.auditOpen || 'Open'}</option>
+                <option value="close">{t.close || 'Close'}</option>
               </ThemedSelect>
             </div>
 
             <div>
               <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                Resource Type
+                {t.resourceType || 'Resource Type'}
               </label>
               <ThemedSelect
                 theme={theme}
                 value={filters.resource_type}
                 onChange={(e) => handleFilterChange('resource_type', e.target.value)}
               >
-                <option value="">All Types</option>
-                <option value="form">Form</option>
-                <option value="modal">Modal</option>
-                <option value="view">View</option>
+                <option value="">{t.allTypes || 'All Types'}</option>
+                <option value="form">{t.auditForm || 'Form'}</option>
+                <option value="modal">{t.auditModal || 'Modal'}</option>
+                <option value="view">{t.view || 'View'}</option>
               </ThemedSelect>
             </div>
 
             <div>
               <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                Resource Name
+                {t.resourceName || 'Resource Name'}
               </label>
               <input
                 type="text"
                 value={filters.resource_name}
                 onChange={(e) => handleFilterChange('resource_name', e.target.value)}
-                placeholder="e.g., DiagnosisForm"
+                placeholder={t.auditResourceNamePlaceholder || 'e.g., DiagnosisForm'}
                 className={`w-full px-3 py-2 border rounded-lg ${
                   theme === 'dark'
                     ? 'bg-slate-900 border-slate-600 text-white'
@@ -427,32 +456,32 @@ const AuditLogsTab = ({ theme, api, addNotification }) => {
 
             <div>
               <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                Module
+                {t.module || 'Module'}
               </label>
               <ThemedSelect
                 theme={theme}
                 value={filters.module}
                 onChange={(e) => handleFilterChange('module', e.target.value)}
               >
-                <option value="">All Modules</option>
-                <option value="practiceManagement">Practice Management</option>
-                <option value="providerManagement">Provider Management</option>
-                <option value="ehr">EHR</option>
-                <option value="telehealth">Telehealth</option>
-                <option value="rcm">RCM</option>
-                <option value="billing">Billing</option>
-                <option value="clinicalServices">Clinical Services</option>
-                <option value="reports">Reports</option>
-                <option value="crm">CRM</option>
-                <option value="integrations">Integrations</option>
-                <option value="patientPortal">Patient Portal</option>
-                <option value="admin">Admin</option>
+                <option value="">{t.auditAllModules || 'All Modules'}</option>
+                <option value="practiceManagement">{t.practiceManagement || 'Practice Management'}</option>
+                <option value="providerManagement">{t.auditModuleProviderManagement || 'Provider Management'}</option>
+                <option value="ehr">{t.auditModuleEhr || 'EHR'}</option>
+                <option value="telehealth">{t.telehealth || 'Telehealth'}</option>
+                <option value="rcm">{t.auditModuleRcm || 'RCM'}</option>
+                <option value="billing">{t.billing || 'Billing'}</option>
+                <option value="clinicalServices">{t.clinicalServices || 'Clinical Services'}</option>
+                <option value="reports">{t.auditModuleReports || 'Reports'}</option>
+                <option value="crm">{t.auditModuleCrm || 'CRM'}</option>
+                <option value="integrations">{t.integrations || 'Integrations'}</option>
+                <option value="patientPortal">{t.patientPortal || 'Patient Portal'}</option>
+                <option value="admin">{t.admin || 'Admin'}</option>
               </ThemedSelect>
             </div>
 
             <div>
               <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                Start Date
+                {t.startDate || 'Start Date'}
               </label>
               <input
                 type="date"
@@ -468,7 +497,7 @@ const AuditLogsTab = ({ theme, api, addNotification }) => {
 
             <div>
               <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                End Date
+                {t.endDate || 'End Date'}
               </label>
               <input
                 type="date"
@@ -484,17 +513,17 @@ const AuditLogsTab = ({ theme, api, addNotification }) => {
 
             <div>
               <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                Status
+                {t.status || 'Status'}
               </label>
               <ThemedSelect
                 theme={theme}
                 value={filters.status}
                 onChange={(e) => handleFilterChange('status', e.target.value)}
               >
-                <option value="">All Statuses</option>
-                <option value="success">Success</option>
-                <option value="error">Error</option>
-                <option value="warning">Warning</option>
+                <option value="">{t.allStatuses || 'All Statuses'}</option>
+                <option value="success">{t.success || 'Success'}</option>
+                <option value="error">{t.error || 'Error'}</option>
+                <option value="warning">{t.warning || 'Warning'}</option>
               </ThemedSelect>
             </div>
 
@@ -518,7 +547,7 @@ const AuditLogsTab = ({ theme, api, addNotification }) => {
                     : 'bg-gray-200 text-gray-900 hover:bg-gray-300'
                 }`}
               >
-                Clear Filters
+                {t.clearFilters || 'Clear Filters'}
               </button>
             </div>
           </div>
@@ -546,14 +575,14 @@ const AuditLogsTab = ({ theme, api, addNotification }) => {
                   theme === 'dark' ? 'text-yellow-300' : 'text-yellow-800'
                 }`}
               >
-                Database Migration Required
+                {t.databaseMigrationRequired || 'Database Migration Required'}
               </h3>
               <p
                 className={`mb-3 ${
                   theme === 'dark' ? 'text-yellow-400' : 'text-yellow-700'
                 }`}
               >
-                The audit logs table has not been created yet. Please run the database migration to enable audit logging.
+                {t.migrationMessage || 'The audit logs table has not been created yet. Please run the database migration to enable audit logging.'}
               </p>
               <div
                 className={`p-3 rounded-lg font-mono text-sm mb-3 ${
@@ -569,7 +598,7 @@ const AuditLogsTab = ({ theme, api, addNotification }) => {
                   theme === 'dark' ? 'text-yellow-400' : 'text-yellow-700'
                 }`}
               >
-                After running the migration, click the <strong>Refresh</strong> button above to load audit logs.
+                {migrationHintBefore}<strong>{t.refresh || 'Refresh'}</strong>{migrationHintAfter}
               </p>
             </div>
           </div>
@@ -592,37 +621,37 @@ const AuditLogsTab = ({ theme, api, addNotification }) => {
                 <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${
                   theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
                 }`}>
-                  Timestamp
+                  {t.timestamp || 'Timestamp'}
                 </th>
                 <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${
                   theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
                 }`}>
-                  User
+                  {t.auditUser || 'User'}
                 </th>
                 <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${
                   theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
                 }`}>
-                  Action
+                  {t.auditAction || 'Action'}
                 </th>
                 <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${
                   theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
                 }`}>
-                  Resource
+                  {t.auditResource || 'Resource'}
                 </th>
                 <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${
                   theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
                 }`}>
-                  Description
+                  {t.description || 'Description'}
                 </th>
                 <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${
                   theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
                 }`}>
-                  Status
+                  {t.status || 'Status'}
                 </th>
                 <th className={`px-4 py-3 text-left text-xs font-medium uppercase tracking-wider ${
                   theme === 'dark' ? 'text-gray-400' : 'text-gray-600'
                 }`}>
-                  Actions
+                  {t.actions || 'Actions'}
                 </th>
               </tr>
             </thead>
@@ -633,7 +662,7 @@ const AuditLogsTab = ({ theme, api, addNotification }) => {
                     <div className="flex items-center justify-center gap-2">
                       <RefreshCw className="w-5 h-5 animate-spin" />
                       <span className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
-                        Loading audit logs...
+                        {t.loadingAuditLogs || 'Loading audit logs...'}
                       </span>
                     </div>
                   </td>
@@ -642,7 +671,7 @@ const AuditLogsTab = ({ theme, api, addNotification }) => {
                 <tr>
                   <td colSpan="7" className="px-4 py-8 text-center">
                     <p className={theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}>
-                      No audit logs found
+                      {t.noAuditLogsFound || 'No audit logs found'}
                     </p>
                   </td>
                 </tr>
@@ -657,23 +686,23 @@ const AuditLogsTab = ({ theme, api, addNotification }) => {
                     </td>
                     <td className={`px-4 py-3 text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-900'}`}>
                       <div>
-                        <div className="font-medium">{log.user_name || 'Unknown'}</div>
+                        <div className="font-medium">{log.user_name || t.unknown || 'Unknown'}</div>
                         <div className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-600'}`}>
-                          {log.user_email || 'N/A'}
+                          {log.user_email || t.notApplicable || 'N/A'}
                         </div>
                       </div>
                     </td>
                     <td className={`px-4 py-3 text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-900'}`}>
                       <div className="flex items-center gap-2">
                         {getActionIcon(log.action_type)}
-                        <span className="capitalize">{log.action_type}</span>
+                        <span className="capitalize">{ACTION_LABELS[log.action_type] || log.action_type}</span>
                       </div>
                     </td>
                     <td className={`px-4 py-3 text-sm ${theme === 'dark' ? 'text-gray-300' : 'text-gray-900'}`}>
                       <div>
                         <div className="font-medium">{log.resource_name}</div>
                         <div className={`text-xs ${theme === 'dark' ? 'text-gray-500' : 'text-gray-600'} capitalize`}>
-                          {log.resource_type}
+                          {RESOURCE_TYPE_LABELS[log.resource_type] || log.resource_type}
                         </div>
                       </div>
                     </td>
@@ -691,7 +720,7 @@ const AuditLogsTab = ({ theme, api, addNotification }) => {
                         }}
                         className={`text-blue-500 hover:text-blue-600 font-medium`}
                       >
-                        View Details
+                        {t.viewDetails || 'View Details'}
                       </button>
                     </td>
                   </tr>
@@ -711,7 +740,10 @@ const AuditLogsTab = ({ theme, api, addNotification }) => {
             }`}
           >
             <div className={`text-sm ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-              Showing {pagination.offset + 1} to {Math.min(pagination.offset + pagination.limit, pagination.total)} of {pagination.total} results
+              {(t.auditShowingRange || 'Showing {from} to {to} of {total} results')
+                .replace('{from}', pagination.offset + 1)
+                .replace('{to}', Math.min(pagination.offset + pagination.limit, pagination.total))
+                .replace('{total}', pagination.total)}
             </div>
 
             <div className="flex items-center gap-2">
@@ -727,11 +759,13 @@ const AuditLogsTab = ({ theme, api, addNotification }) => {
                 }`}
               >
                 <ChevronLeft className="w-4 h-4" />
-                Previous
+                {t.auditPrevious || 'Previous'}
               </button>
 
               <span className={`px-3 py-1 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-900'}`}>
-                Page {pagination.currentPage} of {pagination.pages}
+                {(t.auditPageOf || 'Page {page} of {pages}')
+                  .replace('{page}', pagination.currentPage)
+                  .replace('{pages}', pagination.pages)}
               </span>
 
               <button
@@ -745,7 +779,7 @@ const AuditLogsTab = ({ theme, api, addNotification }) => {
                     : 'bg-white text-gray-900 hover:bg-gray-100 border border-gray-300'
                 }`}
               >
-                Next
+                {t.next || 'Next'}
                 <ChevronRight className="w-4 h-4" />
               </button>
             </div>
@@ -766,7 +800,7 @@ const AuditLogsTab = ({ theme, api, addNotification }) => {
             <div className={`p-6 border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
               <div className="flex items-center justify-between">
                 <h3 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                  Audit Log Details
+                  {t.auditLogDetails || 'Audit Log Details'}
                 </h3>
                 <button
                   onClick={() => setShowDetailModal(false)}
@@ -781,7 +815,7 @@ const AuditLogsTab = ({ theme, api, addNotification }) => {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                    Timestamp
+                    {t.timestamp || 'Timestamp'}
                   </label>
                   <div className={theme === 'dark' ? 'text-white' : 'text-gray-900'}>
                     {new Date(selectedLog.created_at).toLocaleString()}
@@ -790,44 +824,44 @@ const AuditLogsTab = ({ theme, api, addNotification }) => {
 
                 <div>
                   <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                    User
+                    {t.auditUser || 'User'}
                   </label>
                   <div className={theme === 'dark' ? 'text-white' : 'text-gray-900'}>
-                    {selectedLog.user_name || 'Unknown'} ({selectedLog.user_email || 'N/A'})
+                    {selectedLog.user_name || t.unknown || 'Unknown'} ({selectedLog.user_email || t.notApplicable || 'N/A'})
                   </div>
                 </div>
 
                 <div>
                   <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                    Action
+                    {t.auditAction || 'Action'}
                   </label>
                   <div className={`capitalize ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                    {selectedLog.action_type}
+                    {ACTION_LABELS[selectedLog.action_type] || selectedLog.action_type}
                   </div>
                 </div>
 
                 <div>
                   <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                    Resource
+                    {t.auditResource || 'Resource'}
                   </label>
                   <div className={theme === 'dark' ? 'text-white' : 'text-gray-900'}>
-                    {selectedLog.resource_name} ({selectedLog.resource_type})
+                    {selectedLog.resource_name} ({RESOURCE_TYPE_LABELS[selectedLog.resource_type] || selectedLog.resource_type})
                   </div>
                 </div>
 
                 <div>
                   <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                    Status
+                    {t.status || 'Status'}
                   </label>
                   {getStatusBadge(selectedLog.status)}
                 </div>
 
                 <div>
                   <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                    Module
+                    {t.module || 'Module'}
                   </label>
                   <div className={theme === 'dark' ? 'text-white' : 'text-gray-900'}>
-                    {selectedLog.module || 'N/A'}
+                    {selectedLog.module || t.notApplicable || 'N/A'}
                   </div>
                 </div>
               </div>
@@ -835,7 +869,7 @@ const AuditLogsTab = ({ theme, api, addNotification }) => {
               {selectedLog.action_description && (
                 <div>
                   <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                    Description
+                    {t.description || 'Description'}
                   </label>
                   <div className={theme === 'dark' ? 'text-white' : 'text-gray-900'}>
                     {selectedLog.action_description}
@@ -846,7 +880,7 @@ const AuditLogsTab = ({ theme, api, addNotification }) => {
               {selectedLog.error_message && (
                 <div>
                   <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-red-400' : 'text-red-600'}`}>
-                    Error Message
+                    {t.errorMessage || 'Error Message'}
                   </label>
                   <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-red-900/20 text-red-400' : 'bg-red-50 text-red-900'}`}>
                     {selectedLog.error_message}
@@ -857,7 +891,7 @@ const AuditLogsTab = ({ theme, api, addNotification }) => {
               {selectedLog.changed_fields && selectedLog.changed_fields.length > 0 && (
                 <div>
                   <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                    Changed Fields
+                    {t.changedFields || 'Changed Fields'}
                   </label>
                   <div className="flex flex-wrap gap-2">
                     {selectedLog.changed_fields.map((field, idx) => (
@@ -879,7 +913,7 @@ const AuditLogsTab = ({ theme, api, addNotification }) => {
               {selectedLog.new_values && (
                 <div>
                   <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                    New Values
+                    {t.newValues || 'New Values'}
                   </label>
                   <pre className={`p-3 rounded-lg overflow-auto text-xs ${
                     theme === 'dark'
@@ -895,7 +929,7 @@ const AuditLogsTab = ({ theme, api, addNotification }) => {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                      IP Address
+                      {t.ipAddress || 'IP Address'}
                     </label>
                     <div className={theme === 'dark' ? 'text-white' : 'text-gray-900'}>
                       {selectedLog.ip_address}
@@ -905,7 +939,7 @@ const AuditLogsTab = ({ theme, api, addNotification }) => {
                   {selectedLog.duration_ms && (
                     <div>
                       <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-gray-400' : 'text-gray-600'}`}>
-                        Duration
+                        {t.duration || 'Duration'}
                       </label>
                       <div className={theme === 'dark' ? 'text-white' : 'text-gray-900'}>
                         {selectedLog.duration_ms}ms

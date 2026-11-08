@@ -1,0 +1,685 @@
+<title>AureonCare Executive Brief</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/*{{fonts}}*/
+
+/* Layout: a bound brief of ten US-Letter sheets. The A-mark's gold and teal
+   strands thread the cover and back cover; the brand's own promise —
+   Health · Efficiency · Growth — is the chapter structure, one chapter per
+   reader (clinical lead, chief executive, chief marketing officer). */
+:root {
+  /* color — the brand's ink, gold and teal, on a cool, teal-biased paper */
+  --ink: #041016;
+  --ink-raised: #0b1f27;
+  --paper: #f3f7f6;
+  --paper-deep: #e3edeb;
+  --gold: #f0b000;
+  --gold-text: #9a6f00;
+  --teal: #00b0a0;
+  --teal-text: #00756a;
+  --text: #0c2026;
+  --muted: #4a5f66;
+  --rule: #c8d7d4;
+  --on-ink: #eaf3f2;
+  --on-ink-muted: #93abaa;
+  --desk: #c3d1cf;
+
+  /* type */
+  --f-display: 'Bricolage Grotesque', 'Avenir Next', 'Segoe UI', system-ui, sans-serif;
+  --f-body: 'Source Serif 4', 'Source Serif Pro', Georgia, 'Times New Roman', serif;
+  --f-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
+
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--desk);
+  color: var(--text);
+  font-family: var(--f-body);
+  font-size: 13px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+img { max-width: 100%; display: block; }
+h1, h2, h3, p, ul, ol, figure { margin: 0; }
+ul, ol { padding: 0; list-style: none; }
+
+/* ── the stack of sheets ─────────────────────────────────────────────── */
+.brief {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 36px;
+  padding-block: 40px 72px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.sheet {
+  width: 100%;
+  max-width: 8.5in;
+  min-height: 11in;
+  background: var(--paper);
+  color: var(--text);
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 1px 0 rgba(4, 16, 22, .05), 0 22px 44px -22px rgba(4, 16, 22, .45);
+}
+.sheet.ink { background: var(--ink); color: var(--on-ink); }
+.sheet-in {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  padding: 0.6in 0.62in 0.42in;
+  min-width: 0;
+}
+
+/* folio: brief name and real page order */
+.folio {
+  margin-top: auto;
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--rule);
+  font: 500 9.5px/1 var(--f-mono);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.ink .folio { border-top-color: rgba(234, 243, 242, .16); color: var(--on-ink-muted); }
+
+/* ── type ────────────────────────────────────────────────────────────── */
+.kicker {
+  font: 500 10.5px/1.2 var(--f-mono);
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--teal-text);
+}
+.ink .kicker { color: var(--gold); }
+h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; color: inherit; }
+h1 {
+  font-size: 66px;
+  line-height: .96;
+  font-weight: 800;
+  letter-spacing: -.03em;
+  font-variation-settings: 'opsz' 96;
+}
+h2 {
+  font-size: 33px;
+  line-height: 1.06;
+  font-weight: 750;
+  letter-spacing: -.022em;
+  font-variation-settings: 'opsz' 72;
+  max-width: 21ch;
+}
+h3 {
+  font-size: 15px;
+  line-height: 1.25;
+  font-weight: 680;
+  letter-spacing: -.005em;
+}
+.lede {
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--muted);
+  max-width: 58ch;
+}
+.ink .lede { color: var(--on-ink-muted); }
+.lede strong { color: var(--text); font-weight: 600; }
+.ink .lede strong { color: var(--on-ink); }
+.body-text { max-width: 62ch; color: var(--text); }
+.body-text + .body-text { margin-top: 10px; }
+.mono { font-family: var(--f-mono); font-size: .92em; letter-spacing: 0; }
+
+/* ── chapter strip: Health · Efficiency · Growth, current one marked ── */
+.chapters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 18px;
+  font: 500 10.5px/1 var(--f-mono);
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.chapters span { padding-bottom: 6px; border-bottom: 2px solid transparent; opacity: .55; }
+.chapters span[aria-current] { opacity: 1; color: var(--text); border-bottom-color: var(--gold); }
+.chapters .for { margin-left: auto; opacity: 1; text-transform: none; letter-spacing: .02em; font-size: 11px; border: 0; }
+
+/* ── screens: product captures in an ink bezel ───────────────────────── */
+.screen { background: var(--ink); padding: 5px; border-radius: 9px; }
+.screen img { width: 100%; border-radius: 5px; }
+figcaption {
+  margin-top: 8px;
+  font: 400 9.5px/1.35 var(--f-mono);
+  color: var(--muted);
+  letter-spacing: .02em;
+}
+figcaption b { font-weight: 500; color: var(--text); }
+
+/* ── feature lists ───────────────────────────────────────────────────── */
+.features {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px 28px;
+}
+.features.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.feature {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding-top: 11px;
+  border-top: 1px solid var(--rule);
+  min-width: 0;
+}
+.feature p { font-size: 12.6px; line-height: 1.5; color: var(--text); }
+.feature .mono { color: var(--teal-text); }
+
+/* ── cover ───────────────────────────────────────────────────────────── */
+.cover .sheet-in { gap: 0; }
+.cover .logo { width: 210px; }
+.cover .headline { margin-top: 1.05in; display: flex; flex-direction: column; gap: 22px; }
+.cover h1 .gold { color: var(--gold); }
+.cover h1 .teal { color: var(--teal); }
+.cover .lede { font-size: 17px; max-width: 44ch; }
+.ribbon {
+  position: absolute;
+  left: 0; right: 0; bottom: 0.6in;
+  width: 100%;
+  height: auto;
+  z-index: 0;
+  pointer-events: none;
+}
+.cover .audience {
+  margin-top: auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 24px;
+  flex-wrap: wrap;
+  position: relative;
+  z-index: 1;
+}
+.cover .audience p { font: 500 10.5px/1.6 var(--f-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--on-ink-muted); }
+.cover .audience p b { color: var(--on-ink); font-weight: 500; }
+
+/* ── the route: one patient, start to finish ─────────────────────────── */
+.route {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0 14px;
+  position: relative;
+  padding-top: 26px;
+}
+.route::before {
+  content: "";
+  position: absolute;
+  left: 6px; right: 6px; top: 7px;
+  height: 3px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, var(--gold), var(--teal));
+}
+.stop { position: relative; display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.stop::before {
+  content: "";
+  position: absolute;
+  top: -25px; left: 0;
+  width: 15px; height: 15px;
+  border-radius: 50%;
+  background: var(--paper);
+  border: 3px solid var(--teal);
+}
+.stop:first-child::before { border-color: var(--gold); }
+.stop .n { font: 500 9.5px/1 var(--f-mono); letter-spacing: .12em; color: var(--muted); text-transform: uppercase; }
+.stop h3 { font-size: 18px; }
+.stop p { font-size: 11.8px; line-height: 1.45; }
+
+/* ── facts strip ─────────────────────────────────────────────────────── */
+.facts {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px 20px;
+  padding-block: 18px;
+  border-block: 1px solid var(--rule);
+}
+.fact { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.fact .num {
+  font: 800 40px/1 var(--f-display);
+  letter-spacing: -.03em;
+  font-variation-settings: 'opsz' 96;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+.fact .num.gold { color: var(--gold-text); }
+.fact .num.teal { color: var(--teal-text); }
+.fact .lbl { font: 500 9.5px/1.35 var(--f-mono); letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+
+/* ── layouts used by specific sheets ─────────────────────────────────── */
+.band .screen img { aspect-ratio: 2.6 / 1; object-fit: cover; object-position: left top; }
+.split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+.pair { display: grid; grid-template-columns: minmax(0, 1.04fr) minmax(0, 1fr); gap: 26px; align-items: start; }
+.stack { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.new-item { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr); gap: 22px; align-items: center; padding-top: 14px; border-top: 1px solid var(--rule); }
+.new-item .copy { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.new-item .copy p { font-size: 12.4px; line-height: 1.5; }
+.new-row { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 22px; padding-top: 14px; border-top: 1px solid var(--rule); }
+.new-row .copy { display: flex; flex-direction: column; gap: 6px; }
+.new-row .copy p { font-size: 12.4px; line-height: 1.5; }
+.tag { font: 500 9.5px/1 var(--f-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--gold-text); }
+
+/* workspace inventory */
+.workspaces { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px 24px; }
+.ws { display: flex; flex-direction: column; gap: 6px; padding-top: 10px; border-top: 2px solid var(--text); min-width: 0; }
+.ws h3 { font-size: 14px; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.ws h3 .count { font: 500 9.5px/1 var(--f-mono); color: var(--muted); letter-spacing: .06em; }
+.ws ul { display: flex; flex-direction: column; gap: 2px; }
+.ws li { font-size: 11.6px; line-height: 1.4; color: var(--text); }
+.ws li .sub { color: var(--muted); }
+
+/* plans */
+.plans { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; border: 1px solid var(--rule); background: var(--paper); }
+.plan { display: flex; flex-direction: column; gap: 6px; padding: 14px 14px 16px; min-width: 0; }
+.plan + .plan { border-left: 1px solid var(--rule); }
+.plan .step { font: 500 9.5px/1 var(--f-mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.plan h3 { font-size: 15px; }
+.plan p { font-size: 11.8px; line-height: 1.45; }
+.plan.own { background: var(--ink); color: var(--on-ink); }
+.plan.own .step { color: var(--gold); }
+
+/* connectors */
+.connectors { display: flex; flex-wrap: wrap; gap: 8px; }
+.connectors span {
+  font: 500 10.5px/1 var(--f-mono);
+  letter-spacing: .04em;
+  padding: 7px 10px;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  color: var(--text);
+  background: var(--paper);
+}
+
+/* films */
+.films { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 26px; }
+.films li { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 8px; font-size: 11.8px; line-height: 1.4; padding-block: 5px; border-bottom: 1px solid var(--rule); }
+.films li .mono { color: var(--teal-text); font-size: 10px; padding-top: 2px; }
+
+.note { font: 400 9.5px/1.5 var(--f-mono); color: var(--muted); max-width: 80ch; }
+
+/* back cover */
+.back .sheet-in { gap: 0; justify-content: flex-start; }
+.back .close { margin-top: 1.4in; display: flex; flex-direction: column; gap: 22px; position: relative; z-index: 1; }
+.back h2 { font-size: 54px; max-width: 12ch; line-height: .98; font-weight: 800; letter-spacing: -.03em; }
+.back .url {
+  font: 600 22px/1.2 var(--f-display);
+  color: var(--gold);
+  letter-spacing: -.01em;
+}
+.back .logo { width: 230px; margin-top: auto; position: relative; z-index: 1; }
+
+/* ── narrow screens ──────────────────────────────────────────────────── */
+@media (max-width: 760px) {
+  .brief { gap: 18px; padding-block: 16px 40px; }
+  .sheet { min-height: 0; }
+  .sheet-in { padding: 34px 22px 22px; gap: 18px; }
+  h1 { font-size: 46px; }
+  h2 { font-size: 27px; }
+  .back h2 { font-size: 40px; }
+  .cover .headline { margin-top: 48px; }
+  .cover .lede { font-size: 15.5px; }
+  .ribbon { position: relative; bottom: auto; margin-block: 8px -8px; }
+  .back .close { margin-top: 40px; }
+  .back .logo { margin-top: 48px; }
+  .features, .features.three, .split, .pair, .new-item, .new-row, .films { grid-template-columns: minmax(0, 1fr); }
+  .workspaces { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .plans { grid-template-columns: minmax(0, 1fr); }
+  .plan + .plan { border-left: 0; border-top: 1px solid var(--rule); }
+  .route { grid-template-columns: minmax(0, 1fr); gap: 18px; padding-top: 0; padding-left: 30px; }
+  .route::before { left: 7px; right: auto; top: 4px; bottom: 4px; width: 3px; height: auto; background: linear-gradient(180deg, var(--gold), var(--teal)); }
+  .stop::before { top: 2px; left: -30px; }
+  .chapters .for { margin-left: 0; flex-basis: 100%; }
+}
+@media (max-width: 440px) {
+  .workspaces { grid-template-columns: minmax(0, 1fr); }
+  h1 { font-size: 40px; }
+}
+
+/* ── print: each sheet is exactly one US-Letter page ─────────────────── */
+@page { size: letter; margin: 0; }
+@media print {
+  body { background: var(--paper); }
+  .brief { padding: 0; gap: 0; }
+  .sheet { width: 8.5in; max-width: none; height: 11in; min-height: 0; box-shadow: none; break-after: page; }
+  .sheet:last-child { break-after: auto; }
+}
+</style>
+
+<main class="brief">
+
+  <!-- ═══════════════════════════════ 1 · COVER ═══════════════════════════════ -->
+  <section class="sheet ink cover" aria-label="Cover">
+    <svg class="ribbon" viewBox="0 0 816 430" aria-hidden="true" focusable="false">
+      <defs>
+        <linearGradient id="gold-strand" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stop-color="#b98700"></stop>
+          <stop offset=".45" stop-color="#f0b000"></stop>
+          <stop offset="1" stop-color="#ffd24a"></stop>
+        </linearGradient>
+        <linearGradient id="teal-strand" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stop-color="#00786d"></stop>
+          <stop offset=".5" stop-color="#00b0a0"></stop>
+          <stop offset="1" stop-color="#2dd4bf"></stop>
+        </linearGradient>
+      </defs>
+      <path d="M-60 120 C 170 90, 300 360, 520 345 S 790 170, 880 150" fill="none" stroke="url(#gold-strand)" stroke-width="74" stroke-linecap="round"></path>
+      <path d="M-60 360 C 180 380, 320 110, 540 95 S 800 250, 880 280" fill="none" stroke="url(#teal-strand)" stroke-width="74" stroke-linecap="round" opacity=".94"></path>
+    </svg>
+    <div class="sheet-in">
+      <img class="logo" src="{{logo}}" alt="AureonCare — Health, Efficiency, Growth">
+      <div class="headline">
+        <p class="kicker">Executive brief · October 2026 release</p>
+        <h1>One practice.<br><span class="gold">One record.</span><br><span class="teal">Booked to paid.</span></h1>
+        <p class="lede">AureonCare runs a medical practice on a single patient record. The calendar, the chart, the claim and the books are one system, so nothing is typed twice and nothing goes missing between departments.</p>
+      </div>
+      <div class="audience">
+        <p>Prepared for the<br><b>Chief Executive Officer</b><br>and the <b>Chief Marketing Officer</b></p>
+        <p><b>app.aureoncare.tech</b></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════ 2 · THE CASE ════════════════════════════ -->
+  <section class="sheet" aria-label="The case for one system">
+    <div class="sheet-in">
+      <p class="kicker">The case for one system</p>
+      <h2>Every handoff between systems is a place where money and safety leak.</h2>
+      <div class="split">
+        <p class="body-text">A typical practice books in one tool, charts in another, bills through a clearinghouse portal and keeps its accounts somewhere else again. The patient's details are retyped at every boundary. Each retype costs staff time, and each slip shows up later as a denied claim, a missed allergy or a payment nobody can match.</p>
+        <p class="body-text">AureonCare removes the boundaries. One record follows the patient from the first booking to the last payment, and every department works on that same record. The front desk, the clinician, the billing team and the finance office are looking at one set of facts.</p>
+      </div>
+
+      <div>
+        <p class="kicker" style="margin-bottom:14px">One patient, start to finish</p>
+        <ol class="route">
+          <li class="stop"><span class="n">01 · Scheduling</span><h3>Booked</h3><p>The front desk books a video visit. Patient, provider and time are entered once.</p></li>
+          <li class="stop"><span class="n">02 · Telehealth</span><h3>Seen</h3><p>The session is built from the booking, so nobody pastes a link to the wrong person.</p></li>
+          <li class="stop"><span class="n">03 · Clinical</span><h3>Documented</h3><p>Findings, the prescription and the lab order go onto the same chart.</p></li>
+          <li class="stop"><span class="n">04 · Billing</span><h3>Claimed</h3><p>The claim draws on the diagnoses already on the chart and is submitted as an EDI&nbsp;837 file.</p></li>
+          <li class="stop"><span class="n">05 · Accounting</span><h3>Paid</h3><p>The payment posts against its claim and lands in the general ledger.</p></li>
+        </ol>
+      </div>
+
+      <figure>
+        <div class="screen"><img src="{{img:01-dashboard}}" alt="AureonCare home dashboard showing today's appointments, revenue and the grid of available modules"></div>
+        <figcaption><b>Home</b> · every module behind one sign-in · demo environment, synthetic data</figcaption>
+      </figure>
+
+      <div class="folio"><span>AureonCare · Executive brief</span><span>02 / 10</span></div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════ 3 · HEALTH ══════════════════════════════ -->
+  <section class="sheet" aria-label="Health">
+    <div class="sheet-in">
+      <nav class="chapters" aria-label="Chapters"><span aria-current="page">Health</span><span>Efficiency</span><span>Growth</span><span class="for">For clinical leaders</span></nav>
+      <h2>Chart it before the next patient sits down.</h2>
+      <p class="lede">Clinicians stay in the record instead of working around it. Everything a visit needs sits behind one patient's tabs.</p>
+
+      <figure>
+        <div class="screen"><img src="{{img:18-patient-chart}}" alt="A patient chart with tabs for diagnoses, prescriptions, lab orders, appointments and records"></div>
+        <figcaption><b>Patients ▸ Patient History</b> · MRN-2025-001 · one record, six tabs · demo data</figcaption>
+      </figure>
+
+      <div class="features three">
+        <div class="feature"><h3>The longitudinal chart</h3><p>History, diagnoses, prescriptions, lab orders, appointments and documents on one timeline. SOAP notes are written against the diagnosis.</p></div>
+        <div class="feature"><h3>Prescribing with checks</h3><p>Medications are searched, never free-typed, and checked for interactions before they join the active list. A <span class="mono">Surescripts</span> connector is built in.</p></div>
+        <div class="feature"><h3>Labs ordered by code</h3><p>Tests are ordered by their code, so the lab and the claim describe the same test. A <span class="mono">LabCorp</span> connector is built in.</p></div>
+        <div class="feature"><h3>Coding at the point of care</h3><p><span class="mono">ICD-10</span> diagnoses and <span class="mono">CPT</span> procedures from a searchable code set. The claim form picks up the diagnoses already on the chart.</p></div>
+        <div class="feature"><h3>Video visits from the record</h3><p>Connect the platform the practice already uses: Zoom, Google Meet, Microsoft Teams or Webex. Sessions are created from the booking.</p></div>
+        <div class="feature"><h3>Intake before arrival</h3><p>Intake packets and consent forms are completed ahead of the visit and land on the chart. Every form version is kept.</p></div>
+      </div>
+
+      <div class="folio"><span>AureonCare · Health</span><span>03 / 10</span></div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════ 4 · EFFICIENCY ══════════════════════════ -->
+  <section class="sheet" aria-label="Efficiency">
+    <div class="sheet-in">
+      <nav class="chapters" aria-label="Chapters"><span>Health</span><span aria-current="page">Efficiency</span><span>Growth</span><span class="for">For the chief executive</span></nav>
+      <h2>See the whole business, from the front desk to the general ledger.</h2>
+      <p class="lede">Most practice systems stop at the claim. AureonCare carries on into the accounts and the stockroom, so the figures a chief executive reviews come from the same place the work happens.</p>
+
+      <figure class="band">
+        <div class="screen"><img src="{{img:07-accounting}}" alt="Accounting overview with assets, liabilities, revenue and expense totals"></div>
+        <figcaption><b>Operations ▸ Accounting</b> · a double-entry ledger inside the practice system · demo data</figcaption>
+      </figure>
+
+      <div class="features">
+        <div class="feature"><h3>The full revenue cycle</h3><p>Pre-authorizations tracked to a decision. Claims submitted as <span class="mono">EDI 837</span>. Denials logged with their reason code and the amount at stake. Payments posted against the claim they settle. An <span class="mono">Optum</span> connector is built in.</p></div>
+        <div class="feature"><h3>A real general ledger</h3><p>Double-entry accounting inside the practice system: chart of accounts, journal, receivables, payables, bank reconciliation and financial statements.</p></div>
+        <div class="feature"><h3>Inventory and purchasing</h3><p>Items, stock levels and low-stock alerts, suppliers, and purchase orders followed through to receipt.</p></div>
+        <div class="feature"><h3>Patient billing</h3><p>Quotes that become invoices, card payments through Stripe, and coupons, all tied to the same patient record.</p></div>
+        <div class="feature"><h3>More than one site</h3><p>Every clinic, borrowed venue and mobile unit is a site, so a report can say which site as well as how much.</p></div>
+        <div class="feature"><h3>Deployed on your terms</h3><p>Four plans, up to On-Premises or Customer Cloud for organisations that must keep patient data inside their own environment.</p></div>
+      </div>
+
+      <div class="folio"><span>AureonCare · Efficiency</span><span>04 / 10</span></div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════ 5 · GROWTH ══════════════════════════════ -->
+  <section class="sheet" aria-label="Growth">
+    <div class="sheet-in">
+      <nav class="chapters" aria-label="Chapters"><span>Health</span><span>Efficiency</span><span aria-current="page">Growth</span><span class="for">For the chief marketing officer</span></nav>
+      <h2>Fill the calendar, and know which effort filled it.</h2>
+      <p class="lede">Patient acquisition and retention run inside the same record as care. A campaign, the booking it produced and the follow-up visit after it are linked from the start, not reconciled by hand at the end of the quarter.</p>
+
+      <figure class="band">
+        <div class="screen"><img src="{{img:20-services}}" alt="Service catalogue cards for a diabetes programme, an annual wellness visit and a hypertension review"></div>
+        <figcaption><b>Growth ▸ Services</b> · priced, bookable programmes · demo data</figcaption>
+      </figure>
+
+      <div class="features">
+        <div class="feature"><h3>Patients book themselves</h3><p>A public booking page for each provider. Patients choose a service and a free slot without creating an account, and the booking lands on the calendar.</p></div>
+        <div class="feature"><h3>A waitlist that refills the gaps</h3><p>When a slot opens, the next suitable patient is notified. Priority and flexibility decide who, rather than who asked first.</p></div>
+        <div class="feature"><h3>Campaigns and reminders</h3><p>A patient pipeline, email and WhatsApp campaigns and reminders, and a call queue for the front desk.</p></div>
+        <div class="feature"><h3>A catalogue that sells</h3><p>Priced services, packages that show the saving, and time-limited promotions with their take-up tracked.</p></div>
+        <div class="feature"><h3>A portal patients use</h3><p>Patients see their appointments, prescriptions, records and forms, and message the practice securely.</p></div>
+        <div class="feature"><h3>Reach in five languages</h3><p>The product runs in English, Spanish, French, German and Arabic, so the practice can serve the community it actually has.</p></div>
+      </div>
+
+      <div class="folio"><span>AureonCare · Growth</span><span>05 / 10</span></div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════ 6 · NEW IN OCTOBER ══════════════════════ -->
+  <section class="sheet" aria-label="New in the October release">
+    <div class="sheet-in">
+      <p class="kicker">New in the October 2026 release</p>
+      <h2>Four additions that take the practice beyond its own walls.</h2>
+
+      <div class="new-item">
+        <div class="copy">
+          <span class="tag">Outreach</span>
+          <h3>Medical camps</h3>
+          <p>Plan the venue, services, staff, stations and supplies. Register walk-ins at the gate with a queue token, watch every station's queue live, and close with an outcomes report showing how many attendees went on to book at the practice.</p>
+          <p>Rostering a clinician who already has clinic appointments that day is flagged before it happens. The sponsor report holds counts only, with small groups combined so no one can be identified.</p>
+        </div>
+        <figure>
+          <div class="screen"><img src="{{img:12-camp-board}}" alt="Live station board showing queue length and longest wait at each camp station"></div>
+          <figcaption><b>Medical camps ▸ Station board</b> · demo data</figcaption>
+        </figure>
+      </div>
+
+      <div class="new-item">
+        <div class="copy">
+          <span class="tag">Configuration</span>
+          <h3>Specialty setup</h3>
+          <p>Starter content for 36 specialties: services, appointment types and forms. A preview shows exactly what will change before anything is written.</p>
+          <p>Anything the practice has already edited is reported and left alone. A later update will not restore the vendor's version over yours.</p>
+        </div>
+        <figure>
+          <div class="screen"><img src="{{img:14-specialty-preview}}" alt="Specialty setup preview listing 23 items to create, 4 already present and 2 left alone"></div>
+          <figcaption><b>Settings ▸ Practice Setup</b> · 23 to create, 2 left alone · demo data</figcaption>
+        </figure>
+      </div>
+
+      <div class="new-row">
+        <div class="copy">
+          <span class="tag">Operations</span>
+          <h3>Locations</h3>
+          <p>Clinics, community venues and mobile units are all sites. One is primary, and deactivating a site keeps every record that already refers to it.</p>
+        </div>
+        <div class="copy">
+          <span class="tag">Mobile</span>
+          <h3>The mobile app</h3>
+          <p>One app for phone and tablet, with four shells chosen by role: patient, clinician, front desk and administrator. It enforces the same permissions as the web.</p>
+        </div>
+      </div>
+
+      <div class="folio"><span>AureonCare · October 2026</span><span>06 / 10</span></div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════ 7 · TRUST ═══════════════════════════════ -->
+  <section class="sheet" aria-label="Governance and security">
+    <div class="sheet-in">
+      <p class="kicker">Governance and security</p>
+      <h2>Know who opened a chart, and show why they were allowed to.</h2>
+      <p class="lede">Governance is part of the product. The answers a board, an auditor or a patient will ask for are kept as the work happens, rather than assembled afterwards.</p>
+
+      <figure class="band">
+        <div class="screen"><img src="{{img:15-audit}}" alt="Audit log listing chart views, updates and exports with user, time and status"></div>
+        <figcaption><b>Settings ▸ Audit Logs</b> · views are logged as well as changes · demo data</figcaption>
+      </figure>
+
+      <div class="features three">
+        <div class="feature"><h3>An audit trail that records reads</h3><p>Every create, update, delete and export is logged with the user, the time and the address. So is every view: opening a chart leaves a trace.</p></div>
+        <div class="feature"><h3>Access by role</h3><p>View, create, edit and delete rights set per role and per module, with custom roles for the way the practice is organised.</p></div>
+        <div class="feature"><h3>Two-step sign-in</h3><p>Authenticator-app verification at sign-in, enrolled from a QR code.</p></div>
+        <div class="feature"><h3>Sealed backups</h3><p>Backups are encrypted with <span class="mono">AES-256-GCM</span> before they leave the server and can be stored in Google Drive or OneDrive. A restore touches only the practice's own data and must be confirmed.</p></div>
+        <div class="feature"><h3>Archiving by rule</h3><p>Older records move to an archive under rules the practice sets, and can be restored when they are needed again.</p></div>
+        <div class="feature"><h3>No lock-in</h3><p>Records export as <span class="mono">FHIR R4</span>. A diagnosis becomes a Condition and a vital sign an Observation, readable by any system that speaks the standard.</p></div>
+      </div>
+
+      <div class="folio"><span>AureonCare · Governance</span><span>07 / 10</span></div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════ 8 · THE WHOLE PLATFORM ══════════════════ -->
+  <section class="sheet" aria-label="The whole platform">
+    <div class="sheet-in">
+      <p class="kicker">Everything in the product</p>
+      <h2>Nine workspaces behind one sign-in.</h2>
+
+      <div class="facts">
+        <div class="fact"><span class="num gold">1</span><span class="lbl">Patient record, shared by every department</span></div>
+        <div class="fact"><span class="num">9</span><span class="lbl">Workspaces, from scheduling to settings</span></div>
+        <div class="fact"><span class="num teal">36</span><span class="lbl">Specialties with starter content</span></div>
+        <div class="fact"><span class="num">26</span><span class="lbl">Standard reports, plus a custom builder</span></div>
+        <div class="fact"><span class="num">4</span><span class="lbl">Video platforms: Zoom, Meet, Teams, Webex</span></div>
+        <div class="fact"><span class="num">5</span><span class="lbl">Languages, including Arabic</span></div>
+        <div class="fact"><span class="num">4</span><span class="lbl">Mobile shells, one per kind of user</span></div>
+        <div class="fact"><span class="num">4</span><span class="lbl">Plans, up to on-premises</span></div>
+      </div>
+
+      <div class="workspaces">
+        <div class="ws"><h3>Scheduling</h3><ul><li>Calendar and appointments</li><li>Waitlist</li><li>Provider scheduling</li><li>Appointment types and rules</li><li>Medical camps <span class="sub">· plan, desk, board, outcomes</span></li></ul></div>
+        <div class="ws"><h3>Patients</h3><ul><li>Health records</li><li>Patient history timeline</li><li>Intake and consent</li><li>Form templates, submissions and audit</li><li>Secure messages</li></ul></div>
+        <div class="ws"><h3>Clinical</h3><ul><li>Telehealth</li><li>Diagnoses and coding</li><li>Pharmacies and e-prescribing</li><li>Laboratories and lab orders</li><li>FHIR resources and tracking</li></ul></div>
+        <div class="ws"><h3>Billing</h3><ul><li>Claims and pre-authorizations</li><li>Payments and payment posting</li><li>Denials</li><li>Quotes and invoices</li><li>Insurance payers</li></ul></div>
+        <div class="ws"><h3>Operations</h3><ul><li>Accounting <span class="sub">· ledger, journal, receivables, payables, reconciliation, statements</span></li><li>Inventory <span class="sub">· items, stock, purchase orders, suppliers</span></li></ul></div>
+        <div class="ws"><h3>Growth</h3><ul><li>CRM pipeline</li><li>Campaigns and reminders</li><li>Service catalogue</li><li>Packages and promotions</li><li>Catalogue statistics</li></ul></div>
+        <div class="ws"><h3>Insights</h3><ul><li>Operational, financial, insurance, patient, provider and compliance reports</li><li>Custom report builder</li></ul></div>
+        <div class="ws"><h3>Settings</h3><ul><li>Clinic, locations, hours</li><li>Practice and specialty setup</li><li>Users, roles, plans</li><li>Integrations and telehealth</li><li>Backup, archive, audit logs</li></ul></div>
+        <div class="ws"><h3>Home and portal</h3><ul><li>Dashboard and universal search</li><li>Patient portal <span class="sub">· appointments, prescriptions, records, forms, messages</span></li></ul></div>
+      </div>
+
+      <div class="folio"><span>AureonCare · The platform</span><span>08 / 10</span></div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════ 9 · PLANS AND CONNECTIONS ═══════════════ -->
+  <section class="sheet" aria-label="Plans and connections">
+    <div class="sheet-in">
+      <p class="kicker">Plans and connections</p>
+      <h2>Start with what the practice needs today, and switch on the rest later.</h2>
+      <p class="lede">The first three plans run the same product on the same record. Moving from Essentials to Clinical Pro or Enterprise switches modules on, and nothing is exported or re-entered.</p>
+
+      <div class="plans">
+        <div class="plan"><span class="step">Plan 1</span><h3>Practice Essentials</h3><p>Scheduling, the clinical record, patient portal, messages, forms, reports, accounting and inventory.</p></div>
+        <div class="plan"><span class="step">Plan 2</span><h3>Clinical Pro</h3><p>Adds telehealth, the revenue cycle, CRM, medical camps and the service catalogue.</p></div>
+        <div class="plan"><span class="step">Plan 3</span><h3>Enterprise</h3><p>Adds third-party integrations for e-prescribing, labs, claims and more.</p></div>
+        <div class="plan own"><span class="step">Plan 4</span><h3>On-Premises or Customer Cloud</h3><p>Enterprise, run inside the organisation's own environment.</p></div>
+      </div>
+
+      <div class="stack">
+        <p class="kicker">Built-in connectors</p>
+        <div class="connectors">
+          <span>Zoom</span><span>Google Meet</span><span>Microsoft Teams</span><span>Webex</span><span>Stripe</span><span>Surescripts</span><span>LabCorp</span><span>Optum</span><span>WhatsApp</span><span>Google Drive</span><span>OneDrive</span><span>FHIR R4</span><span>EDI 837</span>
+        </div>
+        <p class="note">Connectors are switched on with the practice's own account for each service.</p>
+      </div>
+
+      <div class="stack">
+        <p class="kicker">See it working</p>
+        <p class="body-text">Twelve short films follow real work through the product, from a single booking to a medical camp. Each one runs in the live application with synthetic data.</p>
+        <ol class="films">
+          <li><span class="mono">M1</span><span>One patient, booking to bank deposit</span></li>
+          <li><span class="mono">M7</span><span>The link is already on the chart</span></li>
+          <li><span class="mono">M2</span><span>Friday, 4:07pm. The 3:30 just cancelled</span></li>
+          <li><span class="mono">M8</span><span>Prior auth, without the fax machine</span></li>
+          <li><span class="mono">M3</span><span>Chart it before the next patient sits down</span></li>
+          <li><span class="mono">M9</span><span>Have you ever put one back?</span></li>
+          <li><span class="mono">M4</span><span>Who opened that chart, and when?</span></li>
+          <li><span class="mono">M10</span><span>Two hundred people in a field, and a record for every one</span></li>
+          <li><span class="mono">M5</span><span>You can’t collect what you can’t see</span></li>
+          <li><span class="mono">M11</span><span>Which site was that?</span></li>
+          <li><span class="mono">M6</span><span>Where does Tuesday keep going?</span></li>
+          <li><span class="mono">M12</span><span>It will not overwrite the thing you changed</span></li>
+        </ol>
+      </div>
+
+      <div class="folio"><span>AureonCare · Plans</span><span>09 / 10</span></div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════ 10 · BACK COVER ═════════════════════════ -->
+  <section class="sheet ink back" aria-label="Back cover">
+    <svg class="ribbon" viewBox="0 0 816 430" aria-hidden="true" focusable="false">
+      <defs>
+        <linearGradient id="gold-strand-b" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stop-color="#ffd24a"></stop>
+          <stop offset=".55" stop-color="#f0b000"></stop>
+          <stop offset="1" stop-color="#b98700"></stop>
+        </linearGradient>
+        <linearGradient id="teal-strand-b" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stop-color="#2dd4bf"></stop>
+          <stop offset=".5" stop-color="#00b0a0"></stop>
+          <stop offset="1" stop-color="#00786d"></stop>
+        </linearGradient>
+      </defs>
+      <path d="M-60 250 C 160 230, 330 60, 560 80 S 800 330, 880 340" fill="none" stroke="url(#teal-strand-b)" stroke-width="74" stroke-linecap="round" opacity=".94"></path>
+      <path d="M-60 60 C 190 50, 300 330, 540 330 S 790 140, 880 120" fill="none" stroke="url(#gold-strand-b)" stroke-width="74" stroke-linecap="round"></path>
+    </svg>
+    <div class="sheet-in">
+      <div class="close">
+        <p class="kicker">See it running</p>
+        <h2>One practice. One record.</h2>
+        <p class="lede">The fastest way to judge AureonCare is to book a patient, see them, chart the visit, claim it and post the payment, all in one place.</p>
+        <p class="url">app.aureoncare.tech</p>
+      </div>
+      <img class="logo" src="{{logo}}" alt="AureonCare — Health, Efficiency, Growth">
+    </div>
+  </section>
+
+</main>

@@ -1,0 +1,35 @@
+1
+00:00:04,325 --> 00:00:13,415
+Build a form template and read the submissions — Patients ▸ Form Templates — One template, many submissions — and an audit trail behind both.
+
+2
+00:00:18,854 --> 00:00:26,660
+Patients ▸ Form Templates is every form the practice can send, with its version and how many times it has been used.
+
+3
+00:00:26,660 --> 00:00:32,662
+Published means it can be sent. A draft is yours to keep editing until it is ready.
+
+4
+00:00:32,662 --> 00:00:41,030
+Editing a published template makes a new version. The answers already collected stay attached to the version they were given on.
+
+5
+00:00:41,030 --> 00:00:53,721
+That is what stops a wording change from quietly rewriting last year’s consents.
+
+6
+00:00:53,721 --> 00:01:00,534
+The audit log records every publish, every edit and every signature — who did it, and when.
+
+7
+00:01:00,534 --> 00:01:07,138
+Between them, that is the answer to "which version did this patient actually agree to".
+
+8
+00:01:08,631 --> 00:01:22,211
+What you just did
+
+9
+00:01:22,834 --> 00:01:31,834
+Health | Efficiency | Growth — More in the Getting Started series — the next video is linked on screen.

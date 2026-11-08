@@ -4,6 +4,7 @@ const router = express.Router();
 router.use(authenticate);
 router.use(require('../middleware/planEnforcement').enforceActiveBilling); // SEC-05 S11: read-only when subscription past_due/canceled
 const vendorIntegrationManager = require('../services/vendorIntegrations');
+const { insertNumbered } = require('../utils/recordNumbers');
 
 // Get all preapprovals
 router.get('/', async (req, res) => {
@@ -95,8 +96,9 @@ router.post('/', async (req, res) => {
   try {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
 
-    // Create the preapproval record
-    const result = await pool.query(
+    // Create the preapproval record. Numbered here, as PA-YYYY-NNNNNN — the form used to
+    // send `PA-<epoch ms>` (see utils/recordNumbers.js). An explicit number is honoured.
+    const insertPreapproval = (q, number) => q.query(
       `INSERT INTO preapprovals
        (preapproval_number, patient_id, insurance_payer_id, requested_service,
         diagnosis_codes, procedure_codes, service_start_date, service_end_date,
@@ -104,7 +106,7 @@ router.post('/', async (req, res) => {
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'Pending', NOW(), NOW())
        RETURNING *`,
       [
-        preapproval_number,
+        number,
         patient_id,
         insurance_payer_id,
         requested_service,
@@ -116,6 +118,11 @@ router.post('/', async (req, res) => {
         clinical_notes
       ]
     );
+    const result = preapproval_number
+      ? await insertPreapproval(pool, preapproval_number)
+      : await insertNumbered(
+        pool, { table: 'preapprovals', column: 'preapproval_number', prefix: 'PA' }, insertPreapproval
+      );
 
     const preapproval = result.rows[0];
 

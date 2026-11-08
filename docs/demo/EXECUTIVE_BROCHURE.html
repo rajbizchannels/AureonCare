@@ -1,0 +1,284 @@
+<title>MedFlow for Academic Medicine</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Spectral:ital,wght@0,400;0,600;1,400&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a ruled clinical dossier. Left label column like a chart form, content to the right; collapses to one column on phones. */
+:root {
+  --paper: #f6f8f8;
+  --sheet: #ffffff;
+  --ink: #14242b;
+  --muted: #55676e;
+  --rule: #d5dedf;
+  --teal: #0f6b66;        /* surgical drape teal */
+  --teal-soft: #e2efed;
+  --amber: #8a5a00;
+  --amber-soft: #f7ecd6;
+  --red: #9b2c2c;
+  --red-soft: #f6e1df;
+  --display: "Spectral", Georgia, "Times New Roman", serif;
+  --body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #0f1719; --sheet: #152124; --ink: #e3ecec; --muted: #9db0b3; --rule: #2a3b3f;
+    --teal: #5fbfb5; --teal-soft: #173431; --amber: #e2b45c; --amber-soft: #33290f;
+    --red: #ec8a82; --red-soft: #3a1d1b; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #0f1719; --sheet: #152124; --ink: #e3ecec; --muted: #9db0b3; --rule: #2a3b3f;
+  --teal: #5fbfb5; --teal-soft: #173431; --amber: #e2b45c; --amber-soft: #33290f;
+  --red: #ec8a82; --red-soft: #3a1d1b; color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--paper); color: var(--ink);
+  font-family: var(--body); font-size: 16px; line-height: 1.6;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 32px 64px;
+}
+.doc { max-width: 1040px; margin: 0 auto; background: var(--sheet); border: 1px solid var(--rule); }
+h1, h2, h3 { font-family: var(--display); font-weight: 600; text-wrap: balance; margin: 0; line-height: 1.2; }
+p { margin: 0; }
+.mono { font-family: var(--mono); font-size: .88em; }
+.label {
+  font-size: .72rem; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--muted);
+}
+
+/* Masthead */
+.masthead { padding: 48px clamp(20px, 5vw, 56px) 40px; border-bottom: 3px double var(--rule); display: grid; gap: 20px; }
+.masthead .top { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 24px; }
+.brand { font-family: var(--display); font-size: 1.15rem; font-weight: 600; color: var(--teal); }
+.masthead h1 { font-size: clamp(2rem, 5vw, 3.1rem); max-width: 18ch; }
+.masthead .lede { font-size: 1.12rem; color: var(--muted); max-width: 62ch; }
+.status { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { font-size: .8rem; font-weight: 500; padding: 4px 10px; border-radius: 3px; border: 1px solid currentColor; }
+.chip.ok { color: var(--teal); background: var(--teal-soft); }
+.chip.warn { color: var(--amber); background: var(--amber-soft); }
+
+/* Ruled sections */
+section { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 24px 40px; padding: 40px clamp(20px, 5vw, 56px); border-bottom: 1px solid var(--rule); }
+section > .side { display: grid; align-content: start; gap: 6px; }
+section > .side .label { color: var(--teal); }
+section > .main { display: grid; gap: 20px; min-width: 0; }
+section h2 { font-size: 1.65rem; }
+.main > p { max-width: 66ch; }
+.note { font-size: .88rem; color: var(--muted); }
+@media (max-width: 760px) { section { grid-template-columns: 1fr; gap: 16px; } }
+
+/* Modules */
+.modules { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 0; border-top: 1px solid var(--rule); }
+.module { padding: 18px 20px 18px 0; border-bottom: 1px solid var(--rule); display: grid; gap: 6px; align-content: start; }
+.module h3 { font-size: 1.1rem; }
+.module p { font-size: .94rem; color: var(--muted); }
+
+/* Journey */
+.journey { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; counter-reset: step; }
+.journey li { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 16px; padding: 14px 0; border-bottom: 1px solid var(--rule); counter-increment: step; }
+.journey li::before { content: counter(step); font-family: var(--display); font-size: 1.5rem; color: var(--teal); line-height: 1.1; }
+.journey strong { display: block; font-weight: 600; }
+.journey span { color: var(--muted); font-size: .95rem; }
+.patient { display: flex; flex-wrap: wrap; gap: 6px 20px; padding: 12px 16px; background: var(--teal-soft); border-radius: 3px; font-size: .9rem; }
+.patient b { font-weight: 600; }
+
+/* Two audiences */
+.pair { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 28px; }
+.col { display: grid; gap: 12px; align-content: start; }
+.col h3 { font-size: 1.2rem; }
+.col ul { margin: 0; padding-left: 1.1em; display: grid; gap: 8px; }
+.col li { font-size: .95rem; }
+.col .sub { font-size: .72rem; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; margin-top: 6px; }
+.col .sub.good { color: var(--teal); }
+.col .sub.gap { color: var(--amber); }
+
+/* Readiness table */
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: .92rem; min-width: 620px; }
+th, td { text-align: left; vertical-align: top; padding: 11px 12px 11px 0; border-bottom: 1px solid var(--rule); }
+th { font-size: .72rem; font-weight: 600; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+td:first-child { font-weight: 500; }
+.flag { font-family: var(--mono); font-size: .76rem; font-weight: 500; padding: 2px 7px; border-radius: 3px; white-space: nowrap; }
+.flag.h { color: var(--red); background: var(--red-soft); }
+.flag.m { color: var(--amber); background: var(--amber-soft); }
+
+/* Phases */
+.phases { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 0; border-top: 2px solid var(--ink); }
+.phase { padding: 16px 18px 16px 0; display: grid; gap: 6px; align-content: start; border-bottom: 1px solid var(--rule); }
+.phase .label { color: var(--teal); }
+.phase h3 { font-size: 1.05rem; }
+.phase p { font-size: .92rem; color: var(--muted); }
+
+.measures { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px 28px; margin: 0; padding: 0; list-style: none; }
+.measures li { padding-left: 14px; border-left: 2px solid var(--teal); font-size: .94rem; }
+
+.ask { display: grid; gap: 12px; padding: 22px 24px; border: 1px solid var(--teal); background: var(--teal-soft); border-radius: 3px; }
+.ask h3 { font-size: 1.25rem; }
+.ask ol { margin: 0; padding-left: 1.2em; display: grid; gap: 6px; }
+
+footer { padding: 24px clamp(20px, 5vw, 56px) 32px; font-size: .84rem; color: var(--muted); display: grid; gap: 6px; }
+
+a { color: var(--teal); }
+:focus-visible { outline: 2px solid var(--teal); outline-offset: 2px; }
+</style>
+
+<article class="doc">
+  <header class="masthead">
+    <div class="top">
+      <span class="brand">MedFlow</span>
+      <span class="label">Prepared for the Chief Medical Officer and the Dean</span>
+    </div>
+    <h1>One patient record, from the booking to the paid claim.</h1>
+    <p class="lede">MedFlow brings scheduling, the clinical record, telehealth, e-prescribing, lab orders and billing into one ambulatory platform built on FHIR R4. This brief covers what it does today, where it is not yet ready for an academic medical center, and a pilot that would show whether it earns a place here.</p>
+    <div class="status">
+      <span class="chip ok">Ambulatory workflows: working today</span>
+      <span class="chip warn">Security, audit and teaching features: required before live patient data</span>
+    </div>
+  </header>
+
+  <section>
+    <div class="side"><span class="label">The platform</span></div>
+    <div class="main">
+      <h2>Six modules, one record</h2>
+      <p>Each module reads and writes the same patient record. A diagnosis entered during a visit is the same diagnosis the billing team codes and the same condition a lab order is linked to.</p>
+      <div class="modules">
+        <div class="module"><h3>Scheduling</h3><p>Appointment types and durations, provider availability and time off, a waitlist, and reminders by SMS, email or WhatsApp.</p></div>
+        <div class="module"><h3>Clinical record</h3><p>Diagnoses with ICD-10 search, allergies, medication history, prescriptions, and visit records with attached documents.</p></div>
+        <div class="module"><h3>Telehealth</h3><p>Video visits started from the appointment itself, through Zoom, Google Meet or Webex.</p></div>
+        <div class="module"><h3>Prescriptions and labs</h3><p>Prescriptions routed through Surescripts to the patient's preferred pharmacy, with drug interaction data. Lab orders sent to Labcorp. Each order gets a tracking number such as <span class="mono">LAB-123456</span> and a status timeline.</p></div>
+        <div class="module"><h3>Revenue cycle</h3><p>Claims with EDI 837 generation, submission through the Optum clearinghouse, payment posting, denials and appeals, and prior authorizations.</p></div>
+        <div class="module"><h3>Interoperability</h3><p>FHIR R4 resources for Patient, Condition, MedicationRequest, ServiceRequest and Observation. A patient portal in eight languages.</p></div>
+      </div>
+      <p class="note">Vendor connections to Surescripts, Labcorp and Optum are built with sandbox and production modes. Production use requires contracts and credentialing with each vendor.</p>
+    </div>
+  </section>
+
+  <section>
+    <div class="side"><span class="label">One visit</span><span class="note">Illustrative patient, demo data</span></div>
+    <div class="main">
+      <h2>A follow-up visit, end to end</h2>
+      <div class="patient">
+        <span><b>Sarah Williams</b>, 39</span>
+        <span>Type 2 diabetes <span class="mono">E11.9</span></span>
+        <span>Hypertension <span class="mono">I10</span></span>
+        <span>Allergy: penicillin</span>
+        <span>On metformin 500 mg twice daily</span>
+      </div>
+      <ol class="journey">
+        <li><div><strong>The front desk books a video visit</strong><span>Found by name, booked against Dr. Anderson's open slots, with a reminder sent automatically.</span></div></li>
+        <li><div><strong>The physician opens one chart</strong><span>Problems, the penicillin allergy and current medications are on one screen. No second system to check.</span></div></li>
+        <li><div><strong>The visit happens by video</strong><span>The session starts from the appointment. Notes and the diagnosis go into the same record during the visit.</span></div></li>
+        <li><div><strong>Lisinopril goes to her pharmacy</strong><span>Her preferred pharmacy is already on file. The prescription is routed through Surescripts and tracked.</span></div></li>
+        <li><div><strong>A lipid panel goes to Labcorp</strong><span>Linked to <span class="mono">E11.9</span> for coverage, with a tracking number and status timeline until results return.</span></div></li>
+        <li><div><strong>Billing submits the claim</strong><span>The visit's diagnosis and procedure codes are already in the record. The claim goes to Optum and payment is posted against it.</span></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <section>
+    <div class="side"><span class="label">For leadership</span></div>
+    <div class="main">
+      <h2>What each office should know</h2>
+      <div class="pair">
+        <div class="col">
+          <h3>Chief Medical Officer</h3>
+          <p class="sub good">What it offers clinical leadership</p>
+          <ul>
+            <li>A single longitudinal chart across scheduling, visits, prescriptions, labs and billing.</li>
+            <li>Allergies and current medications in view when prescribing, with drug interaction data behind e-prescribing.</li>
+            <li>Every prescription and lab order is tracked, so a result that never came back is visible.</li>
+            <li>Telehealth visits use the same record and documentation as in-person visits.</li>
+          </ul>
+          <p class="sub gap">What to know before live use</p>
+          <ul>
+            <li>A saved clinical note can be edited or deleted later, and no prior version is kept.</li>
+            <li>There is no log of who opened a patient's chart.</li>
+            <li>Clinical quality measures, such as HbA1c testing or blood pressure control rates, are not available. Current reports cover operations and revenue only.</li>
+            <li>The "no-show rate" in today's reports counts cancellations. It should be corrected before anyone relies on it.</li>
+          </ul>
+        </div>
+        <div class="col">
+          <h3>Dean</h3>
+          <p class="sub good">Where it fits today</p>
+          <ul>
+            <li>Faculty ambulatory practices that do not involve trainees.</li>
+            <li>Telehealth for rural and outreach clinics, documented in the same record.</li>
+            <li>Records stored as standard FHIR R4 resources, which a future research export could draw on.</li>
+          </ul>
+          <p class="sub gap">What the academic mission needs that it lacks</p>
+          <ul>
+            <li>No distinction between residents, fellows and attendings. There is one physician role.</li>
+            <li>No attending co-signature or attestation, which supervised trainee documentation and teaching-physician billing require.</li>
+            <li>No research cohort tools or de-identified data export.</li>
+            <li>No separation by site or department. A tenant field exists but no query uses it.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="side"><span class="label">Readiness</span><span class="note">Checked against the source code</span></div>
+    <div class="main">
+      <h2>What must be in place first</h2>
+      <p>These items were confirmed in MedFlow's code on 27 October 2026. The first three apply to any organization handling real patient data. The rest are specific to an academic health system.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Requirement</th><th>Today</th><th>Needed before</th></tr></thead>
+          <tbody>
+            <tr><td>Sign-in enforced on every clinical function</td><td>Enforced in 6 of 39 service areas. User identity is taken from the browser without verification.</td><td><span class="flag h">Any real patient data</span></td></tr>
+            <tr><td>Log of who viewed or changed each chart</td><td>Not present. Only prescription history and vendor calls are logged.</td><td><span class="flag h">Any real patient data</span></td></tr>
+            <tr><td>Signed notes that lock, with addenda</td><td>Notes stay editable and can be deleted.</td><td><span class="flag h">Any real patient data</span></td></tr>
+            <tr><td>Resident, fellow and attending roles</td><td>One physician role.</td><td><span class="flag m">Teaching clinics</span></td></tr>
+            <tr><td>Attending co-signature and attestation</td><td>Not present.</td><td><span class="flag m">Teaching clinics</span></td></tr>
+            <tr><td>Data separated by site and department</td><td>Field exists, not applied.</td><td><span class="flag m">Multiple sites</span></td></tr>
+            <tr><td>Clinical quality measures</td><td>Not present.</td><td><span class="flag m">Quality reporting</span></td></tr>
+            <tr><td>De-identified research export</td><td>Not present.</td><td><span class="flag m">Research use</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="side"><span class="label">Proposed path</span></div>
+    <div class="main">
+      <h2>Prove it before relying on it</h2>
+      <div class="phases">
+        <div class="phase"><span class="label">Phase 0</span><h3>Close the security gaps</h3><p>Real authentication on every function, chart-access logging and locked notes, followed by an independent security assessment.</p></div>
+        <div class="phase"><span class="label">Phase 1</span><h3>Sandbox pilot</h3><p>One non-teaching faculty clinic runs its workflows on synthetic patients against vendor sandboxes. No real patient data.</p></div>
+        <div class="phase"><span class="label">Phase 2</span><h3>Limited live pilot</h3><p>Real patients in that clinic, only after compliance and information security sign off on Phase 0.</p></div>
+        <div class="phase"><span class="label">Phase 3</span><h3>Teaching features</h3><p>Trainee roles, co-signature and attestation designed with Graduate Medical Education, then piloted in one residency clinic.</p></div>
+      </div>
+      <div class="main" style="gap:10px">
+        <span class="label">What the pilot measures, against the clinic's current baseline</span>
+        <ul class="measures">
+          <li>Time to register a new patient</li>
+          <li>Time from visit end to completed note</li>
+          <li>Prescriptions and lab orders that needed a phone call or fax</li>
+          <li>Lab results that returned to the chart without manual entry</li>
+          <li>Claims accepted on first submission</li>
+          <li>Actual no-shows, counted separately from cancellations</li>
+        </ul>
+        <p class="note">This brief gives no outcome figures. Any savings or efficiency numbers should come from the pilot's own measurements.</p>
+      </div>
+      <div class="ask">
+        <h3>What we are asking for</h3>
+        <ol>
+          <li>Joint sponsorship of a Phase 0 and Phase 1 scoping review by the CMO and the Dean.</li>
+          <li>A physician lead from a non-teaching faculty clinic to host the sandbox pilot.</li>
+          <li>Representatives from Graduate Medical Education and Information Security to set the conditions for Phases 2 and 3.</li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <span>MedFlow · Executive brief for academic medical center leadership</span>
+    <span>Capabilities and gaps were checked against the MedFlow source code on 27 October 2026. The patient in this brief is fictional.</span>
+  </footer>
+</article>

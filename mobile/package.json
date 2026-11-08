@@ -18,6 +18,7 @@
     "@react-navigation/native-stack": "^7.3.10",
     "expo": "~54.0.0",
     "expo-auth-session": "~7.0.0",
+    "expo-clipboard": "~8.0.8",
     "expo-constants": "~18.0.0",
     "expo-crypto": "~15.0.0",
     "expo-document-picker": "~14.0.0",
@@ -37,8 +38,11 @@
     "react-native-svg": "15.12.1"
   },
   "devDependencies": {
+    "@expo/metro-runtime": "~6.1.2",
     "@types/react": "~19.1.0",
     "babel-preset-expo": "~54.0.0",
+    "react-dom": "19.1.0",
+    "react-native-web": "~0.21.0",
     "typescript": "~5.9.2"
   }
 }

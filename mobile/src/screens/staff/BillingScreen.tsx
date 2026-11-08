@@ -3,7 +3,7 @@ import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { Receipt } from 'lucide-react-native';
 import { useSession } from '@/context/SessionContext';
 import { Card, Chip, EmptyState, ErrorNote, Loading } from '@/components/ui';
-import { formatDate, useResource } from '@/lib/useResource';
+import { formatDate, humanStatus, useResource } from '@/lib/useResource';
 import { useLayout } from '@/lib/device';
 import { palette, space, type } from '@/theme/tokens';
 import type { Claim } from '@/lib/api';
@@ -82,7 +82,7 @@ export const StaffBillingScreen: React.FC = () => {
             </View>
             <View style={styles.right}>
               <Text style={styles.amount}>{money(Number(item.amount ?? 0))}</Text>
-              {item.status ? <Chip label={item.status} tone={claimTone(item.status)} /> : null}
+              {item.status ? <Chip label={humanStatus(item.status)} tone={claimTone(item.status)} /> : null}
             </View>
           </Card>
         )}

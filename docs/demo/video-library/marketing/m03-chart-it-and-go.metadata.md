@@ -13,7 +13,7 @@ Diagnoses, prescriptions and lab orders are tabs of the same chart, so an order 
 Chapters:
 0:00 The chart
 0:14 The note
-0:42 The order
+0:45 The order
 
 Subtitles: upload m03-chart-it-and-go.srt as the English track — do not rely on auto-captions.
 Narration: spoken track included (google / en-US-Neural2-D).
@@ -37,7 +37,7 @@ AureonCare, EHR software, electronic health records, e-prescribing, lab orders, 
 | Thumbnail | m03-chart-it-and-go.thumbnail.png |
 | Subtitles | m03-chart-it-and-go.srt |
 | End screen | Link to the next video in the playlist |
-| Duration | 1:25 |
+| Duration | 1:24 |
 | Resolution | 1920x1080, 30fps, H.264 |
 | Audio | Narration, AAC 160k, normalised to -16 LUFS |
 

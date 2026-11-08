@@ -237,6 +237,7 @@ app.use('/api/vendor-integration-settings', require('./routes/vendorIntegrationS
 app.use('/api/integrations/oauth', require('./routes/integrationOAuth'));
 app.use('/api/backup-providers', require('./routes/backupProviders'));
 app.use('/api/stripe-settings', require('./routes/stripeSettings'));
+app.use('/api/ai', require('./routes/aiIntegrations')); // AI: bring-your-own-key, feature switches, human review
 app.use('/api/clinic-settings', require('./routes/clinicSettings'));
 app.use('/api/locations', require('./routes/locations'));
 app.use('/api/camps', require('./routes/camps'));

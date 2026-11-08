@@ -17,7 +17,8 @@ import {
   AlertCircle,
   Receipt,
   CreditCard,
-  Tag
+  Tag,
+  Bot
 } from 'lucide-react';
 import { formatDate, formatTime } from '../../utils/formatters';
 import api from '../../api/apiService';
@@ -107,6 +108,8 @@ const SearchPanel = ({
         return <Tag {...iconProps} className="w-5 h-5 text-fuchsia-400" />;
       case 'billing_payment':
         return <CreditCard {...iconProps} className="w-5 h-5 text-yellow-400" />;
+      case 'ai_suggestion':
+        return <Bot {...iconProps} className="w-5 h-5 text-indigo-400" />;
       default:
         return <FileText {...iconProps} className="w-5 h-5 text-gray-400" />;
     }
@@ -131,7 +134,8 @@ const SearchPanel = ({
       billing_quote: 'Billing Quote',
       billing_invoice: 'Billing Invoice',
       billing_coupon: 'Billing Coupon',
-      billing_payment: 'Billing Payment'
+      billing_payment: 'Billing Payment',
+      ai_suggestion: 'AI Draft'
     };
     return labels[resultType] || resultType;
   };

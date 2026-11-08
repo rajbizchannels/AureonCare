@@ -3,7 +3,7 @@ import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'rea
 import { FlaskConical, Pill } from 'lucide-react-native';
 import { useSession } from '@/context/SessionContext';
 import { Card, Chip, EmptyState, ErrorNote, Loading } from '@/components/ui';
-import { formatDate, useResource } from '@/lib/useResource';
+import { formatDate, humanStatus, useResource } from '@/lib/useResource';
 import { useLayout } from '@/lib/device';
 import { palette, space, type } from '@/theme/tokens';
 import type { LabOrder, Prescription } from '@/lib/api';
@@ -86,7 +86,7 @@ export const StaffOrdersScreen: React.FC = () => {
                 </Text>
                 {item.provider_name ? <Text style={styles.meta}>{item.provider_name}</Text> : null}
               </View>
-              {item.status ? <Chip label={item.status} tone={statusTone(item.status)} /> : null}
+              {item.status ? <Chip label={humanStatus(item.status)} tone={statusTone(item.status)} /> : null}
             </Card>
           )}
         />
@@ -114,7 +114,7 @@ export const StaffOrdersScreen: React.FC = () => {
                 {item.priority && item.priority !== 'routine' ? (
                   <Chip label={item.priority} tone={item.priority === 'stat' ? 'danger' : 'warning'} />
                 ) : null}
-                {item.status ? <Chip label={item.status} tone={statusTone(item.status)} /> : null}
+                {item.status ? <Chip label={humanStatus(item.status)} tone={statusTone(item.status)} /> : null}
               </View>
             </Card>
           )}

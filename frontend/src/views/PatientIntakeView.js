@@ -6,6 +6,7 @@ import NewIntakeFlowForm from '../components/forms/NewIntakeFlowForm';
 import NewConsentFormForm from '../components/forms/NewConsentFormForm';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 import { useAudit } from '../hooks/useAudit';
+import AIAssistButton from '../components/integrations/AIAssistButton';
 
 const PatientIntakeView = ({
   theme,
@@ -169,9 +170,22 @@ const PatientIntakeView = ({
       {viewingIntakeForm && (
         <div className={`mb-4 p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-white border-gray-300'}`}>
           <div className="flex justify-between items-center mb-6">
-            <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              {viewingIntakeForm.form_name}
-            </h3>
+            <div className="flex items-center gap-3 flex-wrap">
+              <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                {viewingIntakeForm.form_name}
+              </h3>
+              {/* AI pulls structured fields out of the submitted form; staff confirm before filing */}
+              <AIAssistButton featureKey="document_extraction" theme={theme} t={t}
+                patientId={viewingIntakeForm.patient_id || null} entityType="intake_form" entityId={viewingIntakeForm.id || null}
+                labelKey="aiExtractFields" label="Extract fields"
+                getInput={() => {
+                  const { id, patient_id, ...rest } = viewingIntakeForm;
+                  return Object.entries(rest)
+                    .filter(([, v]) => v !== null && v !== undefined && v !== '')
+                    .map(([k, v]) => `${k}: ${typeof v === 'object' ? JSON.stringify(v) : v}`)
+                    .join('\n');
+                }} />
+            </div>
             <button
               onClick={() => setViewingIntakeForm(null)}
               className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-200'}`}
