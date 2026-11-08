@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import AIAssistButton from '../integrations/AIAssistButton';
 import { FileCheck, X, Save, Search, Plus, Trash2, Printer, AlertCircle, Shield } from 'lucide-react';
 import ConfirmationModal from '../modals/ConfirmationModal';
 import { useAudit } from '../../hooks/useAudit';
@@ -753,9 +754,20 @@ const NewPreapprovalForm = ({ theme, api, patients, onClose, onSuccess, addNotif
 
         {/* Clinical Notes */}
         <div>
-          <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-            Clinical Notes
-          </label>
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <label className={`block text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+              Clinical Notes
+            </label>
+            {/* AI drafts the medical-necessity letter; only on click, inserted only after review */}
+            <AIAssistButton featureKey="prior_auth" theme={theme} t={t}
+              patientId={formData.patientId || null} entityType="preapproval"
+              labelKey="aiDraftLetter" label="Draft letter"
+              getInput={() => [
+                formData.requestedService && `Requested service: ${formData.requestedService}`,
+                formData.clinicalNotes && `Clinical facts:\n${formData.clinicalNotes}`,
+              ].filter(Boolean).join('\n\n')}
+              onApply={(text) => setFormData((prev) => ({ ...prev, clinicalNotes: text }))} />
+          </div>
           <textarea
             value={formData.clinicalNotes}
             onChange={(e) => setFormData({ ...formData, clinicalNotes: e.target.value })}

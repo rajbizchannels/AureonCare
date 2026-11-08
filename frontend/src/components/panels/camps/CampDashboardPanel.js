@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { BarChart3, Download, ShieldCheck, RefreshCw, TrendingUp } from 'lucide-react';
+import AIAssistButton from '../../integrations/AIAssistButton';
 
 /**
  * CampDashboardPanel — outcomes, throughput, referral conversion, and the sponsor export.
@@ -68,10 +69,17 @@ const CampDashboardPanel = ({ theme, t = {}, api, camp, user, addNotification })
         <h4 className="font-semibold flex items-center gap-2">
           <BarChart3 className="w-4 h-4" />{t.campReport || 'Camp outcomes'}
         </h4>
-        <button onClick={load} disabled={loading}
-          className={`px-3 py-1.5 rounded-lg text-sm flex items-center gap-2 ${dark ? 'bg-gray-700' : 'bg-gray-200'}`}>
-          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />{t.refresh || 'Refresh'}
-        </button>
+        <div className="flex items-center gap-2">
+          {/* AI summary of camp findings for the lead clinician; counts only, no attendee names */}
+          <AIAssistButton featureKey="camp_summaries" theme={theme} t={t}
+            entityType="camp" entityId={camp.id}
+            labelKey="aiSummariseCamp" label="Summarise"
+            getInput={() => (report ? `Camp: ${camp.name}\n${JSON.stringify({ totals: report.totals, referrals: report.referrals, stations: report.stations }, null, 2)}` : '')} />
+          <button onClick={load} disabled={loading}
+            className={`px-3 py-1.5 rounded-lg text-sm flex items-center gap-2 ${dark ? 'bg-gray-700' : 'bg-gray-200'}`}>
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />{t.refresh || 'Refresh'}
+          </button>
+        </div>
       </div>
 
       {totals && (

@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
-  Bot, KeyRound, ListChecks, ClipboardCheck, ChevronDown, ChevronUp, Save, ToggleLeft, ToggleRight,
+  Bot, KeyRound, ListChecks, ClipboardCheck, ChevronDown, ChevronUp, Save,
   ShieldCheck, AlertTriangle, Trash2, PlugZap, Sparkles,
 } from 'lucide-react';
 import api from '../../api/apiService';
+import Toggle from '../Toggle';
+import { invalidateAIFeatureCache } from './AIAssistButton';
 
 // AI section of the Integrations page.
 //
@@ -163,12 +165,10 @@ const AIIntegrationsSection = ({ theme, t = {}, isAdmin }) => {
                 </span>
               )}
               <span className={`px-2 py-1 rounded text-xs ${statusCls}`}>{statusText}</span>
-              <button type="button" onClick={() => toggleProvider(p.provider, p.is_enabled)}
+              <Toggle theme={theme} checked={!!p.is_enabled}
+                onChange={() => toggleProvider(p.provider, p.is_enabled)}
                 disabled={busy[`toggle_${p.provider}`] || (!p.is_enabled && !p.configured)}
-                aria-label={p.is_enabled ? tr('aiDisable', 'Disable') : tr('aiEnable', 'Enable')}
-                className="disabled:opacity-50 disabled:cursor-not-allowed">
-                {p.is_enabled ? <ToggleRight className="w-6 h-6 text-green-400" /> : <ToggleLeft className="w-6 h-6 text-gray-400" />}
-              </button>
+                ariaLabel={`${tr(`aiProvider_${p.provider}`, p.label)}: ${p.is_enabled ? tr('aiDisable', 'Disable') : tr('aiEnable', 'Enable')}`} />
             </div>
           </div>
           {!open && (
@@ -224,23 +224,17 @@ const AIIntegrationsSection = ({ theme, t = {}, isAdmin }) => {
                 </datalist>
               </div>
               {p.requires_baa && (
-                <label className={`flex items-start gap-2 p-3 rounded-lg ${dark ? 'bg-slate-700/50' : 'bg-blue-50'}`}>
-                  <input type="checkbox" className="mt-0.5 rounded" checked={!!f.baa_confirmed}
-                    onChange={(e) => setField(p.provider, 'baa_confirmed', e.target.checked)} />
-                  <span>
-                    <span className={`text-sm font-medium ${dark ? 'text-slate-300' : 'text-gray-700'}`}>
-                      {tr('aiBaaConfirm', 'A BAA (US) / DPA (EU) is signed with this provider')}
-                    </span>
-                    <span className={`block ${muted}`}>{tr('aiBaaHint', 'Required before any feature that uses patient data can be switched on. Patient identifiers are still removed before sending.')}</span>
-                  </span>
-                </label>
+                <div className={`p-3 rounded-lg space-y-1 ${dark ? 'bg-slate-700/50' : 'bg-blue-50'}`}>
+                  <Toggle theme={theme} checked={!!f.baa_confirmed}
+                    onChange={(v) => setField(p.provider, 'baa_confirmed', v)}
+                    label={tr('aiBaaConfirm', 'A BAA (US) / DPA (EU) is signed with this provider')} />
+                  <p className={muted}>{tr('aiBaaHint', 'Required before any feature that uses patient data can be switched on. Patient identifiers are still removed before sending.')}</p>
+                </div>
               )}
               {!isOffline && (
-                <label className="flex items-center gap-2">
-                  <input type="checkbox" className="rounded" checked={!!f.zero_data_retention}
-                    onChange={(e) => setField(p.provider, 'zero_data_retention', e.target.checked)} />
-                  <span className={`text-xs ${dark ? 'text-slate-400' : 'text-gray-600'}`}>{tr('aiZdr', 'Zero data retention is enabled on this account')}</span>
-                </label>
+                <Toggle theme={theme} size="sm" checked={!!f.zero_data_retention}
+                  onChange={(v) => setField(p.provider, 'zero_data_retention', v)}
+                  label={tr('aiZdr', 'Zero data retention is enabled on this account')} />
               )}
               {p.last_tested_at && (
                 <p className={`text-xs ${p.test_status === 'success' ? 'text-green-400' : 'text-red-400'}`}>
@@ -275,6 +269,7 @@ const AIIntegrationsSection = ({ theme, t = {}, isAdmin }) => {
   const updateFeature = (key, patch) => run(`feat_${key}`, async () => {
     const updated = await api.updateAIFeature(key, patch);
     setFeatures((list) => list.map((f) => (f.key === key ? updated : f)));
+    invalidateAIFeatureCache();
     if (patch.is_enabled !== undefined) {
       flash(patch.is_enabled ? tr('aiFeatureOn', 'Feature switched on') : tr('aiFeatureOff', 'Feature switched off'));
     }
@@ -394,12 +389,10 @@ const AIIntegrationsSection = ({ theme, t = {}, isAdmin }) => {
                       }} />
                   </td>
                   <td className="px-3 py-3">
-                    <button type="button" onClick={() => updateFeature(f.key, { is_enabled: !f.is_enabled })}
+                    <Toggle theme={theme} checked={!!f.is_enabled}
+                      onChange={() => updateFeature(f.key, { is_enabled: !f.is_enabled })}
                       disabled={busy[`feat_${f.key}`] || (!f.is_enabled && !f.provider)}
-                      aria-label={`${featureName(f.key)}: ${f.is_enabled ? tr('aiDisable', 'Disable') : tr('aiEnable', 'Enable')}`}
-                      className="disabled:opacity-50 disabled:cursor-not-allowed">
-                      {f.is_enabled ? <ToggleRight className="w-7 h-7 text-green-400" /> : <ToggleLeft className="w-7 h-7 text-gray-400" />}
-                    </button>
+                      ariaLabel={`${featureName(f.key)}: ${f.is_enabled ? tr('aiDisable', 'Disable') : tr('aiEnable', 'Enable')}`} />
                   </td>
                 </tr>
               );

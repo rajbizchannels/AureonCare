@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { X, Search, Book, HelpCircle, MessageCircle, Lightbulb } from 'lucide-react';
+import AIAssistButton from '../integrations/AIAssistButton';
 
 const HelpDrawer = ({ theme, isOpen, onClose, currentContext, userRole, onOpenAI }) => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -189,6 +190,21 @@ const HelpDrawer = ({ theme, isOpen, onClose, currentContext, userRole, onOpenAI
               }`}
             />
           </div>
+
+          {/* Ask the help assistant; answers come only from the help articles, no patient data */}
+          {userRole !== 'patient' && (
+            <div className="flex justify-end mt-2">
+              <AIAssistButton featureKey="help_assistant" theme={theme}
+                entityType="help" labelKey="aiAskHelp" label="Ask AI"
+                getInput={() => {
+                  const articles = (filteredArticles.length ? filteredArticles : [])
+                    .slice(0, 5)
+                    .map((a) => `## ${a.title}\n${a.content || ''}`)
+                    .join('\n\n');
+                  return `Question: ${searchQuery || ''}\n\nHelp articles:\n${articles}`;
+                }} />
+            </div>
+          )}
 
           {/* Tabs */}
           <div className="flex gap-2 mt-4">

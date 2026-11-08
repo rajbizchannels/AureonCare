@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import AIAssistButton from '../integrations/AIAssistButton';
 import { Activity, X, Save, Calendar, FileText, Pill, Microscope, Plus, Trash2, Search, ClipboardList, ChevronDown, ChevronUp } from 'lucide-react';
 import { FORM_TEMPLATES } from '../../data/formTemplates';
 import MedicalCodeMultiSelect from './MedicalCodeMultiSelect';
@@ -614,6 +615,16 @@ const DiagnosisForm = ({
               </div>
 
               {/* ICD Codes */}
+              <div className="flex justify-end -mb-2">
+                {/* AI suggests codes with the supporting sentence; the user picks codes below */}
+                <AIAssistButton featureKey="coding_suggestions" theme={theme} t={t}
+                  patientId={formData.patientId || null} entityType="diagnosis" entityId={editDiagnosis?.id || null}
+                  labelKey="aiSuggestCodes" label="Suggest codes"
+                  getInput={() => [
+                    formData.diagnosisName && `Diagnosis: ${formData.diagnosisName}`,
+                    formData.soapNotes && `Note:\n${formData.soapNotes}`,
+                  ].filter(Boolean).join('\n\n')} />
+              </div>
               <MedicalCodeMultiSelect
                 theme={theme}
                 api={api}
@@ -1084,12 +1095,19 @@ const DiagnosisForm = ({
 
               {/* SOAP Notes */}
               <div>
-                <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
-                  <div className="flex items-center gap-2">
-                    <FileText className="w-4 h-4" />
-                    SOAP Notes
-                  </div>
-                </label>
+                <div className="flex items-center justify-between gap-2 mb-2">
+                  <label className={`block text-sm font-medium ${theme === 'dark' ? 'text-gray-300' : 'text-gray-700'}`}>
+                    <div className="flex items-center gap-2">
+                      <FileText className="w-4 h-4" />
+                      SOAP Notes
+                    </div>
+                  </label>
+                  {/* AI drafts a SOAP note from the visit text; only on click, inserted only after review */}
+                  <AIAssistButton featureKey="ambient_scribe" theme={theme} t={t}
+                    patientId={formData.patientId || null} entityType="diagnosis" entityId={editDiagnosis?.id || null}
+                    getInput={() => formData.soapNotes || ''}
+                    onApply={(text) => setFormData((prev) => ({ ...prev, soapNotes: text }))} />
+                </div>
                 <textarea
                   value={formData.soapNotes}
                   onChange={(e) => setFormData({ ...formData, soapNotes: e.target.value })}

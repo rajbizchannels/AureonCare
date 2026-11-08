@@ -508,6 +508,9 @@ export const useApp = () => {
   return context;
 };
 
+/** Like useApp, but returns null outside the provider instead of throwing. */
+export const useOptionalApp = () => useContext(AppContext) || null;
+
 // Export AppProvider as both named and default export
 export { AppProvider };
 export default AppProvider;
