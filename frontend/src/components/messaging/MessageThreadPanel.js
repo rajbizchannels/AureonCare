@@ -5,6 +5,7 @@ import {
   FolderPlus, ClipboardList, MessageSquare, FileCheck
 } from 'lucide-react';
 import { formatDateTime } from '../../utils/formatters';
+import AIAssistButton from '../integrations/AIAssistButton';
 
 /**
  * Right pane: one conversation, its transcript, and the composer.
@@ -402,6 +403,18 @@ const MessageThreadPanel = ({
             </div>
           )}
 
+          {canAdminister && (
+            <div className="flex justify-end mb-2">
+              {/* AI drafts a reply from the conversation; only on click, never sent automatically */}
+              <AIAssistButton featureKey="message_drafts" theme={theme}
+                patientId={thread.patientId || null} entityType="message_thread" entityId={thread.id}
+                labelKey="aiReplyButton" label="AI reply"
+                getInput={() => messages.slice(-10)
+                  .map((m) => `${m.senderKind === 'patient' ? 'Patient' : 'Staff'}: ${m.body || ''}`)
+                  .join('\n')}
+                onApply={(text) => setDraft(text)} />
+            </div>
+          )}
           <div className="flex items-end gap-2">
             <input ref={fileInputRef} type="file" multiple onChange={handleFiles} className="hidden" />
             <button

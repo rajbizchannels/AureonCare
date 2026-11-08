@@ -12,6 +12,7 @@ import { useApp } from '../context/AppContext';
 import { useShellTab } from '../hooks/useShellTab';
 import ThemedSelect from '../components/forms/ThemedSelect';
 import { getTranslations } from '../config/translations';
+import AIAssistButton from '../components/integrations/AIAssistButton';
 
 const useT = () => getTranslations(useApp().language);
 
@@ -1343,8 +1344,16 @@ export default function InventoryView({ theme, api, user, addNotification, setCu
             <option key={s} value={s}>{statusLabels[s] || s.replace(/_/g, ' ')}</option>
           ))}
         </Select>
+        {/* AI suggests reorder quantities from stock levels; purchase orders still need approval */}
+        <div className="ml-auto">
+          <AIAssistButton featureKey="inventory_forecast" theme={theme} t={t}
+            entityType="inventory" labelKey="aiForecastReorder" label="Forecast reorder"
+            getInput={() => (items || []).slice(0, 100).map((i) =>
+              `${i.name || i.item_name}: on hand ${i.quantity_on_hand ?? '?'}, reorder level ${i.reorder_level ?? '?'}, unit ${i.unit_of_measure || ''}`
+            ).join('\n')} />
+        </div>
         {can('purchase_orders', 'create') && (
-          <Btn variant="primary" icon={Plus} onClick={() => setShowOrderForm(true)} className="ml-auto">{t.invNewPurchaseOrder || 'New Purchase Order'}</Btn>
+          <Btn variant="primary" icon={Plus} onClick={() => setShowOrderForm(true)}>{t.invNewPurchaseOrder || 'New Purchase Order'}</Btn>
         )}
       </div>
 

@@ -16,6 +16,18 @@ import ConfirmationModal from '../components/modals/ConfirmationModal';
 import EPrescribeModal from '../components/modals/ePrescribeModal';
 import { useAudit } from '../hooks/useAudit';
 import ThemedSelect from '../components/forms/ThemedSelect';
+import AIAssistButton from '../components/integrations/AIAssistButton';
+
+// Compact one-line summaries of chart rows, used as the context an AI assist button
+// OFFERS to send (the user sees and can edit it before anything is sent).
+const pick = (row, keys) => keys.map((k) => row && row[k]).filter((v) => v !== undefined && v !== null && v !== '').join(' · ');
+const summariseChart = ({ diagnoses = [], prescriptions = [], labOrders = [], appointments = [], medicalRecords = [] }) => [
+  diagnoses.length && `Diagnoses:\n${diagnoses.slice(0, 20).map((d) => `- ${pick(d, ['diagnosis_name', 'diagnosisName', 'diagnosis_code', 'diagnosisCode', 'status', 'diagnosed_date', 'diagnosedDate'])}`).join('\n')}`,
+  prescriptions.length && `Prescriptions:\n${prescriptions.slice(0, 20).map((r) => `- ${pick(r, ['medication_name', 'medicationName', 'dosage', 'frequency', 'status'])}`).join('\n')}`,
+  labOrders.length && `Lab orders:\n${labOrders.slice(0, 20).map((o) => `- ${pick(o, ['test_name', 'testName', 'status', 'priority', 'results', 'result', 'notes'])}`).join('\n')}`,
+  medicalRecords.length && `Records:\n${medicalRecords.slice(0, 10).map((m) => `- ${pick(m, ['record_type', 'recordType', 'title', 'description', 'record_date', 'recordDate'])}`).join('\n')}`,
+  appointments.length && `Appointments:\n${appointments.slice(0, 20).map((a) => `- ${pick(a, ['start_time', 'startTime', 'appointment_type', 'appointmentType', 'status'])}`).join('\n')}`,
+].filter(Boolean).join('\n\n');
 
 // Helper function to convert string to Title Case
 const toTitleCase = (str) => {
@@ -377,6 +389,15 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, initia
                   <h3 className={`font-semibold text-2xl ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
                     {patientData.first_name} {patientData.last_name}
                   </h3>
+                  {/* Ask the chart a question; read-only, nothing is written back */}
+                  {user?.role !== 'patient' && (
+                    <div className="mt-1">
+                      <AIAssistButton featureKey="chart_copilot" theme={theme} patientId={patientData.id || null}
+                        entityType="patient" entityId={patientData.id || null}
+                        labelKey="aiAskChart" label="Ask the chart"
+                        getInput={() => `Question: \n\n${summariseChart({ diagnoses, prescriptions, labOrders, appointments, medicalRecords })}`} />
+                    </div>
+                  )}
                   <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                     MRN: {patientData.mrn || 'N/A'}
                   </p>
@@ -1104,6 +1125,13 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, initia
             Lab Orders
           </h3>
           <div className="flex items-center gap-3">
+            {/* Plain-language explanation for the patient; provider reviews before sharing */}
+            {user?.role !== 'patient' && (
+              <AIAssistButton featureKey="lab_explanations" theme={theme} patientId={patientData.id || null}
+                entityType="lab_orders" entityId={patientData.id || null}
+                labelKey="aiExplainResults" label="Explain results"
+                getInput={() => summariseChart({ labOrders })} />
+            )}
             {/* Status Filter Dropdown */}
             <div className="flex items-center gap-2">
               <label className={`text-sm font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
@@ -1368,6 +1396,14 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, initia
         <h3 className={`text-xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
           Appointments
         </h3>
+        <div className="flex items-center gap-2">
+        {/* No-show risk from this patient's history; staff decide what to do */}
+        {user?.role !== 'patient' && (
+          <AIAssistButton featureKey="no_show_prediction" theme={theme} patientId={patientData.id || null}
+            entityType="patient" entityId={patientData.id || null}
+            labelKey="aiNoShowRisk" label="No-show risk"
+            getInput={() => summariseChart({ appointments })} />
+        )}
         <button
           onClick={() => setShowAppointmentForm(true)}
           className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-lg transition-all shadow-md hover:shadow-lg font-medium"
@@ -1375,6 +1411,7 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, initia
           <Plus className="w-4 h-4" />
           New Appointment
         </button>
+        </div>
       </div>
       {appointments.length === 0 ? (
         <div className={`text-center py-12 rounded-xl border ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>

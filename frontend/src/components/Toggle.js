@@ -11,6 +11,7 @@ import React from 'react';
  * @param {string} theme - 'dark' or 'light' theme
  * @param {boolean} disabled - Whether the toggle is disabled
  * @param {string} size - 'sm', 'md', 'lg' size of toggle
+ * @param {string} ariaLabel - accessible name when there is no visible label
  */
 const Toggle = ({
   checked = false,
@@ -18,7 +19,8 @@ const Toggle = ({
   label,
   theme = 'light',
   disabled = false,
-  size = 'md'
+  size = 'md',
+  ariaLabel
 }) => {
   const sizeClasses = {
     sm: {
@@ -48,6 +50,9 @@ const Toggle = ({
           checked={checked}
           onChange={(e) => !disabled && onChange(e.target.checked)}
           disabled={disabled}
+          aria-label={label ? undefined : ariaLabel}
+          role="switch"
+          aria-checked={checked}
           className="sr-only peer"
         />
         <div
