@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import AIAssistButton from '../integrations/AIAssistButton';
-import { FileCheck, X, Save, Search, Plus, Trash2, Printer, AlertCircle, Shield } from 'lucide-react';
+import { FileCheck, X, Save, Search, Plus, Trash2, Printer, AlertCircle, Shield, Loader2 } from 'lucide-react';
 import ConfirmationModal from '../modals/ConfirmationModal';
 import { useAudit } from '../../hooks/useAudit';
 import ThemedSelect from './ThemedSelect';
@@ -18,6 +18,10 @@ const NewPreapprovalForm = ({ theme, api, patients, onClose, onSuccess, addNotif
   });
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [showNoClearinghouseModal, setShowNoClearinghouseModal] = useState(false);
+  // This form had no busy state at all: submitting a pre-authorisation posts to a
+  // clearinghouse, which is among the slowest calls in the app, and the button gave no
+  // sign of it.
+  const [submitting, setSubmitting] = useState(false);
   const [clearinghouseStatus, setClearinghouseStatus] = useState({ hasClearinghouse: false });
   const [insurancePayers, setInsurancePayers] = useState([]);
   const [loadingPayers, setLoadingPayers] = useState(true);
@@ -285,6 +289,20 @@ const NewPreapprovalForm = ({ theme, api, patients, onClose, onSuccess, addNotif
   };
 
   const submitPreapproval = async (submitToClearinghouse = false) => {
+    // Wrapped here rather than in handleSubmit: the no-clearinghouse modal also submits
+    // through this function, so this is the one place both paths pass.
+    if (submitting) return;
+    setSubmitting(true);
+    try {
+      return await doSubmitPreapproval(submitToClearinghouse);
+    } finally {
+      // A rejected submission must leave the button usable; otherwise a validation error
+      // from the payer would need a page reload to retry.
+      setSubmitting(false);
+    }
+  };
+
+  const doSubmitPreapproval = async (submitToClearinghouse = false) => {
     // The server assigns the number (PA-YYYY-NNNNNN).
     const preapprovalData = {
       patient_id: formData.patientId,
@@ -796,10 +814,16 @@ const NewPreapprovalForm = ({ theme, api, patients, onClose, onSuccess, addNotif
           </button>
           <button
             type="submit"
-            className="flex items-center gap-2 px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors"
+            disabled={submitting}
+            aria-busy={submitting || undefined}
+            className={`flex items-center gap-2 px-6 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors ${
+              submitting ? 'opacity-70 cursor-wait' : ''
+            }`}
           >
-            <Save className="w-4 h-4" />
-            Submit Pre-Authorization Request
+            {submitting
+              ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />
+              : <Save className="w-4 h-4" />}
+            {submitting ? 'Submitting…' : 'Submit Pre-Authorization Request'}
           </button>
         </div>
       </form>
