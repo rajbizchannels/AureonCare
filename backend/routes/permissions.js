@@ -24,7 +24,25 @@ router.use(authenticate);
 router.get('/modules', authorize('admin', 'billing_manager'), async (req, res) => {
   try {
     const db = req.db || req.app.locals.pool;
-    const described = registry.describe();
+
+    // Roles this practice actually uses, so a custom role is grantable rather than
+    // invisible. Read from the practice's own users (users is an identity-plane table in
+    // `public`, scoped by practice_id) and from public.roles, which is empty on every
+    // installation checked but costs nothing to consult.
+    const extraRoles = [];
+    try {
+      const { rows } = await req.app.locals.pool.query(
+        `SELECT DISTINCT role FROM public.users
+          WHERE practice_id = $1 AND status = 'active' AND role IS NOT NULL
+          UNION
+         SELECT name FROM public.roles WHERE is_active = true`,
+        [req.user.practiceId || null]);
+      extraRoles.push(...rows.map((r) => r.role).filter(Boolean));
+    } catch (err) {
+      console.error('[permissions] could not list practice roles:', err.message);
+    }
+
+    const described = registry.describe(extraRoles);
 
     let stored = [];
     try {
@@ -112,8 +130,23 @@ router.put('/modules', authorize('admin'), async (req, res) => {
         validResources: registry.MODULES[module].resources,
       });
     }
-    if (!registry.ROLES.includes(roleName)) {
-      return res.status(400).json({ error: `Unknown role "${roleName}"`, validRoles: registry.ROLES });
+    // Validated against the roles this practice uses, not the built-in list alone: the read
+    // endpoint offers custom roles, so refusing them here would put a switch on screen
+    // that the server rejects.
+    let allowedRoles = registry.ROLES;
+    try {
+      const { rows } = await req.app.locals.pool.query(
+        `SELECT DISTINCT role AS name FROM public.users
+          WHERE practice_id = $1 AND status = 'active' AND role IS NOT NULL
+          UNION
+         SELECT name FROM public.roles WHERE is_active = true`,
+        [req.user.practiceId || null]);
+      allowedRoles = registry.rolesFor(rows.map((r) => r.name).filter(Boolean));
+    } catch (err) {
+      console.error('[permissions] could not list practice roles:', err.message);
+    }
+    if (!allowedRoles.includes(roleName)) {
+      return res.status(400).json({ error: `Unknown role "${roleName}"`, validRoles: allowedRoles });
     }
     // Refused rather than quietly ignored: an administrator who believes they have just
     // restricted their own role would be wrong, and would find out the hard way.

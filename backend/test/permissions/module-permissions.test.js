@@ -201,9 +201,45 @@ const report = (err) => {
   const rbacStillReachable = await api('GET', '/api/inventory/rbac/permissions', undefined, admin.token);
   check('the inventory permissions endpoint is not gated by inventory permissions',
     rbacStillReachable.status === 200);
-  await sql(`UPDATE {s}.inventory_role_permissions SET can_view = true WHERE role_name='nurse' AND resource='items'`);
-  check('and restoring it lets the nurse back in',
+  // A new edit must BEAT the legacy row. Enforcement used to read the legacy table first
+  // while the read endpoint preferred the new one, so with the separate Accounts and
+  // Inventory grids now folded into one screen, an administrator would change a setting,
+  // see it reported as saved, and enforcement would go on obeying the old row.
+  const override = await api('PUT', '/api/permissions/modules',
+    { module: 'inventory', roleName: 'nurse', resource: 'items', canView: true }, admin.token);
+  check('a grant can be saved for a module that has a legacy table', override.status === 200);
+  check('AN EDIT IN THE ONE GRID OVERRIDES THE LEGACY ROW',
     (await api('GET', '/api/inventory/items', undefined, nurse.token)).status === 200);
+  // And the other direction, so this is not just "true wins".
+  await api('PUT', '/api/permissions/modules',
+    { module: 'inventory', roleName: 'nurse', resource: 'items', canView: false }, admin.token);
+  await sql(`UPDATE {s}.inventory_role_permissions SET can_view = true WHERE role_name='nurse' AND resource='items'`);
+  check('...in both directions: a new denial beats a legacy grant',
+    (await api('GET', '/api/inventory/items', undefined, nurse.token)).status === 403);
+
+  // Clearing the new row falls back to the legacy row, not straight to the defaults.
+  await api('DELETE', '/api/permissions/modules/inventory/nurse/items', undefined, admin.token);
+  check('removing the new grant falls back to the legacy row',
+    (await api('GET', '/api/inventory/items', undefined, nurse.token)).status === 200);
+
+  // ── the roles the practice actually uses are grantable ────────────────────────────
+  // The grids this replaced each hardcoded six roles, so a custom role was invisible in
+  // them and could never be granted anything.
+  const custom = await mk('ward_clerk');
+  const withCustom = await api('GET', '/api/permissions/modules', undefined, admin.token);
+  check('a custom role in use appears in the grid',
+    (obj(withCustom.body).roles || []).includes('ward_clerk'));
+  check('and starts with nothing granted, rather than inheriting someone else\'s access',
+    (obj(withCustom.body).permissions || [])
+      .filter((p) => p.roleName === 'ward_clerk').every((p) => p.canView === false));
+  check('a patient role is not offered here', !(obj(withCustom.body).roles || []).includes('patient'));
+  const grantCustom = await api('PUT', '/api/permissions/modules',
+    { module: 'patients', roleName: 'ward_clerk', resource: 'patients', canView: true }, admin.token);
+  check('a custom role can be granted a permission', grantCustom.status === 200);
+  check('and the grant takes effect',
+    (await api('GET', '/api/patients', undefined, custom.token)).status === 200);
+  check('without granting it anything else',
+    (await api('GET', '/api/claims', undefined, custom.token)).status === 403);
 
   // ── the registry is the single source of truth ─────────────────────────────────────
   const described = registry.describe();
@@ -217,7 +253,7 @@ const report = (err) => {
     described.modules.every((m) => registry.ACTIONS.every((a) => m.defaults.admin[a] === true)));
 
   await pool.query('DELETE FROM public.users WHERE id = ANY($1::uuid[])',
-    [[admin.id, nurse.id, reception.id]]);
+    [[admin.id, nurse.id, reception.id, custom.id]]);
 
   report();
 })().catch(report);

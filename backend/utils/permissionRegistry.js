@@ -138,6 +138,33 @@ const MODULES = {
 /** Is this a module we know about? */
 const isModule = (module) => Object.prototype.hasOwnProperty.call(MODULES, module);
 
+/**
+ * Roles that may be granted permissions: the built-in list plus whatever a practice
+ * actually uses.
+ *
+ * The built-in seven are not the whole story. A practice can create its own roles, and the
+ * grids that this screen replaced each hardcoded their own six-role list — so a custom
+ * role was invisible in them and could never be granted anything. `extra` comes from the
+ * roles the practice's own users hold, which is the honest answer to "which roles exist
+ * here": `public.roles` is a global table that is empty on every installation checked, so
+ * reading it alone would have found nothing.
+ *
+ * `patient` is excluded deliberately. Patients reach their own data through the portal,
+ * which has its own rules; offering a staff permissions row for them would imply this
+ * screen governs that, and it does not.
+ */
+const EXCLUDED_ROLES = new Set(['patient']);
+
+function rolesFor(extra = []) {
+  const out = [...ROLES];
+  for (const role of extra) {
+    const name = String(role || '').trim();
+    if (!name || EXCLUDED_ROLES.has(name) || out.includes(name)) continue;
+    out.push(name);
+  }
+  return out;
+}
+
 /** Is `resource` one of `module`'s? */
 const isResource = (module, resource) =>
   isModule(module) && MODULES[module].resources.includes(resource);
@@ -156,22 +183,29 @@ function defaultsFor(module, role) {
   return { ...(PRESETS[preset] || PRESETS.none) };
 }
 
-/** The whole registry, shaped for the admin screen to render without any knowledge of it. */
-function describe() {
+/**
+ * The whole registry, shaped for the admin screen to render without any knowledge of it.
+ *
+ * `extraRoles` are roles the practice uses beyond the built-in list; they get the same
+ * treatment as any other role, defaulting to nothing until granted, which is the safe
+ * direction for a role nobody has described yet.
+ */
+function describe(extraRoles = []) {
+  const roles = rolesFor(extraRoles);
   return {
     actions: ACTIONS,
-    roles: ROLES,
+    roles,
     alwaysAllowedRole: ALWAYS_ALLOWED_ROLE,
     modules: Object.entries(MODULES).map(([key, m]) => ({
       key,
       label: m.label,
       resources: m.resources,
-      defaults: Object.fromEntries(ROLES.map((r) => [r, defaultsFor(key, r)])),
+      defaults: Object.fromEntries(roles.map((r) => [r, defaultsFor(key, r)])),
     })),
   };
 }
 
 module.exports = {
-  ACTIONS, ROLES, MODULES, PRESETS, ALWAYS_ALLOWED_ROLE,
-  isModule, isResource, isAction, defaultsFor, describe,
+  ACTIONS, ROLES, MODULES, PRESETS, ALWAYS_ALLOWED_ROLE, EXCLUDED_ROLES,
+  isModule, isResource, isAction, defaultsFor, describe, rolesFor,
 };

@@ -373,8 +373,6 @@ const AdminPanelView = ({
   const [rolePermissions, setRolePermissions] = useState(DEFAULT_ROLE_PERMISSIONS);
 
   // Accounts module RBAC & backup
-  const [acctPermissions, setAcctPermissions] = useState([]);
-  const [acctPermLoading, setAcctPermLoading] = useState(false);
   const [acctBackups, setAcctBackups] = useState([]);
   const [acctBackupLoading, setAcctBackupLoading] = useState(false);
   const [invBackups, setInvBackups] = useState([]);
@@ -531,13 +529,8 @@ const AdminPanelView = ({
     [t, user]
   );
 
-  /**
-   * Memoized role permission entries to avoid recalculating Object.entries on every render
-   */
-  const rolePermissionEntries = useMemo(
-    () => Object.entries(rolePermissions),
-    [rolePermissions]
-  );
+  // rolePermissionEntries memoised the rows of the coarse module x role matrix. That
+  // matrix is gone; the roles list below reads the same object directly.
 
   /**
    * Filter users by status for display
@@ -592,14 +585,9 @@ const AdminPanelView = ({
   /**
    * Load accounts RBAC permissions when Roles tab is active
    */
-  useEffect(() => {
-    if (activeTab !== ADMIN_TABS.ROLES) return;
-    setAcctPermLoading(true);
-    api.getAccountPermissions()
-      .then(setAcctPermissions)
-      .catch(err => console.error('Failed to load accounts permissions:', err))
-      .finally(() => setAcctPermLoading(false));
-  }, [activeTab, api]);
+  // The accounts-permissions request used to live here, beside the inventory one.
+  // ModulePermissionsTab loads every module's grants from a single endpoint, so both were
+  // left fetching data that nothing rendered.
 
   /**
    * Load accounts backup history when Backup tab is active
@@ -1015,26 +1003,11 @@ const AdminPanelView = ({
     }
   }, [api, rolePermissions, addNotification, t]);
 
-  const handleSaveRolePermissionsClick = useCallback(() => {
-    setPendingSaveAction(() => handleSaveRolePermissions);
-    setShowSaveConfirmation(true);
-  }, [handleSaveRolePermissions]);
-
-  /**
-   * Toggle permission for a specific role and module
-   */
-  const handleTogglePermission = useCallback((role, module, action) => {
-    setRolePermissions((prev) => ({
-      ...prev,
-      [role]: {
-        ...prev[role],
-        [module]: {
-          ...prev[role][module],
-          [action]: !prev[role][module][action],
-        },
-      },
-    }));
-  }, []);
+  // handleSaveRolePermissionsClick and handleTogglePermission drove the coarse module x
+  // role matrix. Both wrote to public.permissions / role_permissions, which are empty on
+  // every installation checked and read by nothing, so the toggles changed a checkbox and
+  // the Save button wrote rows that never took effect. ModulePermissionsTab saves each
+  // change as it is made, to a table the middleware actually enforces.
 
   /**
    * Delete custom role
@@ -3822,23 +3795,15 @@ const AdminPanelView = ({
         <div className="flex justify-between items-center">
           <div>
             <h2 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              Role Permissions
+              Roles &amp; Permissions
             </h2>
-            {/* Legend */}
-            <div className={`flex gap-4 mt-2 text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-              <span className="flex items-center gap-1">
-                <span className="text-green-500 font-semibold">V</span> = View
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="text-blue-500 font-semibold">C</span> = Create
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="text-yellow-500 font-semibold">E</span> = Edit
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="text-red-500 font-semibold">D</span> = Delete
-              </span>
-            </div>
+            {/* The V/C/E/D legend lived here for the coarse matrix that this tab used to
+                show. That matrix, and the separate Accounts and Inventory grids, are all
+                gone: the one grid below spells its actions out in full. */}
+            <p className={`mt-1 text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+              Create the roles your practice uses here; set what each one may do in
+              Module Permissions below.
+            </p>
           </div>
           <button
             onClick={() => setShowCustomRoleForm(true)}
@@ -3964,268 +3929,54 @@ const AdminPanelView = ({
         </div>
       )}
 
-      {/* Permission Legend */}
-      <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-slate-800/50 border border-slate-700' : 'bg-gray-50 border border-gray-300'}`}>
-        <h4 className={`text-sm font-semibold mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-          Permission Legend
-        </h4>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="flex items-center gap-2">
-            <span className="text-green-500 font-semibold text-lg">V</span>
-            <span className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>View</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-blue-500 font-semibold text-lg">C</span>
-            <span className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Create</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-yellow-500 font-semibold text-lg">E</span>
-            <span className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Edit</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-red-500 font-semibold text-lg">D</span>
-            <span className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Delete</span>
-          </div>
-        </div>
-      </div>
 
-      {/* Roles & Permissions Table */}
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse">
-          <thead>
-            <tr className={`${theme === 'dark' ? 'bg-slate-800 border-b-2 border-slate-700' : 'bg-gray-100 border-b-2 border-gray-300'}`}>
-              <th className={`px-4 py-3 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'}`}>
-                Role
-              </th>
-              <th className={`px-4 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'}`}>
-                Patients
-              </th>
-              <th className={`px-4 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'}`}>
-                Appointments
-              </th>
-              <th className={`px-4 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'}`}>
-                Claims
-              </th>
-              <th className={`px-4 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'}`}>
-                EHR
-              </th>
-              <th className={`px-4 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'}`}>
-                Users
-              </th>
-              <th className={`px-4 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'}`}>
-                Reports
-              </th>
-              <th className={`px-4 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'}`}>
-                Settings
-              </th>
-              <th className={`px-4 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'}`}>
-                Backup
-              </th>
-              <th className={`px-4 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'}`}>
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {rolePermissionEntries.map(([role, permissions], index) => (
-              <tr
-                key={role}
-                className={`border-b ${theme === 'dark' ? 'border-slate-800' : 'border-gray-200'} ${
-                  index % 2 === 0
-                    ? theme === 'dark' ? 'bg-slate-900/30' : 'bg-white'
-                    : theme === 'dark' ? 'bg-slate-900/50' : 'bg-gray-50'
-                } hover:${theme === 'dark' ? 'bg-slate-800' : 'bg-blue-50'} transition-colors`}
-              >
-                <td className={`px-4 py-4 font-medium capitalize ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                  <div className="flex items-center gap-2">
-                    <span>{role.replace(/_/g, ' ')}</span>
-                    {role === 'admin' && (
-                      <span className={`px-2 py-0.5 text-xs rounded-full ${
-                        theme === 'dark' ? 'bg-purple-500/20 text-purple-400' : 'bg-purple-100 text-purple-700'
-                      }`}>
-                        Protected
-                      </span>
-                    )}
-                  </div>
-                </td>
-                {['patients', 'appointments', 'claims', 'ehr', 'users', 'reports', 'settings', 'backup'].map((module) => (
-                  <td key={module} className="px-4 py-4">
-                    <div className="flex justify-center gap-1.5">
-                      {permissions[module]?.view && (
-                        <span className="text-green-500 font-bold text-base" title="View">V</span>
-                      )}
-                      {permissions[module]?.create && (
-                        <span className="text-blue-500 font-bold text-base" title="Create">C</span>
-                      )}
-                      {permissions[module]?.edit && (
-                        <span className="text-yellow-500 font-bold text-base" title="Edit">E</span>
-                      )}
-                      {permissions[module]?.delete && (
-                        <span className="text-red-500 font-bold text-base" title="Delete">D</span>
-                      )}
-                      {!permissions[module]?.view && !permissions[module]?.create && !permissions[module]?.edit && !permissions[module]?.delete && (
-                        <span className={`text-xs ${theme === 'dark' ? 'text-slate-600' : 'text-gray-400'}`}>-</span>
-                      )}
-                    </div>
-                  </td>
-                ))}
-                <td className="px-4 py-4">
-                  <div className="flex justify-center gap-2">
-                    {/* Allow editing for doctor and staff roles */}
-                    {(['doctor', 'staff'].includes(role)) && (
-                      <button
-                        onClick={() => {
-                          setCustomRoleName(role);
-                          setCustomRolePermissions(permissions);
-                          setShowCustomRoleForm(true);
-                        }}
-                        className={`p-2 rounded-lg transition-colors ${
-                          theme === 'dark'
-                            ? 'hover:bg-slate-700 bg-slate-800'
-                            : 'hover:bg-blue-50 bg-white border border-gray-300'
-                        }`}
-                        title="Edit permissions"
-                      >
-                        <Edit className="w-4 h-4 text-blue-500" />
-                      </button>
-                    )}
-                    {/* Allow editing and deleting custom roles only */}
-                    {!['admin', 'doctor', 'staff', 'patient'].includes(role) && (
-                      <>
-                        <button
-                          onClick={() => {
-                            setCustomRoleName(role);
-                            setCustomRolePermissions(permissions);
-                            setShowCustomRoleForm(true);
-                          }}
-                          className={`p-2 rounded-lg transition-colors ${
-                            theme === 'dark'
-                              ? 'hover:bg-slate-700 bg-slate-800'
-                              : 'hover:bg-blue-50 bg-white border border-gray-300'
-                          }`}
-                          title="Edit permissions"
-                        >
-                          <Edit className="w-4 h-4 text-blue-500" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteCustomRole(role)}
-                          className={`p-2 rounded-lg transition-colors ${
-                            theme === 'dark'
-                              ? 'hover:bg-red-900/30 bg-slate-800'
-                              : 'hover:bg-red-50 bg-white border border-gray-300'
-                          }`}
-                          title="Delete role"
-                        >
-                          <Trash2 className="w-4 h-4 text-red-500" />
-                        </button>
-                      </>
-                    )}
-                    {role === 'admin' && (
-                      <span className={`px-3 py-2 text-xs ${theme === 'dark' ? 'text-slate-600' : 'text-gray-400'}`}>
-                        N/A
-                      </span>
-                    )}
-                    {role === 'patient' && (
-                      <span className={`px-3 py-2 text-xs ${theme === 'dark' ? 'text-slate-600' : 'text-gray-400'}`}>
-                        N/A
-                      </span>
-                    )}
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
 
-      {/* Accounts Module RBAC */}
+      {/* The practice's roles.
+          This replaces the last column of the coarse matrix, which is where Delete lived —
+          removing the matrix would otherwise have taken the only way to remove a custom
+          role with it. Built-in roles cannot be deleted; a custom one can. */}
       <div className={`rounded-xl border p-6 ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-gray-200'}`}>
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h3 className={`text-base font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Accounts Module Permissions</h3>
-            <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>Fine-grained access control for the Accounts Management module</p>
-          </div>
-          {acctPermLoading && <RefreshCw className="w-4 h-4 animate-spin text-emerald-500" />}
-        </div>
-        {acctPermissions.length > 0 ? (
-          <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-slate-700">
-            <table className="w-full text-xs">
-              <thead className={`${theme === 'dark' ? 'bg-slate-900 text-slate-400' : 'bg-gray-50 text-gray-500'}`}>
-                <tr>
-                  <th className="px-4 py-2.5 text-left font-medium">Role</th>
-                  <th className="px-4 py-2.5 text-left font-medium">Resource</th>
-                  {['View','Create','Edit','Delete','Approve','Export'].map(a => (
-                    <th key={a} className="px-3 py-2.5 text-center font-medium">{a}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className={`divide-y ${theme === 'dark' ? 'divide-slate-700 bg-slate-800' : 'divide-gray-100 bg-white'}`}>
-                {['admin','billing_manager','doctor','nurse','receptionist','crm_manager'].map(role =>
-                  ['chart_of_accounts','journal_entries','accounts_receivable','accounts_payable','reconciliation','statements'].map((resource, ri) => {
-                    const perm = acctPermissions.find(p => p.roleName === role && p.resource === resource) || {};
-                    const permMap = { View:'canView', Create:'canCreate', Edit:'canEdit', Delete:'canDelete', Approve:'canApprove', Export:'canExport' };
-                    return (
-                      <tr key={`${role}-${resource}`} className={theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-50'}>
-                        {ri === 0 && (
-                          <td className={`px-4 py-2 font-medium capitalize ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'}`} rowSpan={6}>
-                            {role.replace('_',' ')}
-                          </td>
-                        )}
-                        <td className={`px-4 py-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>{resource.replace(/_/g,' ')}</td>
-                        {['View','Create','Edit','Delete','Approve','Export'].map(action => (
-                          <td key={action} className="px-3 py-2 text-center">
-                            <button
-                              disabled={!canManageRoles || role === 'admin'}
-                              onClick={async () => {
-                                if (!canManageRoles || role === 'admin') return;
-                                const key = permMap[action];
-                                const newVal = !perm[key];
-                                try {
-                                  const updated = await api.updateAccountPermission({
-                                    roleName: role, resource,
-                                    canView: perm.canView || false, canCreate: perm.canCreate || false,
-                                    canEdit: perm.canEdit || false, canDelete: perm.canDelete || false,
-                                    canApprove: perm.canApprove || false, canExport: perm.canExport || false,
-                                    [key]: newVal
-                                  });
-                                  setAcctPermissions(prev => {
-                                    const idx = prev.findIndex(p => p.roleName === role && p.resource === resource);
-                                    if (idx >= 0) return prev.map((p, i) => i === idx ? updated : p);
-                                    return [...prev, updated];
-                                  });
-                                } catch (err) {
-                                  addNotification('error', 'Failed to update permission');
-                                }
-                              }}
-                              className={`w-5 h-5 rounded flex items-center justify-center mx-auto transition-colors ${
-                                perm[permMap[action]]
-                                  ? 'bg-emerald-500 text-white'
-                                  : theme === 'dark' ? 'bg-slate-700 text-slate-500' : 'bg-gray-100 text-gray-400'
-                              } ${(!canManageRoles || role === 'admin') ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-80 cursor-pointer'}`}
-                            >
-                              {perm[permMap[action]] ? <Check className="w-3 h-3" /> : null}
-                            </button>
-                          </td>
-                        ))}
-                      </tr>
-                    );
-                  })
+        <h3 className={`text-base font-semibold mb-1 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Roles</h3>
+        <p className={`text-xs mb-4 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+          A role created here appears in the permissions grid below with nothing granted, so a
+          new role can do nothing until you say what it may do.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {Object.keys(rolePermissions).map((role) => {
+            const builtIn = ['admin', 'doctor', 'nurse', 'receptionist', 'billing_manager',
+              'crm_manager', 'staff', 'patient'].includes(role);
+            return (
+              <span key={role}
+                    className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs ${
+                      theme === 'dark' ? 'bg-slate-700 text-slate-200' : 'bg-gray-100 text-gray-700'}`}>
+                <span className="capitalize">{role.replace(/_/g, ' ')}</span>
+                {builtIn ? (
+                  <span className={theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}>built-in</span>
+                ) : canManageRoles && (
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteCustomRole(role)}
+                    title={`Delete the ${role} role`}
+                    className="text-red-500 hover:text-red-600"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
                 )}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className={`text-center py-8 text-sm ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>
-            {acctPermLoading ? 'Loading accounts permissions…' : 'No accounts permissions found — visit Accounts Management to initialize.'}
-          </div>
-        )}
+              </span>
+            );
+          })}
+        </div>
       </div>
 
-      {/* Fine-grained permissions for every module.
-          The two hand-written grids above (Accounts, Inventory) each hardcoded their own
-          roles, resources, actions and endpoints. This one draws all of that from the
-          server registry, so it covers every module including those two, and a module
-          added on the server needs no change here. */}
+      {/* THE permissions surface — one grid for every module.
+          There used to be three on this tab: a coarse module x role matrix writing to the
+          legacy permissions/role_permissions tables (both empty on every installation
+          checked, and read by nothing), plus a hand-written grid each for Accounts and
+          Inventory with their own hardcoded roles, resources and endpoints. Same job, three
+          implementations, two of which changed nothing when you clicked them.
+          This one draws its modules, resources, roles and actions from the server registry,
+          so it covers every module including those two, lists the roles the practice
+          actually uses, and is enforced. */}
       <ModulePermissionsTab
         theme={theme}
         api={api}

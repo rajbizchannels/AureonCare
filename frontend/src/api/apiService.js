@@ -5,6 +5,8 @@
 // (Safari/ITP), and can use SameSite=Lax. Setting REACT_APP_SVC_URL to an absolute URL
 // still works but puts the API on another origin, which forces the cross-site cookie mode
 // and keeps the Bearer fallback alive.
+import { trackRequest } from './activity';
+
 const API_BASE_URL = process.env.REACT_APP_SVC_URL || '/api';
 
 // True when the API shares the SPA's origin — the condition under which the session
@@ -94,7 +96,15 @@ const authenticatedFetch = async (url, options = {}) => {
       ...(options.headers || {})
     }
   };
-  return fetch(url, mergedOptions);
+  // Counted so the app can show that something is happening. Every request in the app
+  // funnels through here, which is why the indicator lives at this one line rather than in
+  // each of the ~846 buttons that can start one.
+  const settled = trackRequest(url);
+  try {
+    return await fetch(url, mergedOptions);
+  } finally {
+    settled();
+  }
 };
 
 /**

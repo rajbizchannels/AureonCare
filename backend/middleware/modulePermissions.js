@@ -38,19 +38,30 @@ const COLUMN = {
  * consulted too, so new edits can land in one place.
  */
 async function loadGrant(db, module, role, resource) {
-  const legacy = MODULES[module] && MODULES[module].legacyTable;
-  if (legacy) {
-    const { rows } = await db.query(
-      `SELECT can_view, can_create, can_edit, can_delete, can_approve, can_export
-         FROM ${legacy} WHERE role_name = $1 AND resource = $2 LIMIT 1`,
-      [role, resource]);
-    if (rows.length) return rows[0];
-  }
+  // module_permissions FIRST. This is where every edit lands now that the per-module grids
+  // have been folded into one screen, so it has to be what wins. The order used to be the
+  // other way round, which was wrong the moment the separate Accounts and Inventory grids
+  // were removed: an administrator would change a setting, the screen would show it saved
+  // — the read endpoint already preferred this table — and enforcement would go on
+  // obeying the old row. A permissions screen that reports a change it did not make is
+  // the exact failure this whole piece of work exists to remove.
   const { rows } = await db.query(
     `SELECT can_view, can_create, can_edit, can_delete, can_approve, can_export
        FROM module_permissions WHERE module = $1 AND role_name = $2 AND resource = $3 LIMIT 1`,
     [module, role, resource]);
-  return rows[0] || null;
+  if (rows.length) return rows[0];
+
+  // Then whatever the module's own older table holds, so settings made before the merge
+  // are still honoured rather than silently reverting to defaults.
+  const legacy = MODULES[module] && MODULES[module].legacyTable;
+  if (legacy) {
+    const { rows: old } = await db.query(
+      `SELECT can_view, can_create, can_edit, can_delete, can_approve, can_export
+         FROM ${legacy} WHERE role_name = $1 AND resource = $2 LIMIT 1`,
+      [role, resource]);
+    if (old.length) return old[0];
+  }
+  return null;
 }
 
 /**
