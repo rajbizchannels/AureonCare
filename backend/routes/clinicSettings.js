@@ -1,5 +1,6 @@
 const express = require('express');
 const { authenticate } = require('../middleware/auth');
+const { sendDbError } = require('../utils/dbErrors');
 const router = express.Router();
 router.use(authenticate);
 router.use(require('../middleware/planEnforcement').enforceActiveBilling); // SEC-05 S11: read-only when subscription past_due/canceled
@@ -214,6 +215,8 @@ router.post('/', async (req, res) => {
     }
   } catch (error) {
     console.error('Error saving clinic settings:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to save clinic settings')) return;
     res.status(500).json({ error: 'Failed to save clinic settings' });
   }
 });
@@ -291,6 +294,8 @@ router.post('/working-hours', async (req, res) => {
     res.json({ success: true, message: 'Working hours saved successfully' });
   } catch (error) {
     console.error('Error saving working hours:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to save working hours')) return;
     res.status(500).json({ error: 'Failed to save working hours' });
   }
 });
@@ -369,6 +374,8 @@ router.post('/appointment-settings', async (req, res) => {
     res.json({ success: true, message: 'Appointment settings saved successfully' });
   } catch (error) {
     console.error('Error saving appointment settings:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to save appointment settings')) return;
     res.status(500).json({ error: 'Failed to save appointment settings' });
   }
 });

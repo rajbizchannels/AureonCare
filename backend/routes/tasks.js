@@ -4,6 +4,7 @@ const router = express.Router();
 router.use(authenticate);
 router.use(require('../middleware/planEnforcement').enforceActiveBilling); // SEC-05 S11: read-only when subscription past_due/canceled
 const notificationService = require('../services/notificationService');
+const { sendDbError } = require('../utils/dbErrors');
 
 // Helper function to convert snake_case to camelCase
 const toCamelCase = (obj) => {
@@ -56,6 +57,8 @@ router.post('/', async (req, res) => {
     notificationService.dispatch(pool, 'task.created', { task }).catch(() => {});
   } catch (error) {
     console.error('Error creating task:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to create task')) return;
     res.status(500).json({ error: 'Failed to create task' });
   }
 });
@@ -92,6 +95,8 @@ router.put('/:id', async (req, res) => {
     }
   } catch (error) {
     console.error('Error updating task:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to update task')) return;
     res.status(500).json({ error: 'Failed to update task' });
   }
 });
@@ -112,6 +117,8 @@ router.delete('/:id', async (req, res) => {
     res.json({ message: 'Task deleted successfully' });
   } catch (error) {
     console.error('Error deleting task:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to delete task')) return;
     res.status(500).json({ error: 'Failed to delete task' });
   }
 });

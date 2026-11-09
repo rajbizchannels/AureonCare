@@ -14,6 +14,7 @@ const WhatsAppService = require('../services/whatsappService');
 const vendorIntegrationManager = require('../services/vendorIntegrations');
 const fhirTrackingIntegration = require('../services/fhirTrackingIntegration');
 const notificationService = require('../services/notificationService');
+const { sendDbError } = require('../utils/dbErrors');
 
 // Helper function to convert snake_case to camelCase
 const toCamelCase = (obj) => {
@@ -421,6 +422,8 @@ router.post('/', async (req, res) => {
     }).catch(() => {});
   } catch (error) {
     console.error('Error creating prescription:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to create prescription')) return;
     res.status(500).json({ error: 'Failed to create prescription' });
   }
 });
@@ -483,6 +486,8 @@ router.put('/:id', async (req, res) => {
     res.json(toCamelCase(updatedPrescription));
   } catch (error) {
     console.error('Error updating prescription:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to update prescription')) return;
     res.status(500).json({ error: 'Failed to update prescription' });
   }
 });
@@ -503,6 +508,8 @@ router.delete('/:id', async (req, res) => {
     res.json({ message: 'Prescription deleted successfully' });
   } catch (error) {
     console.error('Error deleting prescription:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to delete prescription')) return;
     res.status(500).json({ error: 'Failed to delete prescription' });
   }
 });
@@ -624,6 +631,8 @@ router.post('/:id/send-erx', async (req, res) => {
     });
   } catch (error) {
     console.error('Error sending eRx:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to send electronic prescription')) return;
     res.status(500).json({ error: 'Failed to send electronic prescription' });
   }
 });
@@ -669,6 +678,8 @@ router.post('/:id/cancel-erx', async (req, res) => {
     res.json(toCamelCase(result.rows[0]));
   } catch (error) {
     console.error('Error cancelling eRx:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to cancel electronic prescription')) return;
     res.status(500).json({ error: 'Failed to cancel electronic prescription' });
   }
 });
@@ -771,6 +782,8 @@ router.post('/check-safety', async (req, res) => {
     });
   } catch (error) {
     console.error('Error checking medication safety:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to check medication safety')) return;
     res.status(500).json({ error: 'Failed to check medication safety' });
   }
 });
@@ -927,6 +940,8 @@ router.post('/:id/refill', async (req, res) => {
     });
   } catch (error) {
     console.error('Error processing refill:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to process refill')) return;
     res.status(500).json({ error: 'Failed to process refill' });
   }
 });

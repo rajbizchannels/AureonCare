@@ -4,6 +4,7 @@ const router = express.Router();
 router.use(authenticate);
 router.use(require('../middleware/planEnforcement').enforceActiveBilling); // SEC-05 S11: read-only when subscription past_due/canceled
 const notificationService = require('../services/notificationService');
+const { sendDbError } = require('../utils/dbErrors');
 
 // Get all payments
 router.get('/', async (req, res) => {
@@ -125,6 +126,8 @@ router.post('/', async (req, res) => {
     notificationService.dispatch(pool, 'payment.received', { payment, patient_id }).catch(() => {});
   } catch (error) {
     console.error('Error creating payment:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to create payment')) return;
     res.status(500).json({ error: 'Failed to create payment' });
   }
 });
@@ -188,6 +191,8 @@ router.put('/:id', async (req, res) => {
     res.json(result.rows[0]);
   } catch (error) {
     console.error('Error updating payment:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to update payment')) return;
     res.status(500).json({ error: 'Failed to update payment' });
   }
 });
@@ -206,6 +211,8 @@ router.delete('/:id', async (req, res) => {
     res.json({ message: 'Payment deleted successfully' });
   } catch (error) {
     console.error('Error deleting payment:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to delete payment')) return;
     res.status(500).json({ error: 'Failed to delete payment' });
   }
 });

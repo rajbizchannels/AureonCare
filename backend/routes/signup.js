@@ -17,6 +17,7 @@ const { storeFor } = require('../middleware/rateLimitStore');
 const { validatePassword } = require('../utils/passwordPolicy');
 const { hashPassword } = require('../services/tenantProvisioning');
 const billing = require('../services/platformBilling');
+const { sendDbError } = require('../utils/dbErrors');
 
 const router = express.Router();
 
@@ -176,6 +177,8 @@ router.post('/', signupLimiter, async (req, res) => {
   } catch (err) {
     if (schemaOutOfDate(err, res, 'signup')) return;
     console.error('[signup] error:', err);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, err, 'Signup failed. Please try again.')) return;
     res.status(500).json({ error: 'Signup failed. Please try again.' });
   }
 });

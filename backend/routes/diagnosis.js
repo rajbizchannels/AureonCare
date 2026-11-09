@@ -3,6 +3,7 @@ const { authenticate } = require('../middleware/auth');
 const { requireModuleAccess } = require('../middleware/modulePermissions');
 const router = express.Router();
 const { auditPhiRead } = require('../middleware/phiAccessLog');
+const { sendDbError } = require('../utils/dbErrors');
 router.use(authenticate);
 // Fine-grained permissions, enforced. The method decides the action (GET=view,
 // POST=create, PUT/PATCH=edit, DELETE=delete); an administrator edits this under
@@ -139,6 +140,8 @@ router.post('/', async (req, res) => {
     res.status(201).json(toCamelCase(result.rows[0]));
   } catch (error) {
     console.error('Error creating diagnosis:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to create diagnosis')) return;
     res.status(500).json({ error: 'Failed to create diagnosis' });
   }
 });
@@ -175,6 +178,8 @@ router.put('/:id', async (req, res) => {
     res.json(toCamelCase(result.rows[0]));
   } catch (error) {
     console.error('Error updating diagnosis:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to update diagnosis')) return;
     res.status(500).json({ error: 'Failed to update diagnosis' });
   }
 });
@@ -195,6 +200,8 @@ router.delete('/:id', async (req, res) => {
     res.json({ message: 'Diagnosis deleted successfully' });
   } catch (error) {
     console.error('Error deleting diagnosis:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to delete diagnosis')) return;
     res.status(500).json({ error: 'Failed to delete diagnosis' });
   }
 });

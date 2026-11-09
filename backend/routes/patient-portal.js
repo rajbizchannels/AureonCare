@@ -12,6 +12,7 @@ const { loadAttachment, recordReferencesAttachment, sendAttachment } = require('
 const { resolveTenantForUser } = require('../services/tenantCatalog');
 const { makeTenantDb } = require('../db/requestTenantDb');
 const { withTenant } = require('../db/tenantClient');
+const { sendDbError } = require('../utils/dbErrors');
 const {
   tenantForSession, candidateTenantsForEmail, registerSession, forgetSession, registerIdentity,
   defaultTenant, searchOrderForPatient,
@@ -356,6 +357,8 @@ router.post('/oauth/:provider/exchange', loginIpLimiter, async (req, res) => {
   } catch (err) {
     if (err.statusCode) return res.status(err.statusCode).json({ error: err.message });
     console.error(`Error during portal ${provider} code exchange:`, err);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, err, 'Social login failed')) return;
     res.status(500).json({ error: 'Social login failed' });
   }
 });
@@ -412,6 +415,8 @@ router.post('/register', authenticate, async (req, res) => {
     });
   } catch (error) {
     console.error('Error registering patient portal:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Registration failed')) return;
     res.status(500).json({ error: 'Registration failed' });
   }
 });
@@ -472,6 +477,8 @@ router.put('/:patientId/appointments/:appointmentId', async (req, res) => {
     res.json(result.rows[0]);
   } catch (error) {
     console.error('Error updating appointment:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to update appointment')) return;
     res.status(500).json({ error: 'Failed to update appointment' });
   }
 });
@@ -494,6 +501,8 @@ router.delete('/:patientId/appointments/:appointmentId', async (req, res) => {
     res.json({ message: 'Appointment deleted successfully', appointment: result.rows[0] });
   } catch (error) {
     console.error('Error deleting appointment:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to delete appointment')) return;
     res.status(500).json({ error: 'Failed to delete appointment' });
   }
 });
@@ -640,6 +649,8 @@ router.put('/:patientId/profile', async (req, res) => {
     res.json(patientData);
   } catch (error) {
     console.error('Error updating patient profile:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to update profile')) return;
     res.status(500).json({ error: 'Failed to update profile' });
   }
 });
@@ -776,6 +787,8 @@ router.post('/:patientId/form-requests/:submissionId/acknowledge', async (req, r
     res.json({ success: true, submission: result.rows[0] });
   } catch (error) {
     console.error('Error acknowledging requested document:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to complete request')) return;
     res.status(500).json({ error: 'Failed to complete request' });
   }
 });
@@ -805,6 +818,8 @@ router.put('/:patientId/medical-records/:recordId', async (req, res) => {
     res.json(result.rows[0]);
   } catch (error) {
     console.error('Error updating medical record:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to update medical record')) return;
     res.status(500).json({ error: 'Failed to update medical record' });
   }
 });
@@ -867,6 +882,8 @@ router.delete('/:patientId/medical-records/:recordId', async (req, res) => {
     res.json({ message: 'Medical record deleted successfully', record: result.rows[0] });
   } catch (error) {
     console.error('Error deleting medical record:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to delete medical record')) return;
     res.status(500).json({ error: 'Failed to delete medical record' });
   }
 });
@@ -931,6 +948,8 @@ router.post('/:patientId/link-social', async (req, res) => {
     });
   } catch (error) {
     console.error('Error linking social auth:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to link social account')) return;
     res.status(500).json({ error: 'Failed to link social account' });
   }
 });
@@ -960,6 +979,8 @@ router.post('/logout', async (req, res) => {
     res.json({ message: 'Logged out successfully' });
   } catch (error) {
     console.error('Error logging out:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Logout failed')) return;
     res.status(500).json({ error: 'Logout failed' });
   }
 });

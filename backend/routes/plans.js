@@ -3,6 +3,7 @@ const { authenticate, authorize } = require('../middleware/auth');
 const billing = require('../services/platformBilling');
 const subscriptionChanges = require('../services/subscriptionChanges');
 const { invalidateEntitlements } = require('../services/entitlements');
+const { sendDbError } = require('../utils/dbErrors');
 const router = express.Router();
 router.use(authenticate);
 
@@ -363,6 +364,8 @@ router.post('/provider-seats', authorize('admin'), async (req, res) => {
     });
   } catch (error) {
     console.error('Error adding provider seats:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to add provider seats')) return;
     res.status(500).json({ error: 'Failed to add provider seats' });
   }
 });

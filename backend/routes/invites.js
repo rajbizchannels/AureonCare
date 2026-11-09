@@ -16,6 +16,7 @@ const { authenticate, authorize } = require('../middleware/auth');
 const { storeFor } = require('../middleware/rateLimitStore');
 const { validatePassword, BCRYPT_COST } = require('../utils/passwordPolicy');
 const { sendEmail, buildEmailHtml } = require('../services/notificationService');
+const { sendDbError } = require('../utils/dbErrors');
 
 const router = express.Router();
 
@@ -159,6 +160,8 @@ router.post('/', authenticate, authorize('admin'), async (req, res) => {
     });
   } catch (err) {
     console.error('[invites] create error:', err);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, err, 'Failed to create invite')) return;
     res.status(500).json({ error: 'Failed to create invite' });
   }
 });
@@ -191,6 +194,8 @@ router.delete('/:id', authenticate, authorize('admin'), async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     console.error('[invites] revoke error:', err);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, err, 'Failed to revoke invite')) return;
     res.status(500).json({ error: 'Failed to revoke invite' });
   }
 });
@@ -250,6 +255,8 @@ router.post('/accept', acceptLimiter, async (req, res) => {
   } catch (err) {
     await client.query('ROLLBACK').catch(() => {});
     console.error('[invites] accept error:', err);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, err, 'Failed to accept invite')) return;
     res.status(500).json({ error: 'Failed to accept invite' });
   } finally {
     client.release();

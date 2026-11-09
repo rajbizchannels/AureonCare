@@ -1,5 +1,6 @@
 const express = require('express');
 const { authenticate } = require('../middleware/auth');
+const { sendDbError } = require('../utils/dbErrors');
 const router = express.Router();
 router.use(authenticate);
 router.use(require('../middleware/planEnforcement').enforceActiveBilling); // SEC-05 S11: read-only when subscription past_due/canceled
@@ -121,6 +122,8 @@ router.post('/quotes', async (req, res) => {
   } catch (error) {
     await client.query('ROLLBACK');
     console.error('Error creating quote:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to create quote')) return;
     res.status(500).json({ error: 'Failed to create quote' });
   } finally {
     client.release();
@@ -187,6 +190,8 @@ router.put('/quotes/:id', async (req, res) => {
   } catch (error) {
     await client.query('ROLLBACK');
     console.error('Error updating quote:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to update quote')) return;
     res.status(500).json({ error: 'Failed to update quote' });
   } finally {
     client.release();
@@ -204,6 +209,8 @@ router.delete('/quotes/:id', async (req, res) => {
     res.json({ message: 'Quote deleted successfully' });
   } catch (error) {
     console.error('Error deleting quote:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to delete quote')) return;
     res.status(500).json({ error: 'Failed to delete quote' });
   }
 });
@@ -263,6 +270,8 @@ router.post('/quotes/:id/convert', async (req, res) => {
   } catch (error) {
     await client.query('ROLLBACK');
     console.error('Error converting quote to invoice:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to convert quote to invoice')) return;
     res.status(500).json({ error: 'Failed to convert quote to invoice' });
   } finally {
     client.release();
@@ -376,6 +385,8 @@ router.post('/invoices', async (req, res) => {
   } catch (error) {
     await client.query('ROLLBACK');
     console.error('Error creating invoice:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to create invoice')) return;
     res.status(500).json({ error: 'Failed to create invoice' });
   } finally {
     client.release();
@@ -445,6 +456,8 @@ router.put('/invoices/:id', async (req, res) => {
   } catch (error) {
     await client.query('ROLLBACK');
     console.error('Error updating invoice:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to update invoice')) return;
     res.status(500).json({ error: 'Failed to update invoice' });
   } finally {
     client.release();
@@ -462,6 +475,8 @@ router.delete('/invoices/:id', async (req, res) => {
     res.json({ message: 'Invoice deleted successfully' });
   } catch (error) {
     console.error('Error deleting invoice:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to delete invoice')) return;
     res.status(500).json({ error: 'Failed to delete invoice' });
   }
 });
@@ -533,6 +548,8 @@ router.post('/coupons/validate', async (req, res) => {
     res.json({ ...toCamelCase(coupon), calculatedDiscount: discount });
   } catch (error) {
     console.error('Error validating coupon:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to validate coupon')) return;
     res.status(500).json({ error: 'Failed to validate coupon' });
   }
 });
@@ -553,6 +570,8 @@ router.post('/coupons', async (req, res) => {
     if (error.code === '23505') {
       return res.status(400).json({ error: 'Coupon code already exists' });
     }
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to create coupon')) return;
     res.status(500).json({ error: 'Failed to create coupon' });
   }
 });
@@ -586,6 +605,8 @@ router.put('/coupons/:id', async (req, res) => {
     res.json(toCamelCase(result.rows[0]));
   } catch (error) {
     console.error('Error updating coupon:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to update coupon')) return;
     res.status(500).json({ error: 'Failed to update coupon' });
   }
 });
@@ -601,6 +622,8 @@ router.delete('/coupons/:id', async (req, res) => {
     res.json({ message: 'Coupon deleted successfully' });
   } catch (error) {
     console.error('Error deleting coupon:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to delete coupon')) return;
     res.status(500).json({ error: 'Failed to delete coupon' });
   }
 });
@@ -690,6 +713,8 @@ router.post('/payments', async (req, res) => {
   } catch (error) {
     await client.query('ROLLBACK');
     console.error('Error creating billing payment:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to create billing payment')) return;
     res.status(500).json({ error: 'Failed to create billing payment' });
   } finally {
     client.release();
@@ -720,6 +745,8 @@ router.put('/payments/:id', async (req, res) => {
     res.json(toCamelCase(result.rows[0]));
   } catch (error) {
     console.error('Error updating billing payment:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to update billing payment')) return;
     res.status(500).json({ error: 'Failed to update billing payment' });
   }
 });
@@ -735,6 +762,8 @@ router.delete('/payments/:id', async (req, res) => {
     res.json({ message: 'Billing payment deleted successfully' });
   } catch (error) {
     console.error('Error deleting billing payment:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to delete billing payment')) return;
     res.status(500).json({ error: 'Failed to delete billing payment' });
   }
 });

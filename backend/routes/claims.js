@@ -12,6 +12,7 @@ router.use(require('../middleware/planEnforcement').enforceActiveBilling); // SE
 const vendorIntegrationManager = require('../services/vendorIntegrations');
 const notificationService = require('../services/notificationService');
 const { insertNumbered } = require('../utils/recordNumbers');
+const { sendDbError } = require('../utils/dbErrors');
 
 // Get all claims
 router.get('/', async (req, res) => {
@@ -198,6 +199,8 @@ router.post('/', async (req, res) => {
     notificationService.dispatch(pool, 'claim.created', { claim, patient_id }).catch(() => {});
   } catch (error) {
     console.error('Error creating claim:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to create claim')) return;
     res.status(500).json({ error: 'Failed to create claim' });
   }
 });
@@ -245,6 +248,8 @@ router.put('/:id', async (req, res) => {
     }
   } catch (error) {
     console.error('Error updating claim:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to update claim')) return;
     res.status(500).json({ error: 'Failed to update claim' });
   }
 });
@@ -263,6 +268,8 @@ router.delete('/:id', async (req, res) => {
     res.json({ message: 'Claim deleted successfully' });
   } catch (error) {
     console.error('Error deleting claim:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to delete claim')) return;
     res.status(500).json({ error: 'Failed to delete claim' });
   }
 });

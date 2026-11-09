@@ -14,6 +14,7 @@ const vendorIntegrationManager = require('../services/vendorIntegrations');
 const fhirTrackingIntegration = require('../services/fhirTrackingIntegration');
 const notificationService = require('../services/notificationService');
 const { insertNumbered } = require('../utils/recordNumbers');
+const { sendDbError } = require('../utils/dbErrors');
 
 /**
  * Lab Orders API
@@ -363,6 +364,8 @@ router.post('/', async (req, res) => {
     }).catch(() => {});
   } catch (error) {
     console.error('Error creating lab order:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to create lab order')) return;
     res.status(500).json({ error: 'Failed to create lab order' });
   }
 });
@@ -466,6 +469,8 @@ router.put('/:id', async (req, res) => {
     }
   } catch (error) {
     console.error('Error updating lab order:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to update lab order')) return;
     res.status(500).json({ error: 'Failed to update lab order' });
   }
 });
@@ -510,6 +515,8 @@ router.delete('/:id', async (req, res) => {
     res.json({ message: 'Lab order cancelled successfully' });
   } catch (error) {
     console.error('Error cancelling lab order:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to cancel lab order')) return;
     res.status(500).json({ error: 'Failed to cancel lab order' });
   }
 });

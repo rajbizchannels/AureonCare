@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { authenticate, authorize, optionalAuth } = require('../middleware/auth');
+const { sendDbError } = require('../utils/dbErrors');
 
 // Helper function to convert snake_case to camelCase
 const toCamelCase = (obj) => {
@@ -140,6 +141,8 @@ router.post('/', authenticate, authorize('admin'), async (req, res) => {
     if (error.code === '23505') { // Unique violation
       return res.status(400).json({ error: 'Appointment type with this name already exists' });
     }
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to create appointment type')) return;
     res.status(500).json({ error: 'Failed to create appointment type' });
   }
 });
@@ -178,6 +181,8 @@ router.put('/:id', authenticate, authorize('admin'), async (req, res) => {
     if (error.code === '23505') { // Unique violation
       return res.status(400).json({ error: 'Appointment type with this name already exists' });
     }
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to update appointment type')) return;
     res.status(500).json({ error: 'Failed to update appointment type' });
   }
 });
@@ -217,6 +222,8 @@ router.delete('/:id', authenticate, authorize('admin'), async (req, res) => {
     });
   } catch (error) {
     console.error('Error deleting appointment type:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to delete appointment type')) return;
     res.status(500).json({ error: 'Failed to delete appointment type' });
   }
 });

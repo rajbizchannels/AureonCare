@@ -12,6 +12,7 @@ router.use(requireModuleAccess('patients', 'patients'));
 router.use(require('../middleware/planEnforcement').enforceActiveBilling); // SEC-05 S11: read-only when subscription past_due/canceled
 const { getTimezoneFromCountry } = require('../utils/timezoneUtils');
 const { enforcePatientQuota } = require('../middleware/planEnforcement');
+const { sendDbError } = require('../utils/dbErrors');
 
 // Get all patients
 router.get('/', auditPhiRead('patient'), async (req, res) => {
@@ -146,6 +147,8 @@ router.post('/', enforcePatientQuota, async (req, res) => {
   } catch (error) {
     await client.query('ROLLBACK');
     console.error('Error creating patient:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to create patient')) return;
     res.status(500).json({ error: 'Failed to create patient' });
   } finally {
     client.release();
@@ -280,6 +283,8 @@ router.put('/:id', async (req, res) => {
     res.json(updatedPatient);
   } catch (error) {
     console.error('Error updating patient:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to update patient')) return;
     res.status(500).json({ error: 'Failed to update patient' });
   }
 });
@@ -298,6 +303,8 @@ router.delete('/:id', async (req, res) => {
     res.json({ message: 'Patient deleted successfully' });
   } catch (error) {
     console.error('Error deleting patient:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to delete patient')) return;
     res.status(500).json({ error: 'Failed to delete patient' });
   }
 });

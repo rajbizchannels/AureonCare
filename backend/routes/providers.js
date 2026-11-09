@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { authenticate, authorize } = require('../middleware/auth');
+const { sendDbError } = require('../utils/dbErrors');
 
 // Helper function to convert snake_case to camelCase
 const toCamelCase = (obj) => {
@@ -203,6 +204,8 @@ router.post('/', authenticate, authorize('admin', 'receptionist'), async (req, r
     res.status(201).json(toCamelCase(result.rows[0]));
   } catch (error) {
     console.error('Error creating provider:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to create provider')) return;
     res.status(500).json({ error: 'Failed to create provider' });
   }
 });
@@ -278,6 +281,8 @@ router.put('/:id', authenticate, async (req, res) => {
     res.json(toCamelCase(result.rows[0]));
   } catch (error) {
     console.error('Error updating provider:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to update provider')) return;
     res.status(500).json({ error: 'Failed to update provider' });
   }
 });
@@ -305,6 +310,8 @@ router.delete('/:id', authenticate, authorize('admin'), async (req, res) => {
     res.json({ message: 'Provider deleted successfully' });
   } catch (error) {
     console.error('Error deleting provider:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to delete provider')) return;
     res.status(500).json({ error: 'Failed to delete provider' });
   }
 });

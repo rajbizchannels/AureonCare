@@ -9,6 +9,7 @@ const { authenticate, authorize } = require('../middleware/auth');
 const { requireModuleAccess } = require('../middleware/modulePermissions');
 const { enforceActiveBilling } = require('../middleware/planEnforcement');
 const { LOCATION_TYPES } = require('../utils/locations');
+const { sendDbError } = require('../utils/dbErrors');
 
 router.use(authenticate);
 router.use(enforceActiveBilling); // SEC-05 S11: read-only when subscription past_due/canceled
@@ -145,7 +146,9 @@ router.post('/', authorize('admin'), async (req, res) => {
     res.status(201).json(toCamelCase(rows[0]));
   } catch (error) {
     console.error('Error creating location:', error);
-    res.status(500).json({ error: 'Failed to create location', code: error.code, detail: error.detail || error.message });
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to create location')) return;
+    res.status(500).json({ error: 'Failed to create location' });
   }
 });
 
@@ -205,7 +208,9 @@ router.put('/:id', authorize('admin'), async (req, res) => {
     res.json(toCamelCase(rows[0]));
   } catch (error) {
     console.error('Error updating location:', error);
-    res.status(500).json({ error: 'Failed to update location', code: error.code, detail: error.detail || error.message });
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to update location')) return;
+    res.status(500).json({ error: 'Failed to update location' });
   }
 });
 
@@ -250,7 +255,9 @@ router.post('/:id/make-primary', authorize('admin'), async (req, res) => {
   } catch (error) {
     if (open) await db.query('ROLLBACK').catch(() => {});
     console.error('Error setting primary location:', error);
-    res.status(500).json({ error: 'Failed to set primary location', code: error.code, detail: error.detail || error.message });
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to set primary location')) return;
+    res.status(500).json({ error: 'Failed to set primary location' });
   }
 });
 
@@ -300,7 +307,9 @@ router.delete('/:id', authorize('admin'), async (req, res) => {
     res.json({ success: true, location: toCamelCase(rows[0]) });
   } catch (error) {
     console.error('Error deleting location:', error);
-    res.status(500).json({ error: 'Failed to delete location', code: error.code, detail: error.detail || error.message });
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to delete location')) return;
+    res.status(500).json({ error: 'Failed to delete location' });
   }
 });
 

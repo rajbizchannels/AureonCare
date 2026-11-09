@@ -12,6 +12,7 @@ router.use(require('../middleware/planEnforcement').enforceActiveBilling); // SE
 const WhatsAppService = require('../services/whatsappService');
 const TelehealthProviderManager = require('../services/telehealthProviders/index');
 const notificationService = require('../services/notificationService');
+const { sendDbError } = require('../utils/dbErrors');
 
 // Get all appointments
 router.get('/', async (req, res) => {
@@ -358,15 +359,14 @@ router.post('/', async (req, res) => {
       console.error('This usually means the database schema needs to be updated.');
       console.error('Please run: npm run migrate');
 
-      return res.status(500).json({
-        error: 'Database schema issue detected',
-        details: 'The appointments table has an outdated foreign key constraint. Please run database migrations to fix this issue. Contact your system administrator.',
-        technicalDetails: 'Foreign key constraint "appointments_provider_id_fkey" is pointing to the wrong table. Run: npm run migrate',
-        code: 'FK_CONSTRAINT_ERROR'
-      });
+      return // A constraint the request broke is the caller's to fix, not a server fault.
+ if (sendDbError(res, error, 'Database schema issue detected')) return;
+ res.status(500).json({ error: 'Database schema issue detected' });
     }
 
-    res.status(500).json({ error: 'Failed to create appointment', details: error.message });
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to create appointment')) return;
+    res.status(500).json({ error: 'Failed to create appointment' });
   }
 });
 
@@ -418,7 +418,9 @@ router.patch('/:id/status', async (req, res) => {
     }).catch(() => {});
   } catch (error) {
     console.error('Error updating appointment status:', error);
-    res.status(500).json({ error: 'Failed to update appointment status', details: error.message });
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to update appointment status')) return;
+    res.status(500).json({ error: 'Failed to update appointment status' });
   }
 });
 
@@ -599,6 +601,8 @@ router.put('/:id', async (req, res) => {
     }).catch(() => {});
   } catch (error) {
     console.error('Error updating appointment:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to update appointment')) return;
     res.status(500).json({ error: 'Failed to update appointment' });
   }
 });
@@ -670,6 +674,8 @@ router.delete('/:id', async (req, res) => {
     notificationService.dispatch(pool, 'appointment.cancelled', { appointment: deletedAppointment }).catch(() => {});
   } catch (error) {
     console.error('Error deleting appointment:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to delete appointment')) return;
     res.status(500).json({ error: 'Failed to delete appointment' });
   }
 });

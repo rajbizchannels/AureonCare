@@ -7,6 +7,7 @@ const { google } = require('googleapis');
 const JWT_SECRET = process.env.AC_TK_S;
 
 const { googleClientId } = require('../utils/oauthClientIds');
+const { sendDbError } = require('../utils/dbErrors');
 
 // ─── Configuration ───────────────────────────────────────────────────────────
 // REACT_APP_GG_CID      Google OAuth client id (AC_GG_CID still accepted as a fallback)
@@ -246,6 +247,8 @@ router.delete('/disconnect/:patientId', authenticate, authorizePatientAccess, as
     res.json({ message: 'Google Calendar disconnected successfully' });
   } catch (error) {
     console.error('Error disconnecting calendar:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to disconnect calendar')) return;
     res.status(500).json({ error: 'Failed to disconnect calendar' });
   }
 });
@@ -336,6 +339,8 @@ router.post('/sync-appointment', authenticate, requireGoogleConfig, authorizePat
     });
   } catch (error) {
     console.error('Error syncing appointment to calendar:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to sync appointment to calendar')) return;
     res.status(500).json({ error: 'Failed to sync appointment to calendar' });
   }
 });
@@ -368,6 +373,8 @@ router.put('/auto-sync/:patientId', authenticate, authorizePatientAccess, async 
     });
   } catch (error) {
     console.error('Error updating auto-sync setting:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to update auto-sync setting')) return;
     res.status(500).json({ error: 'Failed to update auto-sync setting' });
   }
 });

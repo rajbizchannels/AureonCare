@@ -5,6 +5,7 @@ const router = express.Router();
 router.use(authenticate);
 router.use(require('../middleware/planEnforcement').enforceActiveBilling); // SEC-05 S11: read-only when subscription past_due/canceled
 const vendorIntegrationManager = require('../services/vendorIntegrations');
+const { sendDbError } = require('../utils/dbErrors');
 
 /**
  * Vendor Integration Settings API
@@ -146,6 +147,8 @@ router.post('/:vendorType', authorize('admin'), async (req, res) => {
     res.json(result.rows[0]);
   } catch (error) {
     console.error('Error saving vendor settings:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to save vendor settings')) return;
     res.status(500).json({ error: 'Failed to save vendor settings' });
   }
 });
@@ -171,6 +174,8 @@ router.delete('/:vendorType', async (req, res) => {
     res.json({ message: 'Vendor settings deleted successfully' });
   } catch (error) {
     console.error('Error deleting vendor settings:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to delete vendor settings')) return;
     res.status(500).json({ error: 'Failed to delete vendor settings' });
   }
 });
@@ -212,6 +217,8 @@ router.patch('/:vendorType/toggle', async (req, res) => {
     res.json(result.rows[0]);
   } catch (error) {
     console.error('Error toggling vendor status:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to toggle vendor status')) return;
     res.status(500).json({ error: 'Failed to toggle vendor status' });
   }
 });

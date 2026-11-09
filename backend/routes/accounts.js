@@ -3,6 +3,7 @@ const router = express.Router();
 const cloudStorage = require('../services/cloudBackupStorage');
 const { authenticate, authorize } = require('../middleware/auth');
 const { requireModuleAccessByPath } = require('../middleware/modulePermissions');
+const { sendDbError } = require('../utils/dbErrors');
 
 // All accounts routes require authentication
 router.use(authenticate);
@@ -129,6 +130,8 @@ router.post('/', authorize('admin', 'billing_manager'), async (req, res) => {
     console.error('Error creating account:', err);
     if (err.code === '23505') return res.status(409).json({ error: 'Account number already exists' });
     if (err.code === '23514') return res.status(400).json({ error: 'Validation failed: ' + err.detail });
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, err, 'Failed to create account')) return;
     res.status(500).json({ error: 'Failed to create account' });
   }
 });
@@ -171,6 +174,8 @@ router.put('/:id', authorize('admin', 'billing_manager'), async (req, res) => {
   } catch (err) {
     console.error('Error updating account:', err);
     if (err.code === '23514') return res.status(400).json({ error: 'Validation failed: ' + err.detail });
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, err, 'Failed to update account')) return;
     res.status(500).json({ error: 'Failed to update account' });
   }
 });
@@ -188,6 +193,8 @@ router.delete('/:id', authorize('admin'), async (req, res) => {
     res.json({ message: 'Account deactivated successfully' });
   } catch (err) {
     console.error('Error deleting account:', err);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, err, 'Failed to delete account')) return;
     res.status(500).json({ error: 'Failed to delete account' });
   }
 });
@@ -335,6 +342,8 @@ router.post('/journal/entries', authorize('admin', 'billing_manager'), async (re
   } catch (err) {
     await client.query('ROLLBACK');
     console.error('Error creating journal entry:', err);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, err, 'Failed to create journal entry')) return;
     res.status(500).json({ error: 'Failed to create journal entry' });
   } finally {
     client.release();
@@ -376,6 +385,8 @@ router.post('/journal/entries/:id/post', authorize('admin', 'billing_manager'), 
   } catch (err) {
     await client.query('ROLLBACK');
     console.error('Error posting journal entry:', err);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, err, 'Failed to post journal entry')) return;
     res.status(500).json({ error: 'Failed to post journal entry' });
   } finally {
     client.release();
@@ -419,6 +430,8 @@ router.post('/journal/entries/:id/void', authorize('admin'), async (req, res) =>
   } catch (err) {
     await client.query('ROLLBACK');
     console.error('Error voiding journal entry:', err);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, err, 'Failed to void journal entry')) return;
     res.status(500).json({ error: 'Failed to void journal entry' });
   } finally {
     client.release();
@@ -483,6 +496,8 @@ router.post('/receivables', authorize('admin', 'billing_manager'), async (req, r
     res.status(201).json(toCamelCase(result.rows[0]));
   } catch (err) {
     console.error('Error creating AR:', err);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, err, 'Failed to create accounts receivable record')) return;
     res.status(500).json({ error: 'Failed to create accounts receivable record' });
   }
 });
@@ -516,6 +531,8 @@ router.put('/receivables/:id', authorize('admin', 'billing_manager'), async (req
     res.json(toCamelCase(result.rows[0]));
   } catch (err) {
     console.error('Error updating AR:', err);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, err, 'Failed to update accounts receivable record')) return;
     res.status(500).json({ error: 'Failed to update accounts receivable record' });
   }
 });
@@ -571,6 +588,8 @@ router.post('/payables', authorize('admin', 'billing_manager'), async (req, res)
     res.status(201).json(toCamelCase(result.rows[0]));
   } catch (err) {
     console.error('Error creating AP:', err);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, err, 'Failed to create accounts payable record')) return;
     res.status(500).json({ error: 'Failed to create accounts payable record' });
   }
 });
@@ -603,6 +622,8 @@ router.put('/payables/:id', authorize('admin', 'billing_manager'), async (req, r
     res.json(toCamelCase(result.rows[0]));
   } catch (err) {
     console.error('Error updating AP:', err);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, err, 'Failed to update accounts payable record')) return;
     res.status(500).json({ error: 'Failed to update accounts payable record' });
   }
 });
@@ -662,6 +683,8 @@ router.post('/reconciliations', authorize('admin', 'billing_manager'), async (re
     res.status(201).json(toCamelCase(result.rows[0]));
   } catch (err) {
     console.error('Error creating reconciliation:', err);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, err, 'Failed to create reconciliation')) return;
     res.status(500).json({ error: 'Failed to create reconciliation' });
   }
 });
@@ -693,6 +716,8 @@ router.put('/reconciliations/:id', authorize('admin', 'billing_manager'), async 
     res.json(toCamelCase(result.rows[0]));
   } catch (err) {
     console.error('Error updating reconciliation:', err);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, err, 'Failed to update reconciliation')) return;
     res.status(500).json({ error: 'Failed to update reconciliation' });
   }
 });
@@ -771,6 +796,8 @@ router.post('/statements', authorize('admin', 'billing_manager', 'receptionist')
   } catch (err) {
     await client.query('ROLLBACK');
     console.error('Error creating statement:', err);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, err, 'Failed to create statement')) return;
     res.status(500).json({ error: 'Failed to create statement' });
   } finally {
     client.release();
@@ -788,6 +815,8 @@ router.put('/statements/:id/send', authorize('admin', 'billing_manager', 'recept
     res.json(toCamelCase(result.rows[0]));
   } catch (err) {
     console.error('Error sending statement:', err);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, err, 'Failed to send statement')) return;
     res.status(500).json({ error: 'Failed to send statement' });
   }
 });
@@ -972,6 +1001,8 @@ router.post('/reports/ar-aging/snapshot', authorize('admin', 'billing_manager'),
     res.status(201).json(toCamelCase(result.rows[0]));
   } catch (err) {
     console.error('Error creating aging snapshot:', err);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, err, 'Failed to create aging snapshot')) return;
     res.status(500).json({ error: 'Failed to create aging snapshot' });
   }
 });
@@ -1039,6 +1070,8 @@ router.put('/rbac/permissions', authorize('admin'), async (req, res) => {
     res.json(toCamelCase(result.rows[0]));
   } catch (err) {
     console.error('Error updating RBAC permission:', err);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, err, 'Failed to update permission')) return;
     res.status(500).json({ error: 'Failed to update permission' });
   }
 });
@@ -1147,6 +1180,8 @@ router.post('/backup', authorize('admin'), async (req, res) => {
     await client.query('ROLLBACK');
     await pool.query(`UPDATE account_backups SET status='failed', error_message=$1 WHERE id=$2`, [err.message, req.body._backupId]).catch(() => {});
     console.error('Error creating backup:', err);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, err, 'Failed to create backup')) return;
     res.status(500).json({ error: 'Failed to create backup' });
   } finally {
     client.release();
@@ -1180,6 +1215,8 @@ router.post('/archive', authorize('admin'), async (req, res) => {
     res.json({ message: `Archived ${archived} records`, archivedCount: archived, archiveType, cutoffDate });
   } catch (err) {
     console.error('Error archiving:', err);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, err, 'Failed to archive records')) return;
     res.status(500).json({ error: 'Failed to archive records' });
   }
 });

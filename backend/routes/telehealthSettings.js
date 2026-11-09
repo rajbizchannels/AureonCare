@@ -5,6 +5,7 @@ router.use(authenticate);
 router.use(require('../middleware/planEnforcement').enforceActiveBilling); // SEC-05 S11: read-only when subscription past_due/canceled
 const axios = require('axios');
 const crypto = require('crypto');
+const { sendDbError } = require('../utils/dbErrors');
 
 /**
  * Telehealth Provider Settings API
@@ -124,6 +125,8 @@ router.post('/:providerType', async (req, res) => {
     res.json(result.rows[0]);
   } catch (error) {
     console.error('Error saving provider settings:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to save provider settings')) return;
     res.status(500).json({ error: 'Failed to save provider settings' });
   }
 });
@@ -146,6 +149,8 @@ router.delete('/:providerType', async (req, res) => {
     res.json({ message: 'Provider settings deleted successfully' });
   } catch (error) {
     console.error('Error deleting provider settings:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to delete provider settings')) return;
     res.status(500).json({ error: 'Failed to delete provider settings' });
   }
 });
@@ -184,6 +189,8 @@ router.patch('/:providerType/toggle', async (req, res) => {
     res.json(result.rows[0]);
   } catch (error) {
     console.error('Error toggling provider status:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to toggle provider status')) return;
     res.status(500).json({ error: 'Failed to toggle provider status' });
   }
 });
