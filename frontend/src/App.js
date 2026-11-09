@@ -956,11 +956,6 @@ function App() {
 
   return (
     <>
-      {/* Shown while ANY API request is in flight, mounted once. The blocking overlay
-          below only covers the initial data load; everything the user does afterwards —
-          every save, filter, tab and delete — used to give no sign of itself at all. */}
-      <ActivityIndicator theme={theme} />
-
       {/* Loading Overlay */}
       {loading && (
         <div className={`fixed inset-0 z-50 flex items-center justify-center ${theme === 'dark' ? 'bg-black/50' : 'bg-black/30'}`}>
@@ -1532,6 +1527,11 @@ export default function AppWithProvider() {
     <GoogleOAuthProvider clientId={googleOAuthConfig.clientId}>
       <MsalProvider instance={msalInstance}>
         <AppProvider>
+          {/* OUTSIDE <App />, deliberately. App returns early for the sign-in, patient
+              sign-in and sign-up screens, so an indicator mounted inside it did not exist
+              on any of them — which is exactly where the first thing a user ever clicks
+              lives. Here it is mounted for every screen, signed in or not. */}
+          <ActivityIndicator />
           <App />
         </AppProvider>
       </MsalProvider>

@@ -229,7 +229,9 @@ const NewLabOrderForm = ({
 
   const handleActualSubmit = async () => {
     setIsSubmitting(true);
-    setShowConfirmation(false);
+    // NOT closed here: ConfirmationModal awaits this handler and closes itself
+    // afterwards, showing a spinner meanwhile. Closing it first took that away and
+    // left the user on a screen with no sign that anything was happening.
 
     // Convert recipients array to JSON
     const recipientIds = formData.recipients && formData.recipients.length > 0

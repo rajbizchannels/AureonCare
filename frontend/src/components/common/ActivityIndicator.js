@@ -27,7 +27,7 @@ import { onActivityChange } from '../../api/activity';
 const APPEAR_AFTER_MS = 150;
 const MIN_VISIBLE_MS = 400;
 
-const ActivityIndicator = ({ theme }) => {
+const ActivityIndicator = () => {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
@@ -75,15 +75,14 @@ const ActivityIndicator = ({ theme }) => {
       role="status"
       aria-live="polite"
       aria-label="Loading"
-      className="fixed top-0 left-0 right-0 z-[100] h-0.5 pointer-events-none overflow-hidden"
+      // z-index above every overlay in the app (modals sit at z-50 to z-70), so it is not
+      // hidden behind the dialog whose Save button started the request.
+      className="fixed top-0 left-0 right-0 z-[200] h-1 pointer-events-none overflow-hidden"
     >
-      <div
-        className={`h-full w-1/3 rounded-full ac-activity-sweep ${
-          theme === 'dark'
-            ? 'bg-gradient-to-r from-transparent via-cyan-400 to-transparent'
-            : 'bg-gradient-to-r from-transparent via-blue-500 to-transparent'
-        }`}
-      />
+      {/* No theme prop: this is mounted above the tree that holds the theme, including on
+          the sign-in screen. Cyan into blue reads on both a white and a slate background,
+          so it does not need to know which it is on. */}
+      <div className="h-full w-1/3 rounded-full ac-activity-sweep bg-gradient-to-r from-transparent via-cyan-400 to-blue-500" />
       {/* Inline, because the sweep is the one thing this component needs that Tailwind's
           built-in animations do not provide, and a project-wide keyframe for a single use
           is harder to find than a rule next to the element it animates. */}

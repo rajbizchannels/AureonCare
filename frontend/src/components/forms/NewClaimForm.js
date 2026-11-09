@@ -383,7 +383,9 @@ const NewClaimForm = ({ theme, api, patients, claims, editingClaim, onClose, onS
         isOpen={showConfirmation}
         onClose={() => setShowConfirmation(false)}
         onConfirm={() => {
-          setShowConfirmation(false);
+          // NOT closed here: ConfirmationModal awaits this handler and closes itself
+    // afterwards, showing a spinner meanwhile. Closing it first took that away and
+    // left the user on a screen with no sign that anything was happening.
           onClose();
         }}
         title={t.success || 'Success!'}

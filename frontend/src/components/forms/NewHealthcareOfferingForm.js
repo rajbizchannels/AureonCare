@@ -150,7 +150,9 @@ const NewHealthcareOfferingForm = ({ theme, api, onClose, onSuccess, addNotifica
 
   const handleActualSubmit = async () => {
     setLoading(true);
-    setShowConfirmation(false);
+    // NOT closed here: ConfirmationModal awaits this handler and closes itself
+    // afterwards, showing a spinner meanwhile. Closing it first took that away and
+    // left the user on a screen with no sign that anything was happening.
 
     // Extract code strings from code objects
     const cptCodesArray = formData.cptCodes.map(code => code.code);
