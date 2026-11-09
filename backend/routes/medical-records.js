@@ -17,6 +17,7 @@ const fs = require('fs');
 const { google } = require('googleapis');
 const { Client } = require('@microsoft/microsoft-graph-client');
 const { loadAttachment, recordReferencesAttachment, sendAttachment } = require('../utils/filedDocuments');
+const { sendDbError } = require('../utils/dbErrors');
 
 // Helper: get today's date string YYYY-MM-DD
 function todayStr() {
@@ -265,6 +266,8 @@ router.post('/:recordId/review', async (req, res) => {
     res.json({ success: true, record: result.rows[0] });
   } catch (error) {
     console.error('Error reviewing document:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to review document')) return;
     res.status(500).json({ error: 'Failed to review document' });
   }
 });
@@ -355,6 +358,8 @@ router.post('/', async (req, res) => {
     res.status(201).json(result.rows[0]);
   } catch (error) {
     console.error('Error creating medical record:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to create medical record')) return;
     res.status(500).json({ error: 'Failed to create medical record' });
   }
 });
@@ -408,6 +413,8 @@ router.put('/:id', async (req, res) => {
     res.json(result.rows[0]);
   } catch (error) {
     console.error('Error updating medical record:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to update medical record')) return;
     res.status(500).json({ error: 'Failed to update medical record' });
   }
 });
@@ -430,6 +437,8 @@ router.delete('/:id', async (req, res) => {
     res.json({ message: 'Medical record deleted successfully', id: result.rows[0].id });
   } catch (error) {
     console.error('Error deleting medical record:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to delete medical record')) return;
     res.status(500).json({ error: 'Failed to delete medical record' });
   }
 });
@@ -488,6 +497,8 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     if (req.file) {
       fs.unlinkSync(req.file.path);
     }
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to upload file')) return;
     res.status(500).json({ error: 'Failed to upload file' });
   }
 });
@@ -583,6 +594,8 @@ router.post('/with-file', upload.single('file'), async (req, res) => {
     if (req.file) {
       fs.unlinkSync(req.file.path);
     }
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to create medical record')) return;
     res.status(500).json({ error: 'Failed to create medical record' });
   }
 });

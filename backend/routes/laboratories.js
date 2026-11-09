@@ -1,5 +1,6 @@
 const express = require('express');
 const { authenticate } = require('../middleware/auth');
+const { sendDbError } = require('../utils/dbErrors');
 const router = express.Router();
 router.use(authenticate);
 router.use(require('../middleware/planEnforcement').enforceActiveBilling); // SEC-05 S11: read-only when subscription past_due/canceled
@@ -123,6 +124,8 @@ router.post('/', async (req, res) => {
     res.status(201).json(toCamelCase(result.rows[0]));
   } catch (error) {
     console.error('Error creating laboratory:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to create laboratory')) return;
     res.status(500).json({ error: 'Failed to create laboratory' });
   }
 });
@@ -198,6 +201,8 @@ router.put('/:id', async (req, res) => {
     res.json(toCamelCase(result.rows[0]));
   } catch (error) {
     console.error('Error updating laboratory:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to update laboratory')) return;
     res.status(500).json({ error: 'Failed to update laboratory' });
   }
 });
@@ -220,6 +225,8 @@ router.delete('/:id', async (req, res) => {
     res.json({ message: 'Laboratory deleted successfully', laboratory: toCamelCase(result.rows[0]) });
   } catch (error) {
     console.error('Error deleting laboratory:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to delete laboratory')) return;
     res.status(500).json({ error: 'Failed to delete laboratory' });
   }
 });

@@ -13,6 +13,7 @@ const { authenticate, authorize } = require('../middleware/auth');
 const { storeFor } = require('../middleware/rateLimitStore');
 const { validatePassword, BCRYPT_COST } = require('../utils/passwordPolicy');
 const { sendEmail, buildEmailHtml } = require('../services/notificationService');
+const { sendDbError } = require('../utils/dbErrors');
 const {
   domainOf, isClaimable, newToken, checkDnsToken, resolveDomainClaim, TXT_PREFIX,
 } = require('../services/domainJoin');
@@ -81,6 +82,8 @@ router.post('/domains', authenticate, authorize('admin'), requirePractice, async
       return res.status(409).json({ error: 'That domain has already been claimed.' });
     }
     console.error('[teamAccess] claim domain error:', err);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, err, 'Failed to claim domain')) return;
     res.status(500).json({ error: 'Failed to claim domain' });
   }
 });
@@ -113,6 +116,8 @@ router.post('/domains/:id/verify', authenticate, authorize('admin'), requirePrac
     res.json({ ...updated[0], foundAt: result.foundAt });
   } catch (err) {
     console.error('[teamAccess] verify domain error:', err);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, err, 'Failed to verify domain')) return;
     res.status(500).json({ error: 'Failed to verify domain' });
   }
 });
@@ -138,6 +143,8 @@ router.patch('/domains/:id', authenticate, authorize('admin'), requirePractice, 
     res.json(rows[0]);
   } catch (err) {
     console.error('[teamAccess] update domain error:', err);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, err, 'Failed to update domain')) return;
     res.status(500).json({ error: 'Failed to update domain' });
   }
 });
@@ -152,6 +159,8 @@ router.delete('/domains/:id', authenticate, authorize('admin'), requirePractice,
     res.json({ success: true });
   } catch (err) {
     console.error('[teamAccess] delete domain error:', err);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, err, 'Failed to remove domain')) return;
     res.status(500).json({ error: 'Failed to remove domain' });
   }
 });
@@ -234,6 +243,8 @@ router.patch('/security-policy', authenticate, authorize('admin'), requirePracti
     });
   } catch (err) {
     console.error('[teamAccess] update security policy error:', err);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, err, 'Failed to update the security policy')) return;
     res.status(500).json({ error: 'Failed to update the security policy' });
   }
 });
@@ -338,6 +349,8 @@ router.post('/join', joinLimiter, async (req, res) => {
   } catch (err) {
     await client.query('ROLLBACK').catch(() => {});
     console.error('[teamAccess] join error:', err);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, err, 'Could not complete signup')) return;
     res.status(500).json({ error: 'Could not complete signup' });
   } finally {
     client.release();
@@ -448,6 +461,8 @@ router.post('/requests/:id/:decision', authenticate, authorize('admin'), require
   } catch (err) {
     await client.query('ROLLBACK').catch(() => {});
     console.error('[teamAccess] decide request error:', err);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, err, 'Failed to record the decision')) return;
     res.status(500).json({ error: 'Failed to record the decision' });
   } finally {
     client.release();

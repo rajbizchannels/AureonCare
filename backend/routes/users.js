@@ -4,6 +4,7 @@ const { authenticate, authorize } = require('../middleware/auth');
 const { getTimezoneFromCountry } = require('../utils/timezoneUtils');
 const { enforceUserQuota, enforceProviderQuota } = require('../middleware/planEnforcement');
 const { BCRYPT_COST, validatePassword } = require('../utils/passwordPolicy');
+const { sendDbError } = require('../utils/dbErrors');
 
 // SEC-05: true only when the target row belongs to the caller's practice. A caller with
 // no practice context never matches, so these checks fail CLOSED. Replaces an earlier
@@ -233,7 +234,9 @@ router.post('/', authorize('admin'), enforceUserQuota, enforceProviderQuota, asy
       });
     }
 
-    res.status(500).json({ error: 'Failed to create user', details: error.message });
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to create user')) return;
+    res.status(500).json({ error: 'Failed to create user' });
   }
 });
 
@@ -420,7 +423,9 @@ router.put('/:id', isSelfOrAdmin, async (req, res) => {
       });
     }
 
-    res.status(500).json({ error: 'Failed to update user', details: error.message });
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to update user')) return;
+    res.status(500).json({ error: 'Failed to update user' });
   }
 });
 
@@ -524,11 +529,9 @@ router.delete('/:id', authorize('admin'), async (req, res) => {
     // admin who sees it cannot act on it and nobody without server log access can diagnose
     // it. Carry the database's own code and message — this route is admin-only, and the
     // text is schema detail, never patient data.
-    res.status(500).json({
-      error: 'Failed to delete user',
-      code: error.code || undefined,
-      detail: String(error.message || '').slice(0, 300) || undefined,
-    });
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to delete user')) return;
+    res.status(500).json({ error: 'Failed to delete user' });
   }
 });
 
@@ -566,6 +569,8 @@ router.put('/:id/language', isSelfOrAdmin, async (req, res) => {
     res.json(toCamelCase(result.rows[0]));
   } catch (error) {
     console.error('Error updating language:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to update language')) return;
     res.status(500).json({ error: 'Failed to update language' });
   }
 });
@@ -616,6 +621,8 @@ router.put('/:id/switch-role', isSelfOrAdmin, async (req, res) => {
     });
   } catch (error) {
     console.error('Error switching role:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to switch role')) return;
     res.status(500).json({ error: 'Failed to switch role' });
   }
 });
@@ -708,6 +715,8 @@ router.post('/:id/roles', authorize('admin'), async (req, res) => {
     });
   } catch (error) {
     console.error('Error assigning role:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to assign role')) return;
     res.status(500).json({ error: 'Failed to assign role' });
   }
 });
@@ -777,6 +786,8 @@ router.delete('/:id/roles/:role_id', authorize('admin'), async (req, res) => {
     res.json({ message: 'Role removed successfully' });
   } catch (error) {
     console.error('Error removing role:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to remove role')) return;
     res.status(500).json({ error: 'Failed to remove role' });
   }
 });

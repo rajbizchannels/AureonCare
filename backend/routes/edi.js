@@ -6,6 +6,7 @@ router.use(require('../middleware/planEnforcement').enforceActiveBilling); // SE
 const multer = require('multer');
 const { parse835File, convertToPaymentPostings, validate835File, generate835File } = require('../utils/edi835Parser');
 const { generate837File, validateClaimData } = require('../utils/edi837Generator');
+const { sendDbError } = require('../utils/dbErrors');
 
 // Configure multer for file uploads
 const storage = multer.memoryStorage();
@@ -163,10 +164,9 @@ router.post('/835/upload', upload.single('file'), async (req, res) => {
     });
   } catch (error) {
     console.error('Error processing 835 file:', error);
-    res.status(500).json({
-      error: 'Failed to process EDI 835 file',
-      message: error.message
-    });
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to process EDI 835 file')) return;
+    res.status(500).json({ error: 'Failed to process EDI 835 file' });
   }
 });
 
@@ -308,11 +308,9 @@ router.post('/837/generate/:claimId', async (req, res) => {
   } catch (error) {
     console.error('Error generating 837 file:', error);
     console.error('Error stack:', error.stack);
-    res.status(500).json({
-      error: 'Failed to generate EDI 837 file',
-      message: error.message,
-      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
-    });
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to generate EDI 837 file')) return;
+    res.status(500).json({ error: 'Failed to generate EDI 837 file' });
   }
 });
 
@@ -381,11 +379,9 @@ router.post('/837/submit/:claimId', async (req, res) => {
     });
   } catch (error) {
     console.error('Error submitting 837 to clearinghouse:', error);
-    res.status(500).json({
-      error: 'Failed to submit claim to clearinghouse',
-      message: error.message,
-      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
-    });
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to submit claim to clearinghouse')) return;
+    res.status(500).json({ error: 'Failed to submit claim to clearinghouse' });
   }
 });
 
@@ -511,11 +507,9 @@ router.post('/835/generate/:paymentPostingId', async (req, res) => {
   } catch (error) {
     console.error('Error generating 835 file:', error);
     console.error('Error stack:', error.stack);
-    res.status(500).json({
-      error: 'Failed to generate EDI 835 file',
-      message: error.message,
-      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
-    });
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to generate EDI 835 file')) return;
+    res.status(500).json({ error: 'Failed to generate EDI 835 file' });
   }
 });
 

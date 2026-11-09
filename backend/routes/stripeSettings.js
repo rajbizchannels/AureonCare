@@ -1,5 +1,6 @@
 const express = require('express');
 const { authenticate } = require('../middleware/auth');
+const { sendDbError } = require('../utils/dbErrors');
 const router = express.Router();
 router.use(authenticate);
 
@@ -114,6 +115,8 @@ router.post('/', async (req, res) => {
     res.json(result.rows[0]);
   } catch (error) {
     console.error('Error saving Stripe settings:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to save Stripe settings')) return;
     res.status(500).json({ error: 'Failed to save Stripe settings' });
   }
 });
@@ -135,6 +138,8 @@ router.patch('/toggle', async (req, res) => {
     res.json(result.rows[0]);
   } catch (error) {
     console.error('Error toggling Stripe integration:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to toggle Stripe integration')) return;
     res.status(500).json({ error: 'Failed to toggle Stripe integration' });
   }
 });

@@ -6,6 +6,7 @@ router.use(require('../middleware/planEnforcement').enforceActiveBilling); // SE
 const crypto = require('crypto');
 const TelehealthProviderManager = require('../services/telehealthProviders');
 const notificationService = require('../services/notificationService');
+const { sendDbError } = require('../utils/dbErrors');
 
 // Get all telehealth sessions
 router.get('/', async (req, res) => {
@@ -221,6 +222,8 @@ router.put('/:id', async (req, res) => {
     res.json(result.rows[0]);
   } catch (error) {
     console.error('Error updating telehealth session:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to update telehealth session')) return;
     res.status(500).json({ error: 'Failed to update telehealth session' });
   }
 });
@@ -243,6 +246,8 @@ router.delete('/:id', async (req, res) => {
     res.json({ message: 'Session deleted successfully', id: result.rows[0].id });
   } catch (error) {
     console.error('Error deleting telehealth session:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to delete telehealth session')) return;
     res.status(500).json({ error: 'Failed to delete telehealth session' });
   }
 });
@@ -279,6 +284,8 @@ router.post('/:id/join', async (req, res) => {
     res.json({ message: 'Joined session successfully', participants });
   } catch (error) {
     console.error('Error joining session:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to join session')) return;
     res.status(500).json({ error: 'Failed to join session' });
   }
 });

@@ -43,6 +43,7 @@ const billing = require('../services/platformBilling');
 const ledger = require('../services/billingLedger');
 const subscriptionChanges = require('../services/subscriptionChanges');
 const { issuePlatformCookies, clearPlatformCookies } = require('../utils/authCookies');
+const { sendDbError } = require('../utils/dbErrors');
 
 const clientIp = (req) => req.ip || req.headers['x-forwarded-for'] || req.connection?.remoteAddress || null;
 
@@ -97,6 +98,8 @@ router.post('/login', loginLimiter, async (req, res) => {
   } catch (e) {
     if (e.statusCode === 503) return res.status(503).json({ error: e.message });
     console.error('Operator login error:', e);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, e, 'Login failed')) return;
     res.status(500).json({ error: 'Login failed' });
   }
 });
@@ -221,6 +224,8 @@ router.post('/tenants', requireOperatorRole('support'), async (req, res) => {
     res.status(201).json(tenant);
   } catch (e) {
     console.error('Tenant create error:', e);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, e, 'Failed to create tenant')) return;
     res.status(500).json({ error: 'Failed to create tenant' });
   }
 });
@@ -373,6 +378,8 @@ router.post('/plans', requireOperatorRole('billing'), async (req, res) => {
     res.status(201).json(rows[0]);
   } catch (e) {
     console.error('Plan create error:', e);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, e, 'Failed to create plan')) return;
     res.status(500).json({ error: 'Failed to create plan' });
   }
 });
@@ -503,6 +510,8 @@ router.put('/plans/:id', requireOperatorRole('billing'), async (req, res) => {
     res.json(rows[0]);
   } catch (e) {
     console.error('Plan update error:', e);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, e, 'Failed to update plan')) return;
     res.status(500).json({ error: 'Failed to update plan' });
   }
 });

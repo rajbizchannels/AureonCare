@@ -4,6 +4,7 @@ const router = express.Router();
 router.use(authenticate);
 router.use(require('../middleware/planEnforcement').enforceActiveBilling); // SEC-05 S11: read-only when subscription past_due/canceled
 const vendorIntegrationManager = require('../services/vendorIntegrations');
+const { sendDbError } = require('../utils/dbErrors');
 
 // Get all FHIR resources
 router.get('/resources', async (req, res) => {
@@ -212,6 +213,8 @@ router.post('/resources', async (req, res) => {
     res.status(201).json(fhirResource);
   } catch (error) {
     console.error('Error creating FHIR resource:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to create FHIR resource')) return;
     res.status(500).json({ error: 'Failed to create FHIR resource' });
   }
 });
@@ -340,6 +343,8 @@ router.post('/sync/patient/:patientId', async (req, res) => {
     });
   } catch (error) {
     console.error('Error syncing patient to FHIR:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to sync patient to FHIR')) return;
     res.status(500).json({ error: 'Failed to sync patient to FHIR' });
   }
 });

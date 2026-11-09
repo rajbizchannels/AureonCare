@@ -1,6 +1,7 @@
 const express = require('express');
 const { authenticate, authorize } = require('../middleware/auth');
 const registry = require('../utils/permissionRegistry');
+const { sendDbError } = require('../utils/dbErrors');
 const router = express.Router();
 router.use(authenticate);
 
@@ -191,6 +192,8 @@ router.put('/modules', authorize('admin'), async (req, res) => {
       });
     }
     console.error('Error saving module permission:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to save module permission')) return;
     res.status(500).json({ error: 'Failed to save module permission' });
   }
 });
@@ -221,6 +224,8 @@ router.delete('/modules/:module/:roleName/:resource', authorize('admin'), async 
   } catch (error) {
     if (error.code === '42P01') return res.json({ reset: true });
     console.error('Error resetting module permission:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to reset module permission')) return;
     res.status(500).json({ error: 'Failed to reset module permission' });
   }
 });
@@ -381,6 +386,8 @@ router.put('/', async (req, res) => {
       console.error('Error during rollback:', rollbackError);
     }
     console.error('Error updating permissions:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to update permissions')) return;
     res.status(500).json({ error: 'Failed to update permissions' });
   }
 });
@@ -450,6 +457,8 @@ router.put('/:role', async (req, res) => {
       console.error('Error during rollback:', rollbackError);
     }
     console.error('Error updating role permissions:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to update role permissions')) return;
     res.status(500).json({ error: 'Failed to update role permissions' });
   }
 });

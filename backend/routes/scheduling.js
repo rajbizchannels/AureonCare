@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { authenticate, authorize, optionalAuth } = require('../middleware/auth');
 const { rosteredCampWindows } = require('../services/camps');
+const { sendDbError } = require('../utils/dbErrors');
 
 // ============================================================================
 // DOCTOR AVAILABILITY ROUTES
@@ -62,6 +63,8 @@ router.post('/availability', authenticate, authorize('admin', 'receptionist', 'd
         res.status(201).json(result.rows[0]);
     } catch (error) {
         console.error('Error creating availability:', error);
+        // A constraint the request broke is the caller's to fix, not a server fault.
+        if (sendDbError(res, error, 'Failed to create availability')) return;
         res.status(500).json({ error: 'Failed to create availability' });
     }
 });
@@ -97,6 +100,8 @@ router.put('/availability/:id', authenticate, authorize('admin', 'receptionist',
         res.json(result.rows[0]);
     } catch (error) {
         console.error('Error updating availability:', error);
+        // A constraint the request broke is the caller's to fix, not a server fault.
+        if (sendDbError(res, error, 'Failed to update availability')) return;
         res.status(500).json({ error: 'Failed to update availability' });
     }
 });
@@ -123,6 +128,8 @@ router.delete('/availability/:id', authenticate, authorize('admin', 'receptionis
         res.json({ message: 'Availability deleted successfully' });
     } catch (error) {
         console.error('Error deleting availability:', error);
+        // A constraint the request broke is the caller's to fix, not a server fault.
+        if (sendDbError(res, error, 'Failed to delete availability')) return;
         res.status(500).json({ error: 'Failed to delete availability' });
     }
 });
@@ -170,6 +177,8 @@ router.post('/availability/bulk', authenticate, authorize('admin', 'receptionist
     } catch (error) {
         await client.query('ROLLBACK');
         console.error('Error bulk creating availability:', error);
+        // A constraint the request broke is the caller's to fix, not a server fault.
+        if (sendDbError(res, error, 'Failed to create availability schedules')) return;
         res.status(500).json({ error: 'Failed to create availability schedules' });
     } finally {
         client.release();
@@ -230,6 +239,8 @@ router.post('/time-off', authenticate, authorize('admin', 'receptionist', 'docto
         res.status(201).json(result.rows[0]);
     } catch (error) {
         console.error('Error creating time-off:', error);
+        // A constraint the request broke is the caller's to fix, not a server fault.
+        if (sendDbError(res, error, 'Failed to create time-off period')) return;
         res.status(500).json({ error: 'Failed to create time-off period' });
     }
 });
@@ -265,6 +276,8 @@ router.put('/time-off/:id', authenticate, authorize('admin', 'receptionist', 'do
         res.json(result.rows[0]);
     } catch (error) {
         console.error('Error updating time-off:', error);
+        // A constraint the request broke is the caller's to fix, not a server fault.
+        if (sendDbError(res, error, 'Failed to update time-off period')) return;
         res.status(500).json({ error: 'Failed to update time-off period' });
     }
 });
@@ -291,6 +304,8 @@ router.delete('/time-off/:id', authenticate, authorize('admin', 'receptionist', 
         res.json({ message: 'Time-off period deleted successfully' });
     } catch (error) {
         console.error('Error deleting time-off:', error);
+        // A constraint the request broke is the caller's to fix, not a server fault.
+        if (sendDbError(res, error, 'Failed to delete time-off period')) return;
         res.status(500).json({ error: 'Failed to delete time-off period' });
     }
 });
@@ -393,6 +408,8 @@ router.post('/appointment-types', authenticate, authorize('admin', 'receptionist
         res.status(201).json(result.rows[0]);
     } catch (error) {
         console.error('Error creating appointment type:', error);
+        // A constraint the request broke is the caller's to fix, not a server fault.
+        if (sendDbError(res, error, 'Failed to create appointment type')) return;
         res.status(500).json({ error: 'Failed to create appointment type' });
     }
 });
@@ -456,6 +473,8 @@ router.put('/appointment-types/:id', authenticate, authorize('admin', 'reception
         res.json(result.rows[0]);
     } catch (error) {
         console.error('Error updating appointment type:', error);
+        // A constraint the request broke is the caller's to fix, not a server fault.
+        if (sendDbError(res, error, 'Failed to update appointment type')) return;
         res.status(500).json({ error: 'Failed to update appointment type' });
     }
 });
@@ -482,6 +501,8 @@ router.delete('/appointment-types/:id', authenticate, authorize('admin'), async 
         res.json({ message: 'Appointment type deleted successfully' });
     } catch (error) {
         console.error('Error deleting appointment type:', error);
+        // A constraint the request broke is the caller's to fix, not a server fault.
+        if (sendDbError(res, error, 'Failed to delete appointment type')) return;
         res.status(500).json({ error: 'Failed to delete appointment type' });
     }
 });
@@ -623,6 +644,8 @@ router.post('/booking-config', authenticate, authorize('admin', 'receptionist', 
         if (error.code === '23505') { // Unique constraint violation
             return res.status(409).json({ error: 'Booking URL slug already exists' });
         }
+        // A constraint the request broke is the caller's to fix, not a server fault.
+        if (sendDbError(res, error, 'Failed to create booking configuration')) return;
         res.status(500).json({ error: 'Failed to create booking configuration' });
     }
 });
@@ -704,6 +727,8 @@ router.put('/booking-config/:providerId', authenticate, authorize('admin', 'rece
         if (error.code === '23505') {
             return res.status(409).json({ error: 'Booking URL slug already exists' });
         }
+        // A constraint the request broke is the caller's to fix, not a server fault.
+        if (sendDbError(res, error, 'Failed to update booking configuration')) return;
         res.status(500).json({ error: 'Failed to update booking configuration' });
     }
 });
@@ -1005,6 +1030,8 @@ router.post('/check-availability', async (req, res) => {
         res.json({ available: result.rows[0].available });
     } catch (error) {
         console.error('Error checking availability:', error);
+        // A constraint the request broke is the caller's to fix, not a server fault.
+        if (sendDbError(res, error, 'Failed to check availability')) return;
         res.status(500).json({ error: 'Failed to check availability' });
     }
 });
@@ -1154,6 +1181,8 @@ router.post('/book', async (req, res) => {
     } catch (error) {
         await client.query('ROLLBACK');
         console.error('Error booking appointment:', error);
+        // A constraint the request broke is the caller's to fix, not a server fault.
+        if (sendDbError(res, error, 'Failed to book appointment')) return;
         res.status(500).json({ error: 'Failed to book appointment' });
     } finally {
         client.release();
@@ -1240,6 +1269,8 @@ router.post('/cancel/:appointmentId', async (req, res) => {
         });
     } catch (error) {
         console.error('Error cancelling appointment:', error);
+        // A constraint the request broke is the caller's to fix, not a server fault.
+        if (sendDbError(res, error, 'Failed to cancel appointment')) return;
         res.status(500).json({ error: 'Failed to cancel appointment' });
     }
 });
@@ -1351,6 +1382,8 @@ router.post('/reschedule/:appointmentId', async (req, res) => {
     } catch (error) {
         await client.query('ROLLBACK');
         console.error('Error rescheduling appointment:', error);
+        // A constraint the request broke is the caller's to fix, not a server fault.
+        if (sendDbError(res, error, 'Failed to reschedule appointment')) return;
         res.status(500).json({ error: 'Failed to reschedule appointment' });
     } finally {
         client.release();

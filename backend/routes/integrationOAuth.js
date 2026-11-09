@@ -6,6 +6,7 @@ const { microsoftClientId, googleClientId } = require('../utils/oauthClientIds')
 const router = express.Router();
 const crypto = require('crypto');
 const axios = require('axios');
+const { sendDbError } = require('../utils/dbErrors');
 
 const JWT_SECRET = process.env.AC_TK_S;
 
@@ -821,6 +822,8 @@ router.post('/:providerType/credentials', async (req, res) => {
     res.json({ success: true, message: 'Credentials saved successfully' });
   } catch (error) {
     console.error('Error saving credentials:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to save credentials')) return;
     res.status(500).json({ error: 'Failed to save credentials' });
   }
 });
@@ -916,6 +919,8 @@ router.post('/:providerType/refresh', async (req, res) => {
     res.json({ success: true, message: 'Token refreshed successfully' });
   } catch (error) {
     console.error('Error refreshing token:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to refresh token')) return;
     res.status(500).json({ error: 'Failed to refresh token' });
   }
 });
@@ -959,6 +964,8 @@ router.delete('/:providerType', async (req, res) => {
     res.json({ success: true, message: 'OAuth configuration cleared' });
   } catch (error) {
     console.error('Error deleting OAuth configuration:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to delete OAuth configuration')) return;
     res.status(500).json({ error: 'Failed to delete OAuth configuration' });
   }
 });

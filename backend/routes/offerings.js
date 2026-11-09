@@ -1,6 +1,7 @@
 const express = require('express');
 const { authenticate } = require('../middleware/auth');
 const { requireModuleAccess } = require('../middleware/modulePermissions');
+const { sendDbError } = require('../utils/dbErrors');
 const router = express.Router();
 router.use(authenticate);
 // Fine-grained permissions, enforced. The method decides the action (GET=view,
@@ -69,6 +70,8 @@ router.post('/categories', async (req, res) => {
     res.status(201).json(result.rows[0]);
   } catch (error) {
     console.error('Error creating category:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to create category')) return;
     res.status(500).json({ error: 'Failed to create category' });
   }
 });
@@ -102,6 +105,8 @@ router.put('/categories/:id', async (req, res) => {
     res.json(result.rows[0]);
   } catch (error) {
     console.error('Error updating category:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to update category')) return;
     res.status(500).json({ error: 'Failed to update category' });
   }
 });
@@ -135,6 +140,8 @@ router.delete('/categories/:id', async (req, res) => {
     res.json({ message: 'Category deleted successfully' });
   } catch (error) {
     console.error('Error deleting category:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to delete category')) return;
     res.status(500).json({ error: 'Failed to delete category' });
   }
 });
@@ -410,6 +417,8 @@ router.post('/', async (req, res) => {
     res.status(201).json(result.rows[0]);
   } catch (error) {
     console.error('Error creating offering:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to create offering')) return;
     res.status(500).json({ error: 'Failed to create offering' });
   }
 });
@@ -484,6 +493,8 @@ router.put('/:id', async (req, res) => {
     res.json(result.rows[0]);
   } catch (error) {
     console.error('Error updating offering:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to update offering')) return;
     res.status(500).json({ error: 'Failed to update offering' });
   }
 });
@@ -518,6 +529,8 @@ router.delete('/:id', async (req, res) => {
     res.json({ message: 'Offering deleted successfully' });
   } catch (error) {
     console.error('Error deleting offering:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to delete offering')) return;
     res.status(500).json({ error: 'Failed to delete offering' });
   }
 });
@@ -584,6 +597,8 @@ router.post('/:id/pricing', async (req, res) => {
     res.status(201).json(result.rows[0]);
   } catch (error) {
     console.error('Error creating pricing:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to create pricing')) return;
     res.status(500).json({ error: 'Failed to create pricing' });
   }
 });
@@ -633,6 +648,8 @@ router.put('/pricing/:pricing_id', async (req, res) => {
     res.json(result.rows[0]);
   } catch (error) {
     console.error('Error updating pricing:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to update pricing')) return;
     res.status(500).json({ error: 'Failed to update pricing' });
   }
 });
@@ -655,6 +672,8 @@ router.delete('/pricing/:pricing_id', async (req, res) => {
     res.json({ message: 'Pricing option deleted successfully' });
   } catch (error) {
     console.error('Error deleting pricing:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to delete pricing')) return;
     res.status(500).json({ error: 'Failed to delete pricing' });
   }
 });
@@ -841,6 +860,8 @@ router.post('/packages', async (req, res) => {
   } catch (error) {
     await client.query('ROLLBACK');
     console.error('Error creating package:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to create package')) return;
     res.status(500).json({ error: 'Failed to create package' });
   } finally {
     client.release();
@@ -928,6 +949,8 @@ router.put('/packages/:id', async (req, res) => {
     }
   } catch (error) {
     console.error('Error updating package:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to update package')) return;
     res.status(500).json({ error: 'Failed to update package' });
   }
 });
@@ -950,6 +973,8 @@ router.delete('/packages/:id', async (req, res) => {
     res.json({ message: 'Package deleted successfully' });
   } catch (error) {
     console.error('Error deleting package:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to delete package')) return;
     res.status(500).json({ error: 'Failed to delete package' });
   }
 });
@@ -1036,6 +1061,8 @@ router.post('/enrollments', async (req, res) => {
     res.status(201).json(result.rows[0]);
   } catch (error) {
     console.error('Error creating enrollment:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to create enrollment')) return;
     res.status(500).json({ error: 'Failed to create enrollment' });
   }
 });
@@ -1090,6 +1117,8 @@ router.put('/enrollments/:id', async (req, res) => {
     res.json(result.rows[0]);
   } catch (error) {
     console.error('Error updating enrollment:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to update enrollment')) return;
     res.status(500).json({ error: 'Failed to update enrollment' });
   }
 });
@@ -1156,6 +1185,8 @@ router.post('/:id/reviews', async (req, res) => {
       return res.status(400).json({ error: 'Review already exists for this appointment' });
     }
     console.error('Error creating review:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to create review')) return;
     res.status(500).json({ error: 'Failed to create review' });
   }
 });
@@ -1185,6 +1216,8 @@ router.put('/reviews/:review_id/moderate', async (req, res) => {
     res.json(result.rows[0]);
   } catch (error) {
     console.error('Error moderating review:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to moderate review')) return;
     res.status(500).json({ error: 'Failed to moderate review' });
   }
 });
@@ -1274,6 +1307,8 @@ router.post('/promotions/validate', async (req, res) => {
     });
   } catch (error) {
     console.error('Error validating promo code:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to validate promo code')) return;
     res.status(500).json({ error: 'Failed to validate promo code' });
   }
 });
@@ -1328,6 +1363,8 @@ router.post('/promotions', async (req, res) => {
       return res.status(400).json({ error: 'Promo code already exists' });
     }
     console.error('Error creating promotion:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to create promotion')) return;
     res.status(500).json({ error: 'Failed to create promotion' });
   }
 });
@@ -1362,6 +1399,8 @@ router.put('/promotions/:id', async (req, res) => {
     res.json(result.rows[0]);
   } catch (error) {
     console.error('Error updating promotion:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to update promotion')) return;
     res.status(500).json({ error: 'Failed to update promotion' });
   }
 });
@@ -1401,6 +1440,8 @@ router.post('/:id/forms', async (req, res) => {
     res.status(201).json(result.rows[0]);
   } catch (error) {
     console.error('Error linking form to offering:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to link form to offering')) return;
     res.status(500).json({ error: 'Failed to link form to offering' });
   }
 });
@@ -1416,6 +1457,8 @@ router.delete('/:id/forms/:formTemplateId', async (req, res) => {
     res.json({ success: true });
   } catch (error) {
     console.error('Error unlinking form from offering:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to unlink form from offering')) return;
     res.status(500).json({ error: 'Failed to unlink form from offering' });
   }
 });

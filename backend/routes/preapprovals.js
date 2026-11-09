@@ -11,6 +11,7 @@ router.use(requireModuleAccess('rcm', 'preapprovals'));
 router.use(require('../middleware/planEnforcement').enforceActiveBilling); // SEC-05 S11: read-only when subscription past_due/canceled
 const vendorIntegrationManager = require('../services/vendorIntegrations');
 const { insertNumbered } = require('../utils/recordNumbers');
+const { sendDbError } = require('../utils/dbErrors');
 
 // Get all preapprovals
 router.get('/', async (req, res) => {
@@ -250,6 +251,8 @@ router.post('/', async (req, res) => {
     res.status(201).json(preapproval);
   } catch (error) {
     console.error('Error creating preapproval:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to create preapproval')) return;
     res.status(500).json({ error: 'Failed to create preapproval' });
   }
 });
@@ -321,6 +324,8 @@ router.put('/:id', async (req, res) => {
     res.json(result.rows[0]);
   } catch (error) {
     console.error('Error updating preapproval:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to update preapproval')) return;
     res.status(500).json({ error: 'Failed to update preapproval' });
   }
 });
@@ -339,6 +344,8 @@ router.delete('/:id', async (req, res) => {
     res.json({ message: 'Preapproval deleted successfully' });
   } catch (error) {
     console.error('Error deleting preapproval:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to delete preapproval')) return;
     res.status(500).json({ error: 'Failed to delete preapproval' });
   }
 });

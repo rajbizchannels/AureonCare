@@ -1,5 +1,6 @@
 const express = require('express');
 const { authenticate } = require('../middleware/auth');
+const { sendDbError } = require('../utils/dbErrors');
 const router  = express.Router();
 router.use(authenticate);
 router.use(require('../middleware/planEnforcement').enforceActiveBilling); // SEC-05 S11: read-only when subscription past_due/canceled
@@ -59,6 +60,8 @@ router.post('/activate', async (req, res) => {
     res.json({ message: result.message, license: result.license });
   } catch (err) {
     console.error('[licenses] activate error:', err.message);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, err, 'Failed to activate license')) return;
     res.status(500).json({ error: 'Failed to activate license' });
   }
 });
@@ -117,6 +120,8 @@ router.post('/revoke', async (req, res) => {
     res.json({ message: 'License key revoked.' });
   } catch (err) {
     console.error('[licenses] revoke error:', err.message);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, err, 'Failed to revoke license')) return;
     res.status(500).json({ error: 'Failed to revoke license' });
   }
 });

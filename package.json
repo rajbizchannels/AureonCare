@@ -33,6 +33,8 @@
     "test:forms": "node backend/test/forms/linkage.test.js",
     "test:subscription-changes": "node backend/test/billing/subscription-changes.test.js",
     "test:scheduling": "node backend/test/scheduling/appointment-participants.test.js",
+    "test:endpoints": "node backend/test/scheduling/endpoint-health.test.js",
+    "test:db-errors": "node backend/test/permissions/db-errors.test.js",
     "test:permissions": "node backend/test/permissions/module-permissions.test.js",
     "test:roles": "node backend/test/permissions/roles.test.js",
     "test:frontend": "cd frontend && CI=true npm test -- --watchAll=false",

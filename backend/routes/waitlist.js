@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { authenticate, authorize } = require('../middleware/auth');
+const { sendDbError } = require('../utils/dbErrors');
 
 // Helper function to convert snake_case to camelCase
 const toCamelCase = (obj) => {
@@ -65,6 +66,8 @@ router.post('/', authenticate, async (req, res) => {
     });
   } catch (error) {
     console.error('Error adding to waitlist:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to add to waitlist')) return;
     res.status(500).json({ error: 'Failed to add to waitlist' });
   }
 });
@@ -136,6 +139,8 @@ router.delete('/:id', authenticate, async (req, res) => {
     });
   } catch (error) {
     console.error('Error removing from waitlist:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to remove from waitlist')) return;
     res.status(500).json({ error: 'Failed to remove from waitlist' });
   }
 });
@@ -259,6 +264,8 @@ router.post('/admin/notify-next', authenticate, authorize('admin', 'receptionist
     });
   } catch (error) {
     console.error('Error notifying waitlist:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to notify next person on waitlist')) return;
     res.status(500).json({ error: 'Failed to notify next person on waitlist' });
   }
 });
@@ -288,6 +295,8 @@ router.post('/admin/:id/scheduled', authenticate, authorize('admin', 'receptioni
     });
   } catch (error) {
     console.error('Error updating waitlist:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to update waitlist entry')) return;
     res.status(500).json({ error: 'Failed to update waitlist entry' });
   }
 });

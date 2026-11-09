@@ -11,6 +11,7 @@ const { issuePortalSession } = require('../services/portalSession');
 const { exchangeAuthCode } = require('../utils/oauthExchange');
 const { findUsableInvite, claimInvite } = require('./invites');
 const { resolveDomainClaim } = require('../services/domainJoin');
+const { sendDbError } = require('../utils/dbErrors');
 const {
   beginEnrolment, verifyTotp, verifySecondFactor, generateBackupCodes,
 } = require('../services/userMfa');
@@ -151,6 +152,8 @@ router.post('/login', async (req, res) => {
     });
   } catch (error) {
     console.error('Error during login:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to login')) return;
     res.status(500).json({ error: 'Failed to login' });
   }
 });
@@ -216,6 +219,8 @@ router.post('/change-password', authenticate, async (req, res) => {
     res.json({ message: 'Password changed successfully', token, csrfToken });
   } catch (error) {
     console.error('Error changing password:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to change password')) return;
     res.status(500).json({ error: 'Failed to change password' });
   }
 });
@@ -522,6 +527,8 @@ router.post('/mfa/enroll', authenticate, async (req, res) => {
     });
   } catch (err) {
     console.error('[mfa] enrol error:', err);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, err, 'Failed to start enrolment')) return;
     res.status(500).json({ error: 'Failed to start enrolment' });
   }
 });
@@ -553,6 +560,8 @@ router.post('/mfa/verify', authenticate, async (req, res) => {
     res.json({ enabled: true, backupCodes: codes });
   } catch (err) {
     console.error('[mfa] verify error:', err);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, err, 'Failed to enable two-factor authentication')) return;
     res.status(500).json({ error: 'Failed to enable two-factor authentication' });
   }
 });
@@ -597,6 +606,8 @@ router.post('/mfa/disable', authenticate, async (req, res) => {
     res.json({ enabled: false });
   } catch (err) {
     console.error('[mfa] disable error:', err);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, err, 'Failed to disable two-factor authentication')) return;
     res.status(500).json({ error: 'Failed to disable two-factor authentication' });
   }
 });
@@ -621,6 +632,8 @@ router.post('/mfa/backup-codes', authenticate, async (req, res) => {
     res.json({ backupCodes: codes });
   } catch (err) {
     console.error('[mfa] backup codes error:', err);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, err, 'Failed to regenerate recovery codes')) return;
     res.status(500).json({ error: 'Failed to regenerate recovery codes' });
   }
 });
@@ -646,6 +659,8 @@ router.post('/logout', authenticate, async (req, res) => {
     res.json({ message: 'Logged out successfully' });
   } catch (error) {
     console.error('Error during logout:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to logout')) return;
     res.status(500).json({ error: 'Failed to logout' });
   }
 });
@@ -711,6 +726,8 @@ router.post('/forgot-password', async (req, res) => {
     });
   } catch (error) {
     console.error('Error requesting password reset:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to process password reset request')) return;
     res.status(500).json({ error: 'Failed to process password reset request' });
   }
 });
@@ -761,6 +778,8 @@ router.post('/reset-password', async (req, res) => {
     res.json({ message: 'Password reset successfully' });
   } catch (error) {
     console.error('Error resetting password:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to reset password')) return;
     res.status(500).json({ error: 'Failed to reset password' });
   }
 });
@@ -1193,6 +1212,8 @@ router.post('/oauth/microsoft/exchange', async (req, res) => {
       });
     }
     console.error('Error during microsoft code exchange:', err);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, err, 'Social login failed')) return;
     res.status(500).json({ error: 'Social login failed' });
   }
 });
@@ -1216,6 +1237,8 @@ router.post('/oauth/google/exchange', async (req, res) => {
       });
     }
     console.error('Error during google code exchange:', err);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, err, 'Social login failed')) return;
     res.status(500).json({ error: 'Social login failed' });
   }
 });
@@ -1362,10 +1385,9 @@ router.post('/social-register', async (req, res) => {
     });
   } catch (error) {
     console.error('Error during social registration:', error);
-    res.status(500).json({
-      error: 'Registration failed. Please try again.',
-      detail: error.message
-    });
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Registration failed. Please try again.')) return;
+    res.status(500).json({ error: 'Registration failed. Please try again.' });
   }
 });
 
@@ -1421,6 +1443,8 @@ router.post('/link-social-account', authenticate, async (req, res) => {
 
   } catch (error) {
     console.error('Error linking social account:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to link social account')) return;
     res.status(500).json({ error: 'Failed to link social account' });
   }
 });
@@ -1450,6 +1474,8 @@ router.post('/unlink-social-account', authenticate, async (req, res) => {
 
   } catch (error) {
     console.error('Error unlinking social account:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to unlink social account')) return;
     res.status(500).json({ error: 'Failed to unlink social account' });
   }
 });

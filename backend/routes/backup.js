@@ -5,6 +5,7 @@ const { authenticate, requireAdmin } = require('../middleware/auth');
 // Provider SDKs and token refresh now live in the shared service, so the
 // Google Drive and OneDrive paths cannot drift apart.
 const cloudStorage = require('../services/cloudBackupStorage');
+const { sendDbError } = require('../utils/dbErrors');
 
 // The tables a full backup covers, and the ONLY tables a restore may touch.
 //
@@ -218,7 +219,9 @@ router.post('/cloud/restore', async (req, res) => {
     res.json({ ...result, provider, restoredFrom: cloudStorage.providerLabel(provider) });
   } catch (error) {
     console.error('Error restoring from cloud backup:', error);
-    res.status(500).json({ error: 'Failed to restore backup', details: error.message });
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to restore backup')) return;
+    res.status(500).json({ error: 'Failed to restore backup' });
   }
 });
 
@@ -328,10 +331,9 @@ router.post('/restore', async (req, res) => {
     res.json(await restoreBackup(req.db || pool, backup, req.user?.id || req.headers['x-user-id']));
   } catch (error) {
     console.error('Error restoring backup:', error);
-    res.status(500).json({
-      error: 'Failed to restore backup',
-      details: error.message
-    });
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to restore backup')) return;
+    res.status(500).json({ error: 'Failed to restore backup' });
   }
 });
 
@@ -412,10 +414,9 @@ router.post('/config/google-drive', async (req, res) => {
     });
   } catch (error) {
     console.error('Error updating Google Drive config:', error);
-    res.status(500).json({
-      error: 'Failed to update Google Drive configuration',
-      details: error.message
-    });
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to update Google Drive configuration')) return;
+    res.status(500).json({ error: 'Failed to update Google Drive configuration' });
   }
 });
 
@@ -476,10 +477,9 @@ router.post('/config/onedrive', async (req, res) => {
     });
   } catch (error) {
     console.error('Error updating OneDrive config:', error);
-    res.status(500).json({
-      error: 'Failed to update OneDrive configuration',
-      details: error.message
-    });
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to update OneDrive configuration')) return;
+    res.status(500).json({ error: 'Failed to update OneDrive configuration' });
   }
 });
 
