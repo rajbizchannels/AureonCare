@@ -3833,6 +3833,36 @@ const api = {
     return r.json();
   },
 
+  // Fine-grained permissions for every module. One pair of endpoints, where the pattern
+  // these generalise had a pair per module and would have needed nine more.
+  getModulePermissions: async () => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/permissions/modules`);
+    if (!r.ok) {
+      const e = await r.json().catch(() => ({}));
+      throw new Error(e.message || e.error || 'Failed to fetch module permissions');
+    }
+    return r.json();
+  },
+  updateModulePermission: async (data) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/permissions/modules`, {
+      method: 'PUT', body: JSON.stringify(data),
+    });
+    if (!r.ok) {
+      const e = await r.json().catch(() => ({}));
+      throw new Error(e.message || e.error || 'Failed to update permission');
+    }
+    return r.json();
+  },
+  resetModulePermission: async ({ module, roleName, resource }) => {
+    const r = await authenticatedFetch(
+      `${API_BASE_URL}/permissions/modules/${encodeURIComponent(module)}/${encodeURIComponent(roleName)}/${encodeURIComponent(resource)}`,
+      { method: 'DELETE' });
+    if (!r.ok) {
+      const e = await r.json().catch(() => ({}));
+      throw new Error(e.message || e.error || 'Failed to reset permission');
+    }
+    return r.json();
+  },
   getInventoryPermissions: async () => {
     const r = await authenticatedFetch(`${API_BASE_URL}/inventory/rbac/permissions`);
     if (!r.ok) throw new Error('Failed to fetch inventory permissions');

@@ -21,6 +21,70 @@ const BACKEND = path.join(__dirname, '..', '..');
 const results = [];
 const check = (name, cond) => results.push([name, !!cond]);
 
+/**
+ * Print the results and leave.
+ *
+ * Called from the happy path AND from the catch, because a suite that dies partway still
+ * knows a great deal: 47 checks may have passed before the thing that killed it. Printing
+ * only the exception threw all of that away and left a raw pg error object on screen —
+ * twenty lines of `internalPosition: undefined` and no indication of what had been
+ * verified, what had not, or how far it got.
+ */
+const report = (err) => {
+  let failed = 0;
+  for (const [name, ok] of results) {
+    console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}`);
+    if (!ok) failed += 1;
+  }
+  if (err) {
+    console.log(`\n${results.length - failed}/${results.length} passed before the suite stopped early.`);
+    console.error(`\nSTOPPED: ${err.message || err}`);
+    // The hint matters more than the stack: every way this suite dies in practice is an
+    // environment problem with a specific remedy, and the stack points at the query rather
+    // than at the cause.
+    const hint = diagnose(err);
+    if (hint) console.error(`\n${hint}`);
+    console.error('\nFull error:');
+    console.error(err);
+  } else {
+    console.log(`\n${results.length - failed}/${results.length} passed`);
+  }
+  try { mock.close(); } catch { /* may not be listening yet */ }
+  process.exit(err || failed ? 1 : 0);
+};
+
+/** Turn the handful of ways this suite dies into the command that fixes each one. */
+function diagnose(err) {
+  const code = err && err.code;
+  const msg = String((err && err.message) || '');
+  // Reached when the database goes away DURING the run. A database that is already down
+  // when the suite starts never gets here: server.js, required at the top of this file,
+  // prints its own (clear) diagnostic and exits the process before this code runs.
+  if (code === 'ECONNREFUSED' || /ECONNREFUSED/.test(msg)) {
+    return 'The database stopped answering mid-run. Check PostgreSQL is still up, then re-run.';
+  }
+  if (code === '42P01') {
+    const table = (msg.match(/relation "([^"]+)" does not exist/) || [])[1] || 'a tenant table';
+    if (/^ai_/.test(table)) {
+      return `The AI tables are missing from the tenant schemas (${table}).\n`
+        + 'They are created by migrations/tenant/010_ai_integrations.sql and registered for new\n'
+        + 'tenants by 087, so BOTH runners have to have run, in this order:\n'
+        + '  npm run migrate          # global: registers the tables in control.tenant_tables\n'
+        + '  npm run migrate:tenants  # tenant: creates them in every schema AND in `template`\n'
+        + 'A tenant provisioned before the tenant run is cloned from `template`, so it has none\n'
+        + 'of them — which is what this suite hits, because it provisions its own practices.';
+    }
+    return `A table this suite needs does not exist (${table}). Run: npm run migrate && npm run migrate:tenants`;
+  }
+  if (code === '28P01' || /password authentication failed/.test(msg)) {
+    return 'The database rejected the credentials. Check AC_DB_U / AC_DB_W in backend/.env.';
+  }
+  if (/fetch failed/.test(msg)) {
+    return 'The backend did not answer. Look further up this output for the reason it failed to start.';
+  }
+  return null;
+}
+
 process.env.PORT = process.env.TEST_PORT || '4898';
 process.env.NODE_ENV = 'development';
 process.env.AC_COOKIE_INSECURE = 'true';
@@ -96,6 +160,22 @@ const PW = 'A-Strong-Passphrase!23';
   for (let i = 0; i < 40; i++) {
     try { await fetch(BASE + '/health'); break; } catch { await new Promise((r) => setTimeout(r, 250)); }
   }
+  // Checked up front, against `template`, because that is what a new tenant is cloned
+  // from: every practice this suite provisions gets its tables from there. Reported here
+  // the problem costs one line; discovered on the fiftieth check it used to surface as a
+  // bare 42P01 with no sign of what had already passed.
+  const AI_TABLES = ['ai_provider_credentials', 'ai_feature_settings', 'ai_requests',
+    'ai_phi_token_map', 'ai_suggestions'];
+  const { rows: present } = await pool.query(
+    `SELECT table_name FROM information_schema.tables
+      WHERE table_schema = 'template' AND table_name = ANY($1::text[])`, [AI_TABLES]);
+  const missing = AI_TABLES.filter((t) => !present.some((r) => r.table_name === t));
+  if (missing.length) {
+    const e = new Error(`relation "${missing[0]}" does not exist`);
+    e.code = '42P01';
+    throw e;
+  }
+
   console.log('\nAI integrations\n');
 
   const RUN = crypto.randomBytes(4).toString('hex');
@@ -310,15 +390,5 @@ const PW = 'A-Strong-Passphrase!23';
   check('removing the key also switches the provider off', rm.status === 200 && rm.body.has_api_key === false && rm.body.is_enabled === false);
 
   // ── report ─────────────────────────────────────────────────────────────────
-  let failed = 0;
-  for (const [name, ok] of results) {
-    console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}`);
-    if (!ok) failed += 1;
-  }
-  console.log(`\n${results.length - failed}/${results.length} passed`);
-  mock.close();
-  process.exit(failed ? 1 : 0);
-})().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+  report();
+})().catch(report);

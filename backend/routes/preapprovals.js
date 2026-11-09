@@ -1,7 +1,13 @@
 const express = require('express');
 const { authenticate } = require('../middleware/auth');
+const { requireModuleAccess } = require('../middleware/modulePermissions');
 const router = express.Router();
 router.use(authenticate);
+// Fine-grained permissions, enforced. The method decides the action (GET=view,
+// POST=create, PUT/PATCH=edit, DELETE=delete); an administrator edits this under
+// Admin Panel -> Roles & Permissions. Absent grants fall back to the role defaults in
+// utils/permissionRegistry.js, so this changes nothing until somebody edits something.
+router.use(requireModuleAccess('rcm', 'preapprovals'));
 router.use(require('../middleware/planEnforcement').enforceActiveBilling); // SEC-05 S11: read-only when subscription past_due/canceled
 const vendorIntegrationManager = require('../services/vendorIntegrations');
 const { insertNumbered } = require('../utils/recordNumbers');

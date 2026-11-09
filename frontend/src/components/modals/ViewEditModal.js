@@ -473,7 +473,8 @@ const ViewEditModal = ({
   };
 
   const handleActualSubmit = async () => {
-    setShowConfirmation(false);
+    // NOT closed here: ConfirmationModal awaits this and closes itself, showing a spinner
+    // meanwhile. Closing first put the user back on the form with no sign of the save.
 
     try {
       if (type === 'appointment') {
@@ -656,6 +657,7 @@ const ViewEditModal = ({
         message={t.confirmSaveChangesMessage || `Are you sure you want to save changes to this ${type}?`}
         type="confirm"
         confirmText={t.saveChanges || 'Save Changes'}
+        busyText={t.saving || 'Saving…'}
         cancelText={t.cancel || 'Cancel'}
       />
       <div className={`h-full flex flex-col border-2 rounded-lg ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-gray-50 border-gray-300'}`}>

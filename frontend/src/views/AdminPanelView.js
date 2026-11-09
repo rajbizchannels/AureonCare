@@ -72,6 +72,7 @@ import IntegrationCard from '../components/IntegrationCard';
 import AuditLogsTab from '../components/admin/AuditLogsTab';
 import ArchiveManagementTab from '../components/admin/ArchiveManagementTab';
 import LocationsTab from '../components/admin/LocationsTab';
+import ModulePermissionsTab from '../components/admin/ModulePermissionsTab';
 import AIIntegrationsSection from '../components/integrations/AIIntegrationsSection';
 import { useClinicSettings } from '../hooks/useClinicSettings';
 import { apiFetch } from '../api/apiService';
@@ -376,8 +377,6 @@ const AdminPanelView = ({
   const [acctPermLoading, setAcctPermLoading] = useState(false);
   const [acctBackups, setAcctBackups] = useState([]);
   const [acctBackupLoading, setAcctBackupLoading] = useState(false);
-  const [invPermissions, setInvPermissions] = useState([]);
-  const [invPermLoading, setInvPermLoading] = useState(false);
   const [invBackups, setInvBackups] = useState([]);
   const [invBackupLoading, setInvBackupLoading] = useState(false);
 
@@ -612,14 +611,9 @@ const AdminPanelView = ({
       .catch(err => console.error('Failed to load accounts backups:', err));
   }, [activeTab, api]);
 
-  useEffect(() => {
-    if (activeTab !== ADMIN_TABS.ROLES) return;
-    setInvPermLoading(true);
-    api.getInventoryPermissions()
-      .then(setInvPermissions)
-      .catch(err => console.error('Failed to load inventory permissions:', err))
-      .finally(() => setInvPermLoading(false));
-  }, [activeTab, api]);
+  // The inventory permissions fetch used to live here. ModulePermissionsTab loads every
+  // module's grants from one endpoint, so this request was left making a call whose result
+  // nothing rendered.
 
   useEffect(() => {
     if (activeTab !== ADMIN_TABS.BACKUP) return;
@@ -4227,88 +4221,17 @@ const AdminPanelView = ({
         )}
       </div>
 
-      {/* Inventory Module RBAC */}
-      <div className={`rounded-xl border p-6 ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-gray-200'}`}>
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h3 className={`text-base font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Inventory Module Permissions</h3>
-            <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>Fine-grained access control for the Inventory Management module</p>
-          </div>
-          {invPermLoading && <RefreshCw className="w-4 h-4 animate-spin text-orange-500" />}
-        </div>
-        {invPermissions.length > 0 ? (
-          <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-slate-700">
-            <table className="w-full text-xs">
-              <thead className={`${theme === 'dark' ? 'bg-slate-900 text-slate-400' : 'bg-gray-50 text-gray-500'}`}>
-                <tr>
-                  <th className="px-4 py-2.5 text-left font-medium">Role</th>
-                  <th className="px-4 py-2.5 text-left font-medium">Resource</th>
-                  {['View','Create','Edit','Delete','Approve','Export'].map(a => (
-                    <th key={a} className="px-3 py-2.5 text-center font-medium">{a}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className={`divide-y ${theme === 'dark' ? 'divide-slate-700 bg-slate-800' : 'divide-gray-100 bg-white'}`}>
-                {['admin','billing_manager','doctor','nurse','receptionist','crm_manager'].map(role =>
-                  ['items','categories','suppliers','stock_movements','purchase_orders'].map((resource, ri) => {
-                    const perm = invPermissions.find(p => p.roleName === role && p.resource === resource) || {};
-                    const permMap = { View:'canView', Create:'canCreate', Edit:'canEdit', Delete:'canDelete', Approve:'canApprove', Export:'canExport' };
-                    return (
-                      <tr key={`inv-${role}-${resource}`} className={theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-50'}>
-                        {ri === 0 && (
-                          <td className={`px-4 py-2 font-medium capitalize ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'}`} rowSpan={5}>
-                            {role.replace('_',' ')}
-                          </td>
-                        )}
-                        <td className={`px-4 py-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>{resource.replace(/_/g,' ')}</td>
-                        {['View','Create','Edit','Delete','Approve','Export'].map(action => (
-                          <td key={action} className="px-3 py-2 text-center">
-                            <button
-                              disabled={!canManageRoles || role === 'admin'}
-                              onClick={async () => {
-                                if (!canManageRoles || role === 'admin') return;
-                                const key = permMap[action];
-                                const newVal = !perm[key];
-                                try {
-                                  const updated = await api.updateInventoryPermission({
-                                    roleName: role, resource,
-                                    canView: perm.canView || false, canCreate: perm.canCreate || false,
-                                    canEdit: perm.canEdit || false, canDelete: perm.canDelete || false,
-                                    canApprove: perm.canApprove || false, canExport: perm.canExport || false,
-                                    [key]: newVal
-                                  });
-                                  setInvPermissions(prev => {
-                                    const idx = prev.findIndex(p => p.roleName === role && p.resource === resource);
-                                    if (idx >= 0) return prev.map((p, i) => i === idx ? updated : p);
-                                    return [...prev, updated];
-                                  });
-                                } catch (err) {
-                                  addNotification('error', 'Failed to update inventory permission');
-                                }
-                              }}
-                              className={`w-5 h-5 rounded flex items-center justify-center mx-auto transition-colors ${
-                                perm[permMap[action]]
-                                  ? 'bg-orange-500 text-white'
-                                  : theme === 'dark' ? 'bg-slate-700 text-slate-500' : 'bg-gray-100 text-gray-400'
-                              } ${(!canManageRoles || role === 'admin') ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-80 cursor-pointer'}`}
-                            >
-                              {perm[permMap[action]] ? <Check className="w-3 h-3" /> : null}
-                            </button>
-                          </td>
-                        ))}
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className={`text-center py-8 text-sm ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>
-            {invPermLoading ? 'Loading inventory permissions…' : 'No inventory permissions found — visit Inventory Management to initialize.'}
-          </div>
-        )}
-      </div>
+      {/* Fine-grained permissions for every module.
+          The two hand-written grids above (Accounts, Inventory) each hardcoded their own
+          roles, resources, actions and endpoints. This one draws all of that from the
+          server registry, so it covers every module including those two, and a module
+          added on the server needs no change here. */}
+      <ModulePermissionsTab
+        theme={theme}
+        api={api}
+        addNotification={addNotification}
+        canManage={canManageRoles}
+      />
     </div>
   );
 };

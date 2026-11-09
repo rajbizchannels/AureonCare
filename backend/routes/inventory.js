@@ -2,10 +2,22 @@ const express = require('express');
 const router = express.Router();
 const cloudStorage = require('../services/cloudBackupStorage');
 const { authenticate, authorize } = require('../middleware/auth');
+const { requireModuleAccessByPath } = require('../middleware/modulePermissions');
 
 // All inventory routes require authentication
 router.use(authenticate);
 router.use(require('../middleware/planEnforcement').enforceActiveBilling); // SEC-05 S11: read-only when subscription past_due/canceled
+// Fine-grained permissions, now ENFORCED. This module has had a permissions grid in the
+// admin panel for a long time, and nothing read it: the rows were written, dumped by the
+// backup, and consulted by no route, so unticking Delete for a role changed a checkbox
+// and nothing else. Mapped per path because one router serves several resources.
+router.use(requireModuleAccessByPath('inventory', {
+  items: 'items',
+  categories: 'categories',
+  suppliers: 'suppliers',
+  movements: 'stock_movements',
+  orders: 'purchase_orders',
+}));
 
 const toCamelCase = (obj) => {
   if (!obj || typeof obj !== 'object') return obj;

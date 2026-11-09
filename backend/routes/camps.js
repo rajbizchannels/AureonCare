@@ -7,6 +7,7 @@
 const express = require('express');
 const router = express.Router();
 const { authenticate, authorize } = require('../middleware/auth');
+const { requireModuleAccess } = require('../middleware/modulePermissions');
 const { enforceActiveBilling, enforceFeature } = require('../middleware/planEnforcement');
 const { assertUsableLocation } = require('../utils/locations');
 const camps = require('../services/camps');
@@ -14,6 +15,10 @@ const camps = require('../services/camps');
 router.use(authenticate);
 router.use(enforceActiveBilling); // SEC-05 S11: read-only when subscription past_due/canceled
 router.use(enforceFeature('camps')); // Clinical Pro and above (migration 084)
+// Fine-grained permissions, enforced: the method decides the action. An administrator
+// edits this under Admin Panel -> Roles & Permissions; an absent grant falls back to the
+// role defaults in utils/permissionRegistry.js.
+router.use(requireModuleAccess('camps', 'camps'));
 
 // Planning is operational work, not just an admin chore — receptionists and clinicians
 // organise camps. Deleting one stays admin-only.
