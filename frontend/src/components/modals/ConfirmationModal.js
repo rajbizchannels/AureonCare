@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { CheckCircle, X, AlertCircle, Info } from 'lucide-react';
+import BusyButton from '../common/BusyButton';
 
 const ConfirmationModal = ({
   theme,
@@ -11,7 +12,9 @@ const ConfirmationModal = ({
   type = 'confirm', // 'confirm', 'success', 'warning', 'info'
   confirmText = 'Confirm',
   cancelText = 'Cancel',
-  showCancel = true
+  showCancel = true,
+  // Shown in place of confirmText while the handler runs, e.g. 'Saving…'.
+  busyText = null
 }) => {
   // ESC key handler
   useEffect(() => {
@@ -101,15 +104,26 @@ const ConfirmationModal = ({
               {cancelText}
             </button>
           )}
-          <button
-            onClick={() => {
-              onConfirm();
-              onClose();
+          {/* This used to be `onConfirm(); onClose();` — fire and forget. The dialog
+              vanished the instant you clicked, and the work it had just started ran
+              invisibly: on a slow connection you confirmed a save and then watched a
+              screen that showed no sign of anything happening. Now the dialog stays up
+              with a spinner until the handler settles, so the confirm step is where the
+              progress is shown. It still closes on failure, because callers report their
+              own errors through notifications. */}
+          <BusyButton
+            onClick={async () => {
+              try {
+                await onConfirm();
+              } finally {
+                onClose();
+              }
             }}
-            className={`flex-1 px-6 py-3 rounded-lg font-medium text-white transition-colors ${getButtonColor()}`}
+            busyLabel={busyText}
+            className={`flex-1 px-6 py-3 rounded-lg font-medium text-white transition-colors flex items-center justify-center gap-2 ${getButtonColor()}`}
           >
             {confirmText}
-          </button>
+          </BusyButton>
         </div>
       </div>
     </div>

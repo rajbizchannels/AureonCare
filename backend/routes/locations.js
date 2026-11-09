@@ -6,11 +6,16 @@
 const express = require('express');
 const router = express.Router();
 const { authenticate, authorize } = require('../middleware/auth');
+const { requireModuleAccess } = require('../middleware/modulePermissions');
 const { enforceActiveBilling } = require('../middleware/planEnforcement');
 const { LOCATION_TYPES } = require('../utils/locations');
 
 router.use(authenticate);
 router.use(enforceActiveBilling); // SEC-05 S11: read-only when subscription past_due/canceled
+// Fine-grained permissions, enforced: the method decides the action. An administrator
+// edits this under Admin Panel -> Roles & Permissions; an absent grant falls back to the
+// role defaults in utils/permissionRegistry.js.
+router.use(requireModuleAccess('providers', 'locations'));
 
 const toCamelCase = (obj) => {
   const out = {};

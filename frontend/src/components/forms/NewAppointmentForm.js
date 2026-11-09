@@ -184,7 +184,9 @@ const NewAppointmentForm = ({ theme, api, patients, users, patient, user, onClos
   };
 
   const handleActualSubmit = async () => {
-    setShowConfirmation(false);
+    // NOT closed here. ConfirmationModal awaits this handler and closes itself afterwards,
+    // showing a spinner meanwhile; closing the dialog first would take that away and put
+    // the user back on a screen with no sign that anything is happening.
 
     const appointmentData = {
       patient_id: formData.patientId,
@@ -276,6 +278,7 @@ const NewAppointmentForm = ({ theme, api, patients, users, patient, user, onClos
         message="Are you sure you want to schedule this appointment?"
         type="confirm"
         confirmText="Schedule"
+        busyText="Scheduling…"
         cancelText="Cancel"
       />
       <ConfirmationModal

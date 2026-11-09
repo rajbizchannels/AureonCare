@@ -1,8 +1,21 @@
 const express = require('express');
 const { authenticate } = require('../middleware/auth');
+const { requireModuleAccessByPath } = require('../middleware/modulePermissions');
 const { loadAttachment, sendAttachment } = require('../utils/filedDocuments');
 const router = express.Router();
 router.use(authenticate);
+// Fine-grained permissions, enforced. The method decides the action (GET=view,
+// POST=create, PUT/PATCH=edit, DELETE=delete); an administrator edits this under
+// Admin Panel -> Roles & Permissions. Absent grants fall back to the role defaults in
+// utils/permissionRegistry.js, so this changes nothing until somebody edits something.
+// Per path, because templates and submissions are different things to be allowed: a role
+// that may fill in a form is not necessarily one that may redesign it. Paths not listed —
+// stats, audit-logs, categories — keep their existing checks.
+router.use(requireModuleAccessByPath('forms', {
+  templates: 'form_templates',
+  'intake-flows': 'form_templates',
+  submissions: 'form_submissions',
+}));
 router.use(require('../middleware/planEnforcement').enforceActiveBilling); // SEC-05 S11: read-only when subscription past_due/canceled
 
 // ============================================================================

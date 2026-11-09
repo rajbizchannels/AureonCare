@@ -43,6 +43,7 @@ Global first, then tenant. Always.
 | 5 | `apply-global-085.sql` | global 085 — the specialty taxonomy, pack catalogue and `practices.setup` |
 | 6 | `apply-specialty-packs.sql` | publishes the specialty packs — the SQL equivalent of `npm run packs:load` |
 | 7 | `apply-global-086.sql` | global 086 — lets a subscription change be attributed to a practice admin, and keeps prorations apart from collected cash |
+| 8 | `apply-module-permissions.sql` | global 088 **and** tenant/011 — the `module_permissions` table behind fine-grained, per-module access control |
 
 Without step 6 the setup wizard lists every specialty as having **"no starter content
 yet"**. That is not a fault in the wizard: `public.specialty_packs` is simply empty,
@@ -58,6 +59,12 @@ missing those tables.
 
 Step 5 before `packs:load`, because the loader refuses to run until `public.specialties`
 exists.
+
+Step 8 carries both halves itself: it registers the table for new tenants AND creates it in
+`template` and every existing tenant schema, so it does not need a separate tenant run. The
+permissions screen reports that permissions are not set up until it has run, and enforcement
+falls back to the built-in role defaults in the meantime — the same behaviour as before the
+feature existed, so nothing breaks in the gap.
 
 Step 7 stands on its own — it touches only the control-plane billing tables and can be run
 at any point. Until it is applied, a practice admin changing their own plan gets a 500: the
