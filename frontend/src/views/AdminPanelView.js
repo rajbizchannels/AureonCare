@@ -73,6 +73,7 @@ import AuditLogsTab from '../components/admin/AuditLogsTab';
 import ArchiveManagementTab from '../components/admin/ArchiveManagementTab';
 import LocationsTab from '../components/admin/LocationsTab';
 import ModulePermissionsTab from '../components/admin/ModulePermissionsTab';
+import BusyButton from '../components/common/BusyButton';
 import AIIntegrationsSection from '../components/integrations/AIIntegrationsSection';
 import { useClinicSettings } from '../hooks/useClinicSettings';
 import { apiFetch } from '../api/apiService';
@@ -82,7 +83,6 @@ import {
   USER_STATUS,
   DEFAULT_APPOINTMENT_SETTINGS,
   DEFAULT_WORKING_HOURS,
-  DEFAULT_ROLE_PERMISSIONS,
   ADMIN_TABS,
   TELEHEALTH_PROVIDERS,
   VENDOR_TYPES,
@@ -370,7 +370,6 @@ const AdminPanelView = ({
     maxAdvanceBooking: DEFAULT_APPOINTMENT_SETTINGS.MAX_ADVANCE_BOOKING,
     cancellationDeadline: DEFAULT_APPOINTMENT_SETTINGS.CANCELLATION_DEADLINE,
   });
-  const [rolePermissions, setRolePermissions] = useState(DEFAULT_ROLE_PERMISSIONS);
 
   // Accounts module RBAC & backup
   const [acctBackups, setAcctBackups] = useState([]);
@@ -421,22 +420,11 @@ const AdminPanelView = ({
   // Custom role creation state
   const [showCustomRoleForm, setShowCustomRoleForm] = useState(false);
   const [customRoleName, setCustomRoleName] = useState('');
-  const [customRolePermissions, setCustomRolePermissions] = useState({
-    patients: { view: false, create: false, edit: false, delete: false },
-    appointments: { view: false, create: false, edit: false, delete: false },
-    claims: { view: false, create: false, edit: false, delete: false },
-    ehr: { view: false, create: false, edit: false, delete: false },
-    telehealth: { view: false, create: false, edit: false, delete: false },
-    crm: { view: false, create: false, edit: false, delete: false },
-    rcm: { view: false, create: false, edit: false, delete: false },
-    practiceManagement: { view: false, create: false, edit: false, delete: false },
-    clinicalServices: { view: false, create: false, edit: false, delete: false },
-    reports: { view: false, create: false, edit: false, delete: false },
-    users: { view: false, create: false, edit: false, delete: false },
-    settings: { view: false, create: false, edit: false, delete: false },
-    backup: { view: false, create: false, edit: false, delete: false },
-    audit: { view: false, create: false, edit: false, delete: false },
-  });
+  // A role is a NAME. The create-role form used to carry a grid of module x action
+  // checkboxes backed by this state; they wrote to public.permissions / role_permissions,
+  // which are empty on every installation checked and read by nothing. What a role may do
+  // is granted in the module permissions grid, which is enforced.
+  const [customRoles, setCustomRoles] = useState([]);
 
   // Confirmation modal state
   const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
@@ -599,6 +587,16 @@ const AdminPanelView = ({
       .catch(err => console.error('Failed to load accounts backups:', err));
   }, [activeTab, api]);
 
+  // The practice's custom roles, read from the roles endpoint rather than from the
+  // hardcoded defaults object — so a role created here appears straight away, before
+  // anyone holds it, and Delete has an id to work with.
+  useEffect(() => {
+    if (activeTab !== ADMIN_TABS.ROLES) return;
+    api.getRoles(true)
+      .then((rows) => setCustomRoles(Array.isArray(rows) ? rows : []))
+      .catch((err) => console.error('Failed to load roles:', err));
+  }, [activeTab, api]);
+
   // The inventory permissions fetch used to live here. ModulePermissionsTab loads every
   // module's grants from one endpoint, so this request was left making a call whose result
   // nothing rendered.
@@ -739,24 +737,10 @@ const AdminPanelView = ({
     loadStripeStatus();
   }, [api]);
 
-  /**
-   * Load role permissions from backend
-   */
-  useEffect(() => {
-    const loadPermissions = async () => {
-      try {
-        const permissions = await api.getPermissions();
-        if (Object.keys(permissions).length > 0) {
-          setRolePermissions(permissions);
-        }
-      } catch (error) {
-        console.error('Error loading permissions:', error);
-        await addNotification('error', 'Failed to load role permissions');
-        // Continue with default permissions
-      }
-    };
-    loadPermissions();
-  }, [api, addNotification]);
+  // The coarse role permissions were loaded here for the module x role matrix. That matrix
+  // is gone, and GET /api/permissions reads public.permissions / role_permissions, which
+  // are empty on every installation checked — so this ran on every visit to the tab and
+  // handed its result to nothing.
 
   /**
    * Load working hours from backend
@@ -990,18 +974,10 @@ const AdminPanelView = ({
     [editingUser, api, setUsers, t, addNotification]
   );
 
-  /**
-   * Save role permissions
-   */
-  const handleSaveRolePermissions = useCallback(async () => {
-    try {
-      await api.updatePermissions(rolePermissions);
-      await addNotification('success', t.rolePermissionsSaved || 'Role permissions saved successfully');
-    } catch (error) {
-      console.error('Error saving permissions:', error);
-      await addNotification('alert', t.failedToSaveRolePermissions || 'Failed to save role permissions');
-    }
-  }, [api, rolePermissions, addNotification, t]);
+  // handleSaveRolePermissions bulk-saved the coarse module x role matrix through
+  // PUT /api/permissions. That matrix and its Save button are gone, and the endpoint wrote
+  // to public.permissions / role_permissions, which are empty on every installation
+  // checked and read by nothing.
 
   // handleSaveRolePermissionsClick and handleTogglePermission drove the coarse module x
   // role matrix. Both wrote to public.permissions / role_permissions, which are empty on
@@ -1013,25 +989,22 @@ const AdminPanelView = ({
    * Delete custom role
    */
   const handleDeleteCustomRole = useCallback(
-    (roleName) => {
+    (role) => {
       setConfirmModalConfig({
-        title: 'Delete Custom Role',
-        message: `Are you sure you want to delete the "${roleName}" role? This action cannot be undone.`,
+        title: 'Delete role',
+        message: `Delete the "${role.display_name || role.name}" role? Any permissions `
+          + 'granted to it are discarded.',
         onConfirm: async () => {
           try {
-            // Remove from state
-            setRolePermissions((prev) => {
-              const updated = { ...prev };
-              delete updated[roleName];
-              return updated;
-            });
-
-            // Delete from API
-            await api.deleteRole(roleName);
-            await addNotification('success', `Custom role "${roleName}" deleted successfully`);
+            // By id: the route is DELETE /api/roles/:id. It used to be called with the
+            // role NAME, through an api.deleteRole that did not exist at all — so the
+            // button threw a TypeError and reported a generic failure.
+            await api.deleteRole(role.id);
+            setCustomRoles((prev) => prev.filter((r) => r.id !== role.id));
+            await addNotification('success', `Role "${role.display_name || role.name}" deleted`);
           } catch (error) {
-            console.error('Error deleting custom role:', error);
-            await addNotification('alert', 'Failed to delete custom role');
+            console.error('Error deleting role:', error);
+            await addNotification('alert', error.message || 'Failed to delete role');
           }
         },
       });
@@ -1043,49 +1016,31 @@ const AdminPanelView = ({
   /**
    * Create or update custom role
    */
+  /**
+   * Create a role.
+   *
+   * POST /api/roles, which is the endpoint that actually creates one. This used to call
+   * PUT /api/permissions/:role — that looks the role up in `roles` BEFORE writing its
+   * permissions, so for a role that did not exist yet it answered 404 and the button never
+   * worked at all. It also wrote to role_permissions, which nothing reads.
+   */
   const handleCreateCustomRole = useCallback(
-    async (roleName, permissions) => {
+    async (roleName) => {
+      const typed = roleName.trim();
+      const sanitizedName = sanitizeString(typed).toLowerCase().replace(/\s+/g, '_');
       try {
-        // Sanitize role name
-        const sanitizedName = sanitizeString(roleName);
-
-        // Check if role already exists (editing mode)
-        const isEditMode = rolePermissions.hasOwnProperty(sanitizedName);
-
-        // Add to state
-        setRolePermissions((prev) => ({
-          ...prev,
-          [sanitizedName]: permissions,
-        }));
-
-        // Save to API using updateRolePermissions
-        await api.updateRolePermissions(sanitizedName, permissions);
-
-        await addNotification(
-          'success',
-          isEditMode
-            ? `Role "${sanitizedName}" updated successfully`
-            : `Custom role "${sanitizedName}" created successfully`
-        );
-
+        const created = await api.createRole({ name: sanitizedName, displayName: typed });
+        setCustomRoles((prev) => [...prev.filter((r) => r.name !== created.name), created]);
+        await addNotification('success',
+          `Role "${typed}" created. It can do nothing until you grant it something below.`);
         setShowCustomRoleForm(false);
         setCustomRoleName('');
-        setCustomRolePermissions({
-          patients: { view: false, create: false, edit: false, delete: false },
-          appointments: { view: false, create: false, edit: false, delete: false },
-          claims: { view: false, create: false, edit: false, delete: false },
-          ehr: { view: false, create: false, edit: false, delete: false },
-          users: { view: false, create: false, edit: false, delete: false },
-          reports: { view: false, create: false, edit: false, delete: false },
-          settings: { view: false, create: false, edit: false, delete: false },
-          backup: { view: false, create: false, edit: false, delete: false },
-        });
       } catch (error) {
-        console.error('Error saving custom role:', error);
-        await addNotification('alert', 'Failed to save custom role');
+        console.error('Error creating role:', error);
+        await addNotification('alert', error.message || 'Failed to create role');
       }
     },
-    [api, addNotification, rolePermissions]
+    [api, addNotification]
   );
 
   /**
@@ -2045,22 +2000,15 @@ const AdminPanelView = ({
       return;
     }
 
-    const sanitizedName = customRoleName.toLowerCase().replace(/\s+/g, '_');
-    await handleCreateCustomRole(sanitizedName, customRolePermissions);
-  }, [customRoleName, customRolePermissions, handleCreateCustomRole, addNotification]);
+    await handleCreateCustomRole(customRoleName);
+  }, [customRoleName, handleCreateCustomRole, addNotification]);
 
   /**
    * Toggle custom role permission
    */
-  const handleToggleCustomRolePermission = useCallback((module, action) => {
-    setCustomRolePermissions((prev) => ({
-      ...prev,
-      [module]: {
-        ...(prev[module] || { view: false, create: false, edit: false, delete: false }),
-        [action]: !(prev[module]?.[action] || false),
-      },
-    }));
-  }, []);
+  // handleToggleCustomRolePermission drove the checkbox grid inside the create-role form.
+  // That grid is gone: a role is a name, and what it may do is granted in the permissions
+  // grid instead.
 
   /**
    * Update working hours
@@ -3820,110 +3768,68 @@ const AdminPanelView = ({
           </button>
         </div>
 
-      {/* Inline Custom Role Form */}
+      {/* Create a role — NAME ONLY.
+          This form used to carry a grid of module x action checkboxes. They wrote to
+          public.permissions / role_permissions, which are empty on every installation
+          checked and read by nothing, so the picker was decorative — and the Create button
+          never worked at all: it called PUT /api/permissions/:role, which looks the role up
+          in `roles` before writing permissions, so for a role that did not exist yet it
+          answered 404 every time.
+          A role is now just a name. What it may do is set in the permissions grid below,
+          which is the one place that is enforced. */}
       {showCustomRoleForm && (
         <div className={`rounded-xl border p-6 ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-gray-50 border-gray-300'}`}>
-          <h3 className={`text-lg font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-            {customRoleName && !['admin', 'doctor', 'staff', 'patient'].includes(customRoleName)
-              ? 'Edit Custom Role'
-              : customRoleName
-                ? `Edit ${customRoleName.charAt(0).toUpperCase() + customRoleName.slice(1)} Permissions`
-                : 'Create Custom Role'}
+          <h3 className={`text-lg font-bold mb-1 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+            Create a role
           </h3>
+          <p className={`text-xs mb-4 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+            The new role starts able to do nothing. Grant it what it needs in Module
+            Permissions below.
+          </p>
 
-          <div className="space-y-6">
-            {/* Role Name - only editable for new roles */}
-            {!customRoleName || !['admin', 'doctor', 'staff', 'patient'].includes(customRoleName) ? (
-              <div>
-                <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                  Role Name <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={customRoleName}
-                  onChange={(e) => setCustomRoleName(e.target.value)}
-                  className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                    theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-gray-300 text-gray-900'
-                  }`}
-                  placeholder="e.g., Nurse, Receptionist, Billing Manager"
-                />
-              </div>
-            ) : (
-              <div className={`p-4 rounded-lg ${
-                theme === 'dark' ? 'bg-blue-500/10 border border-blue-500/20' : 'bg-blue-50 border border-blue-200'
-              }`}>
-                <p className={`text-sm ${theme === 'dark' ? 'text-blue-400' : 'text-blue-700'}`}>
-                  Editing permissions for <strong>{customRoleName}</strong> role
-                </p>
-              </div>
-            )}
-
-            {/* Permissions Grid */}
+          <div className="space-y-4">
             <div>
-              <h4 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                Permissions
-              </h4>
-              <div className="space-y-4">
-                {['patients', 'appointments', 'claims', 'ehr', 'users', 'reports', 'settings', 'backup'].map((module) => {
-                  return (
-                    <div key={module} className={`p-4 border rounded-lg ${
-                      theme === 'dark' ? 'border-slate-700 bg-slate-800' : 'border-gray-300 bg-gray-50'
-                    }`}>
-                      <h5 className={`font-medium mb-3 capitalize ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                        {module}
-                      </h5>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                        {['view', 'create', 'edit', 'delete'].map((action) => {
-                          return (
-                            <label key={action} className="flex items-center gap-2 cursor-pointer">
-                              <input
-                                type="checkbox"
-                                checked={customRolePermissions[module]?.[action] || false}
-                                onChange={() => handleToggleCustomRolePermission(module, action)}
-                                className="w-4 h-4 text-blue-500 rounded focus:ring-2 focus:ring-blue-500"
-                              />
-                              <span className={`text-sm capitalize ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                                {action}
-                              </span>
-                            </label>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+              <label
+                htmlFor="new-role-name"
+                className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}
+              >
+                Role name <span className="text-red-500">*</span>
+              </label>
+              <input
+                id="new-role-name"
+                type="text"
+                value={customRoleName}
+                onChange={(e) => setCustomRoleName(e.target.value)}
+                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                  theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-gray-300 text-gray-900'
+                }`}
+                placeholder="e.g. Ward Clerk"
+              />
+              {customRoleName.trim() && (
+                <p className={`mt-1 text-xs ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
+                  Stored as <code>{customRoleName.trim().toLowerCase().replace(/\s+/g, '_')}</code>
+                </p>
+              )}
             </div>
 
-            {/* Actions */}
             <div className="flex gap-3">
               <button
-                onClick={() => {
-                  setShowCustomRoleForm(false);
-                  setCustomRoleName('');
-                  setCustomRolePermissions({
-                    patients: { view: false, create: false, edit: false, delete: false },
-                    appointments: { view: false, create: false, edit: false, delete: false },
-                    claims: { view: false, create: false, edit: false, delete: false },
-                    ehr: { view: false, create: false, edit: false, delete: false },
-                    users: { view: false, create: false, edit: false, delete: false },
-                    reports: { view: false, create: false, edit: false, delete: false },
-                    settings: { view: false, create: false, edit: false, delete: false },
-                    backup: { view: false, create: false, edit: false, delete: false },
-                  });
-                }}
+                type="button"
+                onClick={() => { setShowCustomRoleForm(false); setCustomRoleName(''); }}
                 className={`flex-1 px-4 py-2 border rounded-lg font-medium transition-colors ${
                   theme === 'dark' ? 'border-slate-700 text-slate-300 hover:bg-slate-800' : 'border-gray-300 text-gray-700 hover:bg-gray-50'
                 }`}
               >
                 Cancel
               </button>
-              <button
+              <BusyButton
                 onClick={handleSubmitCustomRole}
-                className="flex-1 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors"
+                busyLabel="Creating…"
+                disabled={!customRoleName.trim()}
+                className="flex-1 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
               >
-                {customRoleName && rolePermissions.hasOwnProperty(customRoleName.toLowerCase().replace(/\s+/g, '_')) ? 'Update Role' : 'Create Role'}
-              </button>
+                Create role
+              </BusyButton>
             </div>
           </div>
         </div>
@@ -3942,29 +3848,35 @@ const AdminPanelView = ({
           new role can do nothing until you say what it may do.
         </p>
         <div className="flex flex-wrap gap-2">
-          {Object.keys(rolePermissions).map((role) => {
-            const builtIn = ['admin', 'doctor', 'nurse', 'receptionist', 'billing_manager',
-              'crm_manager', 'staff', 'patient'].includes(role);
-            return (
+          {/* The built-in roles, then the practice's own. Listed from the roles endpoint
+              rather than from the hardcoded defaults object, so a role created above shows
+              here immediately and carries the id that Delete needs. */}
+          {['admin', 'doctor', 'nurse', 'receptionist', 'billing_manager', 'crm_manager', 'staff']
+            .map((role) => (
               <span key={role}
                     className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs ${
                       theme === 'dark' ? 'bg-slate-700 text-slate-200' : 'bg-gray-100 text-gray-700'}`}>
                 <span className="capitalize">{role.replace(/_/g, ' ')}</span>
-                {builtIn ? (
-                  <span className={theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}>built-in</span>
-                ) : canManageRoles && (
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteCustomRole(role)}
-                    title={`Delete the ${role} role`}
-                    className="text-red-500 hover:text-red-600"
-                  >
-                    <Trash2 className="w-3 h-3" />
-                  </button>
-                )}
+                <span className={theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}>built-in</span>
               </span>
-            );
-          })}
+            ))}
+          {customRoles.map((role) => (
+            <span key={role.id}
+                  className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs ${
+                    theme === 'dark' ? 'bg-purple-500/20 text-purple-200' : 'bg-purple-50 text-purple-700'}`}>
+              <span>{role.display_name || role.name}</span>
+              {canManageRoles && (
+                <button
+                  type="button"
+                  onClick={() => handleDeleteCustomRole(role)}
+                  title={`Delete the ${role.display_name || role.name} role`}
+                  className="text-red-500 hover:text-red-600"
+                >
+                  <Trash2 className="w-3 h-3" />
+                </button>
+              )}
+            </span>
+          ))}
         </div>
       </div>
 

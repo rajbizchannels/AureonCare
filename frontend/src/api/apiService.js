@@ -1211,6 +1211,34 @@ const api = {
     return response.json();
   },
 
+  // Creating a role was attempted through PUT /api/permissions/:role, which looks the role
+  // up in `roles` BEFORE writing its permissions — so for a role that does not exist yet it
+  // answered 404 and "Create Custom Role" never once worked. POST /api/roles is the
+  // endpoint that actually creates one.
+  createRole: async ({ name, displayName, description }) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/roles`, {
+      method: 'POST',
+      body: JSON.stringify({ name, display_name: displayName || name, description: description || null }),
+    });
+    if (!response.ok) {
+      const e = await response.json().catch(() => ({}));
+      throw new Error(e.error || 'Failed to create role');
+    }
+    return response.json();
+  },
+  // By id, which is what DELETE /api/roles/:id takes. There was no deleteRole in this file
+  // at all, so the delete button called `undefined` and reported a generic failure.
+  deleteRole: async (id) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/roles/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) {
+      const e = await response.json().catch(() => ({}));
+      throw new Error(e.error || 'Failed to delete role');
+    }
+    return response.json().catch(() => ({ deleted: true }));
+  },
+
   // Permissions
   getPermissions: async () => {
     const response = await authenticatedFetch(`${API_BASE_URL}/permissions`);
