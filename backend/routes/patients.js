@@ -117,11 +117,17 @@ router.post('/', enforcePatientQuota, async (req, res) => {
           allergies, past_history, family_history, status, created_at, updated_at)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, NOW(), NOW())
          RETURNING *`
+      // gen_random_uuid() for the id, because patients.id has NO column default and this
+      // branch — a patient with no portal account — supplied none. Every attempt to add a
+      // patient without an email address therefore failed with a NOT NULL violation on
+      // `id` and a 500: walk-ins, children, and anyone who simply has no email, which is
+      // a large share of the patients a clinic registers. The branch above works only
+      // because it reuses the new portal user's id (patients.id = users.id).
       : `INSERT INTO patients
-         (first_name, last_name, mrn, date_of_birth, gender, phone, email,
+         (id, first_name, last_name, mrn, date_of_birth, gender, phone, email,
           address, city, state, zip, insurance, insurance_id, insurance_payer_id,
           allergies, past_history, family_history, status, created_at, updated_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, NOW(), NOW())
+         VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, NOW(), NOW())
          RETURNING *`;
 
     const patientInsertParams = userId

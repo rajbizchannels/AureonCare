@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { authenticate, authorize } = require('../middleware/auth');
+const { authenticate, authorize, optionalAuth } = require('../middleware/auth');
 
 // Helper function to convert snake_case to camelCase
 const toCamelCase = (obj) => {
@@ -12,9 +12,38 @@ const toCamelCase = (obj) => {
   return newObj;
 };
 
-// Get all active appointment types (public - no auth required for booking)
-router.get('/', async (req, res) => {
+// Get all active appointment types.
+//
+// `optionalAuth` is what makes this work at all. The route carried no middleware, on the
+// reasoning that the public booking page needs it without a session — but no middleware
+// also means no req.db, so it fell back to the application pool, whose search_path is
+// pinned to `public`. Since migration 066 moved the tenant tables out of `public`, every
+// call returned 42P01 and the route answered 500 for EVERYONE, signed in or not. That took
+// out the appointment type dropdown in the booking form and the whole Appointment Types
+// admin screen.
+//
+// optionalAuth attaches the tenant context when there is a session and lets the request
+// through when there is not, so staff screens work now.
+//
+// STILL BROKEN FOR AN ANONYMOUS CALLER, and deliberately left so rather than papered over:
+// without a session there is no tenant to read, and guessing one would serve another
+// practice's data. The public booking page has to name its tenant — the way
+// /api/scheduling/booking-config/slug/:slug is meant to — and every public endpoint in
+// that flow shares this gap. Fixing it is a change to how public booking identifies a
+// practice, not a middleware tweak.
+router.get('/', optionalAuth, async (req, res) => {
   try {
+  // No session means no tenant, and there is no honest way to pick one. Said plainly with
+  // a 409 rather than left to fail as a 500: a server error tells the caller nothing and
+  // reads as "the server is broken" when the real answer is "this request has to say which
+  // practice it is for".
+  if (!req.db) {
+    return res.status(409).json({
+      error: 'No practice context',
+      message: 'Appointment types are per practice. Sign in, or use the public booking '
+        + 'endpoints that identify the practice by its booking slug.',
+    });
+  }
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(`
       SELECT * FROM appointment_types
@@ -48,8 +77,20 @@ router.get('/all', authenticate, authorize('admin'), async (req, res) => {
 });
 
 // Get single appointment type
-router.get('/:id', async (req, res) => {
+// Same as GET / above: no middleware meant no req.db, and a guaranteed 500.
+router.get('/:id', optionalAuth, async (req, res) => {
   try {
+  // No session means no tenant, and there is no honest way to pick one. Said plainly with
+  // a 409 rather than left to fail as a 500: a server error tells the caller nothing and
+  // reads as "the server is broken" when the real answer is "this request has to say which
+  // practice it is for".
+  if (!req.db) {
+    return res.status(409).json({
+      error: 'No practice context',
+      message: 'Appointment types are per practice. Sign in, or use the public booking '
+        + 'endpoints that identify the practice by its booking slug.',
+    });
+  }
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { id } = req.params;
 
