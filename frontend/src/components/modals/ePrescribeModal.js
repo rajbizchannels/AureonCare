@@ -1099,17 +1099,14 @@ const EPrescribeModal = ({
                   <p className={`text-sm mt-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                     Try a different search term or NDC code
                   </p>
-                  <div className={`mt-4 p-3 rounded text-left ${theme === 'dark' ? 'bg-slate-900 border border-slate-700' : 'bg-white border border-gray-200'}`}>
-                    <p className={`text-xs font-mono ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
-                      <strong className={theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}>Troubleshooting:</strong>
-                    </p>
-                    <ul className={`text-xs mt-2 space-y-1 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
-                      <li>• Check browser console (F12) for error details</li>
-                      <li>• Ensure migration 015 has been run on the database</li>
-                      <li>• Verify backend server is running on port 3001</li>
-                      <li>• Try common medications: lisinopril, metformin, atorvastatin</li>
-                    </ul>
-                  </div>
+                  {/* A "Troubleshooting" panel used to sit here, telling whoever was
+                      prescribing to open the browser console, check that migration 015 had
+                      run, and confirm the backend was up on port 3001. That is a
+                      developer's checklist on a clinician's screen: none of it is
+                      something a prescriber can act on, and spelling out the internals
+                      makes an empty search result read as a broken product rather than as
+                      a drug that is not in the list. The line above is the part that was
+                      actually advice. */}
                 </div>
               )}
 
