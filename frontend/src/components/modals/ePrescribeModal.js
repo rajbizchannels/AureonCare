@@ -216,7 +216,9 @@ const EPrescribeModal = ({
 
       // Check for specific error types
       if (error.message && error.message.includes('501')) {
-        addNotification('alert', 'ePrescribing functionality requires migration 015 to be run. Please contact your system administrator.');
+        // A migration number is an internal detail; to a prescriber it is noise that
+        // makes the product look half-built. Say what they can do about it instead.
+        addNotification('alert', 'Medication search is not available yet. Please contact your administrator.');
       } else if (error.message && error.message.includes('Failed to fetch')) {
         addNotification('alert', 'Cannot connect to server. Please check if the backend is running.');
       } else if (error.message && error.message.includes('404')) {
@@ -473,8 +475,11 @@ const EPrescribeModal = ({
       console.error('[ePrescribe] Error loading pharmacies:', error);
 
       // Check if it's a "not available" error
-      if (error.message && (error.message.includes('501') || error.message.includes('migration 015'))) {
-        addNotification('alert', 'Pharmacy network requires migration 015. Please contact your administrator.');
+      // Matched on the status alone. The second arm sniffed for the words
+      // "migration 015" in the server's message — a string match on prose, which breaks
+      // the moment that wording changes, as it just has.
+      if (error.message && error.message.includes('501')) {
+        addNotification('alert', 'The pharmacy network is not available yet. Please contact your administrator.');
       } else {
         addNotification('alert', `Failed to load pharmacies: ${error.message}`);
       }

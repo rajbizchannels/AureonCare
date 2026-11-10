@@ -525,7 +525,11 @@ router.post('/:id/send-erx', async (req, res) => {
     if (!hasEPrescribing) {
       return res.status(501).json({
         error: 'ePrescribing functionality not available',
-        message: 'Please run migration 015 to enable ePrescribing features'
+        // Written for whoever ends up reading it on screen. The migration number is
+        // an internal detail: it tells a prescriber nothing they can act on and makes
+        // the product look unfinished. The 501 status is what clients branch on, and
+        // the server log below carries the detail an administrator needs.
+        message: 'ePrescribing is not enabled for this practice yet. Please contact your administrator.'
       });
     }
 
@@ -646,7 +650,11 @@ router.post('/:id/cancel-erx', async (req, res) => {
     if (!hasEPrescribing) {
       return res.status(501).json({
         error: 'ePrescribing functionality not available',
-        message: 'Please run migration 015 to enable ePrescribing features'
+        // Written for whoever ends up reading it on screen. The migration number is
+        // an internal detail: it tells a prescriber nothing they can act on and makes
+        // the product look unfinished. The 501 status is what clients branch on, and
+        // the server log below carries the detail an administrator needs.
+        message: 'ePrescribing is not enabled for this practice yet. Please contact your administrator.'
       });
     }
 
@@ -693,7 +701,11 @@ router.get('/:id/history', async (req, res) => {
     if (!hasEPrescribing) {
       return res.status(501).json({
         error: 'ePrescribing functionality not available',
-        message: 'Please run migration 015 to enable ePrescribing features'
+        // Written for whoever ends up reading it on screen. The migration number is
+        // an internal detail: it tells a prescriber nothing they can act on and makes
+        // the product look unfinished. The 501 status is what clients branch on, and
+        // the server log below carries the detail an administrator needs.
+        message: 'ePrescribing is not enabled for this practice yet. Please contact your administrator.'
       });
     }
 
@@ -725,7 +737,11 @@ router.post('/check-safety', async (req, res) => {
     if (!hasEPrescribing) {
       return res.status(501).json({
         error: 'ePrescribing functionality not available',
-        message: 'Please run migration 015 to enable ePrescribing features'
+        // Written for whoever ends up reading it on screen. The migration number is
+        // an internal detail: it tells a prescriber nothing they can act on and makes
+        // the product look unfinished. The 501 status is what clients branch on, and
+        // the server log below carries the detail an administrator needs.
+        message: 'ePrescribing is not enabled for this practice yet. Please contact your administrator.'
       });
     }
 
@@ -895,7 +911,11 @@ router.post('/:id/refill', async (req, res) => {
     if (!hasEPrescribing) {
       return res.status(501).json({
         error: 'ePrescribing functionality not available',
-        message: 'Please run migration 015 to enable ePrescribing features'
+        // Written for whoever ends up reading it on screen. The migration number is
+        // an internal detail: it tells a prescriber nothing they can act on and makes
+        // the product look unfinished. The 501 status is what clients branch on, and
+        // the server log below carries the detail an administrator needs.
+        message: 'ePrescribing is not enabled for this practice yet. Please contact your administrator.'
       });
     }
 

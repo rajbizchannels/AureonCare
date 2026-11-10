@@ -231,7 +231,9 @@ const DiagnosisForm = ({
 
       // Check for specific error types
       if (error.message && error.message.includes('501')) {
-        addNotification('alert', 'ePrescribing functionality requires migration 015 to be run. Please contact your system administrator.');
+        // See the note in ePrescribeModal: the migration number means nothing to a
+        // clinician and reads as a broken product.
+        addNotification('alert', 'Medication search is not available yet. Please contact your administrator.');
       } else if (error.message && error.message.includes('Failed to fetch')) {
         addNotification('alert', 'Cannot connect to server. Please check if the backend is running.');
       } else if (error.message && error.message.includes('404')) {
