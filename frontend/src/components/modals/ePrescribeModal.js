@@ -216,7 +216,9 @@ const EPrescribeModal = ({
 
       // Check for specific error types
       if (error.message && error.message.includes('501')) {
-        addNotification('alert', 'ePrescribing functionality requires migration 015 to be run. Please contact your system administrator.');
+        // A migration number is an internal detail; to a prescriber it is noise that
+        // makes the product look half-built. Say what they can do about it instead.
+        addNotification('alert', 'Medication search is not available yet. Please contact your administrator.');
       } else if (error.message && error.message.includes('Failed to fetch')) {
         addNotification('alert', 'Cannot connect to server. Please check if the backend is running.');
       } else if (error.message && error.message.includes('404')) {
@@ -473,8 +475,11 @@ const EPrescribeModal = ({
       console.error('[ePrescribe] Error loading pharmacies:', error);
 
       // Check if it's a "not available" error
-      if (error.message && (error.message.includes('501') || error.message.includes('migration 015'))) {
-        addNotification('alert', 'Pharmacy network requires migration 015. Please contact your administrator.');
+      // Matched on the status alone. The second arm sniffed for the words
+      // "migration 015" in the server's message — a string match on prose, which breaks
+      // the moment that wording changes, as it just has.
+      if (error.message && error.message.includes('501')) {
+        addNotification('alert', 'The pharmacy network is not available yet. Please contact your administrator.');
       } else {
         addNotification('alert', `Failed to load pharmacies: ${error.message}`);
       }
@@ -1099,17 +1104,14 @@ const EPrescribeModal = ({
                   <p className={`text-sm mt-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                     Try a different search term or NDC code
                   </p>
-                  <div className={`mt-4 p-3 rounded text-left ${theme === 'dark' ? 'bg-slate-900 border border-slate-700' : 'bg-white border border-gray-200'}`}>
-                    <p className={`text-xs font-mono ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
-                      <strong className={theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}>Troubleshooting:</strong>
-                    </p>
-                    <ul className={`text-xs mt-2 space-y-1 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
-                      <li>• Check browser console (F12) for error details</li>
-                      <li>• Ensure migration 015 has been run on the database</li>
-                      <li>• Verify backend server is running on port 3001</li>
-                      <li>• Try common medications: lisinopril, metformin, atorvastatin</li>
-                    </ul>
-                  </div>
+                  {/* A "Troubleshooting" panel used to sit here, telling whoever was
+                      prescribing to open the browser console, check that migration 015 had
+                      run, and confirm the backend was up on port 3001. That is a
+                      developer's checklist on a clinician's screen: none of it is
+                      something a prescriber can act on, and spelling out the internals
+                      makes an empty search result read as a broken product rather than as
+                      a drug that is not in the list. The line above is the part that was
+                      actually advice. */}
                 </div>
               )}
 
