@@ -192,7 +192,10 @@ const portalLoginHandler = async (req, res) => {
         // Search the blind-index candidates for the verified email first, then the default
         // tenant, then any remaining active tenant. The id is a primary key in every
         // schema, so each probe is a single index lookup.
-        const order = await searchOrderForPatient(req.app.locals.pool, verified.email);
+        // patientId is passed so the patient's own tenant is resolved directly and tried
+        // first. Without it the order ends in an enumeration capped at 100 tenants, and a
+        // patient at the 101st practice was never probed at all.
+        const order = await searchOrderForPatient(req.app.locals.pool, verified.email, patientId);
         let matchedSchema = null;
         for (const cand of order) {
           try {
@@ -222,8 +225,18 @@ const portalLoginHandler = async (req, res) => {
             console.warn(`[portal] social lookup failed in ${cand.schemaName}:`, err.message);
           }
         }
+        // No tenant holds this patient with the portal enabled. Said plainly, because
+        // falling through left `patient` undefined and the handler then read .email off
+        // it — a TypeError, caught upstairs and answered as a 500. A social login that
+        // cannot be placed is a 404, not a server fault, and the difference is what tells
+        // an administrator whether to look at the account or at the server.
+        if (!matchedSchema) {
+          console.warn('[portal] social login: no tenant holds patient', patientId,
+            '— link exists but no portal-enabled patient row was found');
+          return res.status(404).json({ error: 'Social account not linked to a patient' });
+        }
         // Only the winning tenant gets a request-lifetime handle, for the session write.
-        if (matchedSchema) tenantDb = makeTenantDb(req.app.locals.pool, matchedSchema, req.res);
+        tenantDb = makeTenantDb(req.app.locals.pool, matchedSchema, req.res);
       } else {
         return res.status(404).json({ error: 'Social account not linked to a patient' });
       }
