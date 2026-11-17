@@ -128,6 +128,59 @@ const report = (err) => {
   check('the two patients got different ids',
     obj(walkIn.body).id !== obj(withPortal.body).id);
 
+  // ── 3. a 6 PM appointment is still 6 PM when it is read back ──────────────────────
+  // It was not. node-postgres turned the stored wall clock into a JS Date, res.json()
+  // serialised that as "...T18:00:00.000Z" — an instant — and the browser rendered it in
+  // its own timezone, so one hour ahead of the server a 6 PM booking listed as 7 PM.
+  const { rows: [who] } = await pool.query(
+    `SELECT id FROM public.providers WHERE id = $1`, [me.id]);
+  if (!who) {
+    await pool.query(
+      `INSERT INTO public.providers (id, first_name, last_name, specialization, email)
+       VALUES ($1,'A','Health','General',$2) ON CONFLICT (id) DO NOTHING`, [me.id, email]);
+  }
+  const { rows: [tzPat] } = await pool.query(
+    `INSERT INTO ${schema}.patients (id, first_name, last_name, status, mrn, date_of_birth)
+     VALUES (gen_random_uuid(),'Six','PM','Active',$1,'1980-04-02') RETURNING id`,
+    [`MRN-TZ-${RUN}`]);
+
+  const booked = await api('POST', '/api/appointments', {
+    patient_id: tzPat.id, provider_id: me.id, appointment_type: 'Follow-up',
+    start_time: '2026-11-17 18:00:00', end_time: '2026-11-17 18:20:00',
+    duration_minutes: 20, reason: `six pm ${RUN}`, status: 'scheduled',
+  }, tok);
+  check('a 6 PM appointment can be booked', booked.status === 201);
+
+  const listed = await api('GET', '/api/appointments', undefined, tok);
+  const six = (listed.body || []).find((a) => a.reason === `six pm ${RUN}`);
+  check('the appointment comes back in the list', Boolean(six));
+  // The exact characters matter: this is what the browser is handed.
+  // The EXACT characters, not just "contains 18:00:00": in a UTC container the broken
+  // version produced "2026-11-17T18:00:00.000Z", which contains it too, so a looser check
+  // would pass against the very bug this is here to catch.
+  check('THE API RETURNS 18:00 AS A WALL CLOCK, NOT A UTC INSTANT',
+    /^2026-11-17[T ]18:00:00(\.0+)?$/.test(String(obj(six).start_time)));
+  check('and carries no timezone marker to be re-localised by',
+    typeof obj(six).start_time === 'string'
+    && !obj(six).start_time.endsWith('Z') && !/[+-]\d\d:\d\d$/.test(obj(six).start_time));
+  check('the end time is wall-clock too',
+    typeof obj(six).end_time === 'string' && obj(six).end_time.includes('18:20:00'));
+
+  // A date of birth is a date. It used to arrive as "1980-04-02T00:00:00.000Z", which
+  // every browser behind UTC renders as 1 April.
+  const pats = await api('GET', '/api/patients', undefined, tok);
+  const sixPat = (pats.body || []).find((p) => p.mrn === `MRN-TZ-${RUN}`);
+  check('the patient comes back', Boolean(sixPat));
+  check('A DATE OF BIRTH IS A PLAIN DATE, NOT AN INSTANT',
+    obj(sixPat).date_of_birth === '1980-04-02');
+
+  // A timestamptz IS an instant, and must still be one — the fix is scoped to the two
+  // types that carry a calendar value with no zone.
+  const { rows: [tstz] } = await pool.query(
+    "SELECT now() AT TIME ZONE 'UTC' AS plain, now() AS zoned");
+  check('timestamp without time zone comes back as text', typeof tstz.plain === 'string');
+  check('timestamptz still comes back as a Date', tstz.zoned instanceof Date);
+
   // cleanup
   await pool.query('DELETE FROM public.users WHERE id = $1 OR email = $2',
     [me.id, `pt_${RUN}@example.com`]).catch(() => {});
