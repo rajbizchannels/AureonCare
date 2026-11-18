@@ -56,7 +56,8 @@ Then, and on every deploy after:
 
 ```bash
 node backend/run-migrations.js          # global: public + control — applies only what is new
-node backend/run-tenant-migrations.js   # fans tenant/001, 002, 003 out to every tenant schema
+node backend/run-tenant-migrations.js   # fans the tenant/*.sql set (001-011) out to
+                                        # every tenant schema and the golden `template`
 ```
 
 Add `--dry-run` to either to see what would run without touching anything.
@@ -97,6 +98,41 @@ Postgres 16 through `migrate` → `migrate:tenants` → `check:tenant-scoping` �
 isolation suite (10/10) → the app booting and a platform login succeeding.
 
 ---
+
+### What this release adds to the migration run
+
+Four migrations and two tenant migrations, on top of everything above:
+
+| Migration | What it does | Needed before |
+|---|---|---|
+| `086_subscription_change_accounting.sql` | `actor_type`/`actor_label` on `control.audit_log`, `entry_kind` on `control.billing_events`, `current_period_start` on `control.subscriptions` | a practice admin changes their own plan — the audit write names them, and without the column it is a 500 |
+| `tenant/010_ai_integrations.sql` + `087` | the AI tables, then their registration for new tenants | any `/api/ai/*` call |
+| `tenant/011_module_permissions.sql` + `088` | `module_permissions`, and its registration | the Roles & Permissions screen |
+
+Both halves of each pair matter and the order is the usual one: the global runner
+registers a table in `control.tenant_tables` so newly provisioned tenants inherit it; the
+tenant runner creates it in `template` and in every existing schema. Run `migrate` then
+`migrate:tenants`, as always.
+
+Until `088` + `tenant/011` have run, permissions fall back to the built-in role defaults —
+the same behaviour as before the feature existed — so the gap is safe. Until `086` has
+run, a self-serve plan change fails outright.
+
+`backend/scripts/manual/apply-module-permissions.sql` carries both halves of the
+permissions pair for an operator who cannot run node against the database; the other
+manual scripts are listed in `backend/scripts/manual/README.md`.
+
+### Timezone-sensitive data
+
+`db.js` now returns `timestamp without time zone` and `date` as the characters Postgres
+holds, rather than letting node-postgres turn them into a JS `Date` that `res.json()` then
+serialises as a UTC instant. That conversion was shifting appointment times by the
+server/browser offset (a 6 PM booking listed as 7 PM) and moving dates of birth by a day
+for anyone behind UTC. `timestamptz` is untouched and still returns a `Date`, because that
+type genuinely is an instant.
+
+Nothing to run — it is a code change — but it is worth knowing when reading any stored
+timestamp, and `npm run test:endpoints` asserts the wall-clock behaviour end to end.
 
 ## 3. Deploy the application
 

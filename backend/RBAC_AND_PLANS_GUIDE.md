@@ -1,5 +1,31 @@
 # Role-Based Access Control (RBAC) and Plan Management Guide
 
+> ## Read this first: what is enforced, and what is not
+>
+> This guide describes the `roles` / `permissions` / `role_permissions` tables. **Those
+> tables are empty on every installation checked, and no route reads them.** Access is
+> actually decided by two other things:
+>
+> - **`module_permissions`** — a per-practice table, read by
+>   `backend/middleware/modulePermissions.js` and mounted across sixteen routers. This is
+>   the layer that refuses a request. Its modules, resources, roles and actions are
+>   declared in `backend/utils/permissionRegistry.js`, which the admin screen, the write
+>   endpoint and the enforcement all read, so they cannot disagree. Administrators manage
+>   it under Admin Panel → Roles & Permissions.
+> - **`authorize('admin', ...)`** — the coarse role check in `middleware/auth.js`, still
+>   the gate on administrative routes.
+>
+> Plans, feature gates and usage limits below are accurate and live
+> (`middleware/planEnforcement.js`). The multi-language section is accurate.
+>
+> Role *management* is live too, and was fixed recently: creating a role goes through
+> `POST /api/roles`, and the write routes on that router are admin-only — previously any
+> signed-in account could create, rename or delete a role. A role in use by an active user
+> can no longer be deleted out from under them.
+>
+> The RBAC section is kept for the history of the design; treat the registry as the
+> current one.
+
 ## Overview
 
 AureonCare now includes a comprehensive role-based access control system with subscription plan management and multi-language support. This guide covers all new features and how to use them.

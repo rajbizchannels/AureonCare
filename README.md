@@ -375,7 +375,52 @@ AureonCare is an all-in-one healthcare management solution that combines Electro
 - Seed data scripts
 - System monitoring
 
-### 18. 🎨 UI/UX Features
+### 18. 🏕️ Medical Camps
+
+- Plan and run outreach camps: stations, staffing, supplies and the station board
+- On-site registration and the attendee queue
+- Clinical and sponsor reports per camp
+- Gated by the `camps` plan feature (Clinical Pro and above)
+
+### 19. 🩺 Specialty Configuration
+
+- A setup wizard that configures a practice for its specialty
+- 36 starter content packs (appointment types, service categories, offerings, forms,
+  inventory categories, terminology, module visibility and scheduling defaults)
+- Packs are declarative JSON, validated before loading, with preview, seed and upgrade
+- Every pack version carries a clinical review status; applying an unreviewed one needs an
+  explicit acknowledgement
+
+### 20. 📍 Multi-Location
+
+- Several sites under one practice, with a primary site
+- Appointments, patients and camps carry the site they belong to
+
+### 21. 📦 Inventory & 💷 Accounts
+
+- Stock items, categories, suppliers, stock movements and purchase orders
+- Receivables, payables, journal, reconciliations and statements
+- Both covered by the fine-grained permissions below
+
+### 22. 🤖 AI Integrations
+
+- Bring-your-own-key, per practice, with per-feature switches
+- Patient identifiers are replaced with placeholders before anything leaves the practice,
+  and restored in the draft the reviewer sees
+- Nothing is applied without a person: role check, sign-off, reject reason and expiry
+- A cloud provider without a BAA/DPA cannot be enabled for a feature that handles patient
+  data
+
+### 23. 🔑 Fine-Grained Permissions
+
+- Per module, per resource, per role, across six actions (view, create, edit, delete,
+  approve, export) — 11 modules and 32 resources
+- Enforced by middleware across sixteen routers, not only reflected in the interface
+- A practice with nothing saved falls back to the built-in role defaults, so switching it
+  on changes nobody's access until an administrator edits something
+- Administrators are never denied, and the API refuses an attempt to restrict them
+
+### 24. 🎨 UI/UX Features
 
 **Modern Interface**
 - Dark mode / Light mode toggle
@@ -410,7 +455,7 @@ AureonCare is an all-in-one healthcare management solution that combines Electro
 - List views
 - Quick view panels
 
-### 19. 🔒 Security & Compliance
+### 25. 🔒 Security & Compliance
 
 **Security Features**
 - Password hashing with bcrypt
@@ -434,7 +479,7 @@ AureonCare is an all-in-one healthcare management solution that combines Electro
 - Portal session tracking with IP/user agent
 - Complete audit trail
 
-### 20. 🗄️ Database Architecture
+### 26. 🗄️ Database Architecture
 
 **PostgreSQL Database**
 - UUID support for record IDs
@@ -469,7 +514,7 @@ AureonCare is an all-in-one healthcare management solution that combines Electro
 - subscription_plans
 - organization_settings
 
-### 21. 🚀 API Architecture
+### 27. 🚀 API Architecture
 
 **RESTful API Design**
 - 100+ API endpoints
@@ -622,16 +667,41 @@ AureonCare requires the following environment variables:
 
 ## Support & Documentation
 
-For detailed documentation, please visit:
-- API Documentation: `/api/docs`
-- User Guide: Coming soon
-- Developer Guide: Coming soon
+The documentation that exists, and what each is for:
+
+| Document | Use it for |
+|---|---|
+| [`SETUP.md`](SETUP.md) | getting a development environment running |
+| [`DATABASE_SETUP.md`](DATABASE_SETUP.md) | database creation and the migration runners |
+| [`DEPLOYMENT.md`](DEPLOYMENT.md) / [`DEPLOYMENT_CHECKLIST.md`](DEPLOYMENT_CHECKLIST.md) | deploying, and the ordered checklist to follow when you do |
+| [`USER_MANUAL.md`](USER_MANUAL.md) | how the product works, screen by screen |
+| [`ARCHITECTURE_DIAGRAM.md`](ARCHITECTURE_DIAGRAM.md) | how the pieces fit together |
+| [`SEC-05_MULTI_TENANCY_PLAN.md`](SEC-05_MULTI_TENANCY_PLAN.md) | the schema-per-tenant design |
+| [`FEATURE_IMPLEMENTATION_STEPS.md`](FEATURE_IMPLEMENTATION_STEPS.md) | adding a feature that needs tenant tables — read before writing a migration |
+| [`frontend/src/utils/PERMISSIONS_GUIDE.md`](frontend/src/utils/PERMISSIONS_GUIDE.md) | which permission layer actually stops a request |
+| [`backend/migrations/tenant/README.md`](backend/migrations/tenant/README.md) | the rules for a tenant migration |
+| [`backend/scripts/manual/README.md`](backend/scripts/manual/README.md) | applying migrations by hand, without node |
+| [`backend/data/specialty-packs/README.md`](backend/data/specialty-packs/README.md) | authoring and loading a specialty pack |
+| [`SSDLC.md`](SSDLC.md) / [`SAST.md`](SAST.md) | the security development lifecycle and static analysis |
+| [`OAUTH_SETUP.md`](OAUTH_SETUP.md) | configuring Google and Microsoft sign-in |
+| [`docs/FHIR_TRACKING.md`](docs/FHIR_TRACKING.md) | the FHIR exchange |
+| [`mobile/README.md`](mobile/README.md) / [`MOBILE_APP_SCOPE.md`](MOBILE_APP_SCOPE.md) | the mobile app |
+
+API routes are mounted under `/api`; see `backend/server.js` for the full list.
 
 ---
 
 ## Contributing
 
-We welcome contributions! Please see our [Contributing Guidelines](CONTRIBUTING.md) for details.
+We welcome contributions. There is no separate contributing guide; the conventions that
+matter are written down where they apply:
+
+- a feature that needs per-tenant tables — [`FEATURE_IMPLEMENTATION_STEPS.md`](FEATURE_IMPLEMENTATION_STEPS.md)
+- a tenant migration — [`backend/migrations/tenant/README.md`](backend/migrations/tenant/README.md)
+- security expectations — [`SSDLC.md`](SSDLC.md)
+
+Run `npm test` for the suite that covers the area you changed (`npm run` lists them; there
+are 23) and `npm run test:frontend` for the React tests.
 
 ---
 
