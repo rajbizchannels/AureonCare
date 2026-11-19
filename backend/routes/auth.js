@@ -11,7 +11,7 @@ const { tenantForSession, forgetSession } = require('../services/portalRouting')
 const { withTenant } = require('../db/tenantClient');
 const { issuePortalSession, revokePortalSessions } = require('../services/portalSession');
 const { exchangeAuthCode } = require('../utils/oauthExchange');
-const { findUsableInvite, claimInvite } = require('./invites');
+const { findUsableInvite, claimInvite, adoptUnboundAccount } = require('./invites');
 const { resolveDomainClaim } = require('../services/domainJoin');
 const { sendDbError } = require('../utils/dbErrors');
 const {
@@ -968,14 +968,10 @@ const socialLoginHandler = async (req, res) => {
         const bindClient = await pool.connect();
         try {
           await bindClient.query('BEGIN');
-          if (await claimInvite(bindClient, invite.id, user.id)) {
-            const upd = await bindClient.query(
-              `UPDATE users SET practice_id = $2, role = $3, updated_at = NOW()
-                WHERE id = $1 AND practice_id IS NULL RETURNING *`,
-              [user.id, invite.practice_id, invite.role]
-            );
-            if (upd.rows[0]) user = upd.rows[0];
-          }
+          // Keeps only the identity signing in now; other links made before the email was
+          // proved are dropped and earlier sessions revoked (see adoptUnboundAccount).
+          const adopted = await adoptUnboundAccount(bindClient, user.id, invite, { keepSocialId: socialRows[0].id });
+          if (adopted) user = adopted;
           await bindClient.query('COMMIT');
         } catch (bindErr) {
           await bindClient.query('ROLLBACK').catch(() => {});
@@ -1022,6 +1018,24 @@ const socialLoginHandler = async (req, res) => {
         // Check if user is pending
         if (user.status === 'pending') {
           return res.status(403).json({ error: 'Your account is pending approval. Please wait for an administrator to approve your account.' });
+        }
+
+        // An unbound leftover account (no practice) presented with a matching invite is
+        // adopted by the invited person first, so they land in the practice instead of a
+        // dead-end account. This also clears any identity linked before the email was proved.
+        if (invite && !user.practice_id) {
+          const adoptClient = await pool.connect();
+          try {
+            await adoptClient.query('BEGIN');
+            const adopted = await adoptUnboundAccount(adoptClient, user.id, invite);
+            if (adopted) user = adopted;
+            await adoptClient.query('COMMIT');
+          } catch (adoptErr) {
+            await adoptClient.query('ROLLBACK').catch(() => {});
+            console.error('[auth] invite adoption failed:', adoptErr.message);
+          } finally {
+            adoptClient.release();
+          }
         }
 
         await pool.query(`

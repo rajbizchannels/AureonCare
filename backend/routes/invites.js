@@ -94,6 +94,50 @@ async function claimInvite(client, inviteId, userId) {
   return rowCount === 1;
 }
 
+/**
+ * Adopt an UNBOUND account (practice_id NULL) for an invite.
+ *
+ * Such accounts were made by the old self-registration page and the old social sign-in
+ * (SEC-39) and can reach nothing: no practice, no chart, and they never appear in User
+ * Management, so no admin can remove them. Without this, the email they hold could never
+ * be invited ("A user with that email already exists").
+ *
+ * The person redeeming the invite has proved they control the address (they hold the
+ * emailed token, or a provider-verified email matching it). Anything attached to the old
+ * account BEFORE that proof is not trusted: a pre-registered account could carry someone
+ * else's Google/Microsoft identity (account pre-hijacking). So every social link is
+ * removed (except `keepSocialId`, the identity redeeming right now) and token_version is
+ * bumped so no earlier session survives.
+ *
+ * Only ever fills a NULL practice — an invite never moves a user between practices.
+ * Returns the updated user row, or null if the account is not (or no longer) unbound or
+ * the invite was already used. Run inside the caller's transaction.
+ */
+async function adoptUnboundAccount(client, userId, invite, { passwordHash, firstName, lastName, keepSocialId } = {}) {
+  const { rows } = await client.query(
+    `UPDATE public.users
+        SET practice_id   = $2,
+            role          = $3,
+            status        = 'active',
+            password_hash = COALESCE($4, password_hash),
+            first_name    = COALESCE(NULLIF($5, ''), first_name),
+            last_name     = COALESCE(NULLIF($6, ''), last_name),
+            token_version = COALESCE(token_version, 0) + 1,
+            updated_at    = NOW()
+      WHERE id = $1 AND practice_id IS NULL
+      RETURNING *`,
+    [userId, invite.practice_id, invite.role, passwordHash || null, firstName || '', lastName || '']
+  );
+  if (!rows[0]) return null;
+  await client.query(
+    `DELETE FROM public.social_auth
+      WHERE (user_id = $1 OR patient_id = $1) AND ($2::uuid IS NULL OR id <> $2::uuid)`,
+    [userId, keepSocialId || null]
+  );
+  if (!(await claimInvite(client, invite.id, userId))) return null;
+  return rows[0];
+}
+
 // ── Admin: create and manage invites ─────────────────────────────────────────
 
 router.post('/', authenticate, authorize('admin'), async (req, res) => {
@@ -112,9 +156,17 @@ router.post('/', authenticate, authorize('admin'), async (req, res) => {
   const inviteRole = ['admin', 'doctor', 'staff', 'nurse'].includes(role) ? role : 'staff';
 
   try {
-    const dup = await pool.query('SELECT 1 FROM public.users WHERE LOWER(email) = $1', [cleanEmail]);
-    if (dup.rows.length) {
-      return res.status(409).json({ error: 'A user with that email already exists.' });
+    // An existing account blocks the invite only when it belongs to a practice. An unbound
+    // one (practice_id NULL, left by the old self-registration) is adopted on acceptance —
+    // see adoptUnboundAccount — so it no longer locks the address out for good.
+    const dup = await pool.query(
+      'SELECT practice_id FROM public.users WHERE LOWER(email) = $1', [cleanEmail]);
+    if (dup.rows.length && dup.rows[0].practice_id) {
+      return res.status(409).json({
+        error: dup.rows[0].practice_id === req.user.practiceId
+          ? 'That person already has an account in your practice. Find them in User Management.'
+          : 'That email is already used by an account in another practice.',
+      });
     }
 
     // Supersede any outstanding invite for the same address at this practice.
@@ -230,13 +282,23 @@ router.post('/accept', acceptLimiter, async (req, res) => {
     if (!invite) return res.status(404).json({ error: 'This invite is no longer valid.' });
 
     await client.query('BEGIN');
-    const dup = await client.query('SELECT 1 FROM public.users WHERE LOWER(email) = $1', [invite.email]);
+    const hash = await bcrypt.hash(password, BCRYPT_COST);
+    const dup = await client.query(
+      'SELECT id, practice_id FROM public.users WHERE LOWER(email) = $1 FOR UPDATE', [invite.email]);
     if (dup.rows.length) {
-      await client.query('ROLLBACK');
-      return res.status(409).json({ error: 'An account with that email already exists. Please sign in.' });
+      // An unbound leftover account is taken over by the person who holds the invite.
+      const adopted = !dup.rows[0].practice_id
+        ? await adoptUnboundAccount(client, dup.rows[0].id, invite, { passwordHash: hash, firstName, lastName })
+        : null;
+      if (!adopted) {
+        await client.query('ROLLBACK');
+        return res.status(409).json({ error: 'An account with that email already exists. Please sign in.' });
+      }
+      await client.query('COMMIT');
+      const { id, email, first_name, last_name, role } = adopted;
+      return res.status(201).json({ success: true, user: { id, email, first_name, last_name, role } });
     }
 
-    const hash = await bcrypt.hash(password, BCRYPT_COST);
     const { rows } = await client.query(
       `INSERT INTO public.users
          (id, email, first_name, last_name, role, status, password_hash, practice_id, created_at)
@@ -263,4 +325,4 @@ router.post('/accept', acceptLimiter, async (req, res) => {
   }
 });
 
-module.exports = { router, findUsableInvite, claimInvite, hashToken };
+module.exports = { router, findUsableInvite, claimInvite, adoptUnboundAccount, hashToken };

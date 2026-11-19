@@ -55,7 +55,8 @@
     "test:identity-backfill": "node backend/test/security/identity-backfill.test.js",
     "test:portal-invites": "node backend/test/portal/invites.test.js",
     "test:social-signup": "node backend/test/security/social-signup.test.js",
-    "test:session-policy": "node backend/test/security/session-policy.test.js"
+    "test:session-policy": "node backend/test/security/session-policy.test.js",
+    "test:invite-unbound": "node backend/test/security/invite-unbound.test.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.6.0",
