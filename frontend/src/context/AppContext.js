@@ -48,6 +48,7 @@ const clearStoredSession = () => {
     sessionStorage.removeItem('user');
     sessionStorage.removeItem('token');
     sessionStorage.removeItem('portalSessionToken');
+    sessionStorage.removeItem('portalSessionActive');
   } catch (error) {
     /* storage unavailable — nothing to clear */
   }
@@ -120,6 +121,7 @@ const AppProvider = ({ children }) => {
         sessionStorage.removeItem('isAuthenticated');
         sessionStorage.removeItem('user');
         sessionStorage.removeItem('portalSessionToken');
+        sessionStorage.removeItem('portalSessionActive');
       }
     } catch (error) {
       console.error('Error saving authentication status:', error);

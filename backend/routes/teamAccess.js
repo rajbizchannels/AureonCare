@@ -11,7 +11,7 @@ const bcrypt = require('bcryptjs');
 const rateLimit = require('express-rate-limit');
 const { authenticate, authorize } = require('../middleware/auth');
 const { storeFor } = require('../middleware/rateLimitStore');
-const { validatePassword, BCRYPT_COST } = require('../utils/passwordPolicy');
+const { checkNewPassword, BCRYPT_COST } = require('../utils/passwordPolicy');
 const { sendEmail, buildEmailHtml } = require('../services/notificationService');
 const { sendDbError } = require('../utils/dbErrors');
 const {
@@ -287,7 +287,7 @@ router.post('/join', joinLimiter, async (req, res) => {
   if (!domainOf(cleanEmail)) {
     return res.status(400).json({ error: 'A valid email address is required' });
   }
-  const pw = validatePassword(password);
+  const pw = await checkNewPassword(password);
   if (!pw.valid) return res.status(400).json({ error: pw.message });
 
   const client = await pool.connect();

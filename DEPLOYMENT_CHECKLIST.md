@@ -27,8 +27,15 @@ the repo, and (for `AC_MSG_KEY`) **not** alongside the backups it protects.
 |---|---|---|
 | `AC_MSG_KEY` | Encrypts PHI backups (SEC-26) and messages | Derived from `AC_TK_S` — rotating `AC_TK_S` would then make existing backups **unrecoverable** |
 | `AC_PLAT_S` | Signs super-admin console tokens (SEC-10/S10) | `/api/platform/*` returns 503; rest of the app unaffected |
-| `AC_IDX_K` | Blind-index pepper for portal tenant routing (SEC-05) | Portal always resolves to the default tenant |
+| `AC_IDX_K` | Blind-index pepper for portal tenant routing (SEC-05) | Portal **password** login only searches the default practice — patients of every other practice get "Invalid credentials" |
 | `AC_RD_H` (+ `AC_RD_P`, `AC_RD_W`) or `AC_RD_URL` | Shared rate limits and send quotas (SEC-21/24) | Limits and quotas are **per instance** — much weaker on Vercel |
+
+Not secrets, but new in this release:
+
+| Variable | Purpose | Default |
+|---|---|---|
+| `AC_PW_BREACH_CHECK` | Refuse new passwords found in public breach lists (SEC-12), via the Have I Been Pwned range API — only the first 5 hex characters of the password's SHA-1 leave the server. Needs outbound HTTPS to `api.pwnedpasswords.com`. If unreachable, the password is **accepted** and a warning logged. | `true`; set `false` for an air-gapped install |
+| `AC_PW_BREACH_TIMEOUT_MS` | How long to wait for that API before failing open | `2000` |
 
 - [ ] `AC_MSG_KEY` set **and escrowed separately from backups**
 - [ ] `AC_PLAT_S` set (≥32 bytes)
@@ -101,13 +108,14 @@ isolation suite (10/10) → the app booting and a platform login succeeding.
 
 ### What this release adds to the migration run
 
-Four migrations and two tenant migrations, on top of everything above:
+Four global migrations and two tenant migrations, on top of everything above:
 
 | Migration | What it does | Needed before |
 |---|---|---|
 | `086_subscription_change_accounting.sql` | `actor_type`/`actor_label` on `control.audit_log`, `entry_kind` on `control.billing_events`, `current_period_start` on `control.subscriptions` | a practice admin changes their own plan — the audit write names them, and without the column it is a 500 |
 | `tenant/010_ai_integrations.sql` + `087` | the AI tables, then their registration for new tenants | any `/api/ai/*` call |
 | `tenant/011_module_permissions.sql` + `088` | `module_permissions`, and its registration | the Roles & Permissions screen |
+| `089_public_booking_routing.sql` | `control.booking_slug_route`: maps a public booking link to its practice, backfilled from existing links (SEC-30). Booking links become unique **across** practices; a collision is reported as a WARNING in the migration output and that link stays unreachable until renamed | the public booking page `/book/<slug>` — without it every anonymous booking call fails |
 
 Both halves of each pair matter and the order is the usual one: the global runner
 registers a table in `control.tenant_tables` so newly provisioned tenants inherit it; the

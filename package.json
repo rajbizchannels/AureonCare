@@ -41,7 +41,11 @@
     "test:frontend": "cd frontend && CI=true npm test -- --watchAll=false",
     "test:record-numbers": "node backend/test/records/numbers.test.js",
     "test:ai": "node backend/test/ai/ai.test.js",
-    "test:ai-anonymizer": "node backend/test/ai/anonymizer.test.js"
+    "test:ai-anonymizer": "node backend/test/ai/anonymizer.test.js",
+    "check:jwt": "node backend/scripts/check-jwt-algorithms.js",
+    "check:frontend-logs": "node backend/scripts/check-frontend-logs.js",
+    "test:edi-fuzz": "node backend/test/edi/parser-fuzz.test.js",
+    "test:security-open-items": "node backend/test/security/open-items.test.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.6.0",

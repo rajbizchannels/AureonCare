@@ -5,9 +5,9 @@ const crypto = require('crypto');
 const { signToken, authenticate } = require('../middleware/auth');
 const { validateSocialToken } = require('../utils/socialTokenValidator');
 const { sendEmail, buildEmailHtml } = require('../services/notificationService');
-const { BCRYPT_COST, validatePassword } = require('../utils/passwordPolicy');
-const { issueAuthCookies, clearAuthCookies } = require('../utils/authCookies');
-const { issuePortalSession } = require('../services/portalSession');
+const { BCRYPT_COST, checkNewPassword } = require('../utils/passwordPolicy');
+const { issueAuthCookies, clearAuthCookies, issuePortalCookies } = require('../utils/authCookies');
+const { issuePortalSession, revokePortalSessions } = require('../services/portalSession');
 const { exchangeAuthCode } = require('../utils/oauthExchange');
 const { findUsableInvite, claimInvite } = require('./invites');
 const { resolveDomainClaim } = require('../services/domainJoin');
@@ -143,6 +143,9 @@ router.post('/login', async (req, res) => {
       userAgent: req.get('user-agent'),
     });
 
+    // SEC-15: the portal session travels in its own HttpOnly cookie, sharing this CSRF token.
+    if (portalSession) issuePortalCookies(res, portalSession.sessionToken, { expiresAt: portalSession.expiresAt, csrfToken });
+
     res.json({
       message: 'Login successful',
       token,
@@ -170,7 +173,7 @@ router.post('/change-password', authenticate, async (req, res) => {
     }
 
     // SEC-12: enforce the shared password policy (length + complexity)
-    const pwCheck = validatePassword(newPassword);
+    const pwCheck = await checkNewPassword(newPassword);
     if (!pwCheck.valid) {
       return res.status(400).json({ error: pwCheck.message });
     }
@@ -206,7 +209,7 @@ router.post('/change-password', authenticate, async (req, res) => {
     );
 
     // SEC-18: also revoke any active patient-portal sessions for this account.
-    await pool.query('DELETE FROM patient_portal_sessions WHERE patient_id = $1', [userId]);
+    await revokePortalSessions(pool, userId); // in the user's tenant schema, not public
 
     const token = signToken({
       id: userId,
@@ -651,7 +654,7 @@ router.post('/logout', authenticate, async (req, res) => {
       'UPDATE users SET token_version = token_version + 1, updated_at = NOW() WHERE id = $1',
       [userId]
     );
-    await pool.query('DELETE FROM patient_portal_sessions WHERE patient_id = $1', [userId]);
+    await revokePortalSessions(pool, userId); // in the user's tenant schema, not public
 
     // SEC-15: drop the browser's session + CSRF cookies as well as revoking server-side.
     clearAuthCookies(res);
@@ -742,7 +745,7 @@ router.post('/reset-password', async (req, res) => {
     }
 
     // SEC-12: enforce the shared password policy (length + complexity)
-    const pwCheck = validatePassword(newPassword);
+    const pwCheck = await checkNewPassword(newPassword);
     if (!pwCheck.valid) {
       return res.status(400).json({ error: pwCheck.message });
     }
@@ -773,7 +776,7 @@ router.post('/reset-password', async (req, res) => {
       'UPDATE users SET password_hash = $1, reset_token = NULL, reset_token_expires = NULL, token_version = token_version + 1, updated_at = NOW() WHERE id = $2',
       [newPasswordHash, user.id]
     );
-    await pool.query('DELETE FROM patient_portal_sessions WHERE patient_id = $1', [user.id]);
+    await revokePortalSessions(pool, user.id); // in the user's tenant schema, not public
 
     res.json({ message: 'Password reset successfully' });
   } catch (error) {
@@ -1139,6 +1142,8 @@ const socialLoginHandler = async (req, res) => {
       ip: req.ip,
       userAgent: req.get('user-agent'),
     });
+
+    if (portalSession) issuePortalCookies(res, portalSession.sessionToken, { expiresAt: portalSession.expiresAt, csrfToken });
 
     res.json({
       message: 'Social login successful',

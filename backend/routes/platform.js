@@ -36,7 +36,7 @@ const router = new Proxy(baseRouter, {
 const { signPlatformToken, requirePlatformAdmin, requireSecret, requireOperatorRole } = require('../middleware/platformAuth');
 const { logPlatformAction } = require('../services/platformAudit');
 const { withTenant } = require('../db/tenantClient');
-const { BCRYPT_COST, validatePassword } = require('../utils/passwordPolicy');
+const { BCRYPT_COST, checkNewPassword } = require('../utils/passwordPolicy');
 const { invalidateEntitlements } = require('../services/entitlements');
 const { provisionTenant } = require('../services/tenantProvisioning');
 const billing = require('../services/platformBilling');
@@ -937,7 +937,7 @@ router.post('/operators', requireOperatorRole('owner'), async (req, res) => {
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(clean)) {
     return res.status(400).json({ error: 'A valid email address is required.' });
   }
-  const pw = validatePassword(password);
+  const pw = await checkNewPassword(password);
   if (!pw.valid) return res.status(400).json({ error: pw.message });
 
   const hash = await bcrypt.hash(password, BCRYPT_COST);

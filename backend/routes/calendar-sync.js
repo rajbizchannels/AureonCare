@@ -96,11 +96,11 @@ const authorizePatientAccess = async (req, res, next) => {
  * record and bind their Google account to it.
  */
 const signOAuthState = (patientId, userId) =>
-  jwt.sign({ patientId: String(patientId), uid: String(userId) }, JWT_SECRET, { expiresIn: '10m' });
+  jwt.sign({ patientId: String(patientId), uid: String(userId) }, JWT_SECRET, { expiresIn: '10m', algorithm: 'HS256' });
 
 const verifyOAuthState = (state) => {
   try {
-    return jwt.verify(state, JWT_SECRET);
+    return jwt.verify(state, JWT_SECRET, { algorithms: ['HS256'] }); // SEC-11
   } catch (err) {
     return null;
   }

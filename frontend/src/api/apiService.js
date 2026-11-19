@@ -11,6 +11,10 @@ const API_BASE_URL = process.env.REACT_APP_SVC_URL || '/api';
 
 // True when the API shares the SPA's origin — the condition under which the session
 // cookie alone is sufficient and no token needs to be kept in JS-readable storage.
+// SEC-15: records that a portal session exists. Not a credential — the session itself is
+// in the HttpOnly ac_portal cookie.
+export const PORTAL_MARKER = 'portalSessionActive';
+
 const API_IS_SAME_ORIGIN = (() => {
   try {
     if (API_BASE_URL.startsWith('/')) return true;
@@ -628,7 +632,10 @@ const api = {
   // routers — so each call picks its path from the credential actually held.
   _hasPortalSession: () => {
     try {
-      return Boolean(sessionStorage.getItem('portalSessionToken') && !sessionStorage.getItem('token'));
+      // SEC-15: the portal session itself is in an HttpOnly cookie; this marker only
+      // records that one exists. The token is present only in the cross-origin fallback.
+      const portal = sessionStorage.getItem(PORTAL_MARKER) || sessionStorage.getItem('portalSessionToken');
+      return Boolean(portal && !sessionStorage.getItem('token'));
     } catch {
       return false;
     }
@@ -641,7 +648,7 @@ const api = {
    */
   getPatientFormRequests: async (patientId) => {
     if (api._hasPortalSession()) {
-      const response = await fetch(`${API_BASE_URL}/patient-portal/${patientId}/form-requests`, {
+      const response = await authenticatedFetch(`${API_BASE_URL}/patient-portal/${patientId}/form-requests`, {
         headers: api._getPortalAuthHeader(),
       });
       if (!response.ok) throw new Error('Failed to load requested forms');
@@ -656,8 +663,8 @@ const api = {
     const url = usePortal
       ? `${API_BASE_URL}/patient-portal/${patientId}/medical-records/${recordId}/attachments/${attachmentId}`
       : `${API_BASE_URL}/medical-records/${recordId}/attachments/${attachmentId}`;
-    const response = await fetch(url, {
-      headers: usePortal ? api._getPortalAuthHeader() : getAuthHeaders(),
+    const response = await authenticatedFetch(url, {
+      headers: usePortal ? api._getPortalAuthHeader() : {},
     });
     if (!response.ok) throw new Error('Failed to download document');
     return response.blob();
@@ -669,8 +676,8 @@ const api = {
     const url = usePortal
       ? `${API_BASE_URL}/patient-portal/${patientId}/form-requests/${submissionId}/document`
       : `${API_BASE_URL}/form-management/submissions/${submissionId}/document`;
-    const response = await fetch(url, {
-      headers: usePortal ? api._getPortalAuthHeader() : getAuthHeaders(),
+    const response = await authenticatedFetch(url, {
+      headers: usePortal ? api._getPortalAuthHeader() : {},
     });
     if (!response.ok) throw new Error('Failed to download document');
     return response.blob();
@@ -682,11 +689,9 @@ const api = {
     const url = usePortal
       ? `${API_BASE_URL}/patient-portal/${patientId}/form-requests/${submissionId}/acknowledge`
       : `${API_BASE_URL}/form-management/submissions/${submissionId}/acknowledge`;
-    const response = await fetch(url, {
+    const response = await authenticatedFetch(url, {
       method: 'POST',
-      headers: usePortal
-        ? { 'Content-Type': 'application/json', ...api._getPortalAuthHeader() }
-        : getAuthHeaders(),
+      headers: usePortal ? api._getPortalAuthHeader() : {},
     });
     if (!response.ok) {
       const detail = await response.json().catch(() => ({}));
@@ -1093,9 +1098,13 @@ const api = {
   },
 
   // Patient Portal
-  // Returns the current portal session token from sessionStorage (set after login).
+  // SEC-15: a browser normally authenticates to the portal with the HttpOnly ac_portal
+  // cookie, which authenticatedFetch sends along with the CSRF header. A Bearer token is
+  // added only in the cross-origin deployment, where the token is the fallback for
+  // browsers that block third-party cookies (the same exception as the staff JWT).
   _getPortalAuthHeader: () => {
-    const token = sessionStorage.getItem('portalSessionToken');
+    let token = null;
+    try { token = sessionStorage.getItem('portalSessionToken'); } catch { /* unavailable */ }
     return token ? { Authorization: `Bearer ${token}` } : {};
   },
   // SEC-20: portal authorization-code exchange. The browser holds only a single-use code;
@@ -4004,31 +4013,39 @@ const api = {
   // ── Public provider booking (/book/<slug>) ─────────────────────────────────
   // These endpoints are open, but they still go through API_BASE_URL so the
   // page works when the frontend and backend are on different origins.
+  // SEC-30: the booking page has no session, so every public call names the practice by
+  // its booking slug (X-Booking-Slug). The server resolves the slug to the practice and
+  // only serves that link's own provider. Remembered from the config lookup, which every
+  // visit to /book/<slug> starts with.
+  _publicBookingSlug: null,
+  _publicBookingHeaders: () => (api._publicBookingSlug ? { 'X-Booking-Slug': api._publicBookingSlug } : {}),
   getPublicBookingConfig: async (slug) => {
+    api._publicBookingSlug = slug;
     const r = await authenticatedFetch(`${API_BASE_URL}/scheduling/booking-config/slug/${encodeURIComponent(slug)}`);
     if (!r.ok) throw new Error('Provider not found or booking not available');
     return r.json();
   },
   getPublicAppointmentTypes: async (providerId) => {
-    const r = await authenticatedFetch(`${API_BASE_URL}/scheduling/appointment-types/${encodeURIComponent(providerId)}`);
+    const r = await authenticatedFetch(`${API_BASE_URL}/scheduling/appointment-types/${encodeURIComponent(providerId)}`, { headers: api._publicBookingHeaders() });
     if (!r.ok) throw new Error('Failed to fetch appointment types');
     return r.json();
   },
   getPublicAvailableDates: async (providerId, { startDate, endDate, appointmentTypeId }) => {
     const query = new URLSearchParams({ startDate, endDate, appointmentTypeId }).toString();
-    const r = await authenticatedFetch(`${API_BASE_URL}/scheduling/available-dates/${encodeURIComponent(providerId)}?${query}`);
+    const r = await authenticatedFetch(`${API_BASE_URL}/scheduling/available-dates/${encodeURIComponent(providerId)}?${query}`, { headers: api._publicBookingHeaders() });
     if (!r.ok) throw new Error('Failed to fetch available dates');
     return r.json();
   },
   getPublicAvailableSlots: async (providerId, { date, appointmentTypeId }) => {
     const query = new URLSearchParams({ date, appointmentTypeId }).toString();
-    const r = await authenticatedFetch(`${API_BASE_URL}/scheduling/slots/${encodeURIComponent(providerId)}?${query}`);
+    const r = await authenticatedFetch(`${API_BASE_URL}/scheduling/slots/${encodeURIComponent(providerId)}?${query}`, { headers: api._publicBookingHeaders() });
     if (!r.ok) throw new Error('Failed to fetch available slots');
     return r.json();
   },
   bookPublicAppointment: async (payload) => {
     const r = await authenticatedFetch(`${API_BASE_URL}/scheduling/book`, {
       method: 'POST',
+      headers: api._publicBookingHeaders(),
       body: JSON.stringify(payload)
     });
     if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to book appointment'); }
@@ -4059,22 +4076,28 @@ const api = {
     try {
       sessionStorage.removeItem('token');
       sessionStorage.removeItem('portalSessionToken');
+      sessionStorage.removeItem(PORTAL_MARKER);
     } catch (e) {
       console.error('Failed to clear token:', e);
     }
   },
-  // A login response carries portalSessionToken only when the account is a patient with
-  // portal access. Unlike the JWT above this is always persisted, same-origin or not: the
-  // portal's router.param guard reads the Authorization header and nothing else, so there
-  // is no cookie to fall back on. This mirrors what PatientLoginPage already does after a
-  // direct portal login.
-  _storePortalSessionToken: (data) => {
-    if (!data || !data.portalSessionToken) return data;
+  // SEC-15: the server delivers the portal session as an HttpOnly cookie, so the token is
+  // NOT kept in JS-readable storage — only a marker saying a portal session exists. As
+  // with storeToken, the token itself is kept only in the cross-origin deployment, where
+  // a browser blocking third-party cookies could otherwise not authenticate at all.
+  storePortalSession: (sessionToken) => {
+    if (!sessionToken) return;
     try {
-      sessionStorage.setItem('portalSessionToken', data.portalSessionToken);
+      sessionStorage.setItem(PORTAL_MARKER, '1');
+      if (!API_IS_SAME_ORIGIN) sessionStorage.setItem('portalSessionToken', sessionToken);
     } catch (e) {
-      console.error('Failed to store portal session token:', e);
+      console.error('Failed to record portal session:', e);
     }
+  },
+  // A login response carries portalSessionToken only when the account is a patient with
+  // portal access.
+  _storePortalSessionToken: (data) => {
+    if (data && data.portalSessionToken) api.storePortalSession(data.portalSessionToken);
     return data;
   },
   // SEC-16: revoke the session server-side before dropping local state. Bumps the
@@ -4327,9 +4350,11 @@ const api = {
     }
     // If a portal session token is present, revoke it server-side too.
     try {
+      // The session is normally in the HttpOnly cookie, which the server reads; the token
+      // is only passed when the cross-origin fallback holds one.
       const portalToken = sessionStorage.getItem('portalSessionToken');
-      if (portalToken) {
-        await api.patientPortalLogout(portalToken);
+      if (portalToken || sessionStorage.getItem(PORTAL_MARKER)) {
+        await api.patientPortalLogout(portalToken || undefined);
       }
     } catch (e) {
       console.error('Portal logout failed (clearing local session anyway):', e);

@@ -13,6 +13,14 @@ const { resolveTenantForUser } = require('../services/tenantCatalog');
 const { makeTenantDb } = require('../db/requestTenantDb');
 const { withTenant } = require('../db/tenantClient');
 const { sendDbError } = require('../utils/dbErrors');
+// Was never imported: POST /register threw ReferenceError (500) on every call.
+const { BCRYPT_COST, checkNewPassword } = require('../utils/passwordPolicy');
+// A real bcrypt hash of a random value, compared against when no account matches so a
+// miss costs the same time as a hit (no account enumeration by timing). It was referenced
+// below but only ever defined in routes/auth.js, so every portal password login that
+// reached it threw ReferenceError and answered 500.
+const DUMMY_PASSWORD_HASH = '$2a$12$C6UzMDM.H6dfI/f/IKcEeO3z8kU0m9Yb0aH3mHqz9uJm8lTgqQG0K';
+const { getPortalCookie, issuePortalCookies, clearPortalCookie } = require('../utils/authCookies');
 const {
   tenantForSession, candidateTenantsForEmail, registerSession, forgetSession, registerIdentity,
   defaultTenant, searchOrderForPatient,
@@ -64,12 +72,18 @@ const hashToken = (token) => crypto.createHash('sha256').update(token).digest('h
 // Runs automatically for every route that includes :patientId in its path.
 router.param('patientId', async (req, res, next, patientId) => {
   try {
+    // SEC-15: a browser presents the session in the HttpOnly ac_portal cookie, which page
+    // script cannot read. A Bearer header is still accepted for non-browser clients (it
+    // cannot be forged cross-site, so it needs no CSRF token). Header wins, as in
+    // middleware/auth.js, so a stale cookie never shadows an explicit token.
     const authHeader = req.headers['authorization'];
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    const token = (authHeader && authHeader.startsWith('Bearer '))
+      ? authHeader.slice(7)
+      : getPortalCookie(req);
+    if (!token) {
       return res.status(401).json({ error: 'Portal session required' });
     }
 
-    const token = authHeader.slice(7);
     const tokenHash = hashToken(token);
     const basePool = req.app.locals.pool;
 
@@ -337,10 +351,15 @@ const portalLoginHandler = async (req, res) => {
     // a portal session looks role-less and falls through to the staff shell.
     const { portal_password_hash, ...patientData } = patient;
 
+    // SEC-15: the browser authenticates with this HttpOnly cookie from now on. The token
+    // is still in the body for non-browser clients, but the web app no longer stores it.
+    const csrfToken = issuePortalCookies(res, sessionToken, { expiresAt });
+
     res.json({
       message: 'Login successful',
       patient: { ...patientData, role: 'patient' },
       sessionToken,
+      csrfToken,
       expiresAt
     });
   } catch (error) {
@@ -389,10 +408,9 @@ router.post('/register', authenticate, async (req, res) => {
       console.log(`[DEBUG sec02-register] blocked: patient ${req.user.id} tried to register portal for ${patientId}`);
       return res.status(403).json({ error: 'You may only enable the portal for your own account' });
     }
-    console.log(`[DEBUG sec02-register] caller=${req.user.id} role=${req.user.role} target=${patientId}`);
 
     // SEC-12: enforce the shared password policy before enabling the portal
-    const pwCheck = validatePassword(password);
+    const pwCheck = await checkNewPassword(password);
     if (!pwCheck.valid) {
       return res.status(400).json({ error: pwCheck.message });
     }
@@ -971,10 +989,13 @@ router.post('/:patientId/link-social', async (req, res) => {
 router.post('/logout', async (req, res) => {
   try {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped on /:patientId routes
-    const { sessionToken } = req.body;
+    // SEC-15: the browser's session is in the cookie; the body token remains for
+    // non-browser clients.
+    const sessionToken = (req.body && req.body.sessionToken) || getPortalCookie(req);
 
     // Sessions are stored hashed — hash the presented token to find the row.
     const logoutHash = sessionToken ? hashToken(sessionToken) : null;
+    clearPortalCookie(res);
 
     // SEC-05 (Option D): resolve the tenant from the routing table so the session is
     // deleted from the schema it actually lives in, then drop the routing entry.

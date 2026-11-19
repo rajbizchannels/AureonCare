@@ -41,8 +41,14 @@ router.post('/835/upload', upload.single('file'), async (req, res) => {
       });
     }
 
-    // Parse the file
-    const parsed835 = parse835File(fileContent);
+    // Parse the file. A file can pass the header checks above and still be malformed;
+    // that is the uploader's to fix, so it is a 400 naming the problem, not a 500.
+    let parsed835;
+    try {
+      parsed835 = parse835File(fileContent);
+    } catch (parseError) {
+      return res.status(400).json({ error: 'Invalid EDI 835 file', details: [parseError.message] });
+    }
 
     // Get claim numbers from parsed data
     const claimNumbers = parsed835.claims.map(c => c.claimNumber);

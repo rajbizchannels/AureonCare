@@ -13,7 +13,7 @@
 const crypto = require('crypto');
 const { withTenant } = require('../db/tenantClient');
 const { resolveTenantForUser } = require('./tenantCatalog');
-const { registerSession, defaultTenant } = require('./portalRouting');
+const { registerSession, forgetSession, defaultTenant } = require('./portalRouting');
 
 // Matches the portal login's own TTL.
 const PORTAL_SESSION_TTL_MS = 24 * 60 * 60 * 1000;
@@ -93,4 +93,37 @@ const issuePortalSession = async (pool, user, meta = {}) => {
   }
 };
 
-module.exports = { issuePortalSession, PORTAL_SESSION_TTL_MS };
+/**
+ * Revoke every portal session a user holds (SEC-16/SEC-18: logout, password change and
+ * reset must end portal sessions too).
+ *
+ * patient_portal_sessions is a tenant table. These callers used to delete from it through
+ * the shared pool, whose search_path is `public`, where the table no longer exists since
+ * the SEC-05 cutover — so change-password, logout and reset-password all failed with
+ * 42P01 instead of revoking anything. This deletes in the user's own schema and drops the
+ * matching routing entries.
+ *
+ * Never throws: the credential change it follows has already been committed, and failing
+ * the response afterwards would tell the user it had not. A failure is logged as an error.
+ *
+ * @returns {Promise<number>} sessions revoked
+ */
+const revokePortalSessions = async (pool, userId) => {
+  try {
+    const tenant = await resolveTenantForUser(pool, userId);
+    const schemaName = tenant && tenant.schemaName;
+    if (!schemaName || schemaName === 'public') return 0;
+    const hashes = await withTenant(pool, schemaName, async (client) => {
+      const { rows } = await client.query(
+        'DELETE FROM patient_portal_sessions WHERE patient_id = $1 RETURNING session_token', [userId]);
+      return rows.map((r) => r.session_token);
+    });
+    for (const h of hashes) await forgetSession(pool, h);
+    return hashes.length;
+  } catch (error) {
+    console.error('[portalSession] could not revoke portal sessions for user', userId, '-', error.message);
+    return 0;
+  }
+};
+
+module.exports = { issuePortalSession, revokePortalSessions, PORTAL_SESSION_TTL_MS };
