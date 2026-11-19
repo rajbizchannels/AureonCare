@@ -907,7 +907,7 @@ const socialLoginHandler = async (req, res) => {
       const userResult = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
 
       if (userResult.rows.length === 0) {
-        return res.status(404).json({ error: 'User not found. Please register a new account.' });
+        return res.status(404).json({ error: 'No account found. Ask your practice to send you an invitation.' });
       }
 
       user = userResult.rows[0];
@@ -991,9 +991,31 @@ const socialLoginHandler = async (req, res) => {
         `, [user.id, provider, canonicalProviderId, accessToken, refreshToken, JSON.stringify(profileData)]);
 
       } else {
+        // A NEW account is created only when something says which practice it belongs to:
+        //   * a staff invitation (matched to the provider-verified email above), or
+        //   * a provider-verified email at a domain a practice has claimed and verified.
+        // Both halves of the second are required: a claim without a provider-verified
+        // email would let anyone type a colleague's address, and a verified email at an
+        // unclaimed domain says nothing about where they belong.
+        //
+        // Anything else used to fall through to a patient "self-registration" with no
+        // practice — an account that could never reach a chart (SEC-39). Patients join
+        // through their practice's portal invitation (routes/portalInvites.js), so an
+        // unknown identity with neither is refused and nothing is written.
+        const domainClaim = (!invite && providerEmailVerified)
+          ? await resolveDomainClaim(pool, email)
+          : null;
+        if (!invite && !domainClaim) {
+          return res.status(404).json({
+            error: `No account found for ${email}. Ask your practice to send you an invitation.`,
+            noAccount: true,
+          });
+        }
+        const claimPending = Boolean(domainClaim) && domainClaim.join_policy === 'auto_request';
+
         isNewUser = true;
-        // Create new active patient user — use a transaction so that a failure in
-        // patient/role/social_auth creation does not leave an orphaned users row.
+        // Create the user in a transaction so a failure in role/social_auth creation does
+        // not leave an orphaned users row.
         const sl_client = await pool.connect();
         try {
           await sl_client.query('BEGIN');
@@ -1001,22 +1023,8 @@ const socialLoginHandler = async (req, res) => {
           const sl_firstName = firstName || '';
           const sl_lastName = lastName || '';
 
-          // No invite, but the provider vouched for this address and its domain may be
-          // claimed by a practice. Both halves are required: a claim without a
-          // provider-verified email would let anyone type a colleague's address, and a
-          // verified email at an unclaimed domain says nothing about where they belong.
-          // `auto_request` creates the account in 'pending' — the login route already
-          // refuses that with a clear message — rather than letting an unbound account
-          // through to an empty workspace.
-          const domainClaim = (!invite && providerEmailVerified)
-            ? await resolveDomainClaim(pool, email)
-            : null;
-          const claimPending = Boolean(domainClaim) && domainClaim.join_policy === 'auto_request';
-
-          // An invite makes this a STAFF signup: the account is created with the inviting
-          // practice's id and role. Without one it stays a patient self-registration, as
-          // before. practice_id set here is what binds every later request to a tenant —
-          // an unbound user resolves to `public`, which holds no tenant tables.
+          // An invite or a domain claim makes this a STAFF account with that practice's id
+          // and role. practice_id set here is what binds every later request to a tenant.
           const newUserResult = await sl_client.query(`
             INSERT INTO users (id, email, first_name, last_name, role, status, avatar, practice_id, created_at, updated_at)
             VALUES (gen_random_uuid(), $1, $2, $3, $5, $7, $4, $6, NOW(), NOW())
@@ -1026,8 +1034,8 @@ const socialLoginHandler = async (req, res) => {
             sl_firstName,
             sl_lastName,
             `${(sl_firstName[0] || '')}${(sl_lastName[0] || '')}`.toUpperCase(),
-            invite ? invite.role : (domainClaim ? domainClaim.default_role : 'patient'),
-            invite ? invite.practice_id : (domainClaim ? domainClaim.practice_id : null),
+            invite ? invite.role : domainClaim.default_role,
+            invite ? invite.practice_id : domainClaim.practice_id,
             claimPending ? 'pending' : 'active'
           ]);
 
@@ -1047,65 +1055,6 @@ const socialLoginHandler = async (req, res) => {
               [domainClaim.practice_id, user.id, email, domainClaim.default_role, `oauth:${provider}`]
             );
           }
-
-          // Staff do not get a patient chart. Skip straight past patient/role creation —
-          // the rest of this block is the patient self-registration path. A domain claim
-          // makes this a staff signup just as an invite does, so it skips it too;
-          // otherwise a new clinician would silently acquire a patient record.
-          if (!invite && !domainClaim) {
-          // SEC-05: `patients` and `roles` moved into the tenant schemas at the 068 cutover,
-          // and sl_client is a RAW pool connection whose search_path is the default — so
-          // these reads resolved against `public`, where the tables no longer exist, and
-          // every new social sign-up died with 42P01 reported as "Social login failed".
-          //
-          // A patient self-registering has no tenant context to pin: no invite, no domain
-          // claim, no session. There is genuinely no schema to write a chart into. Rather
-          // than fail the sign-in, create the account and skip the chart — which is the
-          // same unallocated state this path already produced, and which
-          // GET /api/auth/tenant-status explains. The savepoint keeps the skip from
-          // aborting the surrounding transaction.
-          await sl_client.query('SAVEPOINT patient_chart');
-          try {
-          // Create patient record — patients.id = users.id in current schema
-          const sl_patientCheck = await sl_client.query(
-            'SELECT id FROM patients WHERE id = $1 OR email = $2 LIMIT 1',
-            [user.id, user.email]
-          );
-          if (sl_patientCheck.rows.length === 0) {
-            const sl_mrnResult = await sl_client.query(
-              "SELECT MAX(CAST(SUBSTRING(mrn FROM 5) AS INTEGER)) as max_mrn FROM patients WHERE mrn LIKE 'MRN-%'"
-            );
-            const sl_mrn = `MRN-${(sl_mrnResult.rows[0].max_mrn || 1000) + 1}`;
-            await sl_client.query(
-              `INSERT INTO patients (id, first_name, last_name, mrn, date_of_birth, email, status, created_at, updated_at)
-               VALUES ($1, $2, $3, $4, '1990-01-01', $5, 'active', NOW(), NOW())`,
-              [user.id, sl_firstName, sl_lastName, sl_mrn, user.email]
-            );
-          }
-
-          // Assign patient role
-          const sl_roleResult = await sl_client.query(
-            "SELECT id FROM roles WHERE name = 'patient' AND is_active = true LIMIT 1"
-          );
-          if (sl_roleResult.rows.length > 0) {
-            await sl_client.query(
-              `INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
-              [user.id, sl_roleResult.rows[0].id]
-            );
-          }
-          await sl_client.query('RELEASE SAVEPOINT patient_chart');
-          } catch (chartErr) {
-            await sl_client.query('ROLLBACK TO SAVEPOINT patient_chart');
-            // Only a missing relation is tolerated. Anything else is a real fault and must
-            // still fail the sign-in rather than silently producing a half-made account.
-            if (chartErr.code !== '42P01') throw chartErr;
-            console.warn(
-              '[social-login] patients/roles are not reachable from the default search_path, '
-              + 'so ' + user.email + ' was created without a patient chart. A self-registration '
-              + 'has no tenant to write one into — see GET /api/auth/tenant-status.'
-            );
-          }
-          } // end patient self-registration path
 
           // Create social auth entry — set both user_id and patient_id to the same UUID
           // (patients.id = users.id in current schema, so both columns hold user.id)
@@ -1248,184 +1197,11 @@ router.post('/oauth/google/exchange', async (req, res) => {
   }
 });
 
-// Social registration endpoint (Google, Microsoft)
-// Creates a new pending account linked to the social provider.
-// Unlike /social-login, this never rejects with 403 for pending status —
-// returning 201 + a message is the expected success path.
-const socialRegisterHandler = async (req, res) => {
-  try {
-    const pool = req.app.locals.pool;
-    const {
-      provider,
-      providerId,
-      accessToken,
-      email: clientEmail,
-      firstName: clientFirstName,
-      lastName: clientLastName,
-      profileData
-    } = req.body;
-
-    // providerId is not required: the canonical id always comes from the provider below
-    // (SEC-19), and the code-exchange path has no client-side id to send.
-    void providerId;
-    if (!provider || !accessToken) {
-      return res.status(400).json({ error: 'Provider and access token are required' });
-    }
-
-    // Validate the access token server-side before creating any account
-    let verified;
-    try {
-      verified = await validateSocialToken(provider, accessToken);
-    } catch (validationErr) {
-      return res.status(401).json({ error: 'Social provider token validation failed. Please try again.' });
-    }
-
-    // canonicalProviderId comes from the provider API — never from the client.
-    // Microsoft personal accounts use a pairwise MSA id in homeAccountId that differs
-    // from Graph's id, so we skip the strict claimed/verified match check here.
-    // Token validation (above) is the security gate.
-    const email = verified.email || clientEmail;
-    const firstName = verified.firstName || clientFirstName || '';
-    const lastName = verified.lastName || clientLastName || '';
-    const canonicalProviderId = verified.providerId;
-    // SEC-07: true only when the PROVIDER itself vouches for the email. Used to
-    // decide whether this social identity may attach to a pre-existing account.
-    const providerEmailVerified = verified.emailVerified === true && Boolean(verified.email);
-
-    if (!email) {
-      return res.status(400).json({ error: 'Could not determine email from social provider' });
-    }
-
-    // SEC-19: match only on the provider-verified canonical id (plus the verified
-    // OID-prefix fallback for un-migrated Microsoft rows). Never the client id.
-    const existingSocial = await pool.query(
-      `SELECT id FROM social_auth
-       WHERE provider = $1
-         AND (provider_user_id = $2
-              OR ($1 = 'microsoft' AND provider_user_id LIKE $2 || '.%'))`,
-      [provider, canonicalProviderId]
-    );
-    if (existingSocial.rows.length > 0) {
-      return res.status(409).json({ error: 'An account already exists for this social profile. Please sign in instead.' });
-    }
-
-    // If the email is already registered, tell the user to sign in or link
-    const existingEmail = await pool.query(
-      'SELECT id FROM users WHERE email = $1',
-      [email]
-    );
-    if (existingEmail.rows.length > 0) {
-      return res.status(409).json({ error: 'This email is already registered. Please sign in or link your social account from your profile settings.' });
-    }
-
-    // Create user + patient + social_auth atomically so no orphaned rows on failure
-    const firstName_ = firstName || '';
-    const lastName_ = lastName || '';
-    const avatarInitials = `${(firstName_[0] || '')}${(lastName_[0] || '')}`.toUpperCase();
-
-    const regClient = await pool.connect();
-    let newUser;
-    try {
-      await regClient.query('BEGIN');
-
-      const newUserResult = await regClient.query(`
-        INSERT INTO users (id, email, first_name, last_name, role, status, avatar, created_at, updated_at)
-        VALUES (gen_random_uuid(), $1, $2, $3, 'patient', 'active', $4, NOW(), NOW())
-        RETURNING id, email, first_name, last_name, role, status
-      `, [email, firstName_, lastName_, avatarInitials]);
-      newUser = newUserResult.rows[0];
-
-      // Create patient record — patients.id = users.id in current schema
-      const patientCheck = await regClient.query(
-        'SELECT id FROM patients WHERE id = $1 OR email = $2 LIMIT 1',
-        [newUser.id, newUser.email]
-      );
-      if (patientCheck.rows.length === 0) {
-        const mrnResult = await regClient.query(
-          "SELECT MAX(CAST(SUBSTRING(mrn FROM 5) AS INTEGER)) as max_mrn FROM patients WHERE mrn LIKE 'MRN-%'"
-        );
-        const mrn = `MRN-${(mrnResult.rows[0].max_mrn || 1000) + 1}`;
-        await regClient.query(
-          `INSERT INTO patients (id, first_name, last_name, mrn, date_of_birth, email, status, created_at, updated_at)
-           VALUES ($1, $2, $3, $4, '1990-01-01', $5, 'active', NOW(), NOW())`,
-          [newUser.id, firstName_, lastName_, mrn, newUser.email]
-        );
-      }
-
-      // Assign patient role
-      const patientRoleResult = await regClient.query(
-        "SELECT id FROM roles WHERE name = 'patient' AND is_active = true LIMIT 1"
-      );
-      if (patientRoleResult.rows.length > 0) {
-        await regClient.query(
-          `INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
-          [newUser.id, patientRoleResult.rows[0].id]
-        );
-      }
-
-      // Link social auth — set both user_id and patient_id to the same UUID
-      await regClient.query(`
-        INSERT INTO social_auth (user_id, patient_id, provider, provider_user_id, access_token, profile_data)
-        VALUES ($1, $1, $2, $3, $4, $5)
-      `, [newUser.id, provider, canonicalProviderId, accessToken, JSON.stringify(profileData || {})]);
-
-      await regClient.query('COMMIT');
-    } catch (txErr) {
-      await regClient.query('ROLLBACK');
-      throw txErr;
-    } finally {
-      regClient.release();
-    }
-
-    const token = signToken(newUser);
-
-    res.status(201).json({
-      message: 'Registration successful! Your account is ready to use.',
-      token,
-      user: {
-        id: newUser.id,
-        email: newUser.email,
-        firstName: newUser.first_name,
-        lastName: newUser.last_name,
-        role: newUser.role,
-        status: newUser.status
-      }
-    });
-  } catch (error) {
-    console.error('Error during social registration:', error);
-    // A constraint the request broke is the caller's to fix, not a server fault.
-    if (sendDbError(res, error, 'Registration failed. Please try again.')) return;
-    res.status(500).json({ error: 'Registration failed. Please try again.' });
-  }
-};
-
-// SEC-20: the legacy route takes a provider access token minted in the browser. It is
-// closed by AC_DISABLE_LEGACY_SOCIAL_TOKEN like /social-login; the sign-up page uses the
-// code-exchange routes below.
-router.post('/social-register', legacySocialGuard, socialRegisterHandler);
-
-// SEC-20: social SIGN-UP by authorization code. The browser holds only a single-use code;
-// it is redeemed here with the client secret, and the resulting token never reaches
-// JavaScript. Then exactly the same registration logic runs as before.
-router.post('/oauth/:provider/register', async (req, res) => {
-  const { provider } = req.params;
-  if (provider !== 'google' && provider !== 'microsoft') {
-    return res.status(400).json({ error: 'Unsupported provider' });
-  }
-  try {
-    const { code, redirectUri, codeVerifier } = req.body || {};
-    const { accessToken } = await exchangeAuthCode(provider, { code, redirectUri, codeVerifier });
-    req.body = { provider, providerId: null, accessToken, profileData: {} };
-    return socialRegisterHandler(req, res);
-  } catch (err) {
-    if (err.statusCode) {
-      return res.status(err.statusCode).json({ error: err.message, providerError: err.providerError || undefined });
-    }
-    console.error(`Error during ${provider} sign-up code exchange:`, err);
-    if (sendDbError(res, err, 'Social sign-up failed')) return;
-    res.status(500).json({ error: 'Social sign-up failed' });
-  }
-});
+// Social self-registration (POST /social-register and the code-exchange
+// POST /oauth/:provider/register) was removed with the public sign-up page it served
+// (SEC-39). A visitor who signs up has no practice to belong to, so it could never create a
+// working account; patients now join through a practice's portal invitation
+// (routes/portalInvites.js) and staff through staff invitations (routes/invites.js).
 
 // Link social account to existing user — requires a valid JWT; can only link to own account
 // SEC-20: takes a provider token posted by the browser; no screen calls it. Closed with the

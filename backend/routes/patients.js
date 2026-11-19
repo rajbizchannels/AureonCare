@@ -72,7 +72,6 @@ router.post('/', enforcePatientQuota, async (req, res) => {
     const birthDate = date_of_birth || dob;
 
     let userId;
-    let tempPassword;
 
     // IMPORTANT: With new schema, patient.id = user.id
     // So we must create the user FIRST to get the ID
@@ -93,10 +92,11 @@ router.post('/', enforcePatientQuota, async (req, res) => {
       if (existingUser.rows.length > 0) {
         userId = existingUser.rows[0].id;
       } else {
-        const bcrypt = require('bcryptjs');
-        const { BCRYPT_COST } = require('../utils/passwordPolicy');
-        tempPassword = Math.random().toString(36).slice(-8);
-        const passwordHash = await bcrypt.hash(tempPassword, BCRYPT_COST);
+        // No password. This used to set a random 8-character one (Math.random, not a
+        // CSPRNG) that was never sent to anyone, so it could not be used and only weakened
+        // the account. The patient gets access through a portal invitation instead
+        // (routes/portalInvites.js), where they choose their own password.
+        const passwordHash = null;
 
         const userResult = await client.query(
           `INSERT INTO users

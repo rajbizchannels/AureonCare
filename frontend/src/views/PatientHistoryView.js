@@ -16,6 +16,7 @@ import EPrescribeModal from '../components/modals/ePrescribeModal';
 import { useAudit } from '../hooks/useAudit';
 import ThemedSelect from '../components/forms/ThemedSelect';
 import AIAssistButton from '../components/integrations/AIAssistButton';
+import PortalInvitePanel from '../components/patients/PortalInvitePanel';
 
 // Compact one-line summaries of chart rows, used as the context an AI assist button
 // OFFERS to send (the user sees and can edit it before anything is sent).
@@ -444,6 +445,12 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, initia
                   {patientData.phone || 'Not provided'}
                 </p>
               </div>
+              {user?.role !== 'patient' && (patientData.id || patient?.id) && (
+                <div className="col-span-2">
+                  <p className={`text-sm mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Patient portal</p>
+                  <PortalInvitePanel patientId={patientData.id || patient.id} theme={theme} api={api} addNotification={addNotification} />
+                </div>
+              )}
               <div className="col-span-2">
                 <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Address</p>
                 <p className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>

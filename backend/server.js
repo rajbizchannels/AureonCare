@@ -211,6 +211,9 @@ app.use('/api/auth', authLimiter, require('./routes/auth'));
 // partly unauthenticated by design and carry their own rate limits.
 app.use('/api/signup', require('./routes/signup'));
 app.use('/api/invites', require('./routes/invites').router);
+// Patient portal invitations: staff send a one-time link; the patient accepts it with a
+// password or Google/Microsoft. The accept routes are public by design.
+app.use('/api/portal-invites', require('./routes/portalInvites'));
 app.use('/api/team-access', require('./routes/teamAccess').router);
 app.use('/api/search', require('./routes/search'));
 app.use('/api/appointments', require('./routes/appointments'));

@@ -71,7 +71,6 @@ const AppProvider = ({ children }) => {
     }
   });
   const [showForgotPassword, setShowForgotPassword] = useState(false);
-  const [showRegister, setShowRegister] = useState(false);
   const [currentModule, setCurrentModule] = useState('dashboard');
   const [currentView, setCurrentView] = useState('list');
   const [language, setLanguage] = useState('en');
@@ -425,8 +424,6 @@ const AppProvider = ({ children }) => {
     setIsAuthenticated,
     showForgotPassword,
     setShowForgotPassword,
-    showRegister,
-    setShowRegister,
     currentModule,
     setCurrentModule,
     currentView,

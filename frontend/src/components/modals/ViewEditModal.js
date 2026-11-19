@@ -11,6 +11,7 @@ import ThemedSelect from '../../components/forms/ThemedSelect';
 import {
   withFallback, bookableProviders, participantName,
 } from '../../utils/appointmentParticipants';
+import PortalInvitePanel from '../patients/PortalInvitePanel';
 
 const ViewEditModal = ({
   theme,
@@ -977,6 +978,14 @@ const ViewEditModal = ({
                     />
                   )}
                 </div>
+                {/* Portal access: invite the patient to set up their own login (staff only).
+                    It uses the SAVED email address — save a new address before inviting. */}
+                {user?.role !== 'patient' && editingItem?.data?.id && (
+                  <div className="col-span-2">
+                    <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Patient portal</label>
+                    <PortalInvitePanel patientId={editingItem.data.id} theme={theme} api={api} addNotification={addNotification} />
+                  </div>
+                )}
                 <div className="col-span-2">
                   <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.streetAddress || 'Street Address'}</label>
                   {isView ? (

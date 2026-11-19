@@ -108,7 +108,7 @@ isolation suite (10/10) → the app booting and a platform login succeeding.
 
 ### What this release adds to the migration run
 
-Four global migrations and two tenant migrations, on top of everything above:
+Five global migrations and three tenant migrations, on top of everything above:
 
 | Migration | What it does | Needed before |
 |---|---|---|
@@ -116,6 +116,7 @@ Four global migrations and two tenant migrations, on top of everything above:
 | `tenant/010_ai_integrations.sql` + `087` | the AI tables, then their registration for new tenants | any `/api/ai/*` call |
 | `tenant/011_module_permissions.sql` + `088` | `module_permissions`, and its registration | the Roles & Permissions screen |
 | `089_public_booking_routing.sql` | `control.booking_slug_route`: maps a public booking link to its practice, backfilled from existing links (SEC-30). Booking links become unique **across** practices; a collision is reported as a WARNING in the migration output and that link stays unreachable until renamed | the public booking page `/book/<slug>` — without it every anonymous booking call fails |
+| `tenant/012_portal_invites.sql` + `090` | `portal_invites` in each practice's schema, and `control.portal_invite_route` (token hash → practice only; no patient identifier in the shared plane), plus registration for new practices | the **Invite to portal** button on a patient's record and the `/portal/activate` link the patient opens. The invitation email links to `FRONTEND_URL`, so make sure it is the public address of the app |
 
 Both halves of each pair matter and the order is the usual one: the global runner
 registers a table in `control.tenant_tables` so newly provisioned tenants inherit it; the
@@ -215,11 +216,9 @@ Then test **before** locking anything down:
 - [ ] An existing social user (created before this work) can still sign in
 
 Only once all four pass:
-- [ ] Staff social **sign-up** works with Google and Microsoft (it now uses the
-      code exchange, `/api/auth/oauth/:provider/register`)
 - [ ] Set `AC_DISABLE_LEGACY_SOCIAL_TOKEN=true` and redeploy. This is the step that closes
       SEC-20: every route that accepted a provider access token posted by the browser
-      answers 410 — `/api/auth/social-login`, `/api/auth/social-register`,
+      answers 410 — `/api/auth/social-login`,
       `/api/auth/link-social-account`, `/api/patient-portal/login` (with a token) and
       `/api/patient-portal/:id/link-social`. The code-exchange routes keep working.
 

@@ -25,6 +25,10 @@ const bcrypt = require(path.join(BACKEND, '..', 'node_modules', 'bcryptjs'));
 const jwt = require(path.join(BACKEND, '..', 'node_modules', 'jsonwebtoken'));
 const { provisionTenant } = require(path.join(BACKEND, 'services/tenantProvisioning.js'));
 const breach = require(path.join(BACKEND, 'utils/breachedPassword.js'));
+// Portal access is granted by invitation; capture the email so the test can open the link.
+const outbox = [];
+const notify = require(path.join(BACKEND, 'services/notificationService.js'));
+notify.sendEmail = async (to, subject, html) => { outbox.push({ to, html }); return { sent: true }; };
 require(path.join(BACKEND, 'server.js'));
 
 const results = [];
@@ -122,14 +126,17 @@ const stubKnowing = (pw) => async (prefix) => {
 
   const BREACHED = 'Summer2024!Password';
   breach._setRangeFetcher(stubKnowing(BREACHED));
-  const reg1 = await api('POST', '/api/patient-portal/register',
-    { token: A.token, body: { patientId, email: pEmail, password: BREACHED } });
+  // The patient sets their portal password from the practice's invitation link.
+  const sentInvite = await api('POST', '/api/portal-invites', { token: A.token, body: { patientId } });
+  const mail = outbox.filter((m) => m.to === pEmail).pop();
+  const inviteToken = mail && (/activate\?token=([A-Za-z0-9_-]+)/.exec(mail.html) || [])[1];
+  check('the practice can invite the patient to the portal', sentInvite.status === 201 && Boolean(inviteToken));
+  const reg1 = await api('POST', '/api/portal-invites/accept', { body: { token: inviteToken, password: BREACHED } });
   check('SEC-12: A BREACHED PASSWORD IS REFUSED (400)', reg1.status === 400);
   check('SEC-12: ...and the message says why', /breach/i.test(obj(reg1.body).error || ''));
 
-  const reg2 = await api('POST', '/api/patient-portal/register',
-    { token: A.token, body: { patientId, email: pEmail, password: PW } });
-  check('portal register works at all (it threw ReferenceError before)', reg2.status === 200);
+  const reg2 = await api('POST', '/api/portal-invites/accept', { body: { token: inviteToken, password: PW } });
+  check('the patient can set a strong password from the invitation', reg2.status === 200);
 
   breach._setRangeFetcher(async () => { const e = new Error('fetch failed'); e.cause = { code: 'ENOTFOUND' }; throw e; });
   const chg = await api('POST', '/api/auth/change-password',

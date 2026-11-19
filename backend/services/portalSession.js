@@ -21,6 +21,47 @@ const PORTAL_SESSION_TTL_MS = 24 * 60 * 60 * 1000;
 const hashToken = (token) => crypto.createHash('sha256').update(token).digest('hex');
 
 /**
+ * Mint a portal session for a patient in a KNOWN practice — for callers that already
+ * resolved it (accepting a portal invite knows the practice from the invite itself).
+ * Same rules as issuePortalSession: only for a portal-enabled patient; registers the
+ * token's route so the next request can find it. Returns null rather than throwing.
+ *
+ * @returns {Promise<{sessionToken: string, expiresAt: Date}|null>}
+ */
+const issuePortalSessionIn = async (pool, { tenantId, schemaName }, patientId, meta = {}) => {
+  if (!tenantId || !schemaName || schemaName === 'public' || !patientId) return null;
+  try {
+    const sessionToken = crypto.randomBytes(32).toString('hex');
+    const tokenHash = hashToken(sessionToken);
+    const expiresAt = new Date(Date.now() + PORTAL_SESSION_TTL_MS);
+
+    // portal_enabled is the switch that decides whether this patient may use the portal at
+    // all, and the portal login refuses to issue a session without it. Checking it here too
+    // keeps the main login from becoming a way around it. patients.id = users.id.
+    const inserted = await withTenant(pool, schemaName, async (client) => {
+      const { rows } = await client.query(
+        'SELECT id FROM patients WHERE id = $1 AND portal_enabled = true', [patientId]);
+      if (rows.length === 0) return false;
+      await client.query(
+        `INSERT INTO patient_portal_sessions (patient_id, session_token, ip_address, user_agent, expires_at)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [patientId, tokenHash, meta.ip || null, meta.userAgent || null, expiresAt]
+      );
+      return true;
+    });
+    if (!inserted) return null;
+
+    // The guard resolves a session's tenant from this shared table before any tenant
+    // context exists, so without the entry the token would be unroutable on the next request.
+    await registerSession(pool, tokenHash, tenantId, expiresAt);
+    return { sessionToken, expiresAt };
+  } catch (error) {
+    console.warn('[portalSession] could not issue portal session:', error.message);
+    return null;
+  }
+};
+
+/**
  * Mint a portal session for `user`, or return null when one is not warranted.
  *
  * Returns null — never throws — when the user is not a patient, has no patients row in
@@ -58,35 +99,7 @@ const issuePortalSession = async (pool, user, meta = {}) => {
     }
     if (!tenantId || !schemaName || schemaName === 'public') return null;
 
-    const sessionToken = crypto.randomBytes(32).toString('hex');
-    const tokenHash = hashToken(sessionToken);
-    const expiresAt = new Date(Date.now() + PORTAL_SESSION_TTL_MS);
-
-    // portal_enabled is the switch that decides whether this patient may use the portal at
-    // all, and the portal login refuses to issue a session without it. Checking it here too
-    // keeps the main login from becoming a way around it. patients.id = users.id.
-    const inserted = await withTenant(pool, schemaName, async (client) => {
-      const { rows } = await client.query(
-        'SELECT id FROM patients WHERE id = $1 AND portal_enabled = true',
-        [user.id]
-      );
-      if (rows.length === 0) return false;
-
-      await client.query(
-        `INSERT INTO patient_portal_sessions (patient_id, session_token, ip_address, user_agent, expires_at)
-         VALUES ($1, $2, $3, $4, $5)`,
-        [user.id, tokenHash, meta.ip || null, meta.userAgent || null, expiresAt]
-      );
-      return true;
-    });
-
-    if (!inserted) return null;
-
-    // The guard resolves a session's tenant from this shared table before any tenant
-    // context exists, so without the entry the token would be unroutable on the next request.
-    await registerSession(pool, tokenHash, tenantId, expiresAt);
-
-    return { sessionToken, expiresAt };
+    return await issuePortalSessionIn(pool, { tenantId, schemaName }, user.id, meta);
   } catch (error) {
     console.warn('[portalSession] could not issue portal session:', error.message);
     return null;
@@ -126,4 +139,4 @@ const revokePortalSessions = async (pool, userId) => {
   }
 };
 
-module.exports = { issuePortalSession, revokePortalSessions, PORTAL_SESSION_TTL_MS };
+module.exports = { issuePortalSession, issuePortalSessionIn, revokePortalSessions, PORTAL_SESSION_TTL_MS };

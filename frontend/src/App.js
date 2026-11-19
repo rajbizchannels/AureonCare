@@ -68,8 +68,8 @@ import PatientLoginPage from './components/modals/PatientLoginPage';
 import SignupPage from './components/modals/SignupPage';
 import SignupCompletePage from './components/modals/SignupCompletePage';
 import AcceptInvitePage from './components/modals/AcceptInvitePage';
+import PortalActivatePage from './components/modals/PortalActivatePage';
 import JoinPracticePage from './components/modals/JoinPracticePage';
-import RegisterPage from './components/modals/RegisterPage';
 import ForgotPasswordModal from './components/modals/ForgotPasswordModal';
 import ViewEditModal from './components/modals/ViewEditModal';
 import UserProfileModal from './components/modals/UserProfileModal';
@@ -112,8 +112,6 @@ function App() {
     setIsAuthenticated,
     showForgotPassword,
     setShowForgotPassword,
-    showRegister,
-    setShowRegister,
     currentModule,
     setCurrentModule,
     currentView,
@@ -406,6 +404,10 @@ function App() {
       return { kind: 'acceptInvite', token: params.get('token') };
     }
     if (/^\/join\/?$/.test(path)) return { kind: 'join' };
+    // Patient portal invitation sent by the practice (Phase 1 onboarding).
+    if (/^\/portal\/activate\/?$/.test(path) && params.get('token')) {
+      return { kind: 'portalActivate', token: params.get('token') };
+    }
     return null;
   });
   const [showSignup, setShowSignup] = React.useState(false);
@@ -825,6 +827,26 @@ function App() {
   if (publicRoute?.kind === 'join') {
     return <JoinPracticePage theme={theme} api={api} onSignIn={goToSignIn} />;
   }
+  if (publicRoute?.kind === 'portalActivate') {
+    return (
+      <PortalActivatePage
+        theme={theme}
+        token={publicRoute.token}
+        api={api}
+        // Accepting signs the patient in (the server set the portal cookie and the API
+        // client stored the session), so go straight into the portal. The URL is reset so a
+        // reload does not try to reopen the now-used link.
+        onActivated={(patient) => {
+          setUser(patient);
+          setIsAuthenticated(true);
+          setCurrentModule('patientPortal');
+          window.history.replaceState({}, '', '/');
+          setPublicRoute(null);
+        }}
+        onSignIn={goToSignIn}
+      />
+    );
+  }
   if (publicRoute?.kind === 'acceptInvite') {
     return (
       <AcceptInvitePage
@@ -869,7 +891,6 @@ function App() {
           setIsAuthenticated={setIsAuthenticated}
           addNotification={addNotification}
           setShowForgotPassword={setShowForgotPassword}
-          setShowRegister={setShowRegister}
           setCurrentModule={setCurrentModule}
           onBack={() => setShowBookingLogin(false)}
         />
@@ -888,21 +909,6 @@ function App() {
 
   // Show login page if not authenticated
   if (!isAuthenticated) {
-    // Show register page
-    if (showRegister) {
-      return (
-        <RegisterPage
-          theme={theme}
-          api={api}
-          addNotification={addNotification}
-          onClose={() => setShowRegister(false)}
-          onRegistered={() => {
-            setShowRegister(false);
-          }}
-        />
-      );
-    }
-
     // Show appropriate login page based on URL
     return (
       <>
@@ -915,7 +921,6 @@ function App() {
             setIsAuthenticated={setIsAuthenticated}
             addNotification={addNotification}
             setShowForgotPassword={setShowForgotPassword}
-            setShowRegister={setShowRegister}
             setCurrentModule={setCurrentModule}
           />
         ) : (
@@ -928,7 +933,6 @@ function App() {
             setIsAuthenticated={setIsAuthenticated}
             addNotification={addNotification}
             setShowForgotPassword={setShowForgotPassword}
-            setShowRegister={setShowRegister}
             setCurrentModule={setCurrentModule}
           />
         )}

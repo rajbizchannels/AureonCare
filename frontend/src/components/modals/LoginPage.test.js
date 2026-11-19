@@ -39,7 +39,6 @@ const renderLogin = (api) => render(
     addNotification={jest.fn().mockResolvedValue(undefined)}
     setShowForgotPassword={jest.fn()}
     setCurrentModule={jest.fn()}
-    setShowRegister={jest.fn()}
     onCreatePractice={jest.fn()}
   />,
 );
