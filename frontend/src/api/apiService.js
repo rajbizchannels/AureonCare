@@ -949,23 +949,18 @@ const api = {
     return api._storePortalSessionToken(await response.json());
   },
 
-  socialLogin: async (provider, providerId, accessToken, email, firstName, lastName, profileData) => {
-    const response = await authenticatedFetch(`${API_BASE_URL}/auth/social-login`, {
+  // SEC-20: social SIGN-UP by authorization code. The browser holds a single-use code;
+  // the server redeems it, so no provider access token ever enters JavaScript. (The old
+  // socialLogin/socialRegister posted a browser-held access token and are removed.)
+  registerWithOAuthCode: async (provider, code, redirectUri, codeVerifier) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/auth/oauth/${provider}/register`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ provider, providerId, accessToken, email, firstName, lastName, profileData })
+      body: JSON.stringify({ code, redirectUri, codeVerifier }),
     });
-    if (!response.ok) throw new Error('Failed to login with social account');
-    return api._storePortalSessionToken(await response.json());
-  },
-  socialRegister: async (provider, providerId, accessToken, email, firstName, lastName, profileData) => {
-    const response = await authenticatedFetch(`${API_BASE_URL}/auth/social-register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ provider, providerId, accessToken, email, firstName, lastName, profileData })
-    });
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error || 'Registration failed');
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error((data.error || 'Registration failed') + (data.providerError ? ` [${data.providerError}]` : ''));
+    }
     return data;
   },
 

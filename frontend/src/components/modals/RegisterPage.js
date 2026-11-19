@@ -1,14 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, UserPlus, CheckCircle } from 'lucide-react';
 import { useGoogleLogin } from '@react-oauth/google';
-import { useMsal } from '@azure/msal-react';
+import { getMicrosoftAuthCode } from '../../utils/msAuthCode';
+import { microsoftOAuthConfig } from '../../config/oauthConfig';
 import { useAudit } from '../../hooks/useAudit';
 import PrivacyPolicyPage from './PrivacyPolicyPage';
 import TermsOfServicePage from './TermsOfServicePage';
 
 const RegisterPage = ({ theme, api, addNotification, onClose, onRegistered }) => {
   const { logViewAccess, logError } = useAudit();
-  const { instance } = useMsal();
 
   const [formData, setFormData] = useState({
     firstName: '',
@@ -113,27 +113,17 @@ const RegisterPage = ({ theme, api, addNotification, onClose, onRegistered }) =>
     }
   };
 
-  // Google OAuth registration
+  // SEC-20: social sign-up uses the authorization-code flow, like sign-in. The browser
+  // only ever holds a single-use code, redeemed server-side with the client secret, so an
+  // XSS on this page has no provider token to steal. Name and email come from the provider
+  // on the server, not from the browser.
   const handleGoogleRegister = useGoogleLogin({
-    onSuccess: async (tokenResponse) => {
+    flow: 'auth-code',
+    onSuccess: async (codeResponse) => {
       setSocialLoading('google');
       setRegisterError('');
       try {
-        const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-          headers: { Authorization: `Bearer ${tokenResponse.access_token}` }
-        });
-        const userInfo = await userInfoRes.json();
-
-        await api.socialRegister(
-          'google',
-          userInfo.sub,
-          tokenResponse.access_token,
-          userInfo.email,
-          userInfo.given_name,
-          userInfo.family_name,
-          userInfo
-        );
-
+        await api.registerWithOAuthCode('google', codeResponse.code, 'postmessage');
         setRegistered(true);
       } catch (error) {
         setRegisterError(error.message || 'Google registration failed');
@@ -147,24 +137,15 @@ const RegisterPage = ({ theme, api, addNotification, onClose, onRegistered }) =>
     }
   });
 
-  // Microsoft OAuth registration
+  // Microsoft: authorization code + PKCE, redeemed on the server (as on the sign-in page).
   const handleMicrosoftRegister = async () => {
     setSocialLoading('microsoft');
     setRegisterError('');
     try {
-      const loginResponse = await instance.loginPopup({ scopes: ['user.read'] });
-      const userInfo = loginResponse.account;
-
-      await api.socialRegister(
-        'microsoft',
-        userInfo.homeAccountId,
-        loginResponse.accessToken,
-        userInfo.username,
-        userInfo.name?.split(' ')[0] || '',
-        userInfo.name?.split(' ').slice(1).join(' ') || '',
-        userInfo
+      const { code, redirectUri, codeVerifier } = await getMicrosoftAuthCode(
+        microsoftOAuthConfig.auth.clientId
       );
-
+      await api.registerWithOAuthCode('microsoft', code, redirectUri, codeVerifier);
       setRegistered(true);
     } catch (error) {
       setRegisterError(error.message || 'Microsoft registration failed');

@@ -133,6 +133,18 @@ router.param('patientId', async (req, res, next, patientId) => {
 // SEC-20: extracted so the authorization-code exchange can reuse this exact path.
 // Every portal protection lives here (SEC-03 provider-token validation, SEC-19
 // canonical-id matching, the Option D tenant routing and session creation).
+// SEC-20: a provider access token sent FROM THE BROWSER is the weakness itself (any XSS can
+// lift a live token). The authorization-code routes redeem the code server-side and then
+// call the same handler; they mark the request so it is told apart from a client that
+// posted a token. AC_DISABLE_LEGACY_SOCIAL_TOKEN closes the client path, as it does for
+// /api/auth/social-login and /social-register.
+const LEGACY_SOCIAL_DISABLED =
+  String(process.env.AC_DISABLE_LEGACY_SOCIAL_TOKEN || '').toLowerCase() === 'true';
+const LEGACY_RETIRED = {
+  error: 'This sign-in method has been retired. Please update the app — sign-in now uses the authorization-code flow.',
+};
+const SERVER_EXCHANGED = Symbol('serverExchangedToken');
+
 const portalLoginHandler = async (req, res) => {
   try {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped on /:patientId routes
@@ -148,6 +160,9 @@ const portalLoginHandler = async (req, res) => {
     // comes from the provider-verified token, and the authorization-code flow has no
     // client-side id at all.
     if (provider && (providerId || accessToken)) {
+      if (LEGACY_SOCIAL_DISABLED && !req[SERVER_EXCHANGED]) {
+        return res.status(410).json(LEGACY_RETIRED);
+      }
       // SEC-03: validate the access token server-side with the provider before
       // trusting providerId. A providerId is a public identifier, not a secret;
       // without this check anyone could forge a session by supplying a known id.
@@ -180,10 +195,13 @@ const portalLoginHandler = async (req, res) => {
       // (e.g. Microsoft personal-account homeAccountId) using the provider-VERIFIED
       // email only — never client input — then re-key it to the canonical id.
       if (socialAuth.rows.length === 0 && verified.email) {
+        // Matched on users (the shared identity table; patients.id = users.id). It joined
+        // `patients`, a per-practice table that the shared pool cannot see since the
+        // schema-per-tenant cutover, so every not-yet-linked identity answered 500.
         const relink = await pool.query(
           `SELECT sa.id, sa.user_id FROM social_auth sa
-           JOIN patients p ON p.id = sa.patient_id
-           WHERE sa.provider = $1 AND LOWER(p.email) = LOWER($2)`,
+           JOIN users u ON u.id = sa.patient_id
+           WHERE sa.provider = $1 AND LOWER(u.email) = LOWER($2)`,
           [provider, verified.email]
         );
         if (relink.rows.length > 0) {
@@ -385,6 +403,7 @@ router.post('/oauth/:provider/exchange', loginIpLimiter, async (req, res) => {
     const { accessToken, refreshToken } = await exchangeAuthCode(provider, { code, redirectUri, codeVerifier });
 
     req.body = { provider, providerId: null, accessToken, refreshToken };
+    req[SERVER_EXCHANGED] = true;   // a Symbol: no request body or header can set it
     return portalLoginHandler(req, res);
   } catch (err) {
     if (err.statusCode) return res.status(err.statusCode).json({ error: err.message });
@@ -925,6 +944,12 @@ router.post('/:patientId/link-social', async (req, res) => {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped on /:patientId routes
     const { patientId } = req.params;
     const { provider, providerId, accessToken, refreshToken, profileData } = req.body;
+
+    // SEC-20: this route only ever takes a token posted by the browser (the portal UI does
+    // not call it), so it closes with the other legacy paths.
+    if (LEGACY_SOCIAL_DISABLED) {
+      return res.status(410).json(LEGACY_RETIRED);
+    }
 
     // SEC-08: validate the token with the provider and store ONLY the verified
     // canonical id, never the client-claimed providerId. (The :patientId param

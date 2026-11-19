@@ -164,9 +164,15 @@ ALTER ROLE aureoncare_app WITH PASSWORD '<from your secret manager>';
 ```
 
 - [ ] Password set on the role created by migration `073`
-- [ ] `AC_DB_U=aureoncare_app`, `AC_DB_W=<password>`
-- [ ] Restart the API
-- [ ] Verify: `npm run check:db-role` → exits 0 (non-superuser, DDL refused)
+- [ ] Point the app at that role. **If `AC_PG_URI` is set it overrides every `AC_DB_*`
+      variable**, so change the user and password *inside the connection string* (on
+      Supabase's pooler the user is usually written `aureoncare_app.<project-ref>`).
+      Otherwise set `AC_DB_U=aureoncare_app`, `AC_DB_W=<password>`.
+- [ ] Keep the owner/admin connection string out of the app's environment — only the
+      migration runners use it (the app role is refused DDL by design)
+- [ ] Restart / redeploy the API
+- [ ] Verify: `npm run check:db-role` → exits 0 (non-superuser, DDL refused). It uses the
+      app's own connection (`AC_PG_URI` or `AC_DB_*`) and prints which one it checked.
 
 ---
 
@@ -209,8 +215,13 @@ Then test **before** locking anything down:
 - [ ] An existing social user (created before this work) can still sign in
 
 Only once all four pass:
-- [ ] Set `AC_DISABLE_LEGACY_SOCIAL_TOKEN=true` — this retires `POST /auth/social-login`
-      (410) and is the step that actually closes SEC-20
+- [ ] Staff social **sign-up** works with Google and Microsoft (it now uses the
+      code exchange, `/api/auth/oauth/:provider/register`)
+- [ ] Set `AC_DISABLE_LEGACY_SOCIAL_TOKEN=true` and redeploy. This is the step that closes
+      SEC-20: every route that accepted a provider access token posted by the browser
+      answers 410 — `/api/auth/social-login`, `/api/auth/social-register`,
+      `/api/auth/link-social-account`, `/api/patient-portal/login` (with a token) and
+      `/api/patient-portal/:id/link-social`. The code-exchange routes keep working.
 
 ---
 
@@ -228,7 +239,12 @@ Only once all four pass:
 
 The isolation machinery is complete, but these are worth confirming deliberately:
 
-- [ ] `AC_IDX_K` is set (otherwise portal logins all resolve to the default tenant)
+- [ ] `AC_IDX_K` is set (otherwise portal password logins only search the default tenant)
+- [ ] **Backfill the portal identity index** with the same `AC_IDX_K` the app uses:
+      `npm run backfill:portal-identities -- --dry-run`, then without `--dry-run`.
+      Patients whose portal was enabled before the key existed have no entry, so their
+      login searches only the default practice and fails — and it cannot repair itself.
+      Safe to re-run.
 - [ ] Backfill portal session routes for existing sessions, or accept that current portal
       users are re-routed to the default tenant until they sign in again
 - [ ] Run `npm run test:sec05` against a copy that has two tenants provisioned
