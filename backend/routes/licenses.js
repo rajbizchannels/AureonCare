@@ -1,5 +1,9 @@
 const express = require('express');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, authorize } = require('../middleware/auth');
+
+// SEC-36: any signed-in user could generate, activate, revoke and list license keys — an entitlement
+// bypass. All four are admin-only.
+const adminOnly = authorize('admin');
 const { sendDbError } = require('../utils/dbErrors');
 const router  = express.Router();
 router.use(authenticate);
@@ -14,7 +18,7 @@ const {
 // ─── POST /api/licenses/generate ─────────────────────────────────────────────
 // Admin-only: generate a new license key.
 // Body: { planName, maxProviders, maxUsers, maxPatients, validFrom, validUntil, notes }
-router.post('/generate', async (req, res) => {
+router.post('/generate', adminOnly, async (req, res) => {
   try {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const {
@@ -43,7 +47,7 @@ router.post('/generate', async (req, res) => {
 // ─── POST /api/licenses/activate ─────────────────────────────────────────────
 // Activate a license key on this installation.
 // Body: { key, installationId }
-router.post('/activate', async (req, res) => {
+router.post('/activate', adminOnly, async (req, res) => {
   try {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { key, installationId } = req.body;
@@ -86,7 +90,7 @@ router.get('/check/:key', async (req, res) => {
 
 // ─── GET /api/licenses ───────────────────────────────────────────────────────
 // Admin: list all license keys with plan info.
-router.get('/', async (req, res) => {
+router.get('/', adminOnly, async (req, res) => {
   try {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { rows } = await pool.query(`
@@ -105,7 +109,7 @@ router.get('/', async (req, res) => {
 // ─── POST /api/licenses/revoke ───────────────────────────────────────────────
 // Admin: revoke a license key.
 // Body: { key }
-router.post('/revoke', async (req, res) => {
+router.post('/revoke', adminOnly, async (req, res) => {
   try {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { key } = req.body;

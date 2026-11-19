@@ -1,5 +1,18 @@
 const express = require('express');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, authorize } = require('../middleware/auth');
+const { redactRow } = require('../utils/redactSecrets');
+
+// SEC-36: these settings hold the practice's video-provider credentials. Changing or
+// testing them was open to ANY signed-in user (a patient could replace or delete the
+// practice's Zoom account), and the single-provider read returned the stored secrets and
+// OAuth tokens. Writes are admin-only; no response carries a secret (utils/redactSecrets).
+const adminOnly = authorize('admin');
+// Starting a meeting AS the practice (instant-meeting) and fetching the Zoom host token
+// (ZAK: host control of meetings on the practice's account) are staff actions; only the
+// staff Telehealth screen calls them. A patient joins as a participant and needs neither.
+const staffOnly = (req, res, next) => (req.user && req.user.role !== 'patient'
+  ? next()
+  : res.status(403).json({ error: 'Staff access required' }));
 const router = express.Router();
 router.use(authenticate);
 router.use(require('../middleware/planEnforcement').enforceActiveBilling); // SEC-05 S11: read-only when subscription past_due/canceled
@@ -57,7 +70,7 @@ router.get('/:providerType', async (req, res) => {
       return res.status(404).json({ error: 'Provider settings not found' });
     }
 
-    res.json(result.rows[0]);
+    res.json(redactRow(result.rows[0]));
   } catch (error) {
     console.error('Error fetching provider settings:', error);
     res.status(500).json({ error: 'Failed to fetch provider settings' });
@@ -65,7 +78,7 @@ router.get('/:providerType', async (req, res) => {
 });
 
 // Create or update provider settings
-router.post('/:providerType', async (req, res) => {
+router.post('/:providerType', adminOnly, async (req, res) => {
   try {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { providerType } = req.params;
@@ -93,10 +106,10 @@ router.post('/:providerType', async (req, res) => {
         SET
           is_enabled = COALESCE($1, is_enabled),
           api_key = COALESCE($2, api_key),
-          api_secret = COALESCE($3, api_secret),
+          api_secret = COALESCE(NULLIF($3, ''), api_secret),
           client_id = COALESCE($4, client_id),
-          client_secret = COALESCE($5, client_secret),
-          webhook_secret = COALESCE($6, webhook_secret),
+          client_secret = COALESCE(NULLIF($5, ''), client_secret),
+          webhook_secret = COALESCE(NULLIF($6, ''), webhook_secret),
           settings = COALESCE($7, settings),
           updated_at = CURRENT_TIMESTAMP
         WHERE provider_type = $8
@@ -122,7 +135,7 @@ router.post('/:providerType', async (req, res) => {
           client_id, client_secret, webhook_secret, JSON.stringify(settings || {})]);
     }
 
-    res.json(result.rows[0]);
+    res.json(redactRow(result.rows[0]));
   } catch (error) {
     console.error('Error saving provider settings:', error);
     // A constraint the request broke is the caller's to fix, not a server fault.
@@ -132,7 +145,7 @@ router.post('/:providerType', async (req, res) => {
 });
 
 // Delete provider settings
-router.delete('/:providerType', async (req, res) => {
+router.delete('/:providerType', adminOnly, async (req, res) => {
   try {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { providerType } = req.params;
@@ -156,7 +169,7 @@ router.delete('/:providerType', async (req, res) => {
 });
 
 // Toggle provider enabled status
-router.patch('/:providerType/toggle', async (req, res) => {
+router.patch('/:providerType/toggle', adminOnly, async (req, res) => {
   try {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { providerType } = req.params;
@@ -186,7 +199,7 @@ router.patch('/:providerType/toggle', async (req, res) => {
       `, [providerType, is_enabled]);
     }
 
-    res.json(result.rows[0]);
+    res.json(redactRow(result.rows[0]));
   } catch (error) {
     console.error('Error toggling provider status:', error);
     // A constraint the request broke is the caller's to fix, not a server fault.
@@ -227,7 +240,7 @@ router.get('/active/provider', async (req, res) => {
       return res.json({ provider_type: 'aureoncare', is_enabled: false });
     }
 
-    res.json(result.rows[0]);
+    res.json(redactRow(result.rows[0]));
   } catch (error) {
     console.error('Error fetching active provider:', error);
     res.status(500).json({ error: 'Failed to fetch active provider' });
@@ -235,7 +248,7 @@ router.get('/active/provider', async (req, res) => {
 });
 
 // Test provider connection (validates credentials against provider API)
-router.post('/:providerType/test', async (req, res) => {
+router.post('/:providerType/test', adminOnly, async (req, res) => {
   try {
     const { providerType } = req.params;
     const TelehealthProviderManager = require('../services/telehealthProviders');
@@ -271,7 +284,7 @@ router.post('/:providerType/test', async (req, res) => {
 });
 
 // Create an instant Zoom meeting (one-click launch)
-router.post('/:providerType/instant-meeting', async (req, res) => {
+router.post('/:providerType/instant-meeting', staffOnly, async (req, res) => {
   try {
     const { providerType } = req.params;
     const { topic, duration, patientName, recordingEnabled } = req.body;
@@ -345,7 +358,7 @@ router.post('/:providerType/instant-meeting', async (req, res) => {
  * For Zoom General Apps the OAuth Client ID/Secret ARE the SDK Key/Secret —
  * no separate app or extra env vars are required.
  */
-router.get('/zoom/host-token', async (req, res) => {
+router.get('/zoom/host-token', staffOnly, async (req, res) => {
   try {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { meetingId } = req.query;

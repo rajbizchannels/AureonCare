@@ -1,5 +1,10 @@
 const express = require('express');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, authorize } = require('../middleware/auth');
+
+// SEC-36: saving the practice's Stripe keys, switching Stripe off and testing it were open
+// to ANY signed-in user — a patient could replace the secret key and redirect payments.
+// All three are admin-only now. Reads were already redacted (has_secret_key etc.).
+const adminOnly = authorize('admin');
 const { sendDbError } = require('../utils/dbErrors');
 const router = express.Router();
 router.use(authenticate);
@@ -70,7 +75,7 @@ router.get('/', async (req, res) => {
 
 // POST /api/stripe-settings
 // Create or update settings
-router.post('/', async (req, res) => {
+router.post('/', adminOnly, async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     await getOrInitRow(pool);
@@ -87,8 +92,8 @@ router.post('/', async (req, res) => {
     const result = await pool.query(`
       UPDATE stripe_integration_settings SET
         publishable_key = CASE WHEN $1::text IS NOT NULL THEN $1 ELSE publishable_key END,
-        secret_key = CASE WHEN $2::text IS NOT NULL THEN $2 ELSE secret_key END,
-        webhook_secret = CASE WHEN $3::text IS NOT NULL THEN $3 ELSE webhook_secret END,
+        secret_key = COALESCE(NULLIF($2::text, ''), secret_key),
+        webhook_secret = COALESCE(NULLIF($3::text, ''), webhook_secret),
         sandbox_mode = COALESCE($4, sandbox_mode),
         use_platform_integration = COALESCE($5, use_platform_integration),
         settings = COALESCE($6, settings),
@@ -122,7 +127,7 @@ router.post('/', async (req, res) => {
 });
 
 // PATCH /api/stripe-settings/toggle
-router.patch('/toggle', async (req, res) => {
+router.patch('/toggle', adminOnly, async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     await getOrInitRow(pool);
@@ -146,7 +151,7 @@ router.patch('/toggle', async (req, res) => {
 
 // POST /api/stripe-settings/test
 // Verify the saved secret key can reach Stripe
-router.post('/test', async (req, res) => {
+router.post('/test', adminOnly, async (req, res) => {
   try {
     const pool = req.app.locals.pool;
 

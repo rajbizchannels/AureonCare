@@ -1,5 +1,9 @@
 const express = require('express');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, authorize } = require('../middleware/auth');
+
+// SEC-36: the practice's name, working hours and appointment rules could be changed by ANY signed-in
+// user, a patient included. The Settings screens that edit them are admin-only; so are the writes.
+const adminOnly = authorize('admin');
 const { sendDbError } = require('../utils/dbErrors');
 const router = express.Router();
 router.use(authenticate);
@@ -123,7 +127,7 @@ router.get('/', async (req, res) => {
  * Save clinic settings
  * POST /api/clinic-settings
  */
-router.post('/', async (req, res) => {
+router.post('/', adminOnly, async (req, res) => {
   try {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { name, address, phone, email, website, taxId, npi, currency } = req.body;
@@ -269,7 +273,7 @@ router.get('/working-hours', async (req, res) => {
  * Save working hours
  * POST /api/clinic-settings/working-hours
  */
-router.post('/working-hours', async (req, res) => {
+router.post('/working-hours', adminOnly, async (req, res) => {
   try {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const workingHours = req.body;
@@ -340,7 +344,7 @@ router.get('/appointment-settings', async (req, res) => {
  * Save appointment settings
  * POST /api/clinic-settings/appointment-settings
  */
-router.post('/appointment-settings', async (req, res) => {
+router.post('/appointment-settings', adminOnly, async (req, res) => {
   try {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { defaultDuration, slotInterval, maxAdvanceBooking, cancellationDeadline } = req.body;

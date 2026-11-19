@@ -1,5 +1,23 @@
 const express = require('express');
 const { authenticate, authorize } = require('../middleware/auth');
+const { redactRow, redactRows } = require('../utils/redactSecrets');
+
+// SEC-36: the reads returned SELECT * — vendor API secrets, client secrets and passwords —
+// to any signed-in user, and delete/toggle were open to any role. Reads are redacted,
+// every write is admin-only, and a blank secret on save keeps the stored one.
+const adminOnly = authorize('admin');
+
+// The vendor manager is a process-wide singleton that loads settings through the shared
+// pool (where this table does not exist since the schema-per-tenant cutover), so a reload
+// threw AFTER the write had succeeded and the save answered 500. It is not tenant-aware
+// either (SEC-37): until it is, a failed reload must not fail the request.
+const reloadQuietly = async (vendorType) => {
+  try {
+    await vendorIntegrationManager.reloadVendorSettings(vendorType);
+  } catch (err) {
+    console.warn('[vendor-settings] runtime reload skipped:', err.message);
+  }
+};
 const { assertSafeExternalUrl } = require('../utils/safeUrl');
 const router = express.Router();
 router.use(authenticate);
@@ -21,7 +39,7 @@ router.get('/', async (req, res) => {
       ORDER BY vendor_type
     `);
 
-    res.json(result.rows);
+    res.json(redactRows(result.rows));
   } catch (error) {
     console.error('Error fetching vendor integration settings:', error);
     // Check if the error is due to missing table
@@ -50,7 +68,7 @@ router.get('/:vendorType', async (req, res) => {
       return res.status(404).json({ error: 'Vendor settings not found' });
     }
 
-    res.json(result.rows[0]);
+    res.json(redactRow(result.rows[0]));
   } catch (error) {
     console.error('Error fetching vendor settings:', error);
     res.status(500).json({ error: 'Failed to fetch vendor settings' });
@@ -61,7 +79,7 @@ router.get('/:vendorType', async (req, res) => {
 // SSRF/RBAC: writing these settings decides where the server sends requests — and it
 // sends the integration's credentials with them — so it is admin-only. Previously any
 // authenticated user (a patient included) could point base_url anywhere.
-router.post('/:vendorType', authorize('admin'), async (req, res) => {
+router.post('/:vendorType', adminOnly, async (req, res) => {
   try {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { vendorType } = req.params;
@@ -104,11 +122,11 @@ router.post('/:vendorType', authorize('admin'), async (req, res) => {
         SET
           is_enabled = COALESCE($1, is_enabled),
           api_key = COALESCE($2, api_key),
-          api_secret = COALESCE($3, api_secret),
+          api_secret = COALESCE(NULLIF($3, ''), api_secret),
           client_id = COALESCE($4, client_id),
-          client_secret = COALESCE($5, client_secret),
+          client_secret = COALESCE(NULLIF($5, ''), client_secret),
           username = COALESCE($6, username),
-          password = COALESCE($7, password),
+          password = COALESCE(NULLIF($7, ''), password),
           base_url = COALESCE($8, base_url),
           sandbox_mode = COALESCE($9, sandbox_mode),
           settings = COALESCE($10, settings),
@@ -142,9 +160,9 @@ router.post('/:vendorType', authorize('admin'), async (req, res) => {
     }
 
     // Reload vendor settings in the manager
-    await vendorIntegrationManager.reloadVendorSettings(vendorType);
+    await reloadQuietly(vendorType);
 
-    res.json(result.rows[0]);
+    res.json(redactRow(result.rows[0]));
   } catch (error) {
     console.error('Error saving vendor settings:', error);
     // A constraint the request broke is the caller's to fix, not a server fault.
@@ -154,7 +172,7 @@ router.post('/:vendorType', authorize('admin'), async (req, res) => {
 });
 
 // Delete vendor settings
-router.delete('/:vendorType', async (req, res) => {
+router.delete('/:vendorType', adminOnly, async (req, res) => {
   try {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { vendorType } = req.params;
@@ -169,7 +187,7 @@ router.delete('/:vendorType', async (req, res) => {
     }
 
     // Reload vendor settings in the manager
-    await vendorIntegrationManager.reloadVendorSettings();
+    await reloadQuietly();
 
     res.json({ message: 'Vendor settings deleted successfully' });
   } catch (error) {
@@ -181,7 +199,7 @@ router.delete('/:vendorType', async (req, res) => {
 });
 
 // Toggle vendor enabled status
-router.patch('/:vendorType/toggle', async (req, res) => {
+router.patch('/:vendorType/toggle', adminOnly, async (req, res) => {
   try {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { vendorType } = req.params;
@@ -212,9 +230,9 @@ router.patch('/:vendorType/toggle', async (req, res) => {
     }
 
     // Reload vendor settings in the manager
-    await vendorIntegrationManager.reloadVendorSettings(vendorType);
+    await reloadQuietly(vendorType);
 
-    res.json(result.rows[0]);
+    res.json(redactRow(result.rows[0]));
   } catch (error) {
     console.error('Error toggling vendor status:', error);
     // A constraint the request broke is the caller's to fix, not a server fault.
@@ -269,7 +287,7 @@ router.post('/:vendorType/test', authorize('admin'), async (req, res) => {
     }
 
     // Reload vendor with current settings
-    await vendorIntegrationManager.reloadVendorSettings(vendorType);
+    await reloadQuietly(vendorType);
 
     // Get vendor instance
     const vendor = vendorIntegrationManager.getVendor(vendorType);

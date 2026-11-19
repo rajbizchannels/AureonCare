@@ -1,6 +1,12 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, authorize } = require('../middleware/auth');
+
+// SEC-36: connecting, re-keying, refreshing and disconnecting the practice's OAuth integrations (Zoom,
+// Google Drive, OneDrive...) was open to any signed-in user, and the credentials read returned
+// the stored client secret. These are admin-only; the secret is masked. The callback stays
+// unauthenticated by design — it authorises on its signed state (see the router.use above).
+const adminOnly = authorize('admin');
 const { makeTenantDb } = require('../db/requestTenantDb');
 const { microsoftClientId, googleClientId } = require('../utils/oauthClientIds');
 const router = express.Router();
@@ -356,7 +362,7 @@ function getTableInfo(providerType) {
 
 // ─── Initiate OAuth flow ────────────────────────────────────────────────────
 
-router.get('/:providerType/initiate', async (req, res) => {
+router.get('/:providerType/initiate', adminOnly, async (req, res) => {
   try {
     const { providerType } = req.params;
     const config = OAUTH_CONFIGS[providerType];
@@ -737,7 +743,7 @@ router.get('/:providerType/redirect-url', (req, res) => {
 
 // ─── Get provider client credentials (for editing) ─────────────────────────
 
-router.get('/:providerType/credentials', async (req, res) => {
+router.get('/:providerType/credentials', adminOnly, async (req, res) => {
   try {
     const { providerType } = req.params;
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped (OAuth callback falls back to default tenant)
@@ -765,7 +771,8 @@ router.get('/:providerType/credentials', async (req, res) => {
 
     res.json({
       client_id: result.rows[0].client_id,
-      client_secret: result.rows[0].client_secret,
+      // Masked like the platform fallback above: the browser never needs the secret back.
+      client_secret: result.rows[0].client_secret ? '••••' + String(result.rows[0].client_secret).slice(-4) : '',
       source: 'database',
     });
   } catch (error) {
@@ -776,7 +783,7 @@ router.get('/:providerType/credentials', async (req, res) => {
 
 // ─── Save provider client credentials ───────────────────────────────────────
 
-router.post('/:providerType/credentials', async (req, res) => {
+router.post('/:providerType/credentials', adminOnly, async (req, res) => {
   try {
     const { providerType } = req.params;
     const { client_id, client_secret } = req.body;
@@ -805,11 +812,13 @@ router.post('/:providerType/credentials', async (req, res) => {
     );
 
     if (existing.rows.length > 0) {
+      // A masked value (as the credentials read returns it) means "unchanged".
+      const keep = String(client_secret).startsWith('••••');
       await pool.query(
         `UPDATE ${info.table}
-         SET client_id = $1, client_secret = $2, updated_at = CURRENT_TIMESTAMP
+         SET client_id = $1, client_secret = COALESCE($2, client_secret), updated_at = CURRENT_TIMESTAMP
          WHERE ${info.field} = $3`,
-        [client_id, client_secret, providerType]
+        [client_id, keep ? null : client_secret, providerType]
       );
     } else {
       await pool.query(
@@ -830,7 +839,7 @@ router.post('/:providerType/credentials', async (req, res) => {
 
 // ─── Refresh OAuth access token ─────────────────────────────────────────────
 
-router.post('/:providerType/refresh', async (req, res) => {
+router.post('/:providerType/refresh', adminOnly, async (req, res) => {
   try {
     const { providerType } = req.params;
     const config = OAUTH_CONFIGS[providerType];
@@ -927,7 +936,7 @@ router.post('/:providerType/refresh', async (req, res) => {
 
 // ─── Disconnect / clear OAuth tokens ────────────────────────────────────────
 
-router.delete('/:providerType', async (req, res) => {
+router.delete('/:providerType', adminOnly, async (req, res) => {
   try {
     const { providerType } = req.params;
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped (OAuth callback falls back to default tenant)
