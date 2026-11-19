@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Calendar, FileText, User, Edit, Check, X, Lock, Trash2, XCircle, Upload, Printer, MessageCircle, Activity, Pill, Plus, Heart, Star, Clock, ClipboardList, AlertCircle, ChevronRight, Search, Stethoscope } from 'lucide-react';
+import { Calendar, FileText, User, Edit, Check, X, Lock, Trash2, XCircle, Upload, Printer, MessageCircle, Activity, Pill, Plus, Heart, Star, Clock, ClipboardList, AlertCircle, ChevronRight, Search, Stethoscope, ToggleLeft, ToggleRight } from 'lucide-react';
 import DynamicFormRenderer from '../components/forms/DynamicFormRenderer';
 import { FORM_TEMPLATES } from '../data/formTemplates';
 import { formatDate, formatTime, toLocalDateString } from '../utils/formatters';
@@ -1929,19 +1929,12 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
                   {t.emailNotifications || 'Email Notifications'}
                 </label>
                 <button
+                  role="switch" aria-checked={!!(profileData.email_notifications)}
                   type="button"
                   onClick={() => handleNotificationToggle('email_notifications')}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
-                    profileData.email_notifications
-                      ? 'bg-cyan-500'
-                      : theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'
-                  }`}
+                  className="inline-flex shrink-0 items-center transition-opacity hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:opacity-50"
                 >
-                  <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      profileData.email_notifications ? 'translate-x-6' : 'translate-x-1'
-                    }`}
-                  />
+                  {(profileData.email_notifications) ? <ToggleRight className="w-6 h-6 text-green-400" /> : <ToggleLeft className="w-6 h-6 text-gray-400" />}
                 </button>
               </div>
 
@@ -1951,19 +1944,12 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
                   {t.smsAlerts || 'SMS Alerts'}
                 </label>
                 <button
+                  role="switch" aria-checked={!!(profileData.sms_notifications)}
                   type="button"
                   onClick={() => handleNotificationToggle('sms_notifications')}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
-                    profileData.sms_notifications
-                      ? 'bg-cyan-500'
-                      : theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'
-                  }`}
+                  className="inline-flex shrink-0 items-center transition-opacity hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:opacity-50"
                 >
-                  <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      profileData.sms_notifications ? 'translate-x-6' : 'translate-x-1'
-                    }`}
-                  />
+                  {(profileData.sms_notifications) ? <ToggleRight className="w-6 h-6 text-green-400" /> : <ToggleLeft className="w-6 h-6 text-gray-400" />}
                 </button>
               </div>
 
@@ -1977,20 +1963,13 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
                     </label>
                   </div>
                   <button
+                    role="switch" aria-checked={!!(whatsappEnabled)}
                     type="button"
                     disabled={loadingWhatsApp}
                     onClick={handleWhatsAppToggle}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
-                      whatsappEnabled
-                        ? 'bg-green-500'
-                        : theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'
-                    } ${loadingWhatsApp ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    className="inline-flex shrink-0 items-center transition-opacity hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:opacity-50"
                   >
-                    <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                        whatsappEnabled ? 'translate-x-6' : 'translate-x-1'
-                      }`}
-                    />
+                    {(whatsappEnabled) ? <ToggleRight className="w-6 h-6 text-green-400" /> : <ToggleLeft className="w-6 h-6 text-gray-400" />}
                   </button>
                 </div>
 

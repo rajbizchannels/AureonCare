@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, X, Save } from 'lucide-react';
+import { Shield, X, Save, ToggleLeft, ToggleRight } from 'lucide-react';
 import ConfirmationModal from '../modals/ConfirmationModal';
 import { useAudit } from '../../hooks/useAudit';
 import ThemedSelect from './ThemedSelect';
@@ -423,17 +423,12 @@ const NewInsurancePayerForm = ({ theme, api, onClose, onSuccess, addNotification
                       {t.priorAuthorizationRequired || 'Prior Authorization Required'}
                     </span>
                     <button
+                      role="switch" aria-checked={!!(formData.priorAuthorizationRequired)}
                       type="button"
                       onClick={() => setFormData({...formData, priorAuthorizationRequired: !formData.priorAuthorizationRequired})}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-                        formData.priorAuthorizationRequired ? 'bg-blue-500' : theme === 'dark' ? 'bg-slate-700' : 'bg-gray-300'
-                      }`}
+                      className="inline-flex shrink-0 items-center transition-opacity hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:opacity-50"
                     >
-                      <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                          formData.priorAuthorizationRequired ? 'translate-x-6' : 'translate-x-1'
-                        }`}
-                      />
+                      {(formData.priorAuthorizationRequired) ? <ToggleRight className="w-6 h-6 text-green-400" /> : <ToggleLeft className="w-6 h-6 text-gray-400" />}
                     </button>
                   </div>
 
@@ -442,17 +437,12 @@ const NewInsurancePayerForm = ({ theme, api, onClose, onSuccess, addNotification
                       {t.acceptsAssignment || 'Accepts Assignment'}
                     </span>
                     <button
+                      role="switch" aria-checked={!!(formData.acceptsAssignment)}
                       type="button"
                       onClick={() => setFormData({...formData, acceptsAssignment: !formData.acceptsAssignment})}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-                        formData.acceptsAssignment ? 'bg-blue-500' : theme === 'dark' ? 'bg-slate-700' : 'bg-gray-300'
-                      }`}
+                      className="inline-flex shrink-0 items-center transition-opacity hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:opacity-50"
                     >
-                      <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                          formData.acceptsAssignment ? 'translate-x-6' : 'translate-x-1'
-                        }`}
-                      />
+                      {(formData.acceptsAssignment) ? <ToggleRight className="w-6 h-6 text-green-400" /> : <ToggleLeft className="w-6 h-6 text-gray-400" />}
                     </button>
                   </div>
                 </div>

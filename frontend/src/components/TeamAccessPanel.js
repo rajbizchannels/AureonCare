@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Loader2, ShieldCheck, ShieldAlert, Copy, Check, Trash2, UserCheck, UserX, Globe } from 'lucide-react';
+import { Loader2, ShieldCheck, ShieldAlert, Copy, Check, Trash2, UserCheck, UserX, Globe, ToggleLeft, ToggleRight } from 'lucide-react';
 
 /**
  * Team access — claimed email domains and the people waiting on them.
@@ -238,16 +238,13 @@ const TeamAccessPanel = ({ theme, api, addNotification }) => {
               </div>
             </div>
             <button
+              role="switch" aria-checked={!!(securityPolicy.requireMfa)}
               type="button"
               onClick={() => savePolicy({ requireMfa: !securityPolicy.requireMfa })}
               disabled={busy === 'policy'}
-              className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${
-                securityPolicy.requireMfa ? 'bg-blue-500' : dark ? 'bg-slate-600' : 'bg-gray-300'
-              }`}
+              className="inline-flex shrink-0 items-center transition-opacity hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:opacity-50"
             >
-              <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                securityPolicy.requireMfa ? 'translate-x-6' : 'translate-x-1'
-              }`} />
+              {(securityPolicy.requireMfa) ? <ToggleRight className="w-6 h-6 text-green-400" /> : <ToggleLeft className="w-6 h-6 text-gray-400" />}
             </button>
           </div>
         </div>

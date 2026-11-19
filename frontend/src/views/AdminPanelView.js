@@ -18,48 +18,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import PropTypes from 'prop-types';
-import {
-  Settings,
-  Users,
-  Clock,
-  Building2,
-  Save,
-  Edit,
-  Trash2,
-  UserPlus,
-  Shield,
-  Lock,
-  Unlock,
-  CheckCircle,
-  CreditCard,
-  Check,
-  Video,
-  Plus,
-  HardDrive,
-  Cloud,
-  Download,
-  Upload,
-  RefreshCw,
-  X,
-  User,
-  Mail,
-  Phone,
-  FileText,
-  Stethoscope,
-  Globe,
-  Languages,
-  MapPin,
-  Archive,
-  ChevronDown,
-  ChevronUp,
-  ExternalLink,
-  Copy,
-  MessageCircle,
-  Edit2,
-  Bell,
-  BookOpen,
-  Package,
-} from 'lucide-react';
+import { Settings, Users, Clock, Building2, Save, Edit, Trash2, UserPlus, Shield, Lock, Unlock, CheckCircle, CreditCard, Check, Video, Plus, HardDrive, Cloud, Download, Upload, RefreshCw, X, User, Mail, Phone, FileText, Stethoscope, Globe, Languages, MapPin, Archive, ChevronDown, ChevronUp, ExternalLink, Copy, MessageCircle, Edit2, Bell, BookOpen, Package, ToggleLeft, ToggleRight } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 import InviteStaffPanel from '../components/InviteStaffPanel';
@@ -2100,21 +2059,16 @@ const AdminPanelView = ({
               </span>
             </div>
             <button
+              role="switch" aria-checked={!!((user.preferences?.emailNotifications ?? true))}
               type="button"
               onClick={async () => {
                 const next = !(user.preferences?.emailNotifications ?? true);
                 const ok = await updateUserPreferences({ emailNotifications: next });
                 if (ok) await addNotification('success', t.preferenceSaved || 'Preference saved');
               }}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
-                (user.preferences?.emailNotifications ?? true)
-                  ? 'bg-blue-500'
-                  : theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'
-              }`}
+              className="inline-flex shrink-0 items-center transition-opacity hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:opacity-50"
             >
-              <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                (user.preferences?.emailNotifications ?? true) ? 'translate-x-6' : 'translate-x-1'
-              }`} />
+              {(user.preferences?.emailNotifications ?? true) ? <ToggleRight className="w-6 h-6 text-green-400" /> : <ToggleLeft className="w-6 h-6 text-gray-400" />}
             </button>
           </div>
 
@@ -2127,21 +2081,16 @@ const AdminPanelView = ({
               </span>
             </div>
             <button
+              role="switch" aria-checked={!!((user.preferences?.smsAlerts ?? true))}
               type="button"
               onClick={async () => {
                 const next = !(user.preferences?.smsAlerts ?? true);
                 const ok = await updateUserPreferences({ smsAlerts: next });
                 if (ok) await addNotification('success', t.preferenceSaved || 'Preference saved');
               }}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
-                (user.preferences?.smsAlerts ?? true)
-                  ? 'bg-blue-500'
-                  : theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'
-              }`}
+              className="inline-flex shrink-0 items-center transition-opacity hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:opacity-50"
             >
-              <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                (user.preferences?.smsAlerts ?? true) ? 'translate-x-6' : 'translate-x-1'
-              }`} />
+              {(user.preferences?.smsAlerts ?? true) ? <ToggleRight className="w-6 h-6 text-green-400" /> : <ToggleLeft className="w-6 h-6 text-gray-400" />}
             </button>
           </div>
 
@@ -2236,6 +2185,7 @@ const AdminPanelView = ({
                 )}
               </div>
               <button
+                role="switch" aria-checked={!!((user.preferences?.whatsappNotifications && isPhoneValid(prefWhatsappNumber)))}
                 type="button"
                 disabled={!isPhoneValid(prefWhatsappNumber)}
                 onClick={async () => {
@@ -2244,17 +2194,9 @@ const AdminPanelView = ({
                   const ok = await updateUserPreferences({ whatsappNotifications: next });
                   if (ok) await addNotification('success', t.preferenceSaved || 'Preference saved');
                 }}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                  !isPhoneValid(prefWhatsappNumber)
-                    ? `opacity-40 cursor-not-allowed ${theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'}`
-                    : (user.preferences?.whatsappNotifications && isPhoneValid(prefWhatsappNumber))
-                      ? 'bg-green-500 cursor-pointer'
-                      : `cursor-pointer ${theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'}`
-                }`}
+                className="inline-flex shrink-0 items-center transition-opacity hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:opacity-50"
               >
-                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                  (user.preferences?.whatsappNotifications && isPhoneValid(prefWhatsappNumber)) ? 'translate-x-6' : 'translate-x-1'
-                }`} />
+                {(user.preferences?.whatsappNotifications && isPhoneValid(prefWhatsappNumber)) ? <ToggleRight className="w-6 h-6 text-green-400" /> : <ToggleLeft className="w-6 h-6 text-gray-400" />}
               </button>
             </div>
           </div>
@@ -2430,23 +2372,16 @@ const AdminPanelView = ({
                     )}
                   </div>
                   <button
+                    role="switch" aria-checked={!!((userFormData.whatsappNotifications && isPhoneValid(userFormData.whatsappNumber)))}
                     type="button"
                     disabled={!isPhoneValid(userFormData.whatsappNumber)}
                     onClick={() => {
                       if (!isPhoneValid(userFormData.whatsappNumber)) return;
                       handleUserFormChange('whatsappNotifications', !userFormData.whatsappNotifications);
                     }}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                      !isPhoneValid(userFormData.whatsappNumber)
-                        ? `opacity-40 cursor-not-allowed ${theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'}`
-                        : (userFormData.whatsappNotifications && isPhoneValid(userFormData.whatsappNumber))
-                          ? 'bg-green-500 cursor-pointer'
-                          : `cursor-pointer ${theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'}`
-                    }`}
+                    className="inline-flex shrink-0 items-center transition-opacity hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:opacity-50"
                   >
-                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      (userFormData.whatsappNotifications && isPhoneValid(userFormData.whatsappNumber)) ? 'translate-x-6' : 'translate-x-1'
-                    }`} />
+                    {(userFormData.whatsappNotifications && isPhoneValid(userFormData.whatsappNumber)) ? <ToggleRight className="w-6 h-6 text-green-400" /> : <ToggleLeft className="w-6 h-6 text-gray-400" />}
                   </button>
                 </div>
               </div>
@@ -3012,16 +2947,10 @@ const AdminPanelView = ({
               disabled={!status.has_tokens}
               role="switch"
               aria-checked={status.is_enabled}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                !status.has_tokens
-                  ? theme === 'dark' ? 'bg-slate-700 cursor-not-allowed' : 'bg-gray-200 cursor-not-allowed'
-                  : status.is_enabled ? 'bg-green-500 cursor-pointer' : theme === 'dark' ? 'bg-slate-600 cursor-pointer' : 'bg-gray-300 cursor-pointer'
-              }`}
+              className="inline-flex shrink-0 items-center transition-opacity hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:opacity-50"
               title={!status.has_tokens ? `Connect ${cfg.displayName} account first` : ''}
             >
-              <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                status.is_enabled ? 'translate-x-6' : 'translate-x-1'
-              }`} />
+              {(status.is_enabled) ? <ToggleRight className="w-6 h-6 text-green-400" /> : <ToggleLeft className="w-6 h-6 text-gray-400" />}
             </button>
           </div>
         </div>
@@ -3380,17 +3309,12 @@ const AdminPanelView = ({
               </div>
 
               <button
+                role="switch" aria-checked={!!(hours.enabled)}
                 type="button"
                 onClick={() => handleWorkingHoursChange(day, 'enabled', !hours.enabled)}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                  hours.enabled ? 'bg-green-500' : theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'
-                }`}
+                className="inline-flex shrink-0 items-center transition-opacity hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:opacity-50"
               >
-                <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    hours.enabled ? 'translate-x-6' : 'translate-x-1'
-                  }`}
-                />
+                {(hours.enabled) ? <ToggleRight className="w-6 h-6 text-green-400" /> : <ToggleLeft className="w-6 h-6 text-gray-400" />}
               </button>
             </div>
           </div>

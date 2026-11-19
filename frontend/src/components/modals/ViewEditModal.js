@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { X, Save, Pill, Video, ExternalLink } from 'lucide-react';
+import { X, Save, Pill, Video, ExternalLink, ToggleLeft, ToggleRight } from 'lucide-react';
 import { formatDate, formatTime, formatCurrency, toLocalDateTimeString, toLocalDateString } from '../../utils/formatters';
 import { isPhoneValid, validateOptionalPhone, validateOptionalEmail } from '../../utils/validators';
 import EPrescribeModal from './ePrescribeModal';
@@ -1462,43 +1462,25 @@ const ViewEditModal = ({
                   <div className="flex items-center justify-between">
                     <span className={`${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{t.emailNotifications || 'Email Notifications'}</span>
                     <button
+                      role="switch" aria-checked={!!((editData.emailNotifications !== false))}
                       type="button"
                       onClick={() => setEditData({...editData, emailNotifications: !(editData.emailNotifications !== false)})}
                       disabled={isView}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
-                        isView ? 'opacity-50 cursor-not-allowed' : ''
-                      } ${
-                        (editData.emailNotifications !== false)
-                          ? 'bg-blue-500'
-                          : theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'
-                      }`}
+                      className="inline-flex shrink-0 items-center transition-opacity hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:opacity-50"
                     >
-                      <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                          (editData.emailNotifications !== false) ? 'translate-x-6' : 'translate-x-1'
-                        }`}
-                      />
+                      {(editData.emailNotifications !== false) ? <ToggleRight className="w-6 h-6 text-green-400" /> : <ToggleLeft className="w-6 h-6 text-gray-400" />}
                     </button>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className={`${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{t.smsAlerts || 'SMS Alerts'}</span>
                     <button
+                      role="switch" aria-checked={!!((editData.smsAlerts !== false))}
                       type="button"
                       onClick={() => setEditData({...editData, smsAlerts: !(editData.smsAlerts !== false)})}
                       disabled={isView}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
-                        isView ? 'opacity-50 cursor-not-allowed' : ''
-                      } ${
-                        (editData.smsAlerts !== false)
-                          ? 'bg-blue-500'
-                          : theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'
-                      }`}
+                      className="inline-flex shrink-0 items-center transition-opacity hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:opacity-50"
                     >
-                      <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                          (editData.smsAlerts !== false) ? 'translate-x-6' : 'translate-x-1'
-                        }`}
-                      />
+                      {(editData.smsAlerts !== false) ? <ToggleRight className="w-6 h-6 text-green-400" /> : <ToggleLeft className="w-6 h-6 text-gray-400" />}
                     </button>
                   </div>
                   {/* WhatsApp Number */}
@@ -1540,25 +1522,16 @@ const ViewEditModal = ({
                       )}
                     </div>
                     <button
+                      role="switch" aria-checked={!!((editData.whatsappNotifications && isPhoneValid(editData.whatsappNumber)))}
                       type="button"
                       disabled={isView || !isPhoneValid(editData.whatsappNumber)}
                       onClick={() => {
                         if (!isPhoneValid(editData.whatsappNumber)) return;
                         setEditData({...editData, whatsappNotifications: !editData.whatsappNotifications});
                       }}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                        isView || !isPhoneValid(editData.whatsappNumber)
-                          ? `opacity-40 cursor-not-allowed ${theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'}`
-                          : (editData.whatsappNotifications && isPhoneValid(editData.whatsappNumber))
-                            ? 'bg-green-500 cursor-pointer'
-                            : `cursor-pointer ${theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'}`
-                      }`}
+                      className="inline-flex shrink-0 items-center transition-opacity hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:opacity-50"
                     >
-                      <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                          (editData.whatsappNotifications && isPhoneValid(editData.whatsappNumber)) ? 'translate-x-6' : 'translate-x-1'
-                        }`}
-                      />
+                      {(editData.whatsappNotifications && isPhoneValid(editData.whatsappNumber)) ? <ToggleRight className="w-6 h-6 text-green-400" /> : <ToggleLeft className="w-6 h-6 text-gray-400" />}
                     </button>
                   </div>
                 </div>
@@ -1747,23 +1720,16 @@ const ViewEditModal = ({
                     )}
                   </div>
                   <button
+                    role="switch" aria-checked={!!((editData.whatsappNotifications && isPhoneValid(editData.whatsappNumber)))}
                     type="button"
                     disabled={isView || !isPhoneValid(editData.whatsappNumber)}
                     onClick={() => {
                       if (!isPhoneValid(editData.whatsappNumber)) return;
                       setEditData({...editData, whatsappNotifications: !editData.whatsappNotifications});
                     }}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                      isView || !isPhoneValid(editData.whatsappNumber)
-                        ? `opacity-40 cursor-not-allowed ${theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'}`
-                        : (editData.whatsappNotifications && isPhoneValid(editData.whatsappNumber))
-                          ? 'bg-green-500 cursor-pointer'
-                          : `cursor-pointer ${theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'}`
-                    }`}
+                    className="inline-flex shrink-0 items-center transition-opacity hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:opacity-50"
                   >
-                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      (editData.whatsappNotifications && isPhoneValid(editData.whatsappNumber)) ? 'translate-x-6' : 'translate-x-1'
-                    }`} />
+                    {(editData.whatsappNotifications && isPhoneValid(editData.whatsappNumber)) ? <ToggleRight className="w-6 h-6 text-green-400" /> : <ToggleLeft className="w-6 h-6 text-gray-400" />}
                   </button>
                 </div>
               </div>
