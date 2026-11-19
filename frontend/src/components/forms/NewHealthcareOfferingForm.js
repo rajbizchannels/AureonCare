@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Heart, Clock, Tag, Shield, AlertCircle } from 'lucide-react';
+import { X, Heart, Clock, Tag, Shield, AlertCircle, ToggleLeft, ToggleRight } from 'lucide-react';
 import MedicalCodeMultiSelect from './MedicalCodeMultiSelect';
 import ConfirmationModal from '../modals/ConfirmationModal';
 import { useAudit } from '../../hooks/useAudit';
@@ -445,17 +445,12 @@ const NewHealthcareOfferingForm = ({ theme, api, onClose, onSuccess, addNotifica
                   {t.requiresPreparation || 'Requires Preparation'}
                 </span>
                 <button
+                  role="switch" aria-checked={!!(formData.requiresPreparation)}
                   type="button"
                   onClick={() => setFormData({...formData, requiresPreparation: !formData.requiresPreparation})}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 ${
-                    formData.requiresPreparation ? 'bg-teal-500' : theme === 'dark' ? 'bg-slate-700' : 'bg-gray-300'
-                  }`}
+                  className="inline-flex shrink-0 items-center transition-opacity hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:opacity-50"
                 >
-                  <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      formData.requiresPreparation ? 'translate-x-6' : 'translate-x-1'
-                    }`}
-                  />
+                  {(formData.requiresPreparation) ? <ToggleRight className="w-6 h-6 text-green-400" /> : <ToggleLeft className="w-6 h-6 text-gray-400" />}
                 </button>
               </div>
 
@@ -482,17 +477,12 @@ const NewHealthcareOfferingForm = ({ theme, api, onClose, onSuccess, addNotifica
                   {t.consentFormRequired || 'Consent Form Required'}
                 </span>
                 <button
+                  role="switch" aria-checked={!!(formData.consentFormRequired)}
                   type="button"
                   onClick={() => setFormData({...formData, consentFormRequired: !formData.consentFormRequired})}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 ${
-                    formData.consentFormRequired ? 'bg-teal-500' : theme === 'dark' ? 'bg-slate-700' : 'bg-gray-300'
-                  }`}
+                  className="inline-flex shrink-0 items-center transition-opacity hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:opacity-50"
                 >
-                  <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      formData.consentFormRequired ? 'translate-x-6' : 'translate-x-1'
-                    }`}
-                  />
+                  {(formData.consentFormRequired) ? <ToggleRight className="w-6 h-6 text-green-400" /> : <ToggleLeft className="w-6 h-6 text-gray-400" />}
                 </button>
               </div>
 
@@ -548,17 +538,12 @@ const NewHealthcareOfferingForm = ({ theme, api, onClose, onSuccess, addNotifica
                     {t.active || 'Active'}
                   </span>
                   <button
+                    role="switch" aria-checked={!!(formData.isActive)}
                     type="button"
                     onClick={() => setFormData({...formData, isActive: !formData.isActive})}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 ${
-                      formData.isActive ? 'bg-teal-500' : theme === 'dark' ? 'bg-slate-700' : 'bg-gray-300'
-                    }`}
+                    className="inline-flex shrink-0 items-center transition-opacity hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:opacity-50"
                   >
-                    <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                        formData.isActive ? 'translate-x-6' : 'translate-x-1'
-                      }`}
-                    />
+                    {(formData.isActive) ? <ToggleRight className="w-6 h-6 text-green-400" /> : <ToggleLeft className="w-6 h-6 text-gray-400" />}
                   </button>
                 </div>
 
@@ -567,17 +552,12 @@ const NewHealthcareOfferingForm = ({ theme, api, onClose, onSuccess, addNotifica
                     {t.featured || 'Featured'}
                   </span>
                   <button
+                    role="switch" aria-checked={!!(formData.isFeatured)}
                     type="button"
                     onClick={() => setFormData({...formData, isFeatured: !formData.isFeatured})}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 ${
-                      formData.isFeatured ? 'bg-teal-500' : theme === 'dark' ? 'bg-slate-700' : 'bg-gray-300'
-                    }`}
+                    className="inline-flex shrink-0 items-center transition-opacity hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:opacity-50"
                   >
-                    <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                        formData.isFeatured ? 'translate-x-6' : 'translate-x-1'
-                      }`}
-                    />
+                    {(formData.isFeatured) ? <ToggleRight className="w-6 h-6 text-green-400" /> : <ToggleLeft className="w-6 h-6 text-gray-400" />}
                   </button>
                 </div>
 
@@ -586,17 +566,12 @@ const NewHealthcareOfferingForm = ({ theme, api, onClose, onSuccess, addNotifica
                     {t.availableOnline || 'Available Online'}
                   </span>
                   <button
+                    role="switch" aria-checked={!!(formData.availableOnline)}
                     type="button"
                     onClick={() => setFormData({...formData, availableOnline: !formData.availableOnline})}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 ${
-                      formData.availableOnline ? 'bg-teal-500' : theme === 'dark' ? 'bg-slate-700' : 'bg-gray-300'
-                    }`}
+                    className="inline-flex shrink-0 items-center transition-opacity hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:opacity-50"
                   >
-                    <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                        formData.availableOnline ? 'translate-x-6' : 'translate-x-1'
-                      }`}
-                    />
+                    {(formData.availableOnline) ? <ToggleRight className="w-6 h-6 text-green-400" /> : <ToggleLeft className="w-6 h-6 text-gray-400" />}
                   </button>
                 </div>
 
@@ -605,17 +580,12 @@ const NewHealthcareOfferingForm = ({ theme, api, onClose, onSuccess, addNotifica
                     {t.requiresReferral || 'Requires Referral'}
                   </span>
                   <button
+                    role="switch" aria-checked={!!(formData.requiresReferral)}
                     type="button"
                     onClick={() => setFormData({...formData, requiresReferral: !formData.requiresReferral})}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 ${
-                      formData.requiresReferral ? 'bg-teal-500' : theme === 'dark' ? 'bg-slate-700' : 'bg-gray-300'
-                    }`}
+                    className="inline-flex shrink-0 items-center transition-opacity hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:opacity-50"
                   >
-                    <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                        formData.requiresReferral ? 'translate-x-6' : 'translate-x-1'
-                      }`}
-                    />
+                    {(formData.requiresReferral) ? <ToggleRight className="w-6 h-6 text-green-400" /> : <ToggleLeft className="w-6 h-6 text-gray-400" />}
                   </button>
                 </div>
               </div>

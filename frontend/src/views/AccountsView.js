@@ -27,8 +27,8 @@ const Toggle = ({ value, onChange, label, disabled }) => (
     aria-pressed={value}
   >
     {value
-      ? <ToggleRight size={28} className="text-emerald-500 flex-shrink-0" />
-      : <ToggleLeft  size={28} className="text-gray-400 flex-shrink-0" />}
+      ? <ToggleRight className="w-6 h-6 text-green-400 flex-shrink-0" />
+      : <ToggleLeft className="w-6 h-6 text-gray-400 flex-shrink-0" />}
     {label && <span className="text-sm">{label}</span>}
   </button>
 );

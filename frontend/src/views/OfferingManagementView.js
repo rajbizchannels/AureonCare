@@ -8,30 +8,7 @@ import { useAudit } from '../hooks/useAudit';
 import { useShellTab } from '../hooks/useShellTab';
 import { FORM_TEMPLATES } from '../data/formTemplates';
 import ThemedSelect from '../components/forms/ThemedSelect';
-import {
-  Package,
-  FolderTree,
-  DollarSign,
-  Users,
-  Star,
-  Tag,
-  TrendingUp,
-  Plus,
-  Edit2,
-  Trash2,
-  Eye,
-  EyeOff,
-  Search,
-  Filter,
-  X,
-  Check,
-  Clock,
-  Calendar,
-  Award,
-  BarChart3,
-  ShoppingCart,
-  ClipboardList
-} from 'lucide-react';
+import { Package, FolderTree, DollarSign, Users, Star, Tag, TrendingUp, Plus, Edit2, Trash2, Eye, EyeOff, Search, Filter, X, Check, Clock, Calendar, Award, BarChart3, ShoppingCart, ClipboardList, ToggleLeft, ToggleRight } from 'lucide-react';
 
 const OfferingManagementView = ({ activeTab: shellTab, onTabChange }) => {
   const { user, theme, currency } = useApp();
@@ -1214,19 +1191,12 @@ const CheckboxField = ({ label, checked, onChange, theme }) => (
       {label}
     </label>
     <button
+      role="switch" aria-checked={!!(checked)}
       type="button"
       onClick={() => onChange(!checked)}
-      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-        checked
-          ? 'bg-blue-500'
-          : theme === 'dark' ? 'bg-slate-700' : 'bg-gray-300'
-      }`}
+      className="inline-flex shrink-0 items-center transition-opacity hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:opacity-50"
     >
-      <span
-        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-          checked ? 'translate-x-6' : 'translate-x-1'
-        }`}
-      />
+      {(checked) ? <ToggleRight className="w-6 h-6 text-green-400" /> : <ToggleLeft className="w-6 h-6 text-gray-400" />}
     </button>
   </div>
 );

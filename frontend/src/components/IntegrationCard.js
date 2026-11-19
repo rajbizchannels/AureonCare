@@ -10,7 +10,7 @@
 
 import React, { useState, useCallback } from 'react';
 import PropTypes from 'prop-types';
-import { Save, Check, AlertCircle } from 'lucide-react';
+import { Save, Check, AlertCircle, ToggleLeft, ToggleRight } from 'lucide-react';
 
 const IntegrationCard = ({
   name,
@@ -105,24 +105,10 @@ const IntegrationCard = ({
             role="switch"
             aria-checked={isEnabled}
             aria-label={`Toggle ${displayName || name} integration`}
-            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
-              !isConfigured
-                ? theme === 'dark'
-                  ? 'bg-slate-700 cursor-not-allowed'
-                  : 'bg-gray-200 cursor-not-allowed'
-                : isEnabled
-                ? 'bg-green-500'
-                : theme === 'dark'
-                ? 'bg-slate-600'
-                : 'bg-gray-300'
-            }`}
+            className="inline-flex shrink-0 items-center transition-opacity hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:opacity-50"
             title={!isConfigured ? 'Please configure before enabling' : ''}
           >
-            <span
-              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                isEnabled ? 'translate-x-6' : 'translate-x-1'
-              }`}
-            />
+            {(isEnabled) ? <ToggleRight className="w-6 h-6 text-green-400" /> : <ToggleLeft className="w-6 h-6 text-gray-400" />}
           </button>
         </div>
 

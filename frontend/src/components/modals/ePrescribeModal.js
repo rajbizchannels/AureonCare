@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { X, Search, AlertCircle, Pill, Building2, Send, Printer, Plus, Trash2 } from 'lucide-react';
+import { X, Search, AlertCircle, Pill, Building2, Send, Printer, Plus, Trash2, ToggleLeft, ToggleRight } from 'lucide-react';
 import { useAudit } from '../../hooks/useAudit';
 import ThemedSelect from '../../components/forms/ThemedSelect';
 
@@ -1001,18 +1001,11 @@ const EPrescribeModal = ({
                       Allow generic substitution
                     </span>
                     <button
+                      role="switch" aria-checked={!!(currentDetails.substitutionAllowed)}
                       onClick={() => setCurrentDetails({ ...currentDetails, substitutionAllowed: !currentDetails.substitutionAllowed })}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-                        currentDetails.substitutionAllowed
-                          ? 'bg-blue-500'
-                          : theme === 'dark' ? 'bg-slate-700' : 'bg-gray-300'
-                      }`}
+                      className="inline-flex shrink-0 items-center transition-opacity hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:opacity-50"
                     >
-                      <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                          currentDetails.substitutionAllowed ? 'translate-x-6' : 'translate-x-1'
-                        }`}
-                      />
+                      {(currentDetails.substitutionAllowed) ? <ToggleRight className="w-6 h-6 text-green-400" /> : <ToggleLeft className="w-6 h-6 text-gray-400" />}
                     </button>
                   </div>
                 </div>
