@@ -607,6 +607,20 @@ arrive with an invitation (or with a verified work email at a domain your practi
 claimed — see 2.2.1). It does not create an account for an address AureonCare does not
 know: you will see *"No account found … Ask your practice to send you an invitation."*
 
+### 2.3.1 How sessions behave (🆕 NEW)
+
+- **Reloading the page keeps you signed in.** The app checks with the server who the
+  session belongs to and reloads everything fresh — nothing is restored from the browser.
+- **Closing the browser signs you out.** When the browser is reopened (or a tab restored
+  with no AureonCare tab open), you start at the sign-in page and the old session is
+  ended on the server too.
+- **A new tab** opened while another AureonCare tab is signed in shows the sign-in page;
+  the other tab is not affected.
+- **Tabs stay in step.** If you sign in as a different person in one tab, or sign out in
+  one tab, the other AureonCare tabs return to the sign-in page with a short note — a tab
+  never keeps showing one person while acting as another.
+- **Log out** ends the session on the server, not just on the screen.
+
 ### 2.4 Understanding the Interface
 
 **🆕 UPDATED IN V1.3:** AureonCare uses a three-pane application shell.

@@ -6,7 +6,9 @@ const { signToken, authenticate } = require('../middleware/auth');
 const { validateSocialToken } = require('../utils/socialTokenValidator');
 const { sendEmail, buildEmailHtml } = require('../services/notificationService');
 const { BCRYPT_COST, checkNewPassword } = require('../utils/passwordPolicy');
-const { issueAuthCookies, clearAuthCookies, issuePortalCookies } = require('../utils/authCookies');
+const { issueAuthCookies, clearAuthCookies, issuePortalCookies, getPortalCookie } = require('../utils/authCookies');
+const { tenantForSession, forgetSession } = require('../services/portalRouting');
+const { withTenant } = require('../db/tenantClient');
 const { issuePortalSession, revokePortalSessions } = require('../services/portalSession');
 const { exchangeAuthCode } = require('../utils/oauthExchange');
 const { findUsableInvite, claimInvite } = require('./invites');
@@ -645,6 +647,43 @@ router.post('/mfa/backup-codes', authenticate, async (req, res) => {
 // clinician JWT currently held for this account (this device and any other), and we
 // clear any portal sessions too. The client still discards its local token, but this
 // guarantees a stolen/old token cannot be replayed after logout.
+// End this browser's session (SEC-40). Called when the app opens in a NEW browser session
+// (a reopened browser or restored tab with no live AureonCare tab): per the session policy
+// a fresh browser session starts signed out, and that must be true on the server as well,
+// not just on screen.
+//
+// Unlike /logout this does NOT bump token_version, so the person's sessions on OTHER
+// devices are unaffected — it ends only the session this browser holds. The session
+// cookies are HttpOnly, so only the server can remove them. A portal session presented
+// here is revoked outright (it is stored server-side); a staff JWT is stateless, and with
+// its cookie gone this browser no longer holds it. No authentication is needed: it can
+// only ever remove the caller's own cookies.
+router.post('/session/end', async (req, res) => {
+  try {
+    const portalToken = getPortalCookie(req);
+    if (portalToken) {
+      const pool = req.app.locals.pool;
+      const tokenHash = require('crypto').createHash('sha256').update(portalToken).digest('hex');
+      try {
+        const routed = await tenantForSession(pool, tokenHash);
+        if (routed && routed.schemaName && routed.schemaName !== 'public') {
+          await withTenant(pool, routed.schemaName, (c) =>
+            c.query('DELETE FROM patient_portal_sessions WHERE session_token = $1', [tokenHash]));
+        }
+        await forgetSession(pool, tokenHash);
+      } catch (e) {
+        console.warn('[auth] could not revoke portal session on session end:', e.message);
+      }
+    }
+    clearAuthCookies(res);
+    res.json({ ended: true });
+  } catch (error) {
+    console.error('Error ending browser session:', error);
+    clearAuthCookies(res);
+    res.json({ ended: true });
+  }
+});
+
 router.post('/logout', authenticate, async (req, res) => {
   try {
     const pool = req.app.locals.pool;

@@ -57,6 +57,10 @@ const SESSION_INDEPENDENT = new Set([
   'POST /api/signup',
   'POST /api/invites/accept',
   'POST /api/team-access/join',
+  // Only ever removes the caller's own session cookies (SEC-40). A forged call can at
+  // worst sign the victim out of this browser — never act as them — and it must work when
+  // the readable CSRF cookie has already expired alongside the session.
+  'POST /api/auth/session/end',
 ]);
 
 /** True when this exact request is one of the session-independent endpoints. */

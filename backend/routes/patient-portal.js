@@ -954,6 +954,36 @@ router.post('/:patientId/link-social', async (req, res) => {
   }
 });
 
+// Who this portal session belongs to (SEC-40). A reloaded portal tab asks the SERVER who is
+// signed in instead of trusting what the browser remembered, so the screen can never show
+// one patient while the session cookie belongs to another. Reads the same credential the
+// :patientId guard reads (Bearer header, else the HttpOnly ac_portal cookie).
+router.get('/session', async (req, res) => {
+  try {
+    const authHeader = req.headers['authorization'];
+    const token = (authHeader && authHeader.startsWith('Bearer ')) ? authHeader.slice(7) : getPortalCookie(req);
+    if (!token) return res.status(401).json({ error: 'Portal session required' });
+    const tokenHash = hashToken(token);
+    const basePool = req.app.locals.pool;
+    const routed = await tenantForSession(basePool, tokenHash);
+    if (!routed || !routed.schemaName || routed.schemaName === 'public') {
+      return res.status(401).json({ error: 'Invalid or expired portal session' });
+    }
+    const patient = await withTenant(basePool, routed.schemaName, async (c) => {
+      const { rows } = await c.query(
+        `SELECT p.* FROM patient_portal_sessions s JOIN patients p ON p.id = s.patient_id
+          WHERE s.session_token = $1 AND s.expires_at > NOW() AND p.portal_enabled = true`, [tokenHash]);
+      return rows[0] || null;
+    });
+    if (!patient) return res.status(401).json({ error: 'Invalid or expired portal session' });
+    const { portal_password_hash, ...patientData } = patient;   // eslint-disable-line no-unused-vars
+    res.json({ patient: { ...patientData, role: 'patient' } });
+  } catch (error) {
+    console.error('Portal session lookup error:', error);
+    res.status(500).json({ error: 'Could not check the portal session' });
+  }
+});
+
 // Logout (delete session)
 router.post('/logout', async (req, res) => {
   try {
