@@ -51,8 +51,10 @@ Thumbs.db
 *.swo
 *~
 
-# Docker files (avoid recursive inclusion)
-docker/
+# Docker build files (avoid recursive inclusion). Not the whole of docker/: the frontend
+# image copies docker/nginx/nginx.conf, which excluding docker/ made unbuildable.
+docker/backend/
+docker/frontend/
 
 # Python scripts (not needed in containers)
 *.py

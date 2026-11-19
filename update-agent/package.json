@@ -1,8 +1,9 @@
 {
   "name": "aureoncare-update-agent",
   "version": "1.0.0",
-  "description": "AureonCare on-premises update agent — polls the release registry and notifies administrators of new versions",
+  "description": "AureonCare on-premises update agent \u2014 polls the release registry and notifies administrators of new versions",
   "main": "agent.js",
+  "type": "module",
   "scripts": {
     "start": "node agent.js"
   },
