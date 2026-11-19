@@ -30,6 +30,7 @@ const notify = require(path.join(BACKEND, 'services/notificationService.js'));
 notify.sendEmail = async () => ({ sent: false, reason: 'test' });   // invites return their link
 
 const pool = require(path.join(BACKEND, 'db.js'));
+const { expandLink, tokenOf: tokenOfUrl } = require(path.join(__dirname, '..', 'helpers', 'links.js'));
 const bcrypt = require(path.join(BACKEND, '..', 'node_modules', 'bcryptjs'));
 const { provisionTenant } = require(path.join(BACKEND, 'services/tenantProvisioning.js'));
 require(path.join(BACKEND, 'server.js'));
@@ -85,7 +86,7 @@ const report = (err) => {
   // ── 2. a staff invitation creates a staff account in that practice ───────────────
   const staffEmail = `nurse_${RUN}@example.com`;
   const inv = await call('POST', '/api/invites', admin, { email: staffEmail, role: 'nurse' });
-  const inviteToken = inv.body && inv.body.inviteUrl && new URL(inv.body.inviteUrl).searchParams.get('token');
+  const inviteToken = inv.body && inv.body.inviteUrl && tokenOfUrl(await expandLink(inv.body.inviteUrl, BASE));
   check('an admin can invite a colleague', inv.status === 201 && Boolean(inviteToken));
   IDENTITY = { email: staffEmail, emailVerified: true, providerId: `g-nurse-${RUN}`, firstName: 'N', lastName: 'U' };
   const s2 = await signIn('google', { inviteToken });

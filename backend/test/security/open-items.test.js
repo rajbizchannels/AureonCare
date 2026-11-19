@@ -21,6 +21,7 @@ process.env.AC_IDX_K = process.env.AC_IDX_K || crypto.randomBytes(32).toString('
 const BASE = `http://127.0.0.1:${process.env.PORT}`;
 
 const pool = require(path.join(BACKEND, 'db.js'));
+const { expandLink, firstLinkIn, tokenOf: tokenOfUrl } = require(path.join(__dirname, '..', 'helpers', 'links.js'));
 const bcrypt = require(path.join(BACKEND, '..', 'node_modules', 'bcryptjs'));
 const jwt = require(path.join(BACKEND, '..', 'node_modules', 'jsonwebtoken'));
 const { provisionTenant } = require(path.join(BACKEND, 'services/tenantProvisioning.js'));
@@ -129,7 +130,8 @@ const stubKnowing = (pw) => async (prefix) => {
   // The patient sets their portal password from the practice's invitation link.
   const sentInvite = await api('POST', '/api/portal-invites', { token: A.token, body: { patientId } });
   const mail = outbox.filter((m) => m.to === pEmail).pop();
-  const inviteToken = mail && (/activate\?token=([A-Za-z0-9_-]+)/.exec(mail.html) || [])[1];
+  // The email carries a short link (/s/<code>); follow it to the activation URL.
+  const inviteToken = mail && tokenOfUrl(await expandLink(firstLinkIn(mail.html), BASE));
   check('the practice can invite the patient to the portal', sentInvite.status === 201 && Boolean(inviteToken));
   const reg1 = await api('POST', '/api/portal-invites/accept', { body: { token: inviteToken, password: BREACHED } });
   check('SEC-12: A BREACHED PASSWORD IS REFUSED (400)', reg1.status === 400);

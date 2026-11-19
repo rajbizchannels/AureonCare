@@ -868,8 +868,12 @@ const ViewEditModal = ({
                       Join Meeting
                     </a>
                     <button
-                      onClick={() => {
-                        navigator.clipboard.writeText(editData.meeting_url);
+                      onClick={async () => {
+                        // Short link (/s/<code>) when available, else the meeting URL itself.
+                        const url = editData.id
+                          ? await api.createShortLink({ kind: 'meeting', appointmentId: editData.id }).catch(() => editData.meeting_url)
+                          : editData.meeting_url;
+                        try { await navigator.clipboard.writeText(url); } catch { /* clipboard blocked */ }
                       }}
                       className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
                         theme === 'dark'

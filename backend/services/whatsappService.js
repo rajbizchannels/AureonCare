@@ -238,6 +238,11 @@ See you soon!
         hour: '2-digit',
         minute: '2-digit'
       });
+      // Short link (/s/<code>) valid until a day after the appointment starts.
+      meetingUrl = await require('./shortLinks').shorten(meetingUrl, {
+        expiresAt: Number.isNaN(appointmentDate.getTime()) ? null : new Date(appointmentDate.getTime() + 24 * 3600 * 1000),
+        kind: 'telehealth',
+      });
 
       const message = `
 💻 *Telehealth Appointment*
