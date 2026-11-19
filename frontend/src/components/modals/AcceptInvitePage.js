@@ -49,7 +49,7 @@ const AcceptInvitePage = ({ theme = 'light', token, api, addNotification, onAcce
     setBusy('password');
     try {
       await api.acceptInvite({ token, password: form.password, firstName: form.firstName, lastName: form.lastName });
-      addNotification?.('Account created. Please sign in.', 'success');
+      addNotification?.('success', 'Account created. Please sign in.');
       onAccepted?.();
     } catch (err) {
       setError(err.message || 'Could not accept the invite.');
@@ -64,9 +64,9 @@ const AcceptInvitePage = ({ theme = 'light', token, api, addNotification, onAcce
     if (res && res.token && res.user) {
       api.storeToken(res.token);
       setConnected(res);
-      addNotification?.(`Connected as ${res.user.email}`, 'success');
+      addNotification?.('success', `Connected as ${res.user.email}`);
     } else {
-      addNotification?.('Account created. Please sign in.', 'success');
+      addNotification?.('success', 'Account created. Please sign in.');
       onAccepted?.();
     }
   };
@@ -99,11 +99,11 @@ const AcceptInvitePage = ({ theme = 'light', token, api, addNotification, onAcce
         if (res && res.token && res.user) {
           api.storeToken(res.token);
           setConnected(res);
-          addNotification?.(`Connected as ${res.user.email}`, 'success');
+          addNotification?.('success', `Connected as ${res.user.email}`);
         } else {
           // Older server, or a response without a session: fall back to the sign-in page
           // rather than leaving the user on a page with nowhere to go.
-          addNotification?.('Account created. Please sign in.', 'success');
+          addNotification?.('success', 'Account created. Please sign in.');
           onAccepted?.();
         }
       } catch (err) {

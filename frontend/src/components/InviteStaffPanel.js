@@ -44,11 +44,12 @@ const InviteStaffPanel = ({ theme, api, addNotification }) => {
       if (isPatient) {
         const inv = await api.sendPortalInviteByEmail({ email: email.trim(), ...patient });
         setFreshLink(inv.inviteUrl || null);
-        setDelivery({ emailed: inv.emailed, reason: inv.emailError, to: inv.email });
+        setDelivery({ emailed: inv.emailed, reason: inv.emailError, to: inv.email, patient: true });
         setEmail(''); setPatient({ firstName: '', lastName: '', dateOfBirth: '' });
+        // addNotification is (type, message) — the arguments were the wrong way round.
         addNotification?.(
-          inv.emailed ? `Portal invitation emailed to ${inv.email}` : `Portal invitation created for ${inv.email} — send the link yourself`,
-          inv.emailed ? 'success' : 'warning'
+          inv.emailed ? 'success' : 'warning',
+          inv.emailed ? `Portal invitation emailed to ${inv.email}` : `Portal invitation created for ${inv.email} — send the link yourself`
         );
         return;
       }
@@ -57,8 +58,8 @@ const InviteStaffPanel = ({ theme, api, addNotification }) => {
       setDelivery({ emailed: inv.emailed, reason: inv.emailError, detail: inv.emailErrorDetail, to: inv.email });
       setEmail('');
       addNotification?.(
-        inv.emailed ? `Invite emailed to ${inv.email}` : `Invite created for ${inv.email} — send the link yourself`,
-        inv.emailed ? 'success' : 'warning'
+        inv.emailed ? 'success' : 'warning',
+        inv.emailed ? `Invite emailed to ${inv.email}` : `Invite created for ${inv.email} — send the link yourself`
       );
       load();
     } catch (err) {
@@ -73,7 +74,7 @@ const InviteStaffPanel = ({ theme, api, addNotification }) => {
       await api.revokeInvite(id);
       load();
     } catch (err) {
-      addNotification?.(err.message || 'Could not revoke the invite.', 'error');
+      addNotification?.('error', err.message || 'Could not revoke the invite.');
     }
   };
 
@@ -148,6 +149,18 @@ const InviteStaffPanel = ({ theme, api, addNotification }) => {
       </form>
 
       {error && <div className="mt-3 text-sm text-red-600">{error}</div>}
+
+      {/* A patient invitation that was emailed returns no link — it exists only in the
+          patient's inbox — so confirm the send on its own. */}
+      {!freshLink && delivery?.patient && delivery.emailed && (
+        <div role="status" className={`mt-4 p-3 rounded-lg border flex items-start gap-2 text-sm ${dark ? 'border-emerald-700 bg-emerald-900/30 text-emerald-200' : 'border-emerald-200 bg-emerald-50 text-emerald-800'}`}>
+          <Check className="w-4 h-4 mt-0.5 shrink-0" />
+          <span>
+            Patient-portal invitation emailed to <strong>{delivery.to}</strong>. The link works once and
+            expires in 14 days; you can re-send it from the patient&apos;s chart.
+          </span>
+        </div>
+      )}
 
       {freshLink && (
         <div className={`mt-4 p-3 rounded-lg border ${dark ? 'border-slate-600 bg-slate-900' : 'border-blue-200 bg-blue-50'}`}>
