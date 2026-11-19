@@ -3,7 +3,7 @@ const router = express.Router();
 const { authenticate, authorize } = require('../middleware/auth');
 const { getTimezoneFromCountry } = require('../utils/timezoneUtils');
 const { enforceUserQuota, enforceProviderQuota } = require('../middleware/planEnforcement');
-const { BCRYPT_COST, validatePassword } = require('../utils/passwordPolicy');
+const { BCRYPT_COST, checkNewPassword } = require('../utils/passwordPolicy');
 const { sendDbError } = require('../utils/dbErrors');
 
 // SEC-05: true only when the target row belongs to the caller's practice. A caller with
@@ -107,7 +107,7 @@ router.post('/', authorize('admin'), enforceUserQuota, enforceProviderQuota, asy
     let passwordHash = null;
     if (password) {
       // SEC-12: enforce policy + hash at the shared cost factor
-      const pwCheck = validatePassword(password);
+      const pwCheck = await checkNewPassword(password);
       if (!pwCheck.valid) {
         return res.status(400).json({ error: pwCheck.message });
       }
@@ -272,7 +272,7 @@ router.put('/:id', isSelfOrAdmin, async (req, res) => {
     let passwordHash = null;
     if (password) {
       // SEC-12: enforce policy + hash at the shared cost factor
-      const pwCheck = validatePassword(password);
+      const pwCheck = await checkNewPassword(password);
       if (!pwCheck.valid) {
         return res.status(400).json({ error: pwCheck.message });
       }

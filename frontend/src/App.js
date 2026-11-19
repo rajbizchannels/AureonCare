@@ -1295,7 +1295,7 @@ function App() {
           theme={theme}
           onClose={() => setShowSearch(false)}
           onSelectResult={(result) => {
-            console.log('Search result selected:', result);
+            console.log('Search result selected:', result?.result_type); // SEC-14: the result may be a patient
             setShowSearch(false);
 
             // Navigate to the appropriate module and open the record

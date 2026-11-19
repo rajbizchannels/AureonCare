@@ -73,7 +73,7 @@ const EPrescribeModal = ({
     }
 
     if (!patient || !patient.id) {
-      console.error('[ePrescribe] Patient data is missing or invalid:', patient);
+      console.error('[ePrescribe] Patient data is missing or invalid'); // SEC-14: never log the record
       if (!hasShownErrorRef.current) {
         hasShownErrorRef.current = true;
         addNotification('alert', 'Cannot open ePrescribe: Patient data is missing');
@@ -83,8 +83,6 @@ const EPrescribeModal = ({
     }
     if (!normalizedProvider || !normalizedProvider.id) {
       console.error('[ePrescribe] Provider data is missing or invalid:', {
-        provider,
-        normalizedProvider,
         hasId: !!provider?.id,
         hasUserId: !!provider?.user_id
       });
@@ -499,7 +497,8 @@ const EPrescribeModal = ({
   useEffect(() => {
     if (!prescription) return;
 
-    console.log('[ePrescribe] Loading prescription for editing:', prescription);
+    // SEC-14: ids only — the prescription object is PHI.
+    console.log('[ePrescribe] Loading prescription for editing:', prescription.id);
 
     // Create a medication object from prescription data
     const medicationFromPrescription = {
@@ -545,7 +544,7 @@ const EPrescribeModal = ({
     if (!initialMedication) return;
     if (prescription) return; // Don't override if editing prescription
 
-    console.log('[ePrescribe] Loading initial medication:', initialMedication);
+    console.log('[ePrescribe] Loading initial medication');
 
     // Pre-select the medication
     handleSelectMedication(initialMedication);
@@ -554,7 +553,7 @@ const EPrescribeModal = ({
   // Submit all prescriptions
   const handleSubmitPrescriptions = async () => {
     console.log('[ePrescribe] Submitting prescriptions...');
-    console.log('[ePrescribe] Using provider:', normalizedProvider);
+    console.log('[ePrescribe] Using provider:', normalizedProvider?.id); // SEC-14: not the DEA/NPI record
     console.log('[ePrescribe] Is editing:', !!prescription);
     console.log('[ePrescribe] Number of medications:', addedMedications.length);
 
@@ -730,10 +729,10 @@ const EPrescribeModal = ({
         prescriptionPayload.prescriberDeaNumber = normalizedProvider?.deaNumber || normalizedProvider?.dea_number || '';
       }
 
-      console.log('[ePrescribe] Creating prescription before printing:', prescriptionPayload);
+      console.log('[ePrescribe] Creating prescription before printing'); // SEC-14: payload is PHI
 
       const prescription = await api.createPrescription(prescriptionPayload);
-      console.log('[ePrescribe] Prescription created successfully:', prescription);
+      console.log('[ePrescribe] Prescription created successfully:', prescription?.id);
 
       // Now generate the print document
       const printWindow = window.open('', '_blank');

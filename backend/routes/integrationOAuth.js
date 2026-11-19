@@ -39,12 +39,12 @@ const signOAuthState = (providerType, userId, tenantId) =>
   jwt.sign(
     { providerType, uid: String(userId), tid: tenantId ? String(tenantId) : null },
     JWT_SECRET,
-    { expiresIn: '10m' }
+    { expiresIn: '10m', algorithm: 'HS256' }
   );
 
 const verifyOAuthState = (state, providerType) => {
   try {
-    const claims = jwt.verify(state, JWT_SECRET);
+    const claims = jwt.verify(state, JWT_SECRET, { algorithms: ['HS256'] }); // SEC-11
     return claims.providerType === providerType ? claims : null;
   } catch (err) {
     return null;

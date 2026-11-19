@@ -127,7 +127,9 @@ function parse835File(fileContent) {
           // SVC*HC:99213*100.00*80.00*UN*1~
           if (currentClaim) {
             currentServiceLine = {
-              procedureCode: elements[1].split(':')[1] || elements[1],
+              // SEC-23: an SVC with no composite element crashed the whole parse (found by
+              // test/edi/parser-fuzz.test.js).
+              procedureCode: String(elements[1] || '').split(':')[1] || elements[1] || null,
               chargeAmount: parseFloat(elements[2]),
               paymentAmount: parseFloat(elements[3]),
               units: elements[5],
@@ -272,7 +274,8 @@ function convertToPaymentPostings(parsed835, claimMapping = {}) {
 function validate835File(fileContent) {
   const errors = [];
 
-  if (!fileContent || fileContent.trim().length === 0) {
+  // SEC-23: anything that is not text is not an 835 (it used to throw on .trim()).
+  if (typeof fileContent !== 'string' || fileContent.trim().length === 0) {
     errors.push('File is empty');
     return { valid: false, errors };
   }

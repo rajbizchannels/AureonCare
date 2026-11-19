@@ -14,7 +14,7 @@ const bcrypt = require('bcryptjs');
 const rateLimit = require('express-rate-limit');
 const { authenticate, authorize } = require('../middleware/auth');
 const { storeFor } = require('../middleware/rateLimitStore');
-const { validatePassword, BCRYPT_COST } = require('../utils/passwordPolicy');
+const { checkNewPassword, BCRYPT_COST } = require('../utils/passwordPolicy');
 const { sendEmail, buildEmailHtml } = require('../services/notificationService');
 const { sendDbError } = require('../utils/dbErrors');
 
@@ -221,7 +221,7 @@ router.get('/lookup/:token', acceptLimiter, async (req, res) => {
 router.post('/accept', acceptLimiter, async (req, res) => {
   const pool = req.app.locals.pool;
   const { token, password, firstName, lastName } = req.body || {};
-  const pw = validatePassword(password);
+  const pw = await checkNewPassword(password);
   if (!pw.valid) return res.status(400).json({ error: pw.message });
 
   const client = await pool.connect();

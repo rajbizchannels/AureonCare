@@ -38,7 +38,7 @@ const PatientLoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, a
       const response = await api.patientPortalLogin(email, password);
 
       // Patient portal login returns { patient, sessionToken, expiresAt }
-      sessionStorage.setItem('portalSessionToken', response.sessionToken);
+      api.storePortalSession(response.sessionToken);
       setUser(response.patient);
       setIsAuthenticated(true);
 
@@ -69,7 +69,7 @@ const PatientLoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, a
         const response = await api.exchangePortalOAuthCode('google', codeResponse.code, 'postmessage');
 
         // Patient portal login returns { patient, sessionToken, expiresAt }
-        sessionStorage.setItem('portalSessionToken', response.sessionToken);
+        api.storePortalSession(response.sessionToken);
         setUser(response.patient);
         setIsAuthenticated(true);
 
@@ -108,7 +108,7 @@ const PatientLoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, a
       const response = await api.exchangePortalOAuthCode('microsoft', code, redirectUri, codeVerifier);
 
       // Patient portal login returns { patient, sessionToken, expiresAt }
-      sessionStorage.setItem('portalSessionToken', response.sessionToken);
+      api.storePortalSession(response.sessionToken);
       setUser(response.patient);
       setIsAuthenticated(true);
 

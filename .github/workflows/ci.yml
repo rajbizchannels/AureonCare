@@ -140,6 +140,18 @@ jobs:
         with:
           node-version: "18"
 
+      # SEC-11: every jwt.verify must pin its algorithms.
+      - name: Run JWT algorithm guard
+        run: npm run check:jwt
+
+      # SEC-14: no console call may log a whole patient record or a credential.
+      - name: Run frontend PHI-logging guard
+        run: npm run check:frontend-logs
+
+      # SEC-23: the 835 remittance parser survives 10,000 malformed inputs.
+      - name: Fuzz the EDI 835 parser
+        run: npm run test:edi-fuzz
+
       # Static check — no dependencies or database needed. Fails the build if a route
       # bypasses tenant isolation (raw shared pool on a tenant table, hardcoded tenant
       # schema, or a tenant table pinned to public.*).

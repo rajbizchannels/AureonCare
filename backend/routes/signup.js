@@ -14,7 +14,7 @@
 const express = require('express');
 const rateLimit = require('express-rate-limit');
 const { storeFor } = require('../middleware/rateLimitStore');
-const { validatePassword } = require('../utils/passwordPolicy');
+const { checkNewPassword } = require('../utils/passwordPolicy');
 const { hashPassword } = require('../services/tenantProvisioning');
 const billing = require('../services/platformBilling');
 const { sendDbError } = require('../utils/dbErrors');
@@ -99,7 +99,7 @@ router.post('/', signupLimiter, async (req, res) => {
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(cleanEmail)) {
     return res.status(400).json({ error: 'A valid email address is required' });
   }
-  const pw = validatePassword(password);
+  const pw = await checkNewPassword(password);
   if (!pw.valid) return res.status(400).json({ error: pw.message });
   if (!billing.isConfigured()) {
     return res.status(503).json({ error: 'Signup is not available right now.' });

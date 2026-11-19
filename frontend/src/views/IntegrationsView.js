@@ -353,9 +353,7 @@ const IntegrationsView = ({ theme, setCurrentModule, t, user }) => {
     const key = `${category}_${type}`;
     const isExpanded = expandedIntegrations[key];
 
-    // Ensure formData[key] and originalData[key] exist
-    const currentFormData = formData[key] || {};
-    const currentOriginalData = originalData[key] || {};
+    // SEC-14: the form values (which can include API keys) are no longer logged.
 
     // Check if form has changes and values
     const hasChanges = hasFormChanges(key);
@@ -363,8 +361,6 @@ const IntegrationsView = ({ theme, setCurrentModule, t, user }) => {
 
     // Debug logging
     console.log(`[${key}] hasChanges:`, hasChanges, 'hasValues:', hasValues);
-    console.log(`[${key}] formData:`, currentFormData);
-    console.log(`[${key}] originalData:`, currentOriginalData);
 
     // Save button should be DISABLED when:
     // 1. No values entered (empty form) - hasValues = false

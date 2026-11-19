@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { authenticate, authorize, optionalAuth } = require('../middleware/auth');
+const { publicBookingTenant } = require('../middleware/publicBookingTenant');
 const { sendDbError } = require('../utils/dbErrors');
 
 // Helper function to convert snake_case to camelCase
@@ -32,19 +33,10 @@ const toCamelCase = (obj) => {
 // /api/scheduling/booking-config/slug/:slug is meant to — and every public endpoint in
 // that flow shares this gap. Fixing it is a change to how public booking identifies a
 // practice, not a middleware tweak.
-router.get('/', optionalAuth, async (req, res) => {
+router.get('/', optionalAuth, publicBookingTenant, async (req, res) => {
   try {
-  // No session means no tenant, and there is no honest way to pick one. Said plainly with
-  // a 409 rather than left to fail as a 500: a server error tells the caller nothing and
-  // reads as "the server is broken" when the real answer is "this request has to say which
-  // practice it is for".
-  if (!req.db) {
-    return res.status(409).json({
-      error: 'No practice context',
-      message: 'Appointment types are per practice. Sign in, or use the public booking '
-        + 'endpoints that identify the practice by its booking slug.',
-    });
-  }
+  // SEC-30: publicBookingTenant has already given an anonymous caller its practice from
+  // the booking slug, or answered 409 when the request names none.
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(`
       SELECT * FROM appointment_types
@@ -79,19 +71,10 @@ router.get('/all', authenticate, authorize('admin'), async (req, res) => {
 
 // Get single appointment type
 // Same as GET / above: no middleware meant no req.db, and a guaranteed 500.
-router.get('/:id', optionalAuth, async (req, res) => {
+router.get('/:id', optionalAuth, publicBookingTenant, async (req, res) => {
   try {
-  // No session means no tenant, and there is no honest way to pick one. Said plainly with
-  // a 409 rather than left to fail as a 500: a server error tells the caller nothing and
-  // reads as "the server is broken" when the real answer is "this request has to say which
-  // practice it is for".
-  if (!req.db) {
-    return res.status(409).json({
-      error: 'No practice context',
-      message: 'Appointment types are per practice. Sign in, or use the public booking '
-        + 'endpoints that identify the practice by its booking slug.',
-    });
-  }
+  // SEC-30: publicBookingTenant has already given an anonymous caller its practice from
+  // the booking slug, or answered 409 when the request names none.
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { id } = req.params;
 
