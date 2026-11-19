@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { X, Zap, Mail, MessageCircle } from 'lucide-react';
+import React, { useEffect, useState, useCallback } from 'react';
+import { X, MessageCircle } from 'lucide-react';
 import { getTranslations } from '../../config/translations';
 import ConfirmationModal from './ConfirmationModal';
 import { useAudit } from '../../hooks/useAudit';
@@ -22,7 +22,7 @@ const SettingsModal = ({
   api,
   addNotification
 }) => {
-  const { logModalOpen, logModalClose, logError, startAction } = useAudit();
+  const { logModalOpen, logModalClose, startAction } = useAudit();
   const t = getTranslations(language);
   const [whatsappEnabled, setWhatsappEnabled] = useState(false);
   const [loadingWhatsApp, setLoadingWhatsApp] = useState(true);
@@ -69,7 +69,7 @@ const SettingsModal = ({
   }, [user.id, user.role, user.phone, api]);
 
   // Handle close with audit logging
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     logModalClose('SettingsModal', {
       module: 'Settings',
       metadata: {
@@ -77,7 +77,7 @@ const SettingsModal = ({
       },
     });
     onClose();
-  };
+  }, [logModalClose, onClose, user?.role]);
 
   // ESC key handler
   useEffect(() => {

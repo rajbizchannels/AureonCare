@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import AIAssistButton from '../integrations/AIAssistButton';
-import { AlertCircle, X, Save, Flag } from 'lucide-react';
+import { AlertCircle, X, Save } from 'lucide-react';
 import ConfirmationModal from '../modals/ConfirmationModal';
 import { useAudit } from '../../hooks/useAudit';
 import ThemedSelect from './ThemedSelect';

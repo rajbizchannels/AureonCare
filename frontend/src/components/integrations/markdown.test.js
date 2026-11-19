@@ -1,3 +1,5 @@
+/* eslint-disable testing-library/no-node-access, testing-library/no-container --
+   these checks assert that NO img/script element was created from model output; there is no accessible query for "this element does not exist in the DOM at all". */
 import React from 'react';
 import '@testing-library/jest-dom';
 import { render, screen } from '@testing-library/react';

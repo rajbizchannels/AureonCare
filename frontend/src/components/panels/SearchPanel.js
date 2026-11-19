@@ -20,7 +20,6 @@ import {
   Tag,
   Bot
 } from 'lucide-react';
-import { formatDate, formatTime } from '../../utils/formatters';
 import api from '../../api/apiService';
 
 const SearchPanel = ({

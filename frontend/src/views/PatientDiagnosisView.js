@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Activity, Plus, Search, Calendar, User, Edit2, Trash2, Filter, AlertCircle } from 'lucide-react';
+import { Activity, Plus, Search, Calendar, User, Edit2, Trash2 } from 'lucide-react';
 import DiagnosisForm from '../components/forms/DiagnosisForm';
 import ThemedSelect from '../components/forms/ThemedSelect';
 import ConfirmationModal from '../components/modals/ConfirmationModal';

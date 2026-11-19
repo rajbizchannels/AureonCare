@@ -38,14 +38,13 @@ const NewLabOrderForm = ({
     linkedDiagnosisId: ''
   });
   const [laboratories, setLaboratories] = useState([]);
-  const [loadingLaboratories, setLoadingLaboratories] = useState(true);
+  const [, setLoadingLaboratories] = useState(true);
   const [diagnoses, setDiagnoses] = useState([]);
   const [loadingDiagnoses, setLoadingDiagnoses] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [showSuccessConfirmation, setShowSuccessConfirmation] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [createDiagnosis, setCreateDiagnosis] = useState(false);
-  const [medicalCodes, setMedicalCodes] = useState([]);
 
   // Log form view on mount
   useEffect(() => {

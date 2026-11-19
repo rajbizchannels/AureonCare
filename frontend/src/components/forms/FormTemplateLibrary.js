@@ -3,7 +3,7 @@ import ThemedSelect from './ThemedSelect';
 import {
   Search, Filter, Plus, CheckCircle, FileText, Shield, CreditCard,
   Calendar, Stethoscope, MessageSquare, Scale, Star, Users, Activity,
-  ClipboardList, Heart, Pill, Eye, ChevronRight, Tag, Send, Edit2
+  ClipboardList, Heart, Eye, ChevronRight, Send, Edit2
 } from 'lucide-react';
 
 const CATEGORY_ICONS = {

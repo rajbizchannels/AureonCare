@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Video, Calendar, Users, Clock, ExternalLink, Plus, Play, Settings, Zap, X, AlertCircle, ClipboardList, ChevronDown, ChevronUp } from 'lucide-react';
+import { Video, Calendar, Clock, ExternalLink, Plus, Play, Settings, Zap, X, AlertCircle, ClipboardList, ChevronDown, ChevronUp } from 'lucide-react';
 import { formatDate, formatTime } from '../utils/formatters';
 import { getTranslations } from '../config/translations';
 import { useApp } from '../context/AppContext';
@@ -257,7 +257,7 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
     } finally {
       setLaunchingMeeting(false);
     }
-  }, [api, addNotification, activeProvider]);
+  }, [api, addNotification, activeProvider, fetchSessions]);
 
   const getUpcomingSessions = () => {
     return sessions.filter(s =>
@@ -273,9 +273,6 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
     ).sort((a, b) => new Date(b.end_time || b.start_time) - new Date(a.end_time || a.start_time));
   };
 
-  const getRecentSessions = () => {
-    return getCompletedSessions().slice(0, 5);
-  };
 
   const getAvailableAppointments = () => {
     const existingAppointmentIds = sessions.map(s => s.appointment_id);
@@ -296,7 +293,6 @@ const TelehealthView = ({ theme, api, appointments, patients, addNotification, s
     return patient ? `${patient.first_name} ${patient.last_name}` : (t.unknownPatient || 'Unknown Patient');
   };
 
-  const isZoomActive = activeProvider?.provider_type === 'zoom';
   const upcomingSessions = getUpcomingSessions();
   const completedSessions = getCompletedSessions();
   const recentSessions = completedSessions.slice(0, 5);

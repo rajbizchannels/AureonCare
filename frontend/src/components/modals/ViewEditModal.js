@@ -410,7 +410,7 @@ const ViewEditModal = ({
   if (!editingItem) return null;
 
   const isView = currentView === 'view';
-  const { type, data } = editingItem;
+  const { type } = editingItem;
 
   // ── the two participants an appointment can be moved between ────────────────────────
   //
@@ -437,25 +437,6 @@ const ViewEditModal = ({
       : null,
   );
 
-  // Handle adding/updating preferred pharmacy
-  const handleAddPreferredPharmacy = async () => {
-    if (!selectedPharmacyId || !editingItem?.data?.id) {
-      addNotification('alert', t.pleaseSelectPharmacy);
-      return;
-    }
-
-    try {
-      await api.addPreferredPharmacy(editingItem.data.id, selectedPharmacyId, true);
-      addNotification('success', t.preferredPharmacyUpdated);
-
-      // Refresh preferred pharmacies list
-      const patientPreferred = await api.getPatientPreferredPharmacies(editingItem.data.id);
-      setPreferredPharmacies(patientPreferred || []);
-    } catch (error) {
-      console.error('Error adding preferred pharmacy:', error);
-      addNotification('alert', t.failedToUpdatePharmacy);
-    }
-  };
 
   const handleSubmit = () => {
     if (type === 'userProfile' || type === 'user') {

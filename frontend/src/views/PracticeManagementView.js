@@ -102,6 +102,9 @@ const PracticeManagementView = ({
     if (appointmentViewType === 'waitlist') {
       loadWaitlist();
     }
+    // Deliberate triggers: the view and the status filter. loadWaitlist is a new function on
+    // every render; listing it would refetch after every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appointmentViewType, waitlistStatusFilter]);
 
   const handleConfirmAppointment = (entry) => {

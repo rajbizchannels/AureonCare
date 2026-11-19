@@ -26,13 +26,10 @@ import {
   X,
   Check,
   Clock,
-  AlertCircle,
   Calendar,
-  FileText,
   Award,
   BarChart3,
   ShoppingCart,
-  Percent,
   ClipboardList
 } from 'lucide-react';
 
@@ -1098,10 +1095,6 @@ const InlineFormModal = ({ type, formData, setFormData, onSave, onClose, theme, 
   );
 };
 
-// Form Modal Component (kept for backwards compatibility, but converted to inline)
-const FormModal = ({ type, formData, setFormData, onSave, onClose, theme, categories, offerings }) => {
-  return <InlineFormModal type={type} formData={formData} setFormData={setFormData} onSave={onSave} onClose={onClose} theme={theme} categories={categories} offerings={offerings} />;
-};
 
 // Offering Form
 const OfferingForm = ({ formData, setFormData, categories, theme }) => (

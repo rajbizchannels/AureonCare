@@ -1,3 +1,5 @@
+/* eslint-disable testing-library/no-node-access, testing-library/no-container --
+   ThemedSelect keeps a hidden native <select> whose <option>s are the only signal that async data has arrived, and the date/time inputs carry no label to query by. */
 // Who an appointment is booked FOR and BY: defaulted, and still changeable.
 //
 // The form used to render both fields as read-only text whenever a caller supplied them.

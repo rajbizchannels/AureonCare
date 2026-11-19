@@ -51,8 +51,7 @@ const searchForNothing = async (term = 'zzzznotadrug') => {
   const box = screen.getByPlaceholderText(/search|medication/i);
   await userEvent.type(box, term);
   await waitFor(() => expect(api.searchMedications).toHaveBeenCalled(), { timeout: 3000 });
-  await waitFor(() => expect(screen.getByText(/No medications found/i)).toBeInTheDocument(),
-    { timeout: 3000 });
+  expect(await screen.findByText(/No medications found/i, {}, { timeout: 3000 })).toBeInTheDocument();
 };
 
 test('an empty result says the drug was not found, and offers advice a prescriber can use', async () => {

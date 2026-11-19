@@ -1,3 +1,5 @@
+/* eslint-disable testing-library/no-node-access, testing-library/no-container --
+   same ThemedSelect structure as NewAppointmentForm.test.js: the hidden native <select> options are the loaded-data signal. */
 // Editing an appointment: the current patient, provider and service are all shown and all
 // changeable.
 //

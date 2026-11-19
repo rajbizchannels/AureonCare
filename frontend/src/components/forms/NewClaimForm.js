@@ -17,7 +17,7 @@ const NewClaimForm = ({ theme, api, patients, claims, editingClaim, onClose, onS
   const [showSubmitConfirmation, setShowSubmitConfirmation] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [insurancePayers, setInsurancePayers] = useState([]);
-  const [loadingPayers, setLoadingPayers] = useState(true);
+  const [, setLoadingPayers] = useState(true);
   const [preapprovals, setPreapprovals] = useState([]);
   const [loadingPreapprovals, setLoadingPreapprovals] = useState(false);
   const [selectedDiagnoses, setSelectedDiagnoses] = useState(() => {

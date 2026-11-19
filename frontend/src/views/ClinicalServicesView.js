@@ -93,6 +93,9 @@ const ClinicalServicesView = ({
     } else if (activeTab === 'fhir') {
       loadFhirResources();
     }
+    // Deliberate triggers: load when the tab or FHIR resource type changes. The loaders are new
+    // functions on every render; listing them would refetch after every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, selectedResourceType]);
 
   // Close forms when tab changes
