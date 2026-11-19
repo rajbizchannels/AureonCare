@@ -4146,6 +4146,53 @@ const api = {
     return data;
   },
 
+  // ── Patient portal invitations (Phase 1 onboarding) ─────────────────────────────
+  // Staff send a one-time link; the patient accepts it with a password or Google/Microsoft
+  // and is signed straight into the portal (the server sets the HttpOnly portal cookie).
+  sendPortalInvite: async (patientId) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/portal-invites`, {
+      method: 'POST', body: JSON.stringify({ patientId }),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || 'Could not send the invitation');
+    return data;
+  },
+  getPortalInviteStatus: async (patientId) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/portal-invites/patient/${encodeURIComponent(patientId)}`);
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || 'Could not load portal status');
+    return data;
+  },
+  revokePortalInvite: async (patientId) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/portal-invites/patient/${encodeURIComponent(patientId)}`, { method: 'DELETE' });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || 'Could not withdraw the invitation');
+    return data;
+  },
+  lookupPortalInvite: async (token) => {
+    const r = await fetch(`${API_BASE_URL}/portal-invites/lookup/${encodeURIComponent(token)}`);
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || 'This invitation is no longer valid.');
+    return data;
+  },
+  // Both accept calls store the portal session the same way a portal login does.
+  _acceptPortalInvite: async (url, payload) => {
+    const r = await fetch(url, {
+      method: 'POST',
+      credentials: 'include',            // the response sets the HttpOnly portal cookie
+      headers: publicPostHeaders(),
+      body: JSON.stringify(payload),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || 'Could not set up your portal');
+    if (data.sessionToken) api.storePortalSession(data.sessionToken);
+    return data;
+  },
+  acceptPortalInvite: (token, password) =>
+    api._acceptPortalInvite(`${API_BASE_URL}/portal-invites/accept`, { token, password }),
+  acceptPortalInviteWithOAuth: (provider, token, code, redirectUri, codeVerifier) =>
+    api._acceptPortalInvite(`${API_BASE_URL}/portal-invites/accept/oauth/${provider}`, { token, code, redirectUri, codeVerifier }),
+
   listInvites: async () => {
     const r = await authenticatedFetch(`${API_BASE_URL}/invites`);
     if (!r.ok) throw new Error('Failed to load invites');

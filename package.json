@@ -52,7 +52,8 @@
     "test:vendor-tenancy": "node backend/test/security/vendor-tenancy.test.js",
     "backfill:portal-identities": "node backend/scripts/backfill-portal-identities.js",
     "test:legacy-social": "node backend/test/security/legacy-social.test.js",
-    "test:identity-backfill": "node backend/test/security/identity-backfill.test.js"
+    "test:identity-backfill": "node backend/test/security/identity-backfill.test.js",
+    "test:portal-invites": "node backend/test/portal/invites.test.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.6.0",
