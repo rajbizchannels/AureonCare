@@ -695,3 +695,19 @@ not to the SPA. `vercel.json` already carries:
 
 If you deploy behind your own proxy, add the equivalent rule — otherwise `/platform` will
 404 or fall through to the tenant app's index.html.
+
+## Short links (`/s/<code>`)
+
+Every link AureonCare sends or shares — staff and patient-portal invitations, password
+reset, telehealth join links, and the booking / meeting links staff copy — goes out as a
+short link on your own domain, e.g. `https://app.aureoncare.tech/s/k3J9xQ2mWb7Z`.
+
+- **Migration:** `backend/migrations/091_short_links.sql` (safe to paste into the SQL editor).
+- **Routing:** `/s/(.*)` must reach the backend. `vercel.json` and `docker/nginx/nginx.conf`
+  already route it.
+- **Optional:** `AC_SHORT_BASE=https://<short-domain>` to use a dedicated short domain. It must
+  route `/s/*` to the backend too. Without it, links use the first `FRONTEND_URL`.
+- Nothing readable is stored: the table keeps a hash of each code and the destination
+  encrypted under a key derived from the code. Links expire with what they point to
+  (invites at their expiry, reset links after 1 hour, meeting links a day after the session).
+- If the table is missing, messages still go out with the full link.

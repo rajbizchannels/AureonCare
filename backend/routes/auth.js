@@ -6,6 +6,7 @@ const { signToken, authenticate } = require('../middleware/auth');
 const { validateSocialToken } = require('../utils/socialTokenValidator');
 const { sendEmail } = require('../services/notificationService');
 const { renderPasswordResetEmail } = require('../services/emailTemplates');
+const { shorten } = require('../services/shortLinks');
 const { BCRYPT_COST, checkNewPassword } = require('../utils/passwordPolicy');
 const { issueAuthCookies, clearAuthCookies, issuePortalCookies, getPortalCookie } = require('../utils/authCookies');
 const { tenantForSession, forgetSession } = require('../services/portalRouting');
@@ -757,8 +758,9 @@ router.post('/forgot-password', async (req, res) => {
     const user = userResult.rows[0];
     const firstName = user.first_name || 'there';
     const frontendBase = (process.env.FRONTEND_URL || '').split(',')[0].trim();
+    // Short link on our own domain; it dies with the reset token (1 hour).
     const resetLink = frontendBase
-      ? `${frontendBase}/reset-password?token=${resetToken}`
+      ? await shorten(`${frontendBase}/reset-password?token=${resetToken}`, { expiresAt: resetTokenExpires, kind: 'password-reset' })
       : null;
     const html = renderPasswordResetEmail({ firstName, resetToken, resetLink });
     console.log(`[DEBUG sec04-email] sending reset email to ${email} (token ${resetToken.slice(0, 6)}…)`);

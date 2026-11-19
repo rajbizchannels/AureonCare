@@ -6,7 +6,7 @@ import {
 import { DoctorAvailabilityManager } from '../components/scheduling';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 import { useAudit } from '../hooks/useAudit';
-import { apiFetch } from '../api/apiService';
+import api, { apiFetch } from '../api/apiService';
 
 
 const ProviderManagementView = ({ theme = 'dark', setCurrentModule }) => {
@@ -261,10 +261,12 @@ const ProviderManagementView = ({ theme = 'dark', setCurrentModule }) => {
     }
   };
 
-  const copyBookingUrl = () => {
+  // Copies the short link (/s/<code>) when the server can make one, else the full link.
+  const copyBookingUrl = async () => {
     if (bookingConfig?.booking_url_slug) {
-      const url = `${window.location.origin}/book/${bookingConfig.booking_url_slug}`;
-      navigator.clipboard.writeText(url);
+      const full = `${window.location.origin}/book/${bookingConfig.booking_url_slug}`;
+      const url = await api.createShortLink({ kind: 'booking', slug: bookingConfig.booking_url_slug }).catch(() => full);
+      try { await navigator.clipboard.writeText(url); } catch { /* clipboard blocked */ }
       setCopiedUrl(true);
       setTimeout(() => setCopiedUrl(false), 2000);
     }

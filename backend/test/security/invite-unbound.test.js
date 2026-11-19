@@ -32,6 +32,7 @@ const notify = require(path.join(BACKEND, 'services/notificationService.js'));
 notify.sendEmail = async () => ({ sent: false, reason: 'test' });   // invites return their link
 
 const pool = require(path.join(BACKEND, 'db.js'));
+const { expandLink, tokenOf: tokenOfUrl } = require(path.join(__dirname, '..', 'helpers', 'links.js'));
 const bcrypt = require(path.join(BACKEND, '..', 'node_modules', 'bcryptjs'));
 const { provisionTenant } = require(path.join(BACKEND, 'services/tenantProvisioning.js'));
 require(path.join(BACKEND, 'server.js'));
@@ -69,7 +70,8 @@ const report = (err) => {
   await mkUser(adminEmail, 'admin', t.practiceId);
   await pool.query('UPDATE public.users SET password_hash=$2 WHERE email=$1', [adminEmail, await bcrypt.hash(PW, 12)]);
   const admin = (await call('POST', '/api/auth/login', null, { email: adminEmail, password: PW })).body.token;
-  const tokenOf = (r) => r.body && r.body.inviteUrl && new URL(r.body.inviteUrl).searchParams.get('token');
+  // The invite link is a short link (/s/<code>); follow it to the accept URL for the token.
+  const tokenOf = async (r) => r.body && r.body.inviteUrl && tokenOfUrl(await expandLink(r.body.inviteUrl, BASE));
 
   // ── 1. password acceptance adopts a leftover patient account ─────────────────────
   const leftover = `leftover_${RUN}@example.com`;
@@ -78,9 +80,9 @@ const report = (err) => {
                     VALUES ($1,$1,'google',$2)`, [old.id, `g-attacker-${RUN}`]);
   const inv = await call('POST', '/api/invites', admin, { email: leftover, role: 'nurse' });
   check(`INVITING AN EMAIL HELD BY AN UNBOUND ACCOUNT IS ALLOWED (got ${inv.status}: ${JSON.stringify(inv.body).slice(0, 80)})`,
-    inv.status === 201 && tokenOf(inv));
+    inv.status === 201 && (await tokenOf(inv)));
   const acc = await call('POST', '/api/invites/accept', null,
-    { token: tokenOf(inv), password: PW, firstName: 'Nina', lastName: 'Nurse' });
+    { token: (await tokenOf(inv)), password: PW, firstName: 'Nina', lastName: 'Nurse' });
   check(`accepting it succeeds (got ${acc.status})`, acc.status === 201);
   const [u] = await usersWith(leftover);
   check('the SAME account is reused (no duplicate)', (await usersWith(leftover)).length === 1 && u.id === old.id);
@@ -94,7 +96,7 @@ const report = (err) => {
     (await call('POST', '/api/auth/login', null, { email: leftover, password: 'Old-Passphrase!987' })).status === 401);
   const li = await call('POST', '/api/auth/login', null, { email: leftover, password: PW });
   check(`the new password signs in (got ${li.status})`, li.status === 200 && li.body.token);
-  check('the invite is used up', (await call('POST', '/api/invites/accept', null, { token: tokenOf(inv), password: PW })).status === 404);
+  check('the invite is used up', (await call('POST', '/api/invites/accept', null, { token: (await tokenOf(inv)), password: PW })).status === 404);
   check('the attacker identity no longer signs in', await (async () => {
     IDENTITY = { email: leftover, emailVerified: false, providerId: `g-attacker-${RUN}`, firstName: 'X', lastName: 'Y' };
     const r = await call('POST', '/api/auth/oauth/google/exchange', null, { code: 'c', redirectUri: 'postmessage' });
@@ -121,7 +123,7 @@ const report = (err) => {
   check('a second unbound address can be invited', inv2.status === 201);
   IDENTITY = { email: leftover2, emailVerified: true, providerId: `g-owner-${RUN}`, firstName: 'Dee', lastName: 'Doc' };
   const g = await call('POST', '/api/auth/oauth/google/exchange', null,
-    { code: 'c', redirectUri: 'postmessage', inviteToken: tokenOf(inv2) });
+    { code: 'c', redirectUri: 'postmessage', inviteToken: (await tokenOf(inv2)) });
   check(`signing in with the matching Google identity + invite succeeds (got ${g.status})`, g.status === 200);
   const [u2] = await usersWith(leftover2);
   check('...and binds the leftover account to the practice as invited', u2.id === old2.id && u2.practice_id === t.practiceId && u2.role === 'doctor');

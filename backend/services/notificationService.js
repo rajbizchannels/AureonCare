@@ -694,7 +694,15 @@ const EVENTS = {
   },
 
   'telehealth.session_created': async (pool, data) => {
-    const { session, patient_id, provider_id } = data;
+    const { patient_id, provider_id } = data;
+    // The join link goes out as a short link (/s/<code>); it keeps working until a day
+    // after the session starts. Falls back to the full URL if it cannot be shortened.
+    const session = { ...data.session };
+    if (session.meeting_url) {
+      const start = session.start_time ? new Date(session.start_time) : null;
+      const expiresAt = start && !Number.isNaN(start.getTime()) ? new Date(start.getTime() + 24 * 3600 * 1000) : null;
+      session.meeting_url = await require('./shortLinks').shorten(session.meeting_url, { expiresAt, kind: 'telehealth', db: pool });
+    }
     await notifyAll(pool, { patient_id, provider_id }, (role, person, { patient, provider }) => {
       const greeting = `Dear ${person.first_name},`;
       const intro = role === 'patient'

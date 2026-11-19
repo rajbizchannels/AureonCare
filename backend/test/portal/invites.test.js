@@ -48,7 +48,14 @@ const call = async (method, url, { token, body, cookie } = {}) => {
   const t = await r.text(); let b = null; try { b = JSON.parse(t); } catch { b = t; }
   return { status: r.status, body: b, text: t, setCookie: r.headers.getSetCookie ? r.headers.getSetCookie() : [] };
 };
-const linkIn = (mail) => { const m = /https:\/\/app\.example\.test\/portal\/activate\?token=([A-Za-z0-9_-]+)/.exec(mail.html); return m && m[1]; };
+// Emails carry a short link (/s/<code>); follow it to the activation URL and take its token.
+const { expandLink, firstLinkIn, tokenOf } = require(path.join(__dirname, '..', 'helpers', 'links.js'));
+const linkIn = async (mail) => {
+  if (!mail) return null;
+  const full = /https:\/\/app\.example\.test\/portal\/activate\?token=[A-Za-z0-9_-]+/.exec(mail.html);
+  const url = full ? full[0] : await expandLink(firstLinkIn(mail.html), BASE);
+  return url && /\/portal\/activate\?/.test(url) ? tokenOf(url) : null;
+};
 const report = (err) => {
   let failed = 0;
   for (const [n, c] of results) { console.log(`  ${c ? 'ok  ' : 'FAIL'} ${n}`); if (!c) failed += 1; }
@@ -86,7 +93,7 @@ const report = (err) => {
   check(`staff can invite a patient (got ${sent.status})`, sent.status === 201 && sent.body.emailed === true);
   check('the response does NOT contain the link when it was emailed', !sent.body.inviteUrl && !/activate\?token=/.test(sent.text));
   const mail = outbox.find((m) => m.to === rosaEmail);
-  const token = mail && linkIn(mail);
+  const token = mail && await linkIn(mail);
   check('the patient receives an email with a one-time link', Boolean(token));
   check('the link is not stored — only its hash',
     (await pool.query(`SELECT 1 FROM ${A.schema}.portal_invites WHERE token_hash = $1`, [token])).rowCount === 0);
@@ -134,9 +141,9 @@ const report = (err) => {
   // ── re-send, withdraw, expiry ────────────────────────────────────────────────────
   const ana = await addPatient(A, `ana_${RUN}@example.com`, 'Ana');
   await call('POST', '/api/portal-invites', { token: A.staff, body: { patientId: ana } });
-  const first = linkIn(outbox.filter((m) => m.to === `ana_${RUN}@example.com`).pop());
+  const first = await linkIn(outbox.filter((m) => m.to === `ana_${RUN}@example.com`).pop());
   await call('POST', '/api/portal-invites', { token: A.staff, body: { patientId: ana } });
-  const second = linkIn(outbox.filter((m) => m.to === `ana_${RUN}@example.com`).pop());
+  const second = await linkIn(outbox.filter((m) => m.to === `ana_${RUN}@example.com`).pop());
   check('re-sending replaces the link: the old one stops working', first !== second
     && (await call('GET', `/api/portal-invites/lookup/${first}`)).status === 404
     && (await call('GET', `/api/portal-invites/lookup/${second}`)).status === 200);
@@ -145,7 +152,7 @@ const report = (err) => {
 
   const old = await addPatient(A, `old_${RUN}@example.com`, 'Old');
   await call('POST', '/api/portal-invites', { token: A.staff, body: { patientId: old } });
-  const oldTok = linkIn(outbox.filter((m) => m.to === `old_${RUN}@example.com`).pop());
+  const oldTok = await linkIn(outbox.filter((m) => m.to === `old_${RUN}@example.com`).pop());
   await pool.query(`UPDATE ${A.schema}.portal_invites SET expires_at = now() - interval '1 minute' WHERE patient_id = $1`, [old]);
   await pool.query(`UPDATE control.portal_invite_route SET expires_at = now() - interval '1 minute' WHERE token_hash = encode(sha256($1::bytea),'hex')`, [oldTok]);
   check('an expired link is refused', (await call('POST', '/api/portal-invites/accept', { body: { token: oldTok, password: PW } })).status === 410);
@@ -154,14 +161,15 @@ const report = (err) => {
   mailWorks = false;
   const noMail = await addPatient(A, `nomail_${RUN}@example.com`, 'NoMail');
   const nm = await call('POST', '/api/portal-invites', { token: A.staff, body: { patientId: noMail } });
-  check('when email cannot be sent, staff are told and given the link', nm.status === 201 && nm.body.emailed === false && /portal\/activate\?token=/.test(nm.body.inviteUrl || ''));
+  check('when email cannot be sent, staff are told and given the link', nm.status === 201 && nm.body.emailed === false
+    && /portal\/activate\?token=/.test((await expandLink(nm.body.inviteUrl || '', BASE)) || ''));
   mailWorks = true;
 
   // ── continue with Google ─────────────────────────────────────────────────────────
   const leeEmail = `lee_${RUN}@example.com`;
   const lee = await addPatient(A, leeEmail, 'Lee');
   await call('POST', '/api/portal-invites', { token: A.staff, body: { patientId: lee } });
-  const leeTok = linkIn(outbox.filter((m) => m.to === leeEmail).pop());
+  const leeTok = await linkIn(outbox.filter((m) => m.to === leeEmail).pop());
   IDENTITY = { email: `lee.personal_${RUN}@gmail.example`, emailVerified: true, providerId: `g-lee-${RUN}` };
   const g = await call('POST', '/api/portal-invites/accept/oauth/google', { body: { token: leeTok, code: 'one-time-code', redirectUri: 'postmessage' } });
   check(`ACCEPTING WITH GOOGLE ENABLES THE PORTAL AND SIGNS IN (got ${g.status})`, g.status === 200 && g.setCookie.some((c) => c.startsWith('ac_portal=')));
@@ -175,7 +183,7 @@ const report = (err) => {
   // A Google account already linked to someone else stays theirs.
   const mo = await addPatient(A, `mo_${RUN}@example.com`, 'Mo');
   await call('POST', '/api/portal-invites', { token: A.staff, body: { patientId: mo } });
-  const moTok = linkIn(outbox.filter((m) => m.to === `mo_${RUN}@example.com`).pop());
+  const moTok = await linkIn(outbox.filter((m) => m.to === `mo_${RUN}@example.com`).pop());
   const taken = await call('POST', '/api/portal-invites/accept/oauth/google', { body: { token: moTok, code: 'c', redirectUri: 'postmessage' } });
   check('a Google account linked to another patient is refused (409), and the link stays usable',
     taken.status === 409 && (await call('GET', `/api/portal-invites/lookup/${moTok}`)).status === 200);

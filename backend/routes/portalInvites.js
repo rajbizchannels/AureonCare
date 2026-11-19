@@ -33,6 +33,7 @@ const { exchangeAuthCode } = require('../utils/oauthExchange');
 const { validateSocialToken } = require('../utils/socialTokenValidator');
 
 const router = express.Router();
+const { shorten } = require('../services/shortLinks');
 const { enforcePatientQuota } = require('../middleware/planEnforcement');
 
 const INVITE_TTL_DAYS = 14;               // MyChart activation codes and NHS linkage keys: 14 days
@@ -178,7 +179,9 @@ router.post('/', authenticate, staffOnly, async (req, res) => {
       [patient.id, tokenHash, email, expiresAt, req.user.id]);
     await basePool.query('SELECT control.register_portal_invite($1, $2, $3)', [tokenHash, tenantId, expiresAt]);
 
-    const url = `${frontendBase()}/portal/activate?token=${token}`;
+    // Short link on our own domain; it stops working when the invitation expires.
+    const url = await shorten(`${frontendBase()}/portal/activate?token=${token}`,
+      { expiresAt, kind: 'portal-invite' });
     const delivery = await sendInviteEmail({
       to: email, firstName: patient.first_name, practice: await practiceName(basePool, tenantId), url, expiresAt,
     }).catch((e) => ({ sent: false, reason: e.message }));

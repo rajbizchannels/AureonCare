@@ -195,7 +195,8 @@ const lastTo = (to) => [...sent].reverse().find((m) => m.to === to);
     ['task.created', { task: { title: `Call back ${HOSTILE}`, priority: 'high' } }, ['New Task Created', 'Dear Admin,', 'Call back &lt;script&gt;']],
     ['task.completed', { task: { title: 'Call back', priority: 'high', status: 'done' } }, ['Task Completed', 'A task has been marked as completed.']],
     ['telehealth.session_created', { session: { start_time: appt.start_time, duration_minutes: 20, meeting_url: 'https://meet.example.com/r/abc?pwd=1' }, patient_id: 'p1', provider_id: 'd1' },
-      ['Telehealth Session Scheduled', '<strong>Join Link:</strong>', 'href="https://meet.example.com/r/abc?pwd=1"', '>https://meet.example.com/r/abc?pwd=1</a>']],
+      // The join link goes out as a short link on the app's own domain (services/shortLinks.js).
+      ['Telehealth Session Scheduled', '<strong>Join Link:</strong>', 'href="https://app.example.com/s/', '>https://app.example.com/s/']],
   ];
   for (const [event, data, must] of events) {
     const before = sent.length;
@@ -204,6 +205,9 @@ const lastTo = (to) => [...sent].reverse().find((m) => m.to === to);
     check(`${event}: sent at least one email`, mails.length > 0);
     const toPatient = mails.find((m) => m.to === 'ana@example.com') || mails[0];
     if (toPatient) checkEmail(`${event} email`, toPatient.html, must);
+    if (event === 'telehealth.session_created' && toPatient) {
+      check('telehealth: the full meeting URL is not in the email (short link only)', !toPatient.html.includes('meet.example.com'));
+    }
     if (toPatient && toPatient.to === 'ana@example.com') {
       check(`${event}: patient's name escaped in greeting`, toPatient.html.includes('Dear Ana &lt;script&gt;'));
     }

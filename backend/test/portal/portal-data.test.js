@@ -54,7 +54,14 @@ const call = async (method, url, { token, body, cookie, csrf } = {}) => {
   const t = await r.text(); let b = null; try { b = JSON.parse(t); } catch { b = t; }
   return { status: r.status, body: b, text: t, setCookie: r.headers.getSetCookie ? r.headers.getSetCookie() : [] };
 };
-const linkIn = (mail) => { const m = /https:\/\/app\.example\.test\/portal\/activate\?token=([A-Za-z0-9_-]+)/.exec(mail.html); return m && m[1]; };
+// Emails carry a short link (/s/<code>); follow it to the activation URL and take its token.
+const { expandLink, firstLinkIn, tokenOf } = require(path.join(__dirname, '..', 'helpers', 'links.js'));
+const linkIn = async (mail) => {
+  if (!mail) return null;
+  const full = /https:\/\/app\.example\.test\/portal\/activate\?token=[A-Za-z0-9_-]+/.exec(mail.html);
+  const url = full ? full[0] : await expandLink(firstLinkIn(mail.html), BASE);
+  return url && /\/portal\/activate\?/.test(url) ? tokenOf(url) : null;
+};
 const report = (err) => {
   let failed = 0;
   for (const [n, c] of results) { console.log(`  ${c ? 'ok  ' : 'FAIL'} ${n}`); if (!c) failed += 1; }
@@ -94,7 +101,7 @@ const report = (err) => {
   const again = await call('POST', '/api/portal-invites', { token: admin.token, body: { email: pEmail.toUpperCase() } });
   check('inviting the same email again re-uses the chart (no duplicate)', again.status === 201
     && (await pool.query(`SELECT count(*)::int n FROM ${schema}.patients WHERE LOWER(email) = $1`, [pEmail])).rows[0].n === 1);
-  const token = linkIn(outbox.filter((m) => m.to === pEmail).pop());
+  const token = await linkIn(outbox.filter((m) => m.to === pEmail).pop());
   const acc = await call('POST', '/api/portal-invites/accept', { body: { token, password: PW } });
   check(`the patient accepts and is signed in (got ${acc.status})`, acc.status === 200);
   const jar = acc.setCookie.map((c) => c.split(';')[0]).join('; ');

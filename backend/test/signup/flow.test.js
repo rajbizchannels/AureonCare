@@ -61,6 +61,7 @@ require.cache[validatorPath] = {
 };
 
 const pool = require(path.join(BACKEND, 'db.js'));
+const { expandLink, tokenOf: tokenOfUrl } = require(path.join(__dirname, '..', 'helpers', 'links.js'));
 const { provisionTenant } = require(path.join(BACKEND, 'services/tenantProvisioning.js'));
 
 process.env.PORT = process.env.TEST_PORT || '4733';
@@ -211,7 +212,7 @@ async function postWebhook(secret, event) {
   const inviteeEmail = `nurse_${crypto.randomBytes(4).toString('hex')}@example.com`;
   const inv = await api('POST', '/api/invites', { email: inviteeEmail, role: 'staff' }, authHdr);
   check('admin can create an invite', inv.status === 201 && !!inv.body.inviteUrl);
-  const token = new URL(inv.body.inviteUrl).searchParams.get('token');
+  const token = tokenOfUrl(await expandLink(inv.body.inviteUrl, BASE));
 
   const lookup = await api('GET', `/api/invites/lookup/${token}`);
   check('invite lookup shows the practice', lookup.status === 200 && lookup.body.practiceName === 'Northside Again');
@@ -232,7 +233,7 @@ async function postWebhook(secret, event) {
   // ── 4. OAuth signup binds via invite ───────────────────────────────────────
   const oauthEmail = `dr_${crypto.randomBytes(4).toString('hex')}@example.com`;
   const inv2 = await api('POST', '/api/invites', { email: oauthEmail, role: 'doctor' }, authHdr);
-  const token2 = new URL(inv2.body.inviteUrl).searchParams.get('token');
+  const token2 = tokenOfUrl(await expandLink(inv2.body.inviteUrl, BASE));
 
   VERIFIED = { email: oauthEmail, emailVerified: true, providerId: 'goog-' + crypto.randomBytes(4).toString('hex'),
                firstName: 'Alan', lastName: 'Turing' };
@@ -248,7 +249,7 @@ async function postWebhook(secret, event) {
 
   // The security property: an invite must not bind a DIFFERENT verified identity.
   const inv3 = await api('POST', '/api/invites', { email: `intended_${crypto.randomBytes(3).toString('hex')}@example.com` }, authHdr);
-  const token3 = new URL(inv3.body.inviteUrl).searchParams.get('token');
+  const token3 = tokenOfUrl(await expandLink(inv3.body.inviteUrl, BASE));
   const attackerEmail = `attacker_${crypto.randomBytes(4).toString('hex')}@example.com`;
   VERIFIED = { email: attackerEmail, emailVerified: true, providerId: 'goog-' + crypto.randomBytes(4).toString('hex'),
                firstName: 'Mal', lastName: 'Ory' };
@@ -261,7 +262,7 @@ async function postWebhook(secret, event) {
 
   // An unverified email must not redeem an invite either.
   const inv4 = await api('POST', '/api/invites', { email: `unver_${crypto.randomBytes(3).toString('hex')}@example.com` }, authHdr);
-  const token4 = new URL(inv4.body.inviteUrl).searchParams.get('token');
+  const token4 = tokenOfUrl(await expandLink(inv4.body.inviteUrl, BASE));
   const unverEmail = JSON.parse(JSON.stringify(inv4.body.email));
   VERIFIED = { email: unverEmail, emailVerified: false, providerId: 'goog-' + crypto.randomBytes(4).toString('hex') };
   await api('POST', '/api/auth/social-login', { provider: 'google', accessToken: 'fake', inviteToken: token4 });

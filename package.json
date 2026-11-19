@@ -58,7 +58,8 @@
     "test:session-policy": "node backend/test/security/session-policy.test.js",
     "test:invite-unbound": "node backend/test/security/invite-unbound.test.js",
     "test:email-branding": "node backend/test/email/branding.test.js",
-    "test:portal-data": "node backend/test/portal/portal-data.test.js"
+    "test:portal-data": "node backend/test/portal/portal-data.test.js",
+    "test:short-links": "node backend/test/security/short-links.test.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.6.0",

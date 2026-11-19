@@ -18,6 +18,7 @@ const { checkNewPassword, BCRYPT_COST } = require('../utils/passwordPolicy');
 const { sendEmail } = require('../services/notificationService');
 const { renderStaffInviteEmail } = require('../services/emailTemplates');
 const { sendDbError } = require('../utils/dbErrors');
+const { shorten } = require('../services/shortLinks');
 
 const router = express.Router();
 
@@ -165,7 +166,9 @@ router.post('/', authenticate, authorize('admin'), async (req, res) => {
     );
 
     const base = (process.env.FRONTEND_URL || 'http://localhost:3000').split(',')[0].trim().replace(/\/$/, '');
-    const inviteUrl = `${base}/accept-invite?token=${token}`;
+    // Short link on our own domain; it stops working when the invite expires.
+    const inviteUrl = await shorten(`${base}/accept-invite?token=${token}`,
+      { expiresAt: rows[0].expires_at, kind: 'staff-invite' });
 
     const practice = await pool.query('SELECT name FROM public.practices WHERE id = $1', [req.user.practiceId]);
     const delivery = await sendInviteEmail({

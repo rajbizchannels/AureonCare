@@ -4192,6 +4192,14 @@ const api = {
   },
   // From the Invite dialog (role "Patient"): the server finds the chart with this email, or
   // creates one from the name and date of birth, then sends the portal invitation.
+  // Short link (/s/<code>) for something staff share: { kind: 'booking', slug } or
+  // { kind: 'meeting', appointmentId }. Callers fall back to the full link on failure.
+  createShortLink: async (payload) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/short-links`, { method: 'POST', body: JSON.stringify(payload) });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok || !data.url) throw new Error(data.error || 'Could not create the short link');
+    return data.url;
+  },
   sendPortalInviteByEmail: async ({ email, firstName, lastName, dateOfBirth }) => {
     const r = await authenticatedFetch(`${API_BASE_URL}/portal-invites`, {
       method: 'POST', body: JSON.stringify({ email, firstName, lastName, dateOfBirth }),
