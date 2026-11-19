@@ -111,6 +111,8 @@ function App() {
     isAuthenticated,
     setIsAuthenticated,
     showForgotPassword,
+    sessionChecking,
+    sessionNotice,
     setShowForgotPassword,
     currentModule,
     setCurrentModule,
@@ -908,10 +910,26 @@ function App() {
   }
 
   // Show login page if not authenticated
+  // The server is being asked whether this tab's session is still valid (a reload resumes
+  // it). Hold a neutral screen rather than flashing the sign-in page.
+  if (sessionChecking && !isAuthenticated) {
+    return (
+      <div className={`min-h-screen flex items-center justify-center ${theme === 'dark' ? 'bg-slate-950' : 'bg-gray-50'}`}
+           role="status" aria-label="Checking your session">
+        <div className="w-8 h-8 rounded-full border-2 border-cyan-500 border-t-transparent animate-spin" />
+      </div>
+    );
+  }
+
   if (!isAuthenticated) {
     // Show appropriate login page based on URL
     return (
       <>
+        {sessionNotice && (
+          <div role="status" className="fixed top-3 left-1/2 -translate-x-1/2 z-50 max-w-lg w-[calc(100%-2rem)] px-4 py-3 rounded-lg bg-amber-50 border border-amber-300 text-amber-900 text-sm shadow">
+            {sessionNotice}
+          </div>
+        )}
         {isPatientLoginUrl ? (
           <PatientLoginPage
             theme={theme}
@@ -999,7 +1017,11 @@ function App() {
             // Patients manage their profile from the portal's profile tab
             if (user?.role !== 'patient') handleSetShowForm('userProfile');
           },
-          onLogout: () => {
+          onLogout: async () => {
+            // End the session on the SERVER (revokes the JWT and portal sessions, clears the
+            // HttpOnly cookies). This used to clear only the screen, leaving the session
+            // cookie valid (SEC-40). Local state is cleared whatever the network does.
+            try { await api.logout(); } catch (e) { /* signed out locally regardless */ }
             api.clearToken();
             setIsAuthenticated(false);
             setUser(null);

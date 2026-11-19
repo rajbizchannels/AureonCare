@@ -3993,6 +3993,18 @@ const api = {
   },
 
   // SEC-15: re-fetch identity instead of persisting the user object in the browser.
+  // SEC-40: who a reloaded portal tab is signed in as, from the server (HttpOnly cookie).
+  getPortalSession: async () => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/patient-portal/session`);
+    if (!r.ok) throw new Error('No portal session');
+    return r.json();
+  },
+  // SEC-40: a new browser session starts signed out — the server removes this browser's
+  // session cookies (HttpOnly, so JavaScript cannot). Other devices are unaffected.
+  endBrowserSession: async () => {
+    const r = await fetch(`${API_BASE_URL}/auth/session/end`, { method: 'POST', credentials: 'include' });
+    return r.ok;
+  },
   getCurrentUser: async () => {
     const r = await authenticatedFetch(`${API_BASE_URL}/auth/me`);
     if (!r.ok) throw new Error('Failed to fetch current user');

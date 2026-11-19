@@ -1,5 +1,8 @@
 import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
-import api from '../api/apiService';
+import api, { PORTAL_MARKER } from '../api/apiService';
+import {
+  wasThisTabReloaded, installTabMarker, anotherSignedInTab, broadcast, onTabMessage,
+} from '../utils/sessionTab';
 import { getTranslations } from '../config/translations';
 
 // Create the context
@@ -35,12 +38,8 @@ const isOAuthReturn = () => {
 };
 
 /**
- * A page load always starts a fresh session.
- *
- * This module is evaluated once per page load, so clearing the stored session
- * here means a browser refresh (or a restored tab) lands on the login page
- * instead of resuming the previous session. The one exception is the return
- * leg of an OAuth round trip, which is a page load the app itself initiated.
+ * Forget what this tab remembered about a session. Used when a page load starts a NEW
+ * browser session, and whenever the signed-in identity ends.
  */
 const clearStoredSession = () => {
   try {
@@ -54,22 +53,32 @@ const clearStoredSession = () => {
   }
 };
 
-if (!isOAuthReturn()) {
-  clearStoredSession();
-}
+/**
+ * How this page load began (SEC-40, option b). Evaluated once per page load, BEFORE the tab
+ * marker is refreshed:
+ *   - a reload of this tab, or the return leg of an OAuth round trip the app started,
+ *     resumes — once the server confirms the session (see bootstrapSession);
+ *   - anything else is a new browser session and starts signed out.
+ *
+ * This replaced "every page load starts signed out", which only cleared the screen: the
+ * HttpOnly session cookie stayed valid on the server, so the user looked logged out while
+ * their session could still read patient data, and the tab's remembered identity could
+ * disagree with the cookie it shared with other tabs.
+ */
+const BOOT = {
+  resume: isOAuthReturn() || wasThisTabReloaded(),
+};
+installTabMarker();
 
 // AppProvider component
 const AppProvider = ({ children }) => {
   // Authentication and UI state - use sessionStorage for authentication (clears on tab/window close)
-  const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    // Initialize from sessionStorage (NOT localStorage) - clears on tab close
-    try {
-      const stored = sessionStorage.getItem('isAuthenticated');
-      return stored === 'true';
-    } catch (error) {
-      return false;
-    }
-  });
+  // Never initialised from storage: who is signed in is decided by the server during
+  // bootstrapSession below. `sessionChecking` covers that moment so no sign-in page flashes.
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [sessionChecking, setSessionChecking] = useState(true);
+  // Shown on the sign-in page when another tab ended or replaced this tab's session.
+  const [sessionNotice, setSessionNotice] = useState(null);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
   const [currentModule, setCurrentModule] = useState('dashboard');
   const [currentView, setCurrentView] = useState('list');
@@ -100,15 +109,9 @@ const AppProvider = ({ children }) => {
 
   // User state - stored in sessionStorage (clears on tab close, not readable cross-tab)
   const [user, setUser] = useState(() => {
-    try {
-      // One-time migration: remove stale 'user' entry left in localStorage by the old code
-      localStorage.removeItem('user');
-      const storedUser = sessionStorage.getItem('user');
-      return storedUser ? JSON.parse(storedUser) : null;
-    } catch (error) {
-      console.error('Error loading user from sessionStorage:', error);
-      return null;
-    }
+    // One-time migration: remove stale 'user' entry left in localStorage by the old code.
+    try { localStorage.removeItem('user'); } catch (error) { /* storage unavailable */ }
+    return null;   // set from the server's answer, never from storage
   });
 
   // Persist authentication status to sessionStorage (clears on tab/window close)
@@ -184,6 +187,111 @@ const AppProvider = ({ children }) => {
       }
     }
   }, [user]);
+
+  // ── Session: resume on reload, start signed out in a new browser session ────────────
+  /** Who the server says this browser's session belongs to, or null. */
+  const sessionFromServer = useCallback(async () => {
+    let portalHint = false;
+    try { portalHint = Boolean(sessionStorage.getItem(PORTAL_MARKER)); } catch { portalHint = false; }
+    const staff = async () => { try { return await api.getCurrentUser(); } catch { return null; } };
+    const portal = async () => { try { return (await api.getPortalSession()).patient || null; } catch { return null; } };
+    // Ask the likelier one first; fall back to the other.
+    return portalHint ? ((await portal()) || (await staff())) : ((await staff()) || (await portal()));
+  }, []);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        if (BOOT.resume) {
+          const who = await sessionFromServer();
+          if (!alive) return;
+          if (who) {
+            setUser(who);
+            setIsAuthenticated(true);
+          } else {
+            clearStoredSession();
+          }
+        } else {
+          // A new browser session starts signed out — on the server too, unless another
+          // AureonCare tab in this browser is still signed in (its session is left alone).
+          clearStoredSession();
+          if (!(await anotherSignedInTab())) {
+            await api.endBrowserSession().catch(() => {});
+          }
+        }
+      } finally {
+        if (alive) setSessionChecking(false);
+      }
+    })();
+    return () => { alive = false; };
+  }, [sessionFromServer]);
+
+  // Tell the other tabs when the signed-in identity changes (sign-in, sign-out, restore),
+  // and react to theirs. A change made because ANOTHER tab said so is not re-broadcast.
+  const lastIdentity = React.useRef(null);
+  const quietChange = React.useRef(false);
+  const currentId = isAuthenticated && user ? String(user.id) : null;
+  useEffect(() => {
+    if (sessionChecking) return;
+    if (currentId === lastIdentity.current) return;
+    const previous = lastIdentity.current;
+    lastIdentity.current = currentId;
+    if (quietChange.current) { quietChange.current = false; return; }
+    if (previous !== null || currentId !== null) broadcast({ type: 'session', userId: currentId });
+  }, [currentId, sessionChecking]);
+
+  const dropSession = useCallback((notice) => {
+    quietChange.current = true;
+    api.clearToken();
+    clearStoredSession();
+    setIsAuthenticated(false);
+    setUser(null);
+    if (notice) setSessionNotice(notice);
+  }, []);
+
+  useEffect(() => onTabMessage((msg) => {
+    if (msg.type === 'ping') {
+      if (isAuthenticated) broadcast({ type: 'pong', nonce: msg.nonce });
+      return;
+    }
+    if (msg.type !== 'session' || !isAuthenticated || !user) return;
+    if (msg.userId === null) {
+      dropSession('You signed out in another tab.');
+    } else if (String(msg.userId) !== String(user.id)) {
+      // The session cookie is shared by every tab: another tab signed in as someone else,
+      // so this tab must not keep showing — or acting as — the previous person.
+      dropSession('Someone signed in as a different user in another tab, so this tab was signed out.');
+    }
+  }), [isAuthenticated, user, dropSession]);
+
+  // When the tab comes back into focus, confirm the session still belongs to the person on
+  // screen (it may have expired, timed out for inactivity, or been replaced).
+  useEffect(() => {
+    if (!isAuthenticated) return undefined;
+    let last = 0;
+    const check = async () => {
+      if (Date.now() - last < 30 * 1000) return;
+      last = Date.now();
+      const who = await sessionFromServer();
+      if (!who) dropSession('Your session has ended. Please sign in again.');
+      else if (user && String(who.id) !== String(user.id)) {
+        dropSession('Someone signed in as a different user in another tab, so this tab was signed out.');
+      }
+    };
+    window.addEventListener('focus', check);
+    return () => window.removeEventListener('focus', check);
+  }, [isAuthenticated, user, sessionFromServer, dropSession]);
+
+  // Once the signed-in identity ends, nothing of theirs stays in memory for whoever signs
+  // in next on this tab.
+  useEffect(() => {
+    if (isAuthenticated) return;
+    setAppointments([]); setPatients([]); setClaims([]); setPayments([]);
+    setNotifications([]); setTasks([]); setUsers([]);
+    setSelectedItem(null); setEditingItem(null);
+  }, [isAuthenticated]);
+  useEffect(() => { if (isAuthenticated) setSessionNotice(null); }, [isAuthenticated]);
 
   /**
    * Fetches all data from the backend API
@@ -419,6 +527,9 @@ const AppProvider = ({ children }) => {
 
   // Context value object containing all state and functions
   const value = {
+    sessionChecking,
+    sessionNotice,
+    dropSession,
     // Authentication and UI state
     isAuthenticated,
     setIsAuthenticated,

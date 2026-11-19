@@ -44,6 +44,7 @@ Global first, then tenant. Always.
 | 6 | `apply-specialty-packs.sql` | publishes the specialty packs — the SQL equivalent of `npm run packs:load` |
 | 7 | `apply-global-086.sql` | global 086 — lets a subscription change be attributed to a practice admin, and keeps prorations apart from collected cash |
 | 8 | `apply-module-permissions.sql` | global 088 **and** tenant/011 — the `module_permissions` table behind fine-grained, per-module access control |
+| 9 | `apply-portal-invites.sql` | global 090 **and** tenant/012 — patient portal invitation links (`control.portal_invite_route` + `portal_invites` in every tenant). Pasting `tenant/012_portal_invites.sql` directly fails with 42P01 `relation "patients" does not exist`; run this instead |
 
 Without step 6 the setup wizard lists every specialty as having **"no starter content
 yet"**. That is not a fault in the wizard: `public.specialty_packs` is simply empty,
