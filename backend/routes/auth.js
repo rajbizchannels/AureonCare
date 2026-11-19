@@ -4,7 +4,8 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const { signToken, authenticate } = require('../middleware/auth');
 const { validateSocialToken } = require('../utils/socialTokenValidator');
-const { sendEmail, buildEmailHtml } = require('../services/notificationService');
+const { sendEmail } = require('../services/notificationService');
+const { renderPasswordResetEmail } = require('../services/emailTemplates');
 const { BCRYPT_COST, checkNewPassword } = require('../utils/passwordPolicy');
 const { issueAuthCookies, clearAuthCookies, issuePortalCookies, getPortalCookie } = require('../utils/authCookies');
 const { tenantForSession, forgetSession } = require('../services/portalRouting');
@@ -93,6 +94,16 @@ router.post('/login', async (req, res) => {
     }
     if (user.status === 'pending') {
       return res.status(403).json({ error: 'Your account is pending approval. Please wait for an administrator to approve your account.' });
+    }
+    // Patients sign in to the patient portal, never here. A 'patient' row in users is a
+    // leftover of the old self-registration (no practice, no chart): a staff session for it
+    // reached nothing but 401/403 on every screen. Checked AFTER the password, so this
+    // answer does not reveal which emails belong to patient accounts.
+    if (user.role === 'patient') {
+      return res.status(403).json({
+        error: 'This is a patient account. Please sign in through your practice\'s patient portal (Patient Login).',
+        patientAccount: true,
+      });
     }
 
     // Second factor. Asked for only after the password is proven, so the prompt itself
@@ -749,17 +760,7 @@ router.post('/forgot-password', async (req, res) => {
     const resetLink = frontendBase
       ? `${frontendBase}/reset-password?token=${resetToken}`
       : null;
-    const html = buildEmailHtml(
-      'Password Reset Request',
-      '#2563eb',
-      `Hi ${firstName},`,
-      'We received a request to reset your AureonCare password. Use the reset code below — it expires in 1 hour. If you did not request this, you can safely ignore this email.',
-      `<tr><td style="padding:8px 12px;font-weight:bold;color:#555;width:35%">Reset code</td>
-        <td style="padding:8px 12px;color:#111;font-family:monospace;font-size:15px;word-break:break-all">${resetToken}</td></tr>`,
-      resetLink
-        ? `Or click here to reset your password: <a href="${resetLink}">${resetLink}</a>`
-        : 'Enter this code in the password reset screen to choose a new password.'
-    );
+    const html = renderPasswordResetEmail({ firstName, resetToken, resetLink });
     console.log(`[DEBUG sec04-email] sending reset email to ${email} (token ${resetToken.slice(0, 6)}…)`);
     await sendEmail(email, 'Reset your AureonCare password', html);
 
@@ -1038,6 +1039,14 @@ const socialLoginHandler = async (req, res) => {
           }
         }
 
+        // Do not attach a new identity to a leftover patient account it cannot use.
+        if (user.role === 'patient') {
+          return res.status(403).json({
+            error: 'This is a patient account. Please sign in through your practice\'s patient portal (Patient Login).',
+            patientAccount: true,
+          });
+        }
+
         await pool.query(`
           INSERT INTO social_auth (user_id, patient_id, provider, provider_user_id, access_token, refresh_token, profile_data)
           VALUES ($1, $1, $2, $3, $4, $5, $6)
@@ -1124,6 +1133,15 @@ const socialLoginHandler = async (req, res) => {
           sl_client.release();
         }
       }
+    }
+
+    // Patients use the patient portal; a leftover 'patient' users row gets no staff session
+    // (it could reach nothing — every staff route refuses it). An invite adopts it above.
+    if (user.role === 'patient') {
+      return res.status(403).json({
+        error: 'This is a patient account. Please sign in through your practice\'s patient portal (Patient Login).',
+        patientAccount: true,
+      });
     }
 
     // Update last login

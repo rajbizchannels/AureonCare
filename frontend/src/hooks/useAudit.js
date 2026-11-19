@@ -127,7 +127,9 @@ export const useAudit = () => {
           }
         });
 
-        // Send to backend (don't await to avoid blocking UI)
+        // Send to backend (don't await to avoid blocking UI). Patients have no staff session
+        // and the audit endpoint is staff-only; portal reads are audited server-side.
+        if (user && user.role === 'patient') return;
         api.createAuditLog(auditData).catch(err => {
           console.error('Failed to create audit log:', err);
         });

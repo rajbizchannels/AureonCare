@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Loader2, AlertCircle, UserPlus, CheckCircle2 } from 'lucide-react';
 import { useGoogleLogin } from '@react-oauth/google';
+import { getMicrosoftAuthCode } from '../../utils/msAuthCode';
+import { microsoftOAuthConfig } from '../../config/oauthConfig';
 
 /**
  * Accept a staff invite — with a password, or with Google/Microsoft.
@@ -51,6 +53,32 @@ const AcceptInvitePage = ({ theme = 'light', token, api, addNotification, onAcce
       onAccepted?.();
     } catch (err) {
       setError(err.message || 'Could not accept the invite.');
+    } finally {
+      setBusy('');
+    }
+  };
+
+  // Shared by Google and Microsoft: the server has verified the identity, matched it to
+  // the invited email and issued the session.
+  const finishOAuth = (res) => {
+    if (res && res.token && res.user) {
+      api.storeToken(res.token);
+      setConnected(res);
+      addNotification?.(`Connected as ${res.user.email}`, 'success');
+    } else {
+      addNotification?.('Account created. Please sign in.', 'success');
+      onAccepted?.();
+    }
+  };
+
+  // Microsoft: authorization-code + PKCE in a popup (SEC-20); the server redeems the code.
+  const withMicrosoft = async () => {
+    setBusy('microsoft'); setError('');
+    try {
+      const { code, redirectUri, codeVerifier } = await getMicrosoftAuthCode(microsoftOAuthConfig.auth.clientId);
+      finishOAuth(await api.exchangeMicrosoftCode(code, redirectUri, codeVerifier, token));
+    } catch (err) {
+      setError(err.message || 'Microsoft sign-up failed.');
     } finally {
       setBusy('');
     }
@@ -176,8 +204,12 @@ const AcceptInvitePage = ({ theme = 'light', token, api, addNotification, onAcce
                 className={`w-full py-2.5 rounded-lg border ${card} ${text} font-medium disabled:opacity-60`}>
           {busy === 'google' ? 'Connecting…' : 'Continue with Google'}
         </button>
+        <button type="button" onClick={withMicrosoft} disabled={!!busy}
+                className={`mt-2 w-full py-2.5 rounded-lg border ${card} ${text} font-medium disabled:opacity-60`}>
+          {busy === 'microsoft' ? 'Connecting…' : 'Continue with Microsoft'}
+        </button>
         <p className={`mt-3 text-xs text-center ${muted}`}>
-          You must sign in with <strong>{invite.email}</strong> — the invite is tied to that address.
+          Use the Google or Microsoft account for <strong>{invite.email}</strong> — the invite is tied to that address.
         </p>
       </div>
     </div>

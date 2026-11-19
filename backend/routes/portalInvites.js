@@ -21,7 +21,8 @@ const rateLimit = require('express-rate-limit');
 const { authenticate } = require('../middleware/auth');
 const { storeFor } = require('../middleware/rateLimitStore');
 const { checkNewPassword, BCRYPT_COST } = require('../utils/passwordPolicy');
-const { sendEmail, buildEmailHtml } = require('../services/notificationService');
+const { sendEmail } = require('../services/notificationService');
+const { renderPortalInviteEmail } = require('../services/emailTemplates');
 const { sendDbError } = require('../utils/dbErrors');
 const { withTenant } = require('../db/tenantClient');
 const { tenantIdFor } = require('../services/bookingRouting');
@@ -32,11 +33,10 @@ const { exchangeAuthCode } = require('../utils/oauthExchange');
 const { validateSocialToken } = require('../utils/socialTokenValidator');
 
 const router = express.Router();
+const { enforcePatientQuota } = require('../middleware/planEnforcement');
 
 const INVITE_TTL_DAYS = 14;               // MyChart activation codes and NHS linkage keys: 14 days
 const hashToken = (t) => crypto.createHash('sha256').update(String(t)).digest('hex');
-const escapeHtml = (v) => String(v == null ? '' : v)
-  .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 // j***@example.com — enough for the patient to recognise, not enough to harvest.
 const maskEmail = (e) => {
   const [user, domain] = String(e || '').split('@');
@@ -81,33 +81,77 @@ async function practiceName(basePool, tenantId) {
 }
 
 async function sendInviteEmail({ to, firstName, practice, url, expiresAt }) {
-  const html = buildEmailHtml(
-    `Your ${escapeHtml(practice)} patient portal`,
-    '#2563eb',
-    `Hello ${escapeHtml(firstName) || 'there'},`,
-    `<strong>${escapeHtml(practice)}</strong> has invited you to its patient portal, where you can see your ` +
-      'appointments, messages and records. Setting up takes a minute: choose a password, or continue with ' +
-      'your Google or Microsoft account.',
-    `<tr><td style="padding:8px 12px;font-weight:bold;color:#555">Link expires</td>` +
-      `<td style="padding:8px 12px;color:#333">${escapeHtml(new Date(expiresAt).toUTCString())}</td></tr>`,
-    `<a href="${url}" style="display:inline-block;background:#2563eb;color:#fff;padding:12px 24px;` +
-      `border-radius:6px;text-decoration:none;font-weight:bold">Set up my portal</a>` +
-      `<br><br><span style="color:#666;font-size:13px">If the button does not work, paste this into your browser:<br>${url}</span>` +
-      `<br><br><span style="color:#666;font-size:13px">If you were not expecting this, you can ignore it — ` +
-      'the link works once and expires on its own.</span>'
-  );
+  const html = renderPortalInviteEmail({ firstName, practice, url, expiresAt });
   return sendEmail(to, `Set up your ${practice} patient portal`, html);
+}
+
+/**
+ * Find the patient chart an emailed invite is for, or start one.
+ *
+ * Exactly one chart with that email → that chart. Several → refused: which person is
+ * meant is a human decision, made from the chart itself. None → a new chart from the
+ * name and date of birth given (all three required, as for any new patient).
+ */
+async function findOrCreateChartForInvite(db, { email, firstName, lastName, dateOfBirth }, beforeCreate) {
+  const clean = String(email || '').trim().toLowerCase();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(clean)) return { status: 400, error: 'A valid email address is required' };
+  const { rows } = await db.query('SELECT id FROM patients WHERE LOWER(email) = $1 LIMIT 2', [clean]);
+  if (rows.length === 1) return { patientId: rows[0].id, existing: true };
+  if (rows.length > 1) {
+    return { status: 409, error: 'More than one patient has that email. Open the right patient\'s chart and invite them from there.' };
+  }
+  const fn = String(firstName || '').trim();
+  const ln = String(lastName || '').trim();
+  const dob = String(dateOfBirth || '').trim();
+  if (!fn || !ln || !/^\d{4}-\d{2}-\d{2}$/.test(dob)) {
+    return { status: 400, error: 'No patient has that email yet. Enter their first name, last name and date of birth to create their record.' };
+  }
+  // A new chart counts against the plan's patient limit, exactly as on the Patients screen.
+  if (beforeCreate && !(await beforeCreate())) return { handled: true };
+  // Same MRN shape the New Patient form uses; a collision just tries the next number.
+  const { rows: [{ n }] } = await db.query('SELECT count(*)::int AS n FROM patients');
+  for (let i = 1; i <= 20; i++) {
+    const mrn = `MRN${String(n + i).padStart(6, '0')}`;
+    const taken = await db.query('SELECT 1 FROM patients WHERE mrn = $1', [mrn]);
+    if (taken.rows.length) continue;
+    const { rows: [p] } = await db.query(
+      `INSERT INTO patients (id, first_name, last_name, mrn, date_of_birth, email, status, created_at, updated_at)
+       VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, 'Active', NOW(), NOW()) RETURNING id`,
+      [fn, ln, mrn, dob, clean]);
+    return { patientId: p.id, created: true };
+  }
+  return { status: 409, error: 'Could not assign a record number. Create the patient from the Patients screen first.' };
 }
 
 // ── staff: send (or re-send) an invite ───────────────────────────────────────────────
 router.post('/', authenticate, staffOnly, async (req, res) => {
   const db = req.db;
   const basePool = req.app.locals.pool;
-  const { patientId } = req.body || {};
-  if (!db || !patientId) return res.status(400).json({ error: 'patientId is required' });
+  // Either a chart (patientId, from the patient's record), or — from the "Invite" dialog in
+  // User Management with role Patient — an email plus the details needed to find or start
+  // the chart the portal account will belong to.
+  let { patientId } = req.body || {};
+  if (!db) return res.status(409).json({ error: 'Your account is not linked to a practice.' });
+  if (!patientId && !(req.body || {}).email) return res.status(400).json({ error: 'patientId or email is required' });
   try {
     const tenantId = await tenantIdFor(basePool, req);
     if (!tenantId) return res.status(409).json({ error: 'Your account is not linked to a practice.' });
+
+    if (!patientId) {
+      const found = await findOrCreateChartForInvite(db, req.body || {},
+        // Runs the same quota middleware as POST /api/patients. It either calls next (room
+        // for another chart) or answers the request itself (limit reached) — resolve on
+        // whichever happens, so a refusal never leaves this request hanging.
+        () => new Promise((resolve) => {
+          const answered = () => resolve(false);
+          res.once('finish', answered);
+          Promise.resolve(enforcePatientQuota(req, res, () => { res.off('finish', answered); resolve(true); }))
+            .catch(() => { res.off('finish', answered); resolve(!res.headersSent); });
+        }));
+      if (found.handled) return;
+      if (found.error) return res.status(found.status).json({ error: found.error });
+      patientId = found.patientId;
+    }
 
     // Scoped to the caller's own schema: another practice's patient simply is not found.
     const { rows: [patient] } = await db.query(

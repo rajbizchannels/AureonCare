@@ -1163,6 +1163,50 @@ const api = {
     if (!response.ok) throw new Error('Failed to fetch patient medical records');
     return response.json();
   },
+  // ── Portal data (patient session only; see routes/patient-portal.js) ──────────────
+  // The portal used to read staff routes, which refuse a patient session (401/403).
+  _portalCall: async (patientId, path, { method = 'GET', body, fail = 'Request failed' } = {}) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/patient-portal/${patientId}${path}`, {
+      method,
+      headers: { ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}), ...api._getPortalAuthHeader() },
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      const err = new Error(data.message || data.error || fail);
+      err.status = response.status;
+      throw err;
+    }
+    return response.json();
+  },
+  portalGetDiagnoses: (patientId) => api._portalCall(patientId, '/diagnoses', { fail: 'Failed to load diagnoses' }),
+  portalGetActivePrescriptions: (patientId) => api._portalCall(patientId, '/prescriptions/active', { fail: 'Failed to load prescriptions' }),
+  portalGetPharmacies: (patientId) => api._portalCall(patientId, '/pharmacies', { fail: 'Failed to load pharmacies' }),
+  portalGetPreferredPharmacies: (patientId) => api._portalCall(patientId, '/pharmacies/preferred', { fail: 'Failed to load preferred pharmacies' }),
+  portalAddPreferredPharmacy: (patientId, pharmacyId, isPreferred = true) =>
+    api._portalCall(patientId, '/pharmacies/preferred', { method: 'POST', body: { pharmacyId, isPreferred }, fail: 'Failed to save pharmacy' }),
+  portalGetProviders: (patientId) => api._portalCall(patientId, '/providers', { fail: 'Failed to load providers' }),
+  portalGetAppointmentTypes: (patientId) => api._portalCall(patientId, '/appointment-types', { fail: 'Failed to load appointment types' }),
+  portalGetInsurancePayers: (patientId) => api._portalCall(patientId, '/insurance-payers', { fail: 'Failed to load insurance payers' }),
+  portalGetOfferings: (patientId, { featured } = {}) =>
+    api._portalCall(patientId, `/offerings${featured ? '?featured=true' : ''}`, { fail: 'Failed to load services' }),
+  portalBookAppointment: (patientId, data) =>
+    api._portalCall(patientId, '/appointments', { method: 'POST', body: data, fail: 'Failed to book appointment' }),
+  portalGetWaitlist: (patientId) => api._portalCall(patientId, '/waitlist', { fail: 'Failed to load waitlist' }),
+  portalAddToWaitlist: (patientId, data) =>
+    api._portalCall(patientId, '/waitlist', { method: 'POST', body: data, fail: 'Failed to add to waitlist' }),
+  portalRemoveFromWaitlist: (patientId, entryId) =>
+    api._portalCall(patientId, `/waitlist/${entryId}`, { method: 'DELETE', fail: 'Failed to remove from waitlist' }),
+  portalGetNotificationPreferences: (patientId) =>
+    api._portalCall(patientId, '/notification-preferences', { fail: 'Failed to load notification preferences' }),
+  portalSetNotificationPreference: (patientId, channelType, isEnabled, contactInfo) =>
+    api._portalCall(patientId, '/notification-preferences', {
+      method: 'PUT', body: { channel_type: channelType, is_enabled: isEnabled, contact_info: contactInfo || null },
+      fail: 'Failed to save notification preference' }),
+  portalSubmitForm: (patientId, submissionId, formData) =>
+    api._portalCall(patientId, `/form-requests/${submissionId}`, { method: 'PUT', body: { form_data: formData }, fail: 'Failed to submit form' }),
+  portalChangePassword: (patientId, currentPassword, newPassword) =>
+    api._portalCall(patientId, '/change-password', { method: 'POST', body: { currentPassword, newPassword }, fail: 'Failed to change password' }),
   linkSocialToPatient: async (patientId, provider, providerId, accessToken, refreshToken, profileData) => {
     const response = await authenticatedFetch(`${API_BASE_URL}/patient-portal/${patientId}/link-social`, {
       method: 'POST',
@@ -4144,6 +4188,16 @@ const api = {
     });
     const data = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(data.error || 'Could not send the invitation');
+    return data;
+  },
+  // From the Invite dialog (role "Patient"): the server finds the chart with this email, or
+  // creates one from the name and date of birth, then sends the portal invitation.
+  sendPortalInviteByEmail: async ({ email, firstName, lastName, dateOfBirth }) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/portal-invites`, {
+      method: 'POST', body: JSON.stringify({ email, firstName, lastName, dateOfBirth }),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || data.message || 'Could not send the invitation');
     return data;
   },
   getPortalInviteStatus: async (patientId) => {
