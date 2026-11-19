@@ -250,11 +250,17 @@ workspace; a forged redirect gets nothing.
 
 ## What must be configured once
 
-- [ ] `AC_STRIPE_SK` — the **platform** Stripe secret key (clinics paying you). This is a
-      different account from the per-clinic keys in Settings → Stripe, which are for
-      clinics collecting money from *their* patients. Platform billing never reads those.
+- [ ] `AC_STRIPE_SK` — the **platform** Stripe secret key (clinics paying you). Stripe is
+      configured only here, by the platform operator: practices no longer have Stripe keys
+      to enter (Settings → Integrations shows a read-only status). Patient payments are
+      taken outside AureonCare and recorded under Billing › Payments.
 - [ ] `AC_STRIPE_WHS` — webhook signing secret, with `checkout.session.completed` and the
-      `customer.subscription.*` events subscribed
+      `customer.subscription.*` events subscribed. This is the **only** supported source of
+      the webhook secret.
+      **Upgrading an install that saved a webhook secret on the old Integrations screen:**
+      set `AC_STRIPE_WHS` to that value. Until you do, the webhook falls back to the stored
+      value and logs `using the legacy webhook secret stored in the database` — that
+      fallback will be removed.
 - [ ] `FRONTEND_URL` — used to build the checkout return URLs
 - [ ] In the console's **Plans** tab, create or configure a plan and press **Create in
       Stripe** — that builds the Product and recurring Price in your Stripe account and

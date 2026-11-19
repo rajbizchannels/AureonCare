@@ -112,6 +112,24 @@ const leaks = (text, values) => values.filter((v) => v && text.includes(v));
     // No base_url: the SSRF guard resolves it in DNS, which a sandboxed runner may not have.
     { api_key: 'key-' + RUN, api_secret: V1, username: 'u', password: PW });
   check(`an admin can save vendor settings (got ${vsave.status})`, vsave.status === 200);
+  // Option (a): Stripe is platform-managed. Its shared row cannot be edited from a practice
+  // at all — not even by an admin — and the read is a status, with no keys in it.
+  const adminStripe = [];
+  for (const [m, u, b] of [['POST', '/api/stripe-settings', { secret_key: 'sk_test_admin' }],
+                           ['PATCH', '/api/stripe-settings/toggle', { is_enabled: true }],
+                           ['POST', '/api/stripe-settings/test', {}]]) {
+    const r = await call(m, u, admin, b);
+    if (r.status !== 403) adminStripe.push(`${m} ${u} -> ${r.status}`);
+  }
+  check(`EVEN A PRACTICE ADMIN CANNOT EDIT THE SHARED STRIPE SETTINGS${adminStripe.length ? ': ' + adminStripe.join('; ') : ''}`,
+    adminStripe.length === 0);
+  const sread = await call('GET', '/api/stripe-settings', admin);
+  check('the Stripe read is a platform-managed status with no key fields',
+    sread.status === 200 && sread.body.managed_by === 'platform'
+    && !/publishable_key|secret_key|webhook_secret/.test(sread.text));
+  const { rows: [stripeAfter] } = await pool.query('SELECT secret_key FROM public.stripe_integration_settings LIMIT 1');
+  check('and the row was not changed by those attempts',
+    (stripeAfter && stripeAfter.secret_key) === (stripeBefore && stripeBefore.secret_key));
   const vtog = await call('PATCH', '/api/vendor-integration-settings/labcorp/toggle', admin, { is_enabled: false });
   check(`vendor toggle no longer answers 500 (got ${vtog.status})`, vtog.status === 200);
   check('an admin can save telehealth settings',
