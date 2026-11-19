@@ -74,25 +74,18 @@ import ForgotPasswordModal from './components/modals/ForgotPasswordModal';
 import ViewEditModal from './components/modals/ViewEditModal';
 import UserProfileModal from './components/modals/UserProfileModal';
 
-// Forms
-import NewAppointmentForm from './components/forms/NewAppointmentForm';
-import NewPatientForm from './components/forms/NewPatientForm';
-import NewClaimForm from './components/forms/NewClaimForm';
 import NewPaymentForm from './components/forms/NewPaymentForm';
-import NewTaskForm from './components/forms/NewTaskForm';
 import NewUserForm from './components/forms/NewUserForm';
 import NewInsurancePayerForm from './components/forms/NewInsurancePayerForm';
 import NewAppointmentTypeForm from './components/forms/NewAppointmentTypeForm';
 import NewHealthcareOfferingForm from './components/forms/NewHealthcareOfferingForm';
 import NewCampaignForm from './components/forms/NewCampaignForm';
-import DiagnosisForm from './components/forms/DiagnosisForm';
 import NewPharmacyForm from './components/forms/NewPharmacyForm';
 import NewLaboratoryForm from './components/forms/NewLaboratoryForm';
 
 // Panels
 import NotificationsPanel from './components/panels/NotificationsPanel';
 import SearchPanel from './components/panels/SearchPanel';
-import AIAssistantPanel from './components/panels/AIAssistantPanel';
 
 // Help System Components
 import HelpDrawer from './components/help/HelpDrawer';
@@ -130,7 +123,6 @@ function App() {
     theme,
     setTheme,
     language,
-    setLanguage,
     planTier,
     selectedItem,
     setSelectedItem,
@@ -159,13 +151,10 @@ function App() {
     patients,
     setPatients,
     providers,
-    setProviders,
     claims,
     setClaims,
     payments,
-    setPayments,
     notifications,
-    setNotifications,
     tasks,
     setTasks,
     users,
@@ -211,11 +200,11 @@ function App() {
   const [patientHistoryInitialTab, setPatientHistoryInitialTab] = React.useState('overview');
 
   // Local state for campaigns and appointment types
-  const [editingCampaign, setEditingCampaign] = React.useState(null);
-  const [editingAppointmentType, setEditingAppointmentType] = React.useState(null);
+  const [, setEditingCampaign] = React.useState(null);
+  const [, setEditingAppointmentType] = React.useState(null);
 
   // CRM refresh trigger - increment this to force CRM counts to refresh
-  const [crmRefreshKey, setCrmRefreshKey] = React.useState(0);
+  const [crmRefreshKey] = React.useState(0);
 
   // Help system state
   const [showHelpDrawer, setShowHelpDrawer] = React.useState(false);

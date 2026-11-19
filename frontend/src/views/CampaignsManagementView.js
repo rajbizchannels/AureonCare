@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, Edit, Trash2, Send, Calendar, Inbox, Search } from 'lucide-react';
+import { Plus, Edit, Trash2, Inbox, Search } from 'lucide-react';
 import NewCampaignForm from '../components/forms/NewCampaignForm';
 import { useAudit } from '../hooks/useAudit';
 

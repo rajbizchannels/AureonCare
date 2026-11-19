@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { DollarSign, X, Save, FileText } from 'lucide-react';
+import { DollarSign, X, Save } from 'lucide-react';
 import ConfirmationModal from '../modals/ConfirmationModal';
 import { useAudit } from '../../hooks/useAudit';
 import ThemedSelect from './ThemedSelect';
@@ -120,8 +120,6 @@ const NewPaymentPostingForm = ({ theme, api, patients, claims, insurancePayers, 
     setProcessing(true);
 
     const patient = patients.find(p => p.id.toString() === formData.patientId);
-    const claim = claims.find(c => c.id.toString() === formData.claimId);
-    const payer = insurancePayers.find(ip => ip.id === formData.insurance_payer_id);
 
     const postingData = {
       claim_id: formData.claimId,

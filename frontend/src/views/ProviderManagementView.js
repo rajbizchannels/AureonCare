@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  User, Calendar, Clock, Settings, Link2, Mail, Phone,
-  Plus, Edit2, Trash2, Eye, EyeOff, Copy, Check, AlertCircle
+  Calendar, Clock, Settings, Link2, Mail, Phone,
+  Eye, EyeOff, Copy, Check, AlertCircle
 } from 'lucide-react';
 import { DoctorAvailabilityManager } from '../components/scheduling';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
@@ -226,7 +226,6 @@ const ProviderManagementView = ({ theme = 'dark', setCurrentModule }) => {
 
       // Create booking configuration only if it doesn't exist
       if (!bookingConfig) {
-        const provider = providers.find(p => p.id === providerId);
         const slug = `dr${providerId}`.toLowerCase();
 
         const bookingConfigResponse = await apiFetch('/scheduling/booking-config', {

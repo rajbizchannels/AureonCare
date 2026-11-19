@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Heart, Sun, Moon } from 'lucide-react';
+import { Sun, Moon } from 'lucide-react';
 import { useGoogleLogin } from '@react-oauth/google';
 import { getMicrosoftAuthCode } from '../../utils/msAuthCode';
 import { microsoftOAuthConfig } from '../../config/oauthConfig';

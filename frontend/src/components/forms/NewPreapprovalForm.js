@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import AIAssistButton from '../integrations/AIAssistButton';
 import { FileCheck, X, Save, Search, Plus, Trash2, Printer, AlertCircle, Shield, Loader2 } from 'lucide-react';
-import ConfirmationModal from '../modals/ConfirmationModal';
 import { useAudit } from '../../hooks/useAudit';
 import ThemedSelect from './ThemedSelect';
 
@@ -16,7 +15,6 @@ const NewPreapprovalForm = ({ theme, api, patients, onClose, onSuccess, addNotif
     estimatedCost: '',
     clinicalNotes: ''
   });
-  const [showConfirmation, setShowConfirmation] = useState(false);
   const [showNoClearinghouseModal, setShowNoClearinghouseModal] = useState(false);
   // This form had no busy state at all: submitting a pre-authorisation posts to a
   // clearinghouse, which is among the slowest calls in the app, and the button gave no
@@ -24,7 +22,7 @@ const NewPreapprovalForm = ({ theme, api, patients, onClose, onSuccess, addNotif
   const [submitting, setSubmitting] = useState(false);
   const [clearinghouseStatus, setClearinghouseStatus] = useState({ hasClearinghouse: false });
   const [insurancePayers, setInsurancePayers] = useState([]);
-  const [loadingPayers, setLoadingPayers] = useState(true);
+  const [, setLoadingPayers] = useState(true);
   const [selectedDiagnoses, setSelectedDiagnoses] = useState([]);
   const [selectedProcedures, setSelectedProcedures] = useState([]);
   const [diagnosisSearch, setDiagnosisSearch] = useState('');

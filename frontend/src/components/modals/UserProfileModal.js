@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { X, MessageCircle, Phone, Edit2, Check } from 'lucide-react';
 import ConfirmationModal from './ConfirmationModal';
 import { getTranslations } from '../../config/translations';
@@ -51,7 +51,7 @@ const UserProfileModal = ({
   }, [logModalOpen, startAction, user?.id, user?.role]);
 
   // Handle close with audit logging
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     logModalClose('UserProfileModal', {
       module: 'Profile',
       metadata: {
@@ -61,7 +61,7 @@ const UserProfileModal = ({
     });
     setShowChangePassword(false);
     onClose();
-  };
+  }, [logModalClose, onClose, setShowChangePassword, user?.id, user?.role]);
 
   // ESC key handler
   useEffect(() => {

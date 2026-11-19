@@ -1,3 +1,5 @@
+/* eslint-disable testing-library/no-node-access, testing-library/no-container --
+   this test asserts the visual ORDER of sections, which only document order in the DOM expresses. */
 import React from 'react';
 import '@testing-library/jest-dom';
 import { render, screen, waitFor, fireEvent, within } from '@testing-library/react';

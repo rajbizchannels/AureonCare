@@ -15,7 +15,7 @@ const FHIRView = ({ theme, api, patients, addNotification, setCurrentModule, act
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [selectedResourceType, setSelectedResourceType] = useState('all');
-  const [selectedPatient, setSelectedPatient] = useState(null);
+  const [selectedPatient] = useState(null);
 
   const resourceTypes = ['all', 'Patient', 'Observation', 'Condition', 'Medication', 'Procedure'];
 

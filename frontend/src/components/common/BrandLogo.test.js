@@ -1,3 +1,5 @@
+/* eslint-disable testing-library/no-node-access, testing-library/no-container --
+   the logo images are decorative (alt=""), so they have no accessible role; these tests check their src and pixel height, which only the DOM exposes. */
 // The tagline has to be readable.
 //
 // The header used one 1050x350 PNG displayed 36px tall. Measured on the source artwork,

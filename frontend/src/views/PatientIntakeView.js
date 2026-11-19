@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, Eye, Edit, Trash2, FileText, GitBranch, FileCheck, Search, X, Filter } from 'lucide-react';
+import { Plus, Eye, Edit, Trash2, FileText, GitBranch, FileCheck, Search, X } from 'lucide-react';
 import { formatDate } from '../utils/formatters';
 import NewIntakeFormForm from '../components/forms/NewIntakeFormForm';
 import NewIntakeFlowForm from '../components/forms/NewIntakeFlowForm';
@@ -40,7 +40,7 @@ const PatientIntakeView = ({
   const [intakeForms, setIntakeForms] = useState([]);
   const [intakeFlows, setIntakeFlows] = useState([]);
   const [consentForms, setConsentForms] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [, setLoading] = useState(true);
 
   // Search states
   const [intakeFormSearch, setIntakeFormSearch] = useState('');

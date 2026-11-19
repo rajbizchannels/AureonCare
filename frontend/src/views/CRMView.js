@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Mail, MessageSquare, Phone, Calendar, Plus, Heart, Clock, Edit, FileText } from 'lucide-react';
+import { Mail, MessageSquare, Phone, Heart, Clock, FileText } from 'lucide-react';
 import { useAudit } from '../hooks/useAudit';
 
 const CRMView = ({ theme, setShowForm, setCurrentModule, currentModule, crmRefreshKey, api, t }) => {

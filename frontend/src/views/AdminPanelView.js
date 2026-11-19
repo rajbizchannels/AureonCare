@@ -79,7 +79,6 @@ import { useClinicSettings } from '../hooks/useClinicSettings';
 import { apiFetch } from '../api/apiService';
 import { useShellTab } from '../hooks/useShellTab';
 import {
-  USER_ROLES,
   USER_STATUS,
   DEFAULT_APPOINTMENT_SETTINGS,
   DEFAULT_WORKING_HOURS,
@@ -96,7 +95,6 @@ import {
   safeJSONParse,
   isPhoneValid,
   validateOptionalPhone,
-  validateOptionalEmail,
 } from '../utils/validators';
 import { hasPermission, isAdmin } from '../utils/rolePermissions';
 import ThemedSelect from '../components/forms/ThemedSelect';
@@ -1235,82 +1233,6 @@ const AdminPanelView = ({
     return () => clearInterval(pollTimer);
   }, []);
 
-  /**
-   * Handle reconfigure integration - fetches existing credentials and shows edit modal
-   */
-  const handleReconfigureIntegration = useCallback(
-    async (providerType, providerName, credentialType = 'oauth') => {
-      try {
-        // Fetch existing credentials
-        const response = await apiFetch(`/integrations/oauth/${providerType}/credentials`);
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.error || 'Failed to fetch credentials');
-        }
-
-        // Helper: initiate OAuth popup and poll for completion
-        const initiateOAuthPopup = async () => {
-          const oauthResponse = await apiFetch(`/integrations/oauth/${providerType}/initiate`);
-          const oauthData = await oauthResponse.json();
-
-          if (!oauthResponse.ok) {
-            throw new Error(oauthData.error || 'Failed to initiate OAuth flow');
-          }
-
-          if (oauthData.authUrl) {
-            const width = 600;
-            const height = 700;
-            const left = window.screen.width / 2 - width / 2;
-            const top = window.screen.height / 2 - height / 2;
-            const popup = window.open(
-              oauthData.authUrl,
-              'OAuth Authorization',
-              `width=${width},height=${height},left=${left},top=${top}`
-            );
-
-            // Poll backend OAuth status (COOP-safe, no popup.closed dependency)
-            pollOAuthStatus(providerType, popup, async (success) => {
-              if (success) {
-                if (['zoom', 'google_meet', 'webex', 'microsoft_teams'].includes(providerType)) {
-                  const settings = await api.getTelehealthSettings();
-                  setTelehealthStatus((prev) => ({ ...prev, ...settings }));
-                } else if (['google_drive', 'onedrive'].includes(providerType)) {
-                  await fetchBackupConfigStatus();
-                }
-                setShowCredentialModal(false);
-                await addNotification('success', `${providerName} configured successfully.`);
-              }
-            });
-          }
-        };
-
-        // onSuccess: called after saving updated credentials → triggers OAuth
-        const onSuccess = credentialType === 'oauth' ? initiateOAuthPopup : null;
-
-        // onConnect: one-click connect (credentials already saved, go straight to OAuth)
-        const onConnect = credentialType === 'oauth' ? async () => {
-          await addNotification('info', `Connecting to ${providerName}...`);
-          await initiateOAuthPopup();
-        } : null;
-
-        // Show credential modal with existing data
-        setCredentialModalConfig({
-          providerName,
-          providerType,
-          credentialType,
-          existingCredentials: data,
-          onSuccess,
-          onConnect,
-        });
-        setShowCredentialModal(true);
-      } catch (error) {
-        console.error('Error fetching credentials for reconfiguration:', error);
-        await addNotification('alert', 'Failed to load existing credentials');
-      }
-    },
-    [api, addNotification, fetchBackupConfigStatus, pollOAuthStatus]
-  );
 
   /**
    * Helper: open OAuth popup and poll for completion
@@ -1477,7 +1399,7 @@ const AdminPanelView = ({
         await addNotification('alert', error.message || 'Failed to start configuration flow');
       }
     },
-    [addNotification, openOAuthPopup]
+    [api, addNotification, openOAuthPopup]
   );
 
   /**

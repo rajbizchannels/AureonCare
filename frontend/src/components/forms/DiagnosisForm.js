@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import AIAssistButton from '../integrations/AIAssistButton';
 import { extractSoap, toPlainText } from '../integrations/markdown';
 
-import { Activity, X, Save, Calendar, FileText, Pill, Microscope, Plus, Trash2, Search, ClipboardList, ChevronDown, ChevronUp } from 'lucide-react';
+import { Activity, X, Save, FileText, Pill, Microscope, Plus, Trash2, ClipboardList, ChevronDown, ChevronUp } from 'lucide-react';
 import { FORM_TEMPLATES } from '../../data/formTemplates';
 import MedicalCodeMultiSelect from './MedicalCodeMultiSelect';
 import LabCPTMultiSelect from './LabCPTMultiSelect';
@@ -47,19 +47,19 @@ const DiagnosisForm = ({
     soapNotes: ''
   });
   const [laboratories, setLaboratories] = useState([]);
-  const [loadingLaboratories, setLoadingLaboratories] = useState(true);
+  const [, setLoadingLaboratories] = useState(true);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [showSuccessConfirmation, setShowSuccessConfirmation] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [savedDiagnosisResult, setSavedDiagnosisResult] = useState(null);
   const [linkedPrescriptions, setLinkedPrescriptions] = useState([]);
   const [linkedLabOrders, setLinkedLabOrders] = useState([]);
-  const [pendingSubmit, setPendingSubmit] = useState(null);
+  const [, setPendingSubmit] = useState(null);
 
   // Medication search state
-  const [medicationSearchQuery, setMedicationSearchQuery] = useState('');
-  const [searchMedications, setSearchMedications] = useState([]);
-  const [loadingMedications, setLoadingMedications] = useState(false);
+  const [medicationSearchQuery] = useState('');
+  const [, setSearchMedications] = useState([]);
+  const [, setLoadingMedications] = useState(false);
 
   // ePrescribe modal state
   const [showEPrescribeForm, setShowEPrescribeForm] = useState(false);
@@ -76,7 +76,7 @@ const DiagnosisForm = ({
   ).slice(0, 12);
 
   // AUDIT LOGGING: Initialize audit hook
-  const { logFormView, logFormSubmit, logCreate, logUpdate, logError, startAction } = useAudit();
+  const { logFormView, logCreate, logUpdate, logError, startAction } = useAudit();
 
   // AUDIT LOGGING: Log form view when component mounts
   useEffect(() => {
@@ -264,28 +264,7 @@ const DiagnosisForm = ({
     return () => clearTimeout(timeoutId);
   }, [medicationSearchQuery, handleSearchMedications]);
 
-  // Function to handle adding a medication - opens ePrescribe modal with pre-selected medication
-  const handleAddMedication = useCallback((medication) => {
-    if (!medication) {
-      return;
-    }
 
-    // Set the pre-selected medication and open ePrescribe modal
-    setPreSelectedMedication(medication);
-    setShowEPrescribeForm(true);
-
-    // Clear search
-    setMedicationSearchQuery('');
-    setSearchMedications([]);
-  }, []);
-
-  // Function to remove a medication from the list
-  const handleRemoveMedication = useCallback((medicationId) => {
-    setFormData({
-      ...formData,
-      medications: formData.medications.filter(m => m.id !== medicationId)
-    });
-  }, [formData]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

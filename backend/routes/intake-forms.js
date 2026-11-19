@@ -2,6 +2,12 @@ const express = require('express');
 const { authenticate } = require('../middleware/auth');
 const { sendDbError } = require('../utils/dbErrors');
 const router = express.Router();
+
+// `/:id` only matches a UUID. Unconstrained, it was declared before the literal routes
+// below and swallowed them: GET /flows and /consents were handled as "fetch intake form
+// 'flows'", failed to parse as a UUID and answered 500, so those screens never
+// loaded. Constraining the parameter makes route order irrelevant.
+const ID = ':id([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})';
 router.use(authenticate);
 router.use(require('../middleware/planEnforcement').enforceActiveBilling); // SEC-05 S11: read-only when subscription past_due/canceled
 
@@ -56,7 +62,7 @@ router.get('/', async (req, res) => {
 });
 
 // Get single intake form
-router.get('/:id', async (req, res) => {
+router.get(`/${ID}`, async (req, res) => {
   try {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(
@@ -124,7 +130,7 @@ router.post('/', async (req, res) => {
 });
 
 // Update intake form
-router.put('/:id', async (req, res) => {
+router.put(`/${ID}`, async (req, res) => {
   const {
     form_type,
     form_name,
@@ -210,7 +216,7 @@ router.put('/:id', async (req, res) => {
 });
 
 // Delete intake form
-router.delete('/:id', async (req, res) => {
+router.delete(`/${ID}`, async (req, res) => {
   try {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(

@@ -148,6 +148,10 @@ jobs:
       - name: Run frontend PHI-logging guard
         run: npm run check:frontend-logs
 
+      # No route may be unreachable behind an earlier /:param route.
+      - name: Run route-shadowing guard
+        run: npm run check:routes
+
       # SEC-23: the 835 remittance parser survives 10,000 malformed inputs.
       - name: Fuzz the EDI 835 parser
         run: npm run test:edi-fuzz

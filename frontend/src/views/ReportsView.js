@@ -1,15 +1,15 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   BarChart3, TrendingUp, DollarSign, Users, Calendar, FileText,
-  Download, Filter, ArrowLeft, ChevronRight, ChevronDown, X,
-  RefreshCw, Eye, Settings2, PlusCircle, Layers, Shield,
+  Download, ArrowLeft, ChevronRight, ChevronDown, X,
+  RefreshCw, Eye, PlusCircle, Shield,
   Activity, Clock, AlertTriangle, CheckCircle, XCircle,
   PieChart, LineChart, BarChart2, Grid, Search, ChevronUp,
-  Edit3, Trash2, Save, Play,
+  Edit3, Save, Play,
   BookOpen, Scale, Building2, TrendingDown,
   Package, Truck, ShoppingCart, Boxes, Tag
 } from 'lucide-react';
-import { formatCurrency, formatDate, formatDateTime } from '../utils/formatters';
+import { formatCurrency, formatDate } from '../utils/formatters';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
@@ -1008,7 +1008,7 @@ const ReportContent = ({ category, report, data, loading, error, onRetry, theme,
   if (error) return <LoadError onRetry={onRetry} theme={theme} />;
   if (!data) return null;
 
-  const { summary = [], details = [], byGender, byAge, byState, byMethod, aging, payerSummary, retention, phiAccess, userStats } = data;
+  const { summary = [], details = [], byGender, byAge, byState, byMethod, aging, phiAccess, userStats } = data;
 
   // Use custom chart config if available
   const activeChartType = chartConfig?.type || report.defaultChart;
@@ -1505,7 +1505,7 @@ const ReportsView = ({ theme, patients = [], appointments = [], claims = [], pay
     if (selectedReport && selectedCategory) {
       loadReport(selectedCategory, selectedReport);
     }
-  }, [selectedReport, selectedCategory, dateRange, customStartDate, customEndDate]);
+  }, [selectedReport, selectedCategory, dateRange, customStartDate, customEndDate, loadReport]);
 
   const selectReport = useCallback((cat, rep) => {
     setSelectedCategory(cat);

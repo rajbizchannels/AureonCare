@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Clock, CheckCircle, XCircle, Bell, User, Calendar, RefreshCw } from 'lucide-react';
+import { Clock, CheckCircle, Bell, User, Calendar, RefreshCw } from 'lucide-react';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 import { formatDate } from '../utils/formatters';
 import { useAudit } from '../hooks/useAudit';

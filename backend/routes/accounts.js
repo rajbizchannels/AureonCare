@@ -1,5 +1,11 @@
 const express = require('express');
 const router = express.Router();
+
+// `/:id` only matches a UUID. Unconstrained, it was declared before the literal routes
+// below and swallowed them: GET /receivables (etc.) was handled as "fetch account
+// 'receivables'", failed to parse as a UUID and answered 500, so those screens never
+// loaded. Constraining the parameter makes route order irrelevant.
+const ID = ':id([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})';
 const cloudStorage = require('../services/cloudBackupStorage');
 const { authenticate, authorize } = require('../middleware/auth');
 const { requireModuleAccessByPath } = require('../middleware/modulePermissions');
@@ -66,7 +72,7 @@ router.get('/', async (req, res) => {
 });
 
 // GET /api/accounts/:id
-router.get('/:id', async (req, res) => {
+router.get(`/${ID}`, async (req, res) => {
   try {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(`
@@ -137,7 +143,7 @@ router.post('/', authorize('admin', 'billing_manager'), async (req, res) => {
 });
 
 // PUT /api/accounts/:id
-router.put('/:id', authorize('admin', 'billing_manager'), async (req, res) => {
+router.put(`/${ID}`, authorize('admin', 'billing_manager'), async (req, res) => {
   try {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const existing = await pool.query('SELECT * FROM accounts WHERE id = $1', [req.params.id]);
@@ -181,7 +187,7 @@ router.put('/:id', authorize('admin', 'billing_manager'), async (req, res) => {
 });
 
 // DELETE /api/accounts/:id (soft-delete via deactivation)
-router.delete('/:id', authorize('admin'), async (req, res) => {
+router.delete(`/${ID}`, authorize('admin'), async (req, res) => {
   try {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const existing = await pool.query('SELECT * FROM accounts WHERE id = $1', [req.params.id]);
@@ -200,7 +206,7 @@ router.delete('/:id', authorize('admin'), async (req, res) => {
 });
 
 // GET /api/accounts/:id/transactions — ledger view
-router.get('/:id/transactions', async (req, res) => {
+router.get(`/${ID}/transactions`, async (req, res) => {
   try {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { from, to, limit = 50, offset = 0 } = req.query;
@@ -449,7 +455,7 @@ router.get('/receivables', async (req, res) => {
     let query = `
       SELECT ar.*,
         p.first_name || ' ' || p.last_name AS patient_name,
-        ip.payer_name,
+        ip.name AS payer_name,
         a.account_name, a.account_number,
         bi.invoice_number
       FROM account_receivables ar
@@ -733,7 +739,7 @@ router.get('/statements', async (req, res) => {
     let query = `
       SELECT s.*,
         p.first_name || ' ' || p.last_name AS patient_name,
-        ip.payer_name,
+        ip.name AS payer_name,
         u.first_name || ' ' || u.last_name AS created_by_name
       FROM account_statements s
       LEFT JOIN patients p ON s.patient_id = p.id
@@ -921,7 +927,7 @@ router.get('/reports/ar-aging', async (req, res) => {
     const result = await pool.query(`
       SELECT ar.*,
         p.first_name || ' ' || p.last_name AS patient_name,
-        ip.payer_name,
+        ip.name AS payer_name,
         CURRENT_DATE - ar.due_date AS days_overdue
       FROM account_receivables ar
       LEFT JOIN patients p ON ar.patient_id = p.id

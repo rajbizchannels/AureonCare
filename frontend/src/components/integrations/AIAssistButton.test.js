@@ -183,9 +183,9 @@ test('editing the draft refreshes the code list', async () => {
 
 test('a failed feature check is retried instead of hiding the button for a minute', async () => {
   api.getAIFeatures.mockRejectedValueOnce(new Error('offline')).mockResolvedValue(enabled('message_drafts'));
-  const first = render(<AIAssistButton featureKey="message_drafts" getInput={() => 'x'} />);
+  const { unmount } = render(<AIAssistButton featureKey="message_drafts" getInput={() => 'x'} />);
   await waitFor(() => expect(api.getAIFeatures).toHaveBeenCalledTimes(1));
-  first.unmount();
+  unmount();
   render(<AIAssistButton featureKey="message_drafts" getInput={() => 'x'} />);
   expect(await screen.findByRole('button', { name: /ai assist/i })).toBeInTheDocument();
 });

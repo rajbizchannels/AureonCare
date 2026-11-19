@@ -1,3 +1,5 @@
+/* eslint-disable testing-library/no-node-access, testing-library/no-container --
+   the spinner is decorative markup with no accessible role, and its presence is exactly what is under test. */
 // Feedback while a click is working.
 //
 // The complaint this answers: a button fired an async handler and nothing on screen

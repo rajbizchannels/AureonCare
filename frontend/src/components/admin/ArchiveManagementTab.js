@@ -3,7 +3,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { apiFetch } from '../../api/apiService';
 import {
   Archive,
-  Download,
   Upload,
   Trash2,
   RefreshCw,
@@ -11,11 +10,7 @@ import {
   X,
   Database,
   CheckCircle,
-  XCircle,
-  AlertCircle,
   Info,
-  Calendar,
-  Package,
   FileArchive,
   HardDrive,
   ChevronDown,
@@ -58,7 +53,6 @@ const ArchiveManagementTab = ({ theme, api, addNotification }) => {
 
   // Archive details state
   const [selectedArchive, setSelectedArchive] = useState(null);
-  const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [expandedArchive, setExpandedArchive] = useState(null);
 
   // Restore state
@@ -223,7 +217,7 @@ const ArchiveManagementTab = ({ theme, api, addNotification }) => {
         throw new Error(error.error || 'Failed to create archive');
       }
 
-      const data = await response.json();
+      await response.json();
       addNotification('success', `Archive "${archiveName}" created successfully. Reloading...`);
 
       // Reset form and close

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { X } from 'lucide-react';
 import { useAudit } from '../../hooks/useAudit';
 
@@ -24,7 +24,7 @@ const ForgotPasswordModal = ({ theme, api, onClose }) => {
   }, [logModalOpen, startAction]);
 
   // Handle close with audit logging
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     logModalClose('ForgotPasswordModal', {
       module: 'Auth',
       metadata: {
@@ -33,7 +33,7 @@ const ForgotPasswordModal = ({ theme, api, onClose }) => {
       },
     });
     onClose();
-  };
+  }, [logModalClose, onClose, step, resetSuccess]);
 
   // ESC key handler
   useEffect(() => {

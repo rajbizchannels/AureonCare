@@ -1,3 +1,5 @@
+/* eslint-disable testing-library/no-node-access, testing-library/no-container --
+   the confirm dialog has no dialog role to query (located by its heading, then its overlay container), and the busy spinner is decorative markup. */
 // Creating a service shows that it is working.
 //
 // This is the button the user reported as giving no feedback, and the cause was systemic

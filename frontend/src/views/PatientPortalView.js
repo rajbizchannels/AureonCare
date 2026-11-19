@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Calendar, FileText, User, Edit, Check, X, Lock, Trash2, XCircle, Upload, Printer, MessageCircle, Activity, Pill, Home, Plus, Heart, Star, Clock, ClipboardList, AlertCircle, ChevronRight, Search, Stethoscope } from 'lucide-react';
+import { Calendar, FileText, User, Edit, Check, X, Lock, Trash2, XCircle, Upload, Printer, MessageCircle, Activity, Pill, Plus, Heart, Star, Clock, ClipboardList, AlertCircle, ChevronRight, Search, Stethoscope } from 'lucide-react';
 import DynamicFormRenderer from '../components/forms/DynamicFormRenderer';
 import { FORM_TEMPLATES } from '../data/formTemplates';
 import { formatDate, formatTime, toLocalDateString } from '../utils/formatters';
@@ -25,7 +25,7 @@ const providerNameOf = (provider) =>
   `${provider.firstName || provider.first_name || ''} ${provider.lastName || provider.last_name || ''}`.trim();
 
 const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shellTab, onTabChange, requestedTab = null }) => {
-  const { language, setLanguage, setTheme } = useApp();
+  const { language, setLanguage } = useApp();
   const t = getTranslations(language);
   // profile (overview), appointments, diagnoses, prescriptions, records,
   // forms, bookAppointment — listed in the shell's secondary pane when the
@@ -45,9 +45,9 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
   const [loadingProviders, setLoadingProviders] = useState(false);
   const [providersError, setProvidersError] = useState(null);
   const [appointmentTypes, setAppointmentTypes] = useState([]);
-  const [loadingAppointmentTypes, setLoadingAppointmentTypes] = useState(false);
+  const [, setLoadingAppointmentTypes] = useState(false);
   const [waitlistEntries, setWaitlistEntries] = useState([]);
-  const [loadingWaitlist, setLoadingWaitlist] = useState(false);
+  const [, setLoadingWaitlist] = useState(false);
   // Drives the badge on the Messages tab. Polled rather than pushed — the
   // deployment has no websocket server wired up yet.
   const [unreadMessages, setUnreadMessages] = useState(0);
@@ -461,6 +461,9 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
     loadWhatsAppPreference();
     // Load featured offerings hide preference
     loadFeaturedOfferingsPreference();
+    // Deliberate trigger: load everything when the signed-in user changes. The fetchers are
+    // new functions on every render; listing them would refetch the whole portal per render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const handleDismissFeaturedOfferings = () => {
@@ -666,7 +669,7 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
       };
 
       // SEC-14: no PHI (appointment/user objects) to the console.
-      const result = await api.createAppointment(appointmentData);
+      await api.createAppointment(appointmentData);
 
       addNotification('success', t.appointmentBookedSuccessfully);
 

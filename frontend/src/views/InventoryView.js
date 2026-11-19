@@ -1,10 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { LayoutDashboard, Package, ArrowUpDown, ShoppingCart, Truck, Tag,
-  Plus, Edit2, Trash2, Eye, Search, Filter, RefreshCw, Download,
-  AlertTriangle, CheckCircle, Clock, XCircle, TrendingUp, TrendingDown,
-  BarChart2, Box, Layers, DollarSign, Hash, Calendar, Info,
-  ChevronDown, ChevronRight, X, Check, FileText, Printer,
-  ToggleLeft, ToggleRight,
+  Plus, Edit2, Trash2, Eye, Search, RefreshCw, AlertTriangle, CheckCircle, Clock, XCircle, TrendingUp, TrendingDown,
+  BarChart2, DollarSign, Calendar, X, Check, ToggleLeft, ToggleRight,
 } from 'lucide-react';
 import { formatCurrency, formatDate } from '../utils/formatters';
 import { useAudit } from '../hooks/useAudit';

@@ -2,11 +2,9 @@ import React, { useState, useEffect, useCallback } from 'react';
 import ThemedSelect from '../../components/forms/ThemedSelect';
 import {
   FileText,
-  Search,
   Filter,
   Download,
   RefreshCw,
-  Calendar,
   User,
   Activity,
   AlertCircle,

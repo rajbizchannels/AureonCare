@@ -46,7 +46,7 @@ const renderLogin = (api) => render(
 
 const signIn = async () => {
   await userEvent.type(screen.getByPlaceholderText(/email|you@/i), 'doc@example.com');
-  const password = document.querySelector('input[type="password"]');
+  const password = screen.getByPlaceholderText(/enter your password/i);
   await userEvent.type(password, 'A-Strong-Passphrase!23');
   await userEvent.click(screen.getByRole('button', { name: /^Sign In$/i }));
 };
@@ -63,6 +63,8 @@ test('the button shows it is working while the sign-in is in flight', async () =
   await waitFor(() => expect(busyButton()).not.toBeNull());
   expect(busyButton()).toBeDisabled();
   expect(busyButton()).toHaveAttribute('aria-busy', 'true');
+  // The spinner is decorative markup with no accessible role; its presence is the point.
+  // eslint-disable-next-line testing-library/no-node-access
   expect(busyButton().querySelector('.animate-spin')).toBeTruthy();
 
   d.resolve({ token: 't', user: { id: 'u1', role: 'doctor' } });
@@ -94,7 +96,7 @@ test('a rejected sign-in leaves the button usable, and shows why', async () => {
 
   await signIn();
 
-  await waitFor(() => expect(screen.getByText(/Invalid email or password/i)).toBeInTheDocument());
+  expect(await screen.findByText(/Invalid email or password/i)).toBeInTheDocument();
   expect(busyButton()).toBeNull();
   expect(screen.getByRole('button', { name: /^Sign In$/i })).toBeEnabled();
 });
@@ -107,7 +109,7 @@ test('a second-factor prompt is not treated as a failure to retry blindly', asyn
 
   await signIn();
 
-  await waitFor(() => expect(screen.getByText(/verification code is required/i)).toBeInTheDocument());
+  expect(await screen.findByText(/verification code is required/i)).toBeInTheDocument();
   // Button usable again so the code can be submitted.
   expect(screen.getByRole('button', { name: /^Sign In$/i })).toBeEnabled();
 });

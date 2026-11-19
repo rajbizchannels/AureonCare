@@ -31,6 +31,9 @@ const RegisterPage = ({ theme, api, addNotification, onClose, onRegistered }) =>
 
   useEffect(() => {
     logViewAccess('RegisterPage', { module: 'Auth' });
+    // Logged once per visit, on mount. Re-running when logViewAccess's identity changes would
+    // record duplicate view events.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleRegister = async (e) => {

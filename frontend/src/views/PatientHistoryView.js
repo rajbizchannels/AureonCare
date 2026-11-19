@@ -1,13 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   User, Calendar, Activity, FileText, Pill,
-  Edit, Trash2, Plus, Clock, MapPin, Phone, Mail, Microscope, Printer,
+  Edit, Trash2, Plus, Clock, Phone, Microscope, Printer,
   Heart, Ruler, Scale, Droplet, Users, Video, Loader2, Download
 } from 'lucide-react';
 import { formatDate, formatTime } from '../utils/formatters';
 import { isProvider, isPatient } from '../utils/rolePermissions';
 import DiagnosisForm from '../components/forms/DiagnosisForm';
-import MedicalCodeMultiSelect from '../components/forms/MedicalCodeMultiSelect';
 import NewLabOrderForm from '../components/forms/NewLabOrderForm';
 import NewAppointmentForm from '../components/forms/NewAppointmentForm';
 import MedicalRecordUploadForm from '../components/forms/MedicalRecordUploadForm';
@@ -78,7 +77,7 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, initia
   const [showRecordUploadForm, setShowRecordUploadForm] = useState(false);
 
   // Patient edit state
-  const [editingPatient, setEditingPatient] = useState(false);
+  const [, setEditingPatient] = useState(false);
 
   // Health metrics edit state
   const [showHealthMetricsForm, setShowHealthMetricsForm] = useState(false);
@@ -266,23 +265,6 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, initia
     }
   };
 
-  const handleSavePrescription = async (prescriptionData) => {
-    try {
-      if (editingPrescription) {
-        await api.updatePrescription(editingPrescription.id, prescriptionData);
-        addNotification('success', 'Prescription updated successfully');
-      } else {
-        await api.createPrescription({ ...prescriptionData, patient_id: patient.id });
-        addNotification('success', 'Prescription created successfully');
-      }
-      setShowPrescriptionForm(false);
-      setEditingPrescription(null);
-      fetchPatientHistory();
-    } catch (error) {
-      console.error('Error saving prescription:', error);
-      addNotification('error', 'Failed to save prescription');
-    }
-  };
 
   const handleStartTelehealth = async (apt = null) => {
     // Only providers and patients may launch telehealth sessions
