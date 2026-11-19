@@ -97,7 +97,23 @@ const report = (err) => {
   check(`INVITING A PATIENT BY EMAIL CREATES THEIR CHART AND SENDS THE PORTAL INVITE (got ${inv.status})`, inv.status === 201 && inv.body.emailed === true);
   const { rows: [chart] } = await pool.query(`SELECT * FROM ${schema}.patients WHERE email = $1`, [pEmail]);
   check('...the chart has the name, date of birth and an MRN', chart && chart.first_name === 'Pia' && /^MRN\d{6}$/.test(chart.mrn));
-  check('...and no staff account was created for the patient', (await pool.query('SELECT 1 FROM public.users WHERE email = $1', [pEmail])).rowCount === 0);
+  const { rows: [pu] } = await pool.query('SELECT id, role, practice_id, password_hash FROM public.users WHERE email = $1', [pEmail]);
+  check('...linked to a patient login row (patients.id = users.id), never a staff account',
+    pu && pu.id === chart.id && pu.role === 'patient' && pu.practice_id === t.practiceId && pu.password_hash === null);
+
+  // A practice from before the tenant split ENFORCES patients.id -> users.id with a foreign
+  // key (production's tenant_default). Inviting by email failed there with 23503.
+  const legacy = await provisionTenant(pool, { name: `Legacy Clinic ${RUN}` });
+  await pool.query(`ALTER TABLE ${legacy.tenant.schema_name}.patients
+    ADD CONSTRAINT patients_id_fkey FOREIGN KEY (id) REFERENCES public.users(id) ON DELETE CASCADE`);
+  const legacyAdmin = await mkStaff('admin', { practiceId: legacy.practiceId });
+  const lEmail = `legacy_${RUN}@example.com`;
+  const li = await call('POST', '/api/portal-invites', { token: legacyAdmin.token,
+    body: { email: lEmail, firstName: 'Lee', lastName: 'Legacy', dateOfBirth: '1990-01-02' } });
+  check(`INVITING BY EMAIL WORKS IN A PRACTICE THAT ENFORCES patients.id -> users.id (got ${li.status} ${JSON.stringify(li.body).slice(0, 80)})`, li.status === 201);
+  const staffEmailTaken = await call('POST', '/api/portal-invites', { token: legacyAdmin.token,
+    body: { email: legacyAdmin.email, firstName: 'X', lastName: 'Y', dateOfBirth: '1990-01-02' } });
+  check("a staff member's email cannot become a patient chart (409)", staffEmailTaken.status === 409);
   const again = await call('POST', '/api/portal-invites', { token: admin.token, body: { email: pEmail.toUpperCase() } });
   check('inviting the same email again re-uses the chart (no duplicate)', again.status === 201
     && (await pool.query(`SELECT count(*)::int n FROM ${schema}.patients WHERE LOWER(email) = $1`, [pEmail])).rows[0].n === 1);

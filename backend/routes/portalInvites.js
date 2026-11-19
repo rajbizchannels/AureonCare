@@ -93,7 +93,7 @@ async function sendInviteEmail({ to, firstName, practice, url, expiresAt }) {
  * meant is a human decision, made from the chart itself. None → a new chart from the
  * name and date of birth given (all three required, as for any new patient).
  */
-async function findOrCreateChartForInvite(db, { email, firstName, lastName, dateOfBirth }, beforeCreate) {
+async function findOrCreateChartForInvite(db, { email, firstName, lastName, dateOfBirth }, beforeCreate, { practiceId } = {}) {
   const clean = String(email || '').trim().toLowerCase();
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(clean)) return { status: 400, error: 'A valid email address is required' };
   const { rows } = await db.query('SELECT id FROM patients WHERE LOWER(email) = $1 LIMIT 2', [clean]);
@@ -115,11 +115,39 @@ async function findOrCreateChartForInvite(db, { email, firstName, lastName, date
     const mrn = `MRN${String(n + i).padStart(6, '0')}`;
     const taken = await db.query('SELECT 1 FROM patients WHERE mrn = $1', [mrn]);
     if (taken.rows.length) continue;
-    const { rows: [p] } = await db.query(
-      `INSERT INTO patients (id, first_name, last_name, mrn, date_of_birth, email, status, created_at, updated_at)
-       VALUES (gen_random_uuid(), $1, $2, $3, $4, $5, 'Active', NOW(), NOW()) RETURNING id`,
-      [fn, ln, mrn, dob, clean]);
-    return { patientId: p.id, created: true };
+    // patients.id = users.id (migration 023): practices created before the tenant split
+    // still enforce it with a foreign key (patients_id_fkey -> users), so the linked users
+    // row comes first — exactly what the Patients screen does (role 'patient', this
+    // practice, no password; the portal invitation is how they get in).
+    const { rows: [existingUser] } = await db.query(
+      'SELECT id, role, practice_id FROM public.users WHERE LOWER(email) = $1', [clean]);
+    let userId;
+    let createdUser = false;
+    if (existingUser) {
+      const samePractice = !existingUser.practice_id || String(existingUser.practice_id) === String(practiceId);
+      if (existingUser.role !== 'patient' || !samePractice) {
+        return { status: 409, error: 'That email already belongs to another AureonCare account. Use a different email for the patient.' };
+      }
+      userId = existingUser.id;
+    } else {
+      const { rows: [u] } = await db.query(
+        `INSERT INTO public.users (id, email, password_hash, first_name, last_name, role, status, practice_id, created_at, updated_at)
+         VALUES (gen_random_uuid(), $1, NULL, $2, $3, 'patient', 'active', $4, NOW(), NOW()) RETURNING id`,
+        [clean, fn, ln, practiceId || null]);
+      userId = u.id;
+      createdUser = true;
+    }
+    try {
+      const { rows: [p] } = await db.query(
+        `INSERT INTO patients (id, first_name, last_name, mrn, date_of_birth, email, status, created_at, updated_at)
+         VALUES ($1, $2, $3, $4, $5, $6, 'Active', NOW(), NOW()) RETURNING id`,
+        [userId, fn, ln, mrn, dob, clean]);
+      return { patientId: p.id, created: true };
+    } catch (e) {
+      // Do not leave an orphan users row behind when the chart could not be created.
+      if (createdUser) await db.query('DELETE FROM public.users WHERE id = $1', [userId]).catch(() => {});
+      throw e;
+    }
   }
   return { status: 409, error: 'Could not assign a record number. Create the patient from the Patients screen first.' };
 }
@@ -148,7 +176,7 @@ router.post('/', authenticate, staffOnly, async (req, res) => {
           res.once('finish', answered);
           Promise.resolve(enforcePatientQuota(req, res, () => { res.off('finish', answered); resolve(true); }))
             .catch(() => { res.off('finish', answered); resolve(!res.headersSent); });
-        }));
+        }), { practiceId: req.user.practiceId || (req.tenant && req.tenant.practiceId) || null });
       if (found.handled) return;
       if (found.error) return res.status(found.status).json({ error: found.error });
       patientId = found.patientId;
