@@ -2311,12 +2311,6 @@ const api = {
     return response.json();
   },
 
-  // Stripe is managed by the platform; practices only read its status (SEC-38).
-  getStripeSettings: async () => {
-    const response = await authenticatedFetch(`${API_BASE_URL}/stripe-settings`);
-    if (!response.ok) throw new Error('Failed to fetch Stripe settings');
-    return response.json();
-  },
 
   // AI integrations (bring-your-own-key, feature switches, human review)
   aiRequest: async (path, options = {}) => {

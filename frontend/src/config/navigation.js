@@ -826,11 +826,11 @@ export const getNavigation = (t = {}) => [
           {
             id: 'settings.integrations',
             label: t.integrations || 'Integrations',
-            description: t.integrationsNavDescription || 'Payments, vendor connections and AI',
+            description: t.integrationsNavDescription || 'Vendor connections and AI',
             icon: Plug,
             module: 'integrations',
-            // Payments, vendors and AI used to be configured inside the admin panel's telehealth
-            // tab, which every plan has. Gated like the other System items so moving them here
+            // Vendors and AI used to be configured inside the admin panel's telehealth tab, which
+            // every plan has. Gated like the other System items so moving them here
             // takes nothing away from any plan.
             access: 'adminPanel',
           },
