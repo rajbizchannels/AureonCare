@@ -1252,7 +1252,7 @@ router.post('/oauth/google/exchange', async (req, res) => {
 // Creates a new pending account linked to the social provider.
 // Unlike /social-login, this never rejects with 403 for pending status —
 // returning 201 + a message is the expected success path.
-router.post('/social-register', async (req, res) => {
+const socialRegisterHandler = async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     const {
@@ -1265,8 +1265,11 @@ router.post('/social-register', async (req, res) => {
       profileData
     } = req.body;
 
-    if (!provider || !providerId || !accessToken) {
-      return res.status(400).json({ error: 'Provider, provider ID, and access token are required' });
+    // providerId is not required: the canonical id always comes from the provider below
+    // (SEC-19), and the code-exchange path has no client-side id to send.
+    void providerId;
+    if (!provider || !accessToken) {
+      return res.status(400).json({ error: 'Provider and access token are required' });
     }
 
     // Validate the access token server-side before creating any account
@@ -1394,10 +1397,40 @@ router.post('/social-register', async (req, res) => {
     if (sendDbError(res, error, 'Registration failed. Please try again.')) return;
     res.status(500).json({ error: 'Registration failed. Please try again.' });
   }
+};
+
+// SEC-20: the legacy route takes a provider access token minted in the browser. It is
+// closed by AC_DISABLE_LEGACY_SOCIAL_TOKEN like /social-login; the sign-up page uses the
+// code-exchange routes below.
+router.post('/social-register', legacySocialGuard, socialRegisterHandler);
+
+// SEC-20: social SIGN-UP by authorization code. The browser holds only a single-use code;
+// it is redeemed here with the client secret, and the resulting token never reaches
+// JavaScript. Then exactly the same registration logic runs as before.
+router.post('/oauth/:provider/register', async (req, res) => {
+  const { provider } = req.params;
+  if (provider !== 'google' && provider !== 'microsoft') {
+    return res.status(400).json({ error: 'Unsupported provider' });
+  }
+  try {
+    const { code, redirectUri, codeVerifier } = req.body || {};
+    const { accessToken } = await exchangeAuthCode(provider, { code, redirectUri, codeVerifier });
+    req.body = { provider, providerId: null, accessToken, profileData: {} };
+    return socialRegisterHandler(req, res);
+  } catch (err) {
+    if (err.statusCode) {
+      return res.status(err.statusCode).json({ error: err.message, providerError: err.providerError || undefined });
+    }
+    console.error(`Error during ${provider} sign-up code exchange:`, err);
+    if (sendDbError(res, err, 'Social sign-up failed')) return;
+    res.status(500).json({ error: 'Social sign-up failed' });
+  }
 });
 
 // Link social account to existing user — requires a valid JWT; can only link to own account
-router.post('/link-social-account', authenticate, async (req, res) => {
+// SEC-20: takes a provider token posted by the browser; no screen calls it. Closed with the
+// other legacy social routes.
+router.post('/link-social-account', authenticate, legacySocialGuard, async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     // userId comes from the verified JWT, not the request body

@@ -7,7 +7,6 @@ import AIIntegrationsSection from '../components/integrations/AIIntegrationsSect
 const IntegrationsView = ({ theme, setCurrentModule, t, user }) => {
   const isAdmin = user?.role === 'admin';
   const [vendorIntegrations, setVendorIntegrations] = useState([]);
-  const [stripeSettings, setStripeSettings] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [toggling, setToggling] = useState({});
@@ -31,13 +30,10 @@ const IntegrationsView = ({ theme, setCurrentModule, t, user }) => {
   const fetchIntegrations = async () => {
     try {
       setLoading(true);
-      // Telehealth providers are configured on Settings › System › Telehealth Setup.
-      const [vendorSettings, stripeData] = await Promise.all([
-        api.getVendorIntegrationSettings().catch(() => []),
-        api.getStripeSettings().catch(() => ({}))
-      ]);
+      // Telehealth is configured on Settings › System › Telehealth Setup, and Stripe at the
+      // platform level (SEC-38), so this page holds vendor connections and AI only.
+      const vendorSettings = await api.getVendorIntegrationSettings().catch(() => []);
       setVendorIntegrations(vendorSettings);
-      setStripeSettings(stripeData);
 
       // Initialize form data and original data
       const allIntegrations = {};
@@ -453,58 +449,23 @@ const IntegrationsView = ({ theme, setCurrentModule, t, user }) => {
   return (
     <div className="space-y-6">
 
-      {/* Payment processing is managed by the platform (SEC-38, option a): practices do not
-          configure Stripe. Read-only status. */}
+      {/* Vendor Integrations */}
       <div className={`bg-gradient-to-br rounded-xl p-6 border ${theme === 'dark' ? 'from-slate-800/50 to-slate-900/50 border-slate-700/50' : 'from-gray-100/50 to-gray-200/50 border-gray-300/50'}`}>
-        <h3 className={`text-lg font-semibold mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-          Payment Processing
+        <h3 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+          {t?.vendorIntegrations || 'Vendor Integrations'}
         </h3>
-        <div className={`rounded-lg p-4 text-sm space-y-2 ${theme === 'dark' ? 'bg-slate-800/50 text-slate-300' : 'bg-gray-100/50 text-gray-700'}`}>
-          <p>
-            <span className={`font-medium ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Stripe is managed by AureonCare.</span>{' '}
-            It is used for your AureonCare subscription billing; there are no Stripe keys to configure here.
-          </p>
-          <p>
-            Patient payments taken at your practice are recorded under Billing › Payments.
-          </p>
-          {stripeSettings && stripeSettings.subscription_billing_configured === false && (
-            <p className={theme === 'dark' ? 'text-amber-400' : 'text-amber-700'}>
-              Subscription billing is not configured on this installation. Contact your AureonCare administrator.
-            </p>
-          )}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Vendor Integrations */}
-        <div className={`bg-gradient-to-br rounded-xl p-6 border ${theme === 'dark' ? 'from-slate-800/50 to-slate-900/50 border-slate-700/50' : 'from-gray-100/50 to-gray-200/50 border-gray-300/50'}`}>
-          <h3 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-            {t?.vendorIntegrations || 'Vendor Integrations'}
-          </h3>
-          <div className="space-y-3">
-            {['surescripts', 'labcorp', 'optum'].map(vendorType => {
-              const integration = vendorIntegrations.find(v => v.vendor_type === vendorType);
-              return renderIntegrationCard(
-                integration || { vendor_type: vendorType },
-                vendorType,
-                getVendorDisplayName(vendorType),
-                handleToggleVendor,
-                'vendor',
-                handleSaveVendor
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Telehealth used to be configured here as well as on its own screen; it now lives
-            only on Telehealth Setup, so the two can no longer disagree. */}
-        <div className={`rounded-xl p-6 border ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700/50 text-slate-300' : 'bg-gray-50 border-gray-300/50 text-gray-700'}`}>
-          <h3 className={`text-lg font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-            {t?.telehealthProviders || 'Telehealth Providers'}
-          </h3>
-          <p className="text-sm">
-            {t?.telehealthMovedNote || 'Zoom, Google Meet, Webex and Teams are set up under Settings › System › Telehealth Setup.'}
-          </p>
+        <div className="space-y-3">
+          {['surescripts', 'labcorp', 'optum'].map(vendorType => {
+            const integration = vendorIntegrations.find(v => v.vendor_type === vendorType);
+            return renderIntegrationCard(
+              integration || { vendor_type: vendorType },
+              vendorType,
+              getVendorDisplayName(vendorType),
+              handleToggleVendor,
+              'vendor',
+              handleSaveVendor
+            );
+          })}
         </div>
       </div>
 
