@@ -45,7 +45,9 @@
     "check:jwt": "node backend/scripts/check-jwt-algorithms.js",
     "check:frontend-logs": "node backend/scripts/check-frontend-logs.js",
     "test:edi-fuzz": "node backend/test/edi/parser-fuzz.test.js",
-    "test:security-open-items": "node backend/test/security/open-items.test.js"
+    "test:security-open-items": "node backend/test/security/open-items.test.js",
+    "check:routes": "node backend/scripts/check-route-shadowing.js",
+    "test:routes": "node backend/test/routing/shadowed-routes.test.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.6.0",
