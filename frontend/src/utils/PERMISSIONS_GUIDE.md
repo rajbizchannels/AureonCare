@@ -8,6 +8,43 @@ AureonCare uses a comprehensive RBAC system that controls access to modules and 
 - **Plan-based access** (starter, professional, enterprise)
 - **Role-based permissions** (admin, doctor, patient, nurse, receptionist, billing_manager, crm_manager, staff)
 
+## Two layers, and which one actually stops a request
+
+Read this before the rest of the guide, because the distinction decides where to make a
+change.
+
+**1. What the interface offers** — the map in `rolePermissions.js`, described below. It
+decides which modules appear in the navigation and which buttons a role is shown. It lives
+in the frontend, so it is a convenience, not a control: it shapes the screen and nothing
+more.
+
+**2. What the server allows** — `module_permissions`, a per-practice table read by
+`backend/middleware/modulePermissions.js` and mounted across sixteen routers. This is the
+layer that refuses a request, and it is the one to edit when a role may genuinely not do
+something. Administrators manage it under **Admin Panel → Roles & Permissions**.
+
+The second layer is set out in `backend/utils/permissionRegistry.js`, which is the single
+source of truth the admin screen, the write endpoint and the enforcement all read: 11
+modules, 32 resources, 7 roles and 6 actions (view, create, edit, delete, approve, export).
+A module added there appears in the admin screen with no frontend change.
+
+Two rules worth knowing:
+
+- **No stored row is not a denial.** A practice that has never opened the permissions
+  screen has no rows, and falls back to the role defaults in the registry — which mirror
+  how the application already behaved. Enforcement was switched on without changing
+  anyone's access.
+- **An administrator is never denied**, and the API refuses an attempt to restrict the
+  `admin` role rather than silently ignoring it. A practice that could revoke its own
+  administrators' access to the permissions screen would have no way back in.
+
+> Historical note: `public.permissions` and `public.role_permissions` are empty on every
+> installation checked and are read by nothing. Two per-module grids (Accounts, Inventory)
+> previously wrote to their own tables that no route consulted, so unticking a box changed
+> a checkbox and nothing else. Both have been folded into the one grid above, which is
+> enforced; their original tables are still read as a fallback so settings made before the
+> merge are honoured.
+
 ## User Roles
 
 ### System Roles

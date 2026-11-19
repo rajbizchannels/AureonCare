@@ -215,6 +215,11 @@ After successful setup:
 6. 🎉 Access application: `http://localhost:3000`
 
 For more information, see:
-- `SCHEMA_REFACTORING_GUIDE.md` - Schema design details
-- `backend/scripts/README-SCHEDULING-MIGRATION.md` - Scheduling system docs
-- `backend/scripts/diagnose-patient-portal.js` - Diagnostic tool
+- `SCHEMA_REFACTORING_GUIDE.md` — the patient/user id merge, which is the current design
+- `backend/migrations/tenant/README.md` — the rules a tenant migration must follow
+- `backend/scripts/manual/README.md` — applying migrations by hand, without node
+- `backend/scripts/diagnose-patient-portal.js` — diagnostic tool
+
+> The scheduling-migration note that used to be listed here has been removed: the tables it
+> created exist in every schema, so the error it described can no longer occur, and the
+> reset workflow it documented is covered by `backend/scripts/README-DATABASE-RESET.md`.
