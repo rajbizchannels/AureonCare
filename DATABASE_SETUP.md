@@ -215,11 +215,18 @@ After successful setup:
 6. 🎉 Access application: `http://localhost:3000`
 
 For more information, see:
-- `SCHEMA_REFACTORING_GUIDE.md` — the patient/user id merge, which is the current design
 - `backend/migrations/tenant/README.md` — the rules a tenant migration must follow
 - `backend/scripts/manual/README.md` — applying migrations by hand, without node
 - `backend/scripts/diagnose-patient-portal.js` — diagnostic tool
 
+> **patients.id = users.id.** A patient's chart row and their login share one id
+> (migration 025 did the same for providers), so there is no separate `user_id` column on
+> either. It is worth knowing because several paths depend on it: the portal reuses the id
+> when it creates a login, and a patient created without one gets a generated uuid
+> instead. SCHEMA_REFACTORING_GUIDE.md used to explain the migration that introduced this;
+> it has been removed, as the merge finished long ago and the design above is all that
+> still matters.
+>
 > The scheduling-migration note that used to be listed here has been removed: the tables it
 > created exist in every schema, so the error it described can no longer occur, and the
 > reset workflow it documented is covered by `backend/scripts/README-DATABASE-RESET.md`.
