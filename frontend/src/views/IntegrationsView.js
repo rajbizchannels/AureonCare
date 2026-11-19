@@ -7,7 +7,6 @@ import AIIntegrationsSection from '../components/integrations/AIIntegrationsSect
 const IntegrationsView = ({ theme, setCurrentModule, t, user }) => {
   const isAdmin = user?.role === 'admin';
   const [vendorIntegrations, setVendorIntegrations] = useState([]);
-  const [telehealthProviders, setTelehealthProviders] = useState([]);
   const [stripeSettings, setStripeSettings] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -33,13 +32,12 @@ const IntegrationsView = ({ theme, setCurrentModule, t, user }) => {
   const fetchIntegrations = async () => {
     try {
       setLoading(true);
-      const [vendorSettings, telehealthSettings, stripeData] = await Promise.all([
+      // Telehealth providers are configured on Settings › System › Telehealth Setup.
+      const [vendorSettings, stripeData] = await Promise.all([
         api.getVendorIntegrationSettings().catch(() => []),
-        api.getTelehealthSettings().catch(() => []),
         api.getStripeSettings().catch(() => ({}))
       ]);
       setVendorIntegrations(vendorSettings);
-      setTelehealthProviders(telehealthSettings);
       setStripeSettings(stripeData);
 
       // Initialize form data and original data
@@ -52,27 +50,15 @@ const IntegrationsView = ({ theme, setCurrentModule, t, user }) => {
         const key = `vendor_${vendorType}`;
         allIntegrations[key] = {
           api_key: vendor?.api_key || '',
-          api_secret: vendor?.api_secret || '',
+          // Secrets are never sent back by the server (SEC-36); the fields start blank and
+          // a blank secret on save keeps the stored one.
+          api_secret: '',
           client_id: vendor?.client_id || '',
-          client_secret: vendor?.client_secret || '',
+          client_secret: '',
           username: vendor?.username || '',
-          password: vendor?.password || '',
+          password: '',
           base_url: vendor?.base_url || '',
           sandbox_mode: vendor?.sandbox_mode || false
-        };
-        allOriginal[key] = { ...allIntegrations[key] };
-      });
-
-      // Initialize all telehealth provider types (even if not in database)
-      ['zoom', 'google_meet', 'webex'].forEach(providerType => {
-        const provider = telehealthSettings.find(p => p.provider_type === providerType);
-        const key = `telehealth_${providerType}`;
-        allIntegrations[key] = {
-          api_key: provider?.api_key || '',
-          api_secret: provider?.api_secret || '',
-          client_id: provider?.client_id || '',
-          client_secret: provider?.client_secret || '',
-          webhook_secret: provider?.webhook_secret || ''
         };
         allOriginal[key] = { ...allIntegrations[key] };
       });
@@ -98,6 +84,9 @@ const IntegrationsView = ({ theme, setCurrentModule, t, user }) => {
   };
 
   const isIntegrationConfigured = (integration) => {
+    if (!integration) return false;
+    // Stored secrets come back only as has_<field> flags.
+    if (integration.has_api_secret || integration.has_client_secret || integration.has_password) return true;
     // Check if integration has any required configuration values
     const hasApiKey = integration.api_key && integration.api_key.trim() !== '';
     const hasApiSecret = integration.api_secret && integration.api_secret.trim() !== '';
@@ -131,27 +120,6 @@ const IntegrationsView = ({ theme, setCurrentModule, t, user }) => {
     }
   };
 
-  const handleToggleTelehealth = async (providerType, currentEnabled) => {
-    const provider = telehealthProviders.find(p => p.provider_type === providerType);
-
-    // Don't allow enabling if not configured
-    if (!currentEnabled && !isIntegrationConfigured(provider)) {
-      alert('Please configure this provider before enabling it.');
-      return;
-    }
-
-    setToggling(prev => ({ ...prev, [providerType]: true }));
-    try {
-      await api.toggleTelehealthProvider(providerType, !currentEnabled);
-      await fetchIntegrations();
-    } catch (err) {
-      console.error('Error toggling telehealth provider:', err);
-      alert('Failed to toggle provider: ' + err.message);
-    } finally {
-      setToggling(prev => ({ ...prev, [providerType]: false }));
-    }
-  };
-
   const getVendorDisplayName = (vendorType) => {
     const names = {
       'surescripts': 'Surescripts (ePrescribing)',
@@ -159,15 +127,6 @@ const IntegrationsView = ({ theme, setCurrentModule, t, user }) => {
       'optum': 'Optum (Claims)'
     };
     return names[vendorType] || vendorType;
-  };
-
-  const getProviderDisplayName = (providerType) => {
-    const names = {
-      'zoom': 'Zoom',
-      'google_meet': 'Google Meet',
-      'webex': 'Webex'
-    };
-    return names[providerType] || providerType;
   };
 
   const hasFormChanges = (key) => {
@@ -255,22 +214,6 @@ const IntegrationsView = ({ theme, setCurrentModule, t, user }) => {
       alert('Vendor integration settings saved successfully');
     } catch (err) {
       console.error('Error saving vendor settings:', err);
-      alert('Failed to save settings: ' + err.message);
-    } finally {
-      setSaving(prev => ({ ...prev, [key]: false }));
-    }
-  };
-
-  const handleSaveTelehealth = async (providerType) => {
-    const key = `telehealth_${providerType}`;
-    setSaving(prev => ({ ...prev, [key]: true }));
-
-    try {
-      await api.saveTelehealthSettings(providerType, formData[key]);
-      await fetchIntegrations();
-      alert('Telehealth provider settings saved successfully');
-    } catch (err) {
-      console.error('Error saving telehealth settings:', err);
       alert('Failed to save settings: ' + err.message);
     } finally {
       setSaving(prev => ({ ...prev, [key]: false }));
@@ -431,7 +374,7 @@ const IntegrationsView = ({ theme, setCurrentModule, t, user }) => {
         {isExpanded && formData[key] && (
           <div className={`px-4 pb-4 border-t ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
             <div className="mt-4 space-y-3">
-              {category === 'vendor' ? (
+              {category === 'vendor' && (
                 <>
                   {['surescripts', 'optum'].includes(type) && (
                     <>
@@ -464,7 +407,7 @@ const IntegrationsView = ({ theme, setCurrentModule, t, user }) => {
                               ? 'bg-slate-900 text-white border-slate-700'
                               : 'bg-white text-gray-900 border-gray-300'
                           } border focus:outline-none focus:ring-2 focus:ring-indigo-500`}
-                          placeholder="Enter client secret"
+                          placeholder={integration.has_client_secret ? '•••••••• saved — leave blank to keep' : 'Enter client secret'}
                         />
                       </div>
                     </>
@@ -500,7 +443,7 @@ const IntegrationsView = ({ theme, setCurrentModule, t, user }) => {
                               ? 'bg-slate-900 text-white border-slate-700'
                               : 'bg-white text-gray-900 border-gray-300'
                           } border focus:outline-none focus:ring-2 focus:ring-indigo-500`}
-                          placeholder="Enter password"
+                          placeholder={integration.has_password ? '•••••••• saved — leave blank to keep' : 'Enter password'}
                         />
                       </div>
                     </>
@@ -533,123 +476,6 @@ const IntegrationsView = ({ theme, setCurrentModule, t, user }) => {
                       Sandbox Mode
                     </label>
                   </div>
-                </>
-              ) : (
-                <>
-                  {/* Telehealth providers: show only fields that have values,
-                      plus always show Client ID/Secret for OAuth-based providers (Zoom, Google Meet) */}
-                  {(() => {
-                    const data = formData[key] || {};
-                    const hasApiKey = data.api_key && data.api_key.trim() !== '';
-                    const hasApiSecret = data.api_secret && data.api_secret.trim() !== '';
-                    const hasClientId = data.client_id && data.client_id.trim() !== '';
-                    const hasClientSecret = data.client_secret && data.client_secret.trim() !== '';
-                    const hasWebhookSecret = data.webhook_secret && data.webhook_secret.trim() !== '';
-                    // For OAuth providers (Zoom, Google Meet), always show Client ID/Secret
-                    const isOAuthProvider = type !== 'webex';
-                    // Show legacy fields only if they have values
-                    const showApiKey = hasApiKey;
-                    const showApiSecret = hasApiSecret;
-                    // Show OAuth fields if provider supports OAuth or if values exist
-                    const showClientId = isOAuthProvider || hasClientId;
-                    const showClientSecret = isOAuthProvider || hasClientSecret;
-                    const showWebhookSecret = hasWebhookSecret;
-
-                    return (
-                      <>
-                        {showApiKey && (
-                          <div>
-                            <label className={`block text-xs font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                              API Key <span className={`text-xs ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>(Legacy)</span>
-                            </label>
-                            <input
-                              type="text"
-                              value={data.api_key || ''}
-                              onChange={(e) => handleFieldChange(key, 'api_key', e.target.value)}
-                              className={`w-full px-3 py-2 rounded text-sm ${
-                                theme === 'dark'
-                                  ? 'bg-slate-900 text-white border-slate-700'
-                                  : 'bg-white text-gray-900 border-gray-300'
-                              } border focus:outline-none focus:ring-2 focus:ring-indigo-500`}
-                              placeholder="Enter API key"
-                            />
-                          </div>
-                        )}
-                        {showApiSecret && (
-                          <div>
-                            <label className={`block text-xs font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                              API Secret <span className={`text-xs ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>(Legacy)</span>
-                            </label>
-                            <input
-                              type="password"
-                              value={data.api_secret || ''}
-                              onChange={(e) => handleFieldChange(key, 'api_secret', e.target.value)}
-                              className={`w-full px-3 py-2 rounded text-sm ${
-                                theme === 'dark'
-                                  ? 'bg-slate-900 text-white border-slate-700'
-                                  : 'bg-white text-gray-900 border-gray-300'
-                              } border focus:outline-none focus:ring-2 focus:ring-indigo-500`}
-                              placeholder="Enter API secret"
-                            />
-                          </div>
-                        )}
-                        {showClientId && (
-                          <div>
-                            <label className={`block text-xs font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                              Client ID
-                            </label>
-                            <input
-                              type="text"
-                              value={data.client_id || ''}
-                              onChange={(e) => handleFieldChange(key, 'client_id', e.target.value)}
-                              className={`w-full px-3 py-2 rounded text-sm ${
-                                theme === 'dark'
-                                  ? 'bg-slate-900 text-white border-slate-700'
-                                  : 'bg-white text-gray-900 border-gray-300'
-                              } border focus:outline-none focus:ring-2 focus:ring-indigo-500`}
-                              placeholder="Enter client ID"
-                            />
-                          </div>
-                        )}
-                        {showClientSecret && (
-                          <div>
-                            <label className={`block text-xs font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                              Client Secret
-                            </label>
-                            <input
-                              type="password"
-                              value={data.client_secret || ''}
-                              onChange={(e) => handleFieldChange(key, 'client_secret', e.target.value)}
-                              className={`w-full px-3 py-2 rounded text-sm ${
-                                theme === 'dark'
-                                  ? 'bg-slate-900 text-white border-slate-700'
-                                  : 'bg-white text-gray-900 border-gray-300'
-                              } border focus:outline-none focus:ring-2 focus:ring-indigo-500`}
-                              placeholder="Enter client secret"
-                            />
-                          </div>
-                        )}
-                        {showWebhookSecret && (
-                          <div>
-                            <label className={`block text-xs font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                              Webhook Secret
-                            </label>
-                            <input
-                              type="password"
-                              value={data.webhook_secret || ''}
-                              onChange={(e) => handleFieldChange(key, 'webhook_secret', e.target.value)}
-                              className={`w-full px-3 py-2 rounded text-sm ${
-                                theme === 'dark'
-                                  ? 'bg-slate-900 text-white border-slate-700'
-                                  : 'bg-white text-gray-900 border-gray-300'
-                              } border focus:outline-none focus:ring-2 focus:ring-indigo-500`}
-                              placeholder="Enter webhook secret"
-                            />
-                          </div>
-                        )}
-                      </>
-                    );
-                  })()}
                 </>
               )}
 
@@ -937,25 +763,15 @@ const IntegrationsView = ({ theme, setCurrentModule, t, user }) => {
           </div>
         </div>
 
-        {/* Telehealth Providers */}
-        <div className={`bg-gradient-to-br rounded-xl p-6 border ${theme === 'dark' ? 'from-slate-800/50 to-slate-900/50 border-slate-700/50' : 'from-gray-100/50 to-gray-200/50 border-gray-300/50'}`}>
-          <h3 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+        {/* Telehealth used to be configured here as well as on its own screen; it now lives
+            only on Telehealth Setup, so the two can no longer disagree. */}
+        <div className={`rounded-xl p-6 border ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700/50 text-slate-300' : 'bg-gray-50 border-gray-300/50 text-gray-700'}`}>
+          <h3 className={`text-lg font-semibold mb-2 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
             {t?.telehealthProviders || 'Telehealth Providers'}
           </h3>
-
-          <div className="space-y-3">
-            {['zoom', 'google_meet', 'webex'].map(providerType => {
-              const provider = telehealthProviders.find(p => p.provider_type === providerType);
-              return renderIntegrationCard(
-                provider || { provider_type: providerType },
-                providerType,
-                getProviderDisplayName(providerType),
-                handleToggleTelehealth,
-                'telehealth',
-                handleSaveTelehealth
-              );
-            })}
-          </div>
+          <p className="text-sm">
+            {t?.telehealthMovedNote || 'Zoom, Google Meet, Webex and Teams are set up under Settings › System › Telehealth Setup.'}
+          </p>
         </div>
       </div>
 
