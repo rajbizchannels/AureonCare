@@ -31,6 +31,12 @@ const RAW_POOL_ALLOWLIST = new Set([
   // (invites: public.staff_invites, public.users, public.practices). Neither touches a
   // tenant table, and signup has no authenticated user to resolve a tenant from.
   'signup.js', 'invites.js',
+  // Domain claims and join requests, the same onboarding plane as invites.js: every query
+  // is on public.practice_domains, public.users, public.practices or public.join_requests
+  // (verified: no tenant table is referenced), and POST /join runs before the person
+  // belongs to any practice, so there is no tenant to resolve. The admin routes scope by
+  // req.user.practiceId in SQL.
+  'teamAccess.js',
 ]);
 
 // Tenant table set, parsed from the migrations that populate control.tenant_tables.

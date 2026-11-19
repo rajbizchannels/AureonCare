@@ -57,3 +57,7 @@ mobile/package.json
 mobile/package.json
 package-lock.json
 package.json
+
+# npm ci needs a lockfile; the update-agent image runs npm ci, so its lockfile is tracked
+# despite the blanket package-lock.json rule above.
+!update-agent/package-lock.json
