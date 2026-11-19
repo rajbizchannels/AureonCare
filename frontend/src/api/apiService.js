@@ -2316,36 +2316,10 @@ const api = {
     return response.json();
   },
 
-  // Stripe Integration Settings
+  // Stripe is managed by the platform; practices only read its status (SEC-38).
   getStripeSettings: async () => {
     const response = await authenticatedFetch(`${API_BASE_URL}/stripe-settings`);
     if (!response.ok) throw new Error('Failed to fetch Stripe settings');
-    return response.json();
-  },
-  saveStripeSettings: async (settings) => {
-    const response = await authenticatedFetch(`${API_BASE_URL}/stripe-settings`, {
-      method: 'POST',
-      body: JSON.stringify(settings)
-    });
-    if (!response.ok) throw new Error('Failed to save Stripe settings');
-    return response.json();
-  },
-  toggleStripeIntegration: async (isEnabled) => {
-    const response = await authenticatedFetch(`${API_BASE_URL}/stripe-settings/toggle`, {
-      method: 'PATCH',
-      body: JSON.stringify({ is_enabled: isEnabled })
-    });
-    if (!response.ok) throw new Error('Failed to toggle Stripe integration');
-    return response.json();
-  },
-  testStripeConnection: async () => {
-    const response = await authenticatedFetch(`${API_BASE_URL}/stripe-settings/test`, {
-      method: 'POST'
-    });
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Stripe connection test failed');
-    }
     return response.json();
   },
 

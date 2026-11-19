@@ -11,7 +11,8 @@ router.use(authenticate);
 router.use(requireModuleAccess('clinical', 'prescriptions'));
 router.use(require('../middleware/planEnforcement').enforceActiveBilling); // SEC-05 S11: read-only when subscription past_due/canceled
 const WhatsAppService = require('../services/whatsappService');
-const vendorIntegrationManager = require('../services/vendorIntegrations');
+// SEC-37: vendor clients are per practice — resolved from this request's tenant.
+const { vendorsFor } = require('../services/vendorIntegrations');
 const fhirTrackingIntegration = require('../services/fhirTrackingIntegration');
 const notificationService = require('../services/notificationService');
 const { sendDbError } = require('../utils/dbErrors');
@@ -276,7 +277,7 @@ router.post('/', async (req, res) => {
     }
 
     // Send to Surescripts if enabled and send_to_vendor is requested
-    if (req.body.sendToVendor && vendorIntegrationManager.isVendorEnabled('surescripts')) {
+    if (req.body.sendToVendor && (await vendorsFor(req)).isVendorEnabled('surescripts')) {
       try {
         // Get full patient and provider details for Surescripts
         const patientResult = await pool.query(
@@ -300,7 +301,7 @@ router.post('/', async (req, res) => {
           }
         }
 
-        const surescripts = vendorIntegrationManager.getSurescripts();
+        const surescripts = (await vendorsFor(req)).getSurescripts();
 
         const vendorPrescription = {
           ...prescription,
@@ -341,7 +342,7 @@ router.post('/', async (req, res) => {
           prescription.vendor_status = vendorResponse.status;
 
           // Log transaction
-          await vendorIntegrationManager.logTransaction('surescripts', 'prescription_send', {
+          await (await vendorsFor(req)).logTransaction('surescripts', 'prescription_send', {
             request: vendorPrescription,
             response: vendorResponse.response,
             status: 'success',
@@ -366,7 +367,7 @@ router.post('/', async (req, res) => {
           }
         } else {
           // Log failed transaction
-          await vendorIntegrationManager.logTransaction('surescripts', 'prescription_send', {
+          await (await vendorsFor(req)).logTransaction('surescripts', 'prescription_send', {
             request: vendorPrescription,
             response: vendorResponse.response,
             status: 'failed',

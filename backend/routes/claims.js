@@ -9,7 +9,8 @@ router.use(authenticate);
 // utils/permissionRegistry.js, so this changes nothing until somebody edits something.
 router.use(requireModuleAccess('rcm', 'claims'));
 router.use(require('../middleware/planEnforcement').enforceActiveBilling); // SEC-05 S11: read-only when subscription past_due/canceled
-const vendorIntegrationManager = require('../services/vendorIntegrations');
+// SEC-37: vendor clients are per practice — resolved from this request's tenant.
+const { vendorsFor } = require('../services/vendorIntegrations');
 const notificationService = require('../services/notificationService');
 const { insertNumbered } = require('../utils/recordNumbers');
 const { sendDbError } = require('../utils/dbErrors');
@@ -89,7 +90,7 @@ router.post('/', async (req, res) => {
     const claim = result.rows[0];
 
     // Submit to Optum clearinghouse if enabled and submit_to_clearinghouse is requested
-    if (req.body.submitToClearinghouse && vendorIntegrationManager.isVendorEnabled('optum')) {
+    if (req.body.submitToClearinghouse && (await vendorsFor(req)).isVendorEnabled('optum')) {
       try {
         // Get patient, provider, and payer details
         const patientResult = await pool.query(
@@ -113,7 +114,7 @@ router.post('/', async (req, res) => {
           ? JSON.parse(procedure_codes)
           : (procedure_codes || []);
 
-        const optum = vendorIntegrationManager.getOptum();
+        const optum = (await vendorsFor(req)).getOptum();
 
         const claimData = {
           ...claim,
@@ -165,7 +166,7 @@ router.post('/', async (req, res) => {
           claim.status = 'submitted';
 
           // Log transaction
-          await vendorIntegrationManager.logTransaction('optum', 'claim_submit', {
+          await (await vendorsFor(req)).logTransaction('optum', 'claim_submit', {
             request: claimData,
             response: vendorResponse.response,
             status: 'success',
@@ -175,7 +176,7 @@ router.post('/', async (req, res) => {
           });
         } else {
           // Log failed transaction
-          await vendorIntegrationManager.logTransaction('optum', 'claim_submit', {
+          await (await vendorsFor(req)).logTransaction('optum', 'claim_submit', {
             request: claimData,
             response: vendorResponse.response,
             status: 'failed',

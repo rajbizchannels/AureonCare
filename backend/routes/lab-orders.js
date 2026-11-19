@@ -10,7 +10,8 @@ router.use(authenticate);
 // utils/permissionRegistry.js, so this changes nothing until somebody edits something.
 router.use(requireModuleAccess('clinical', 'lab_orders'));
 router.use(require('../middleware/planEnforcement').enforceActiveBilling); // SEC-05 S11: read-only when subscription past_due/canceled
-const vendorIntegrationManager = require('../services/vendorIntegrations');
+// SEC-37: vendor clients are per practice — resolved from this request's tenant.
+const { vendorsFor } = require('../services/vendorIntegrations');
 const fhirTrackingIntegration = require('../services/fhirTrackingIntegration');
 const notificationService = require('../services/notificationService');
 const { insertNumbered } = require('../utils/recordNumbers');
@@ -229,7 +230,7 @@ router.post('/', async (req, res) => {
     }
 
     // Send to Labcorp if requested and integration is enabled
-    if (send_to_vendor && vendorIntegrationManager.isVendorEnabled('labcorp')) {
+    if (send_to_vendor && (await vendorsFor(req)).isVendorEnabled('labcorp')) {
       try {
         // Fetch full patient and provider details
         const patientResult = await pool.query(
@@ -241,7 +242,7 @@ router.post('/', async (req, res) => {
           [provider_id]
         );
 
-        const labcorp = vendorIntegrationManager.getLabcorp();
+        const labcorp = (await vendorsFor(req)).getLabcorp();
 
         const vendorOrder = {
           ...labOrder,
@@ -275,7 +276,7 @@ router.post('/', async (req, res) => {
           labOrder.status = 'sent_to_lab';
 
           // Log transaction
-          await vendorIntegrationManager.logTransaction('labcorp', 'lab_order_submit', {
+          await (await vendorsFor(req)).logTransaction('labcorp', 'lab_order_submit', {
             request: vendorOrder,
             response: vendorResponse.response,
             status: 'success',
@@ -310,7 +311,7 @@ router.post('/', async (req, res) => {
           }
         } else {
           // Log failed transaction
-          await vendorIntegrationManager.logTransaction('labcorp', 'lab_order_submit', {
+          await (await vendorsFor(req)).logTransaction('labcorp', 'lab_order_submit', {
             request: vendorOrder,
             response: vendorResponse.response,
             status: 'failed',
@@ -494,9 +495,9 @@ router.delete('/:id', async (req, res) => {
     const order = orderResult.rows[0];
 
     // If order was sent to vendor, try to cancel it
-    if (order.vendor_order_id && vendorIntegrationManager.isVendorEnabled('labcorp')) {
+    if (order.vendor_order_id && (await vendorsFor(req)).isVendorEnabled('labcorp')) {
       try {
-        const labcorp = vendorIntegrationManager.getLabcorp();
+        const labcorp = (await vendorsFor(req)).getLabcorp();
         await labcorp.cancelLabOrder(order.vendor_order_id, {
           reason: req.body.reason || 'Cancelled by provider'
         });
@@ -540,9 +541,9 @@ router.get('/:id/results', async (req, res) => {
     const order = orderResult.rows[0];
 
     // If order has vendor ID and Labcorp is enabled, fetch latest results
-    if (order.vendor_order_id && vendorIntegrationManager.isVendorEnabled('labcorp')) {
+    if (order.vendor_order_id && (await vendorsFor(req)).isVendorEnabled('labcorp')) {
       try {
-        const labcorp = vendorIntegrationManager.getLabcorp();
+        const labcorp = (await vendorsFor(req)).getLabcorp();
         const vendorResults = await labcorp.getLabResults(order.vendor_order_id);
 
         if (vendorResults.success && vendorResults.results) {

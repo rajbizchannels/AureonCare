@@ -9,7 +9,8 @@ router.use(authenticate);
 // utils/permissionRegistry.js, so this changes nothing until somebody edits something.
 router.use(requireModuleAccess('rcm', 'preapprovals'));
 router.use(require('../middleware/planEnforcement').enforceActiveBilling); // SEC-05 S11: read-only when subscription past_due/canceled
-const vendorIntegrationManager = require('../services/vendorIntegrations');
+// SEC-37: vendor clients are per practice — resolved from this request's tenant.
+const { vendorsFor } = require('../services/vendorIntegrations');
 const { insertNumbered } = require('../utils/recordNumbers');
 const { sendDbError } = require('../utils/dbErrors');
 
@@ -73,7 +74,7 @@ router.get('/:id', async (req, res) => {
 // Check clearinghouse integration status
 router.get('/check-clearinghouse/status', async (req, res) => {
   try {
-    const isOptumEnabled = vendorIntegrationManager.isVendorEnabled('optum');
+    const isOptumEnabled = (await vendorsFor(req)).isVendorEnabled('optum');
     res.json({
       hasClearinghouse: isOptumEnabled,
       clearinghouseName: isOptumEnabled ? 'Optum' : null
@@ -134,7 +135,7 @@ router.post('/', async (req, res) => {
     const preapproval = result.rows[0];
 
     // Submit to Optum clearinghouse if enabled and requested
-    if (submitToClearinghouse && vendorIntegrationManager.isVendorEnabled('optum')) {
+    if (submitToClearinghouse && (await vendorsFor(req)).isVendorEnabled('optum')) {
       try {
         // Get patient, provider, and payer details
         const patientResult = await pool.query(
@@ -158,7 +159,7 @@ router.post('/', async (req, res) => {
           ? JSON.parse(procedure_codes)
           : (procedure_codes || []);
 
-        const optum = vendorIntegrationManager.getOptum();
+        const optum = (await vendorsFor(req)).getOptum();
 
         // Build preapproval request data
         const preapprovalData = {
@@ -220,7 +221,7 @@ router.post('/', async (req, res) => {
           preapproval.status = 'Submitted';
 
           // Log transaction
-          await vendorIntegrationManager.logTransaction('optum', 'prior_authorization', {
+          await (await vendorsFor(req)).logTransaction('optum', 'prior_authorization', {
             request: preapprovalData,
             response: vendorResponse.response,
             status: 'success',
@@ -230,7 +231,7 @@ router.post('/', async (req, res) => {
           });
         } else {
           // Log failed transaction
-          await vendorIntegrationManager.logTransaction('optum', 'prior_authorization', {
+          await (await vendorsFor(req)).logTransaction('optum', 'prior_authorization', {
             request: preapprovalData,
             response: vendorResponse.response,
             status: 'failed',

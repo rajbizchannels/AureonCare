@@ -12,36 +12,31 @@ const TOLERANCE_SECONDS = 300; // 5 minutes — Stripe's own default
 
 /**
  * Resolve the active webhook secret.
- * Priority: platform env secret (always, when set) → DB value (single-practice installs only).
+ * Source: AC_STRIPE_WHS / STRIPE_WEBHOOK_SECRET. A secret left in the old settings row is
+ * read only when neither is set (deprecated, logged).
  */
+let legacyWarned = false;
 async function resolveWebhookSecret(pool) {
-  // SEC-38: when the platform has its own webhook secret, it ALWAYS wins. The DB row is a
-  // single global setting that any practice admin can write (and, before SEC-36, any
-  // signed-in user). Letting it override the platform secret let whoever set it sign
-  // forged events — fake payments and subscription changes, including the signup events
-  // that provision tenants. The DB value remains only as the fallback for a deployment
-  // with no platform secret (a single-practice install configuring its own Stripe).
+  // The platform's own secret is the only supported source (SEC-38: the shared DB row used
+  // to override it, which let whoever could edit that row sign forged events).
   const platformSecret = process.env.AC_STRIPE_WHS || process.env.STRIPE_WEBHOOK_SECRET || null;
   if (platformSecret) return platformSecret;
+  // Deprecated fallback, for an install upgraded from when the secret was entered on the
+  // Integrations screen. Nothing in the product can write this row any more, so it can
+  // only hold what was saved before; move it to AC_STRIPE_WHS.
   try {
-    const result = await pool.query(
-      'SELECT webhook_secret, use_platform_integration FROM stripe_integration_settings LIMIT 1'
-    );
-    const row = result.rows[0];
-    // No settings row at all is the normal state for a deployment that only does platform
-    // billing (clinics paying us) and has never configured per-clinic Stripe. Returning
-    // null here meant the webhook could never be verified and every event was rejected —
-    // including the signup events that provision tenants.
-    if (!row) return process.env.AC_STRIPE_WHS || process.env.STRIPE_WEBHOOK_SECRET || null;
-
-    if (row.use_platform_integration) {
-      return process.env.AC_STRIPE_WHS || process.env.STRIPE_WEBHOOK_SECRET || null;
+    const { rows } = await pool.query('SELECT webhook_secret FROM stripe_integration_settings LIMIT 1');
+    const legacy = rows[0] && rows[0].webhook_secret;
+    if (legacy) {
+      if (!legacyWarned) {
+        legacyWarned = true;
+        console.warn('[stripe-webhook] using the legacy webhook secret stored in the database. '
+          + 'Set AC_STRIPE_WHS instead; this fallback will be removed.');
+      }
+      return legacy;
     }
-    return row.webhook_secret || null;
-  } catch {
-    // Table may not exist yet — fall back to env var
-    return process.env.AC_STRIPE_WHS || process.env.STRIPE_WEBHOOK_SECRET || null;
-  }
+  } catch { /* table absent: no legacy value */ }
+  return null;
 }
 
 /**
