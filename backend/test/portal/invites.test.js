@@ -93,8 +93,10 @@ const report = (err) => {
   check('the shared control plane holds no patient identifier for it',
     !Object.keys((await pool.query('SELECT * FROM control.portal_invite_route LIMIT 1')).rows[0] || {}).some((k) => /patient|email|name/.test(k)));
 
-  check('a patient cannot send invites (403)',
-    (await call('POST', '/api/portal-invites', { token: A.patientUser, body: { patientId: rosa } })).status === 403);
+  // A patient account cannot even obtain a staff session any more (the staff login refuses
+  // it), so the request arrives unauthenticated: 401. Either way, no invite is sent.
+  check('a patient cannot send invites (401/403)',
+    [401, 403].includes((await call('POST', '/api/portal-invites', { token: A.patientUser, body: { patientId: rosa } })).status));
   check("another practice's staff cannot invite this patient (404)",
     (await call('POST', '/api/portal-invites', { token: B.staff, body: { patientId: rosa } })).status === 404);
   const noEmail = await addPatient(A, null, 'NoEmail');

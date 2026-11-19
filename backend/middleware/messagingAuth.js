@@ -94,6 +94,10 @@ const resolvePatientActor = async (pool, token) => {
     email: p.email,
     role: 'patient',
     displayName: [p.first_name, p.last_name].filter(Boolean).join(' ') || p.email,
+    // The practice the session routed to — authoritative for a portal patient, who has no
+    // users row to resolve a practice from.
+    tenantId: routed.tenantId,
+    schemaName: routed.schemaName,
   };
 };
 
@@ -138,7 +142,9 @@ const resolveActor = async (req, res, next) => {
     // tenant schema). Defensive: only set req.db when a real tenant resolves, else
     // handlers fall back to the default pool.
     try {
-      const t = await resolveTenantForUser(pool, actor.id);
+      const t = actor.schemaName
+        ? { tenantId: actor.tenantId, schemaName: actor.schemaName, practiceId: null }
+        : await resolveTenantForUser(pool, actor.id);
       if (t && t.tenantId) {
         req.tenant = { practiceId: t.practiceId, tenantId: t.tenantId, schemaName: t.schemaName || 'public' };
         req.db = makeTenantDb(pool, req.tenant.schemaName, req.res);
@@ -162,4 +168,4 @@ const requireStaffActor = (req, res, next) => {
   next();
 };
 
-module.exports = { resolveActor, requireStaffActor };
+module.exports = { resolveActor, requireStaffActor, resolvePatientActor };

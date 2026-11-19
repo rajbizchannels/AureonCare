@@ -1,6 +1,35 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
-const { authenticate } = require('../middleware/auth');
+const { authenticate: authenticateStaff } = require('../middleware/auth');
+const { getPortalCookie, getSessionCookie } = require('../utils/authCookies');
+const { resolvePatientActor } = require('../middleware/messagingAuth');
+const { makeTenantDb } = require('../db/requestTenantDb');
+
+/**
+ * Staff session OR patient-portal session. Calendar sync is offered in the patient portal,
+ * whose session is the HttpOnly ac_portal cookie — not a staff JWT — so `authenticate`
+ * alone answered 401 to every portal patient. A staff credential (Bearer header or staff
+ * cookie) always takes the full staff path; otherwise the portal session is resolved to
+ * its patient and practice schema, and authorizePatientAccess below still pins the
+ * patient to their own record.
+ */
+const authenticate = async (req, res, next) => {
+  const hasBearer = (req.headers.authorization || '').startsWith('Bearer ');
+  const portalToken = getPortalCookie(req);
+  if (hasBearer || getSessionCookie(req) || !portalToken) return authenticateStaff(req, res, next);
+  try {
+    const pool = req.app.locals.pool;
+    const actor = await resolvePatientActor(pool, portalToken);
+    if (!actor) return res.status(401).json({ error: 'Invalid or expired portal session' });
+    req.user = { id: actor.id, role: 'patient', email: actor.email };
+    req.tenant = { practiceId: null, tenantId: actor.tenantId, schemaName: actor.schemaName };
+    req.db = makeTenantDb(pool, actor.schemaName, req.res);
+    next();
+  } catch (e) {
+    console.error('[calendar-sync] portal session check failed:', e.message);
+    res.status(500).json({ error: 'Authentication failed' });
+  }
+};
 const router = express.Router();
 const { google } = require('googleapis');
 
@@ -71,18 +100,10 @@ const authorizePatientAccess = async (req, res, next) => {
       return next();
     }
 
-    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
-    const owned = await pool.query(
-      'SELECT 1 FROM patients WHERE id = $1 AND user_id = $2',
-      [patientId, req.user.id]
-    );
-
-    if (owned.rows.length === 0) {
-      return res.status(403).json({ error: 'Access denied for this patient record' });
-    }
-
-    req.patientId = patientId;
-    next();
+    // patients.id = users.id (migration 023) and patients no longer has a user_id column:
+    // the lookup that used to be here failed with 42703 and answered 500. A patient may
+    // only ever act on their own record, which the equality check above already allowed.
+    return res.status(403).json({ error: 'Access denied for this patient record' });
   } catch (error) {
     console.error('Error authorizing patient access:', error);
     res.status(500).json({ error: 'Authorization check failed' });

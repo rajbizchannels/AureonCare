@@ -12,7 +12,8 @@ const rateLimit = require('express-rate-limit');
 const { authenticate, authorize } = require('../middleware/auth');
 const { storeFor } = require('../middleware/rateLimitStore');
 const { checkNewPassword, BCRYPT_COST } = require('../utils/passwordPolicy');
-const { sendEmail, buildEmailHtml } = require('../services/notificationService');
+const { sendEmail } = require('../services/notificationService');
+const { renderJoinRequestEmail, renderJoinDecisionEmail } = require('../services/emailTemplates');
 const { sendDbError } = require('../utils/dbErrors');
 const {
   domainOf, isClaimable, newToken, checkDnsToken, resolveDomainClaim, TXT_PREFIX,
@@ -365,20 +366,7 @@ async function notifyAdminsOfRequest(pool, claim, user) {
     [claim.practice_id]
   );
   if (!admins.length) return;
-  const html = buildEmailHtml(
-    'Someone has asked to join your practice',
-    '#2563eb',
-    'Hello,',
-    `<strong>${user.email}</strong> signed up using your verified domain `
-      + `<strong>${claim.domain}</strong> and is waiting for approval. They cannot sign in until `
-      + 'an administrator approves the request.',
-    [['Name', `${user.first_name} ${user.last_name}`.trim() || '—'],
-     ['Email', user.email],
-     ['Requested role', user.role]]
-      .map(([k, v]) => `<tr><td style="padding:8px 12px;font-weight:bold;color:#555">${k}</td>`
-        + `<td style="padding:8px 12px;color:#333">${v}</td></tr>`).join(''),
-    'Review it under Settings → Team access.'
-  );
+  const html = renderJoinRequestEmail({ claim, user });
   for (const a of admins) {
     await sendEmail(a.email, `Join request for ${claim.practice_name}`, html);
   }
@@ -445,16 +433,7 @@ router.post('/requests/:id/:decision', authenticate, authorize('admin'), require
     sendEmail(
       rows[0].email,
       decision === 'approve' ? 'Your access has been approved' : 'About your access request',
-      buildEmailHtml(
-        decision === 'approve' ? 'You can now sign in' : 'Your request was not approved',
-        decision === 'approve' ? '#16a34a' : '#6b7280',
-        'Hello,',
-        decision === 'approve'
-          ? 'An administrator approved your request. You can sign in with the password you chose.'
-          : 'An administrator reviewed your request and did not approve it. If you think this is '
-            + 'a mistake, contact them directly.',
-        null, null
-      )
+      renderJoinDecisionEmail({ approved: decision === 'approve' })
     ).catch(() => { /* the decision stands whether or not the mail lands */ });
 
     res.json({ success: true, decision });

@@ -299,6 +299,10 @@ const AppProvider = ({ children }) => {
    */
   const fetchAllData = useCallback(async (includeUser = false) => {
     console.log('AppContext: fetchAllData called, includeUser:', includeUser);
+    // A portal patient has no staff session: every loader below is a staff route and
+    // answered 401/403 (users, claims, appointments of the whole practice…). The patient
+    // portal loads its own data through /api/patient-portal/:id.
+    if (user?.role === 'patient') { setLoading(false); return; }
     setLoading(true);
     setError(null);
     try {
@@ -414,11 +418,11 @@ const AppProvider = ({ children }) => {
 
   // Load currency from clinic settings after authentication
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || user?.role === 'patient') return;
     api.getClinicSettings()
       .then(s => { if (s?.currency) setCurrency(s.currency); })
       .catch(() => {});
-  }, [isAuthenticated]);
+  }, [isAuthenticated, user?.role]);
 
   /**
    * Updates user preferences in the backend and local state
@@ -455,6 +459,10 @@ const AppProvider = ({ children }) => {
    * @param {string} type - The type of notification (e.g., 'alert', 'info', 'success')
    * @param {string} message - The notification message
    */
+  // Read by addNotification, which must keep a stable identity (see below).
+  const roleRef = React.useRef(user?.role);
+  useEffect(() => { roleRef.current = user?.role; }, [user]);
+
   /**
    * Stable across renders on purpose.
    *
@@ -470,6 +478,12 @@ const AppProvider = ({ children }) => {
    * nothing to depend on.
    */
   const addNotification = useCallback(async (type, message) => {
+    // Patients have no staff notification store (staff-only endpoint): keep theirs on screen.
+    if (roleRef.current === 'patient') {
+      setNotifications(prev => [{ id: `local-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        type, message, read: false, created_at: new Date().toISOString() }, ...prev]);
+      return;
+    }
     try {
       const newNotif = await api.createNotification({ type, message, read: false });
       setNotifications(prev => [newNotif, ...prev]);
