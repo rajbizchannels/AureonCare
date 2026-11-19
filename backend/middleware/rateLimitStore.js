@@ -19,6 +19,11 @@ let redis;
 try { redis = require('redis'); } catch (_) { redis = null; }
 
 let clientPromise = null;
+// After a failed connect, do not try again on every request: a dead or mistyped Redis
+// host otherwise costs each request the full connect/retry time (seen in production as
+// ~5 s per request with AC_RD_* pointing at localhost on Vercel).
+const RETRY_AFTER_MS = 60 * 1000;
+let lastFailureAt = 0;
 
 function redisConfigured() {
   return Boolean(process.env.AC_RD_H || process.env.AC_RD_URL);
@@ -26,16 +31,22 @@ function redisConfigured() {
 
 async function getClient() {
   if (!redis || !redisConfigured()) return null;
+  if (!clientPromise && lastFailureAt && Date.now() - lastFailureAt < RETRY_AFTER_MS) return null;
   if (!clientPromise) {
     clientPromise = (async () => {
+      // Do not retry forever on a dead host — fail open quickly instead. Applies to the
+      // URL form too, which previously used the client's unbounded default.
+      const socket = {
+        connectTimeout: 2000,
+        reconnectStrategy: (attempts) => (attempts > 2 ? false : Math.min(attempts * 200, 1000)),
+      };
       const opts = process.env.AC_RD_URL
-        ? { url: process.env.AC_RD_URL }
+        ? { url: process.env.AC_RD_URL, socket }
         : {
             socket: {
+              ...socket,
               host: process.env.AC_RD_H || 'localhost',
               port: Number(process.env.AC_RD_P || 6379),
-              // Do not retry forever on a dead host — fail open quickly instead.
-              reconnectStrategy: (attempts) => (attempts > 5 ? false : Math.min(attempts * 200, 2000)),
             },
           };
       if (process.env.AC_RD_W) opts.password = process.env.AC_RD_W;
@@ -47,7 +58,8 @@ async function getClient() {
       return c;
     })().catch((err) => {
       console.error('[rateLimitStore] Redis unavailable, falling back to per-instance limits:', err.message);
-      clientPromise = null; // allow a later retry
+      clientPromise = null; // allow a later retry, after RETRY_AFTER_MS
+      lastFailureAt = Date.now();
       return null;
     });
   }
@@ -61,6 +73,11 @@ async function getClient() {
 function createRedisStore(prefix) {
   let windowMs = 15 * 60 * 1000;
   return {
+    // express-rate-limit identifies a store by `prefix` (or its class name) when checking
+    // that a request is counted once. Without it every limiter built here looked like the
+    // same plain Object store, so the global /api limiter and the /api/auth limiter
+    // collided and each auth request logged ERR_ERL_DOUBLE_COUNT.
+    prefix: `rl:${prefix}:`,
     init(options) {
       if (options && options.windowMs) windowMs = options.windowMs;
     },
