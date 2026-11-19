@@ -100,6 +100,9 @@ const report = (err) => {
     const r = await call('POST', u, admin, T);
     check(`${u} no longer exists (got ${r.status})`, r.status === 404);
   }
+  // Sign in as an EXISTING account (the admin's verified address): social sign-in no
+  // longer creates accounts for unknown identities (SEC-39; see social-signup.test.js).
+  IDENTITY = { email: adminEmail, emailVerified: true, providerId: `g-admin-${RUN}`, firstName: 'A', lastName: 'B' };
   const login = await call('POST', '/api/auth/oauth/google/exchange', null, { code: 'one-time-code', redirectUri: 'postmessage' });
   check(`social SIGN-IN by code still works (got ${login.status})`, login.status === 200 && login.body && login.body.token);
   // Portal: an identity no practice knows reaches the handler and is answered 404 — i.e.

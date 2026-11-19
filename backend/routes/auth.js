@@ -907,7 +907,7 @@ const socialLoginHandler = async (req, res) => {
       const userResult = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
 
       if (userResult.rows.length === 0) {
-        return res.status(404).json({ error: 'User not found. Please register a new account.' });
+        return res.status(404).json({ error: 'No account found. Ask your practice to send you an invitation.' });
       }
 
       user = userResult.rows[0];
@@ -991,9 +991,31 @@ const socialLoginHandler = async (req, res) => {
         `, [user.id, provider, canonicalProviderId, accessToken, refreshToken, JSON.stringify(profileData)]);
 
       } else {
+        // A NEW account is created only when something says which practice it belongs to:
+        //   * a staff invitation (matched to the provider-verified email above), or
+        //   * a provider-verified email at a domain a practice has claimed and verified.
+        // Both halves of the second are required: a claim without a provider-verified
+        // email would let anyone type a colleague's address, and a verified email at an
+        // unclaimed domain says nothing about where they belong.
+        //
+        // Anything else used to fall through to a patient "self-registration" with no
+        // practice — an account that could never reach a chart (SEC-39). Patients join
+        // through their practice's portal invitation (routes/portalInvites.js), so an
+        // unknown identity with neither is refused and nothing is written.
+        const domainClaim = (!invite && providerEmailVerified)
+          ? await resolveDomainClaim(pool, email)
+          : null;
+        if (!invite && !domainClaim) {
+          return res.status(404).json({
+            error: `No account found for ${email}. Ask your practice to send you an invitation.`,
+            noAccount: true,
+          });
+        }
+        const claimPending = Boolean(domainClaim) && domainClaim.join_policy === 'auto_request';
+
         isNewUser = true;
-        // Create new active patient user — use a transaction so that a failure in
-        // patient/role/social_auth creation does not leave an orphaned users row.
+        // Create the user in a transaction so a failure in role/social_auth creation does
+        // not leave an orphaned users row.
         const sl_client = await pool.connect();
         try {
           await sl_client.query('BEGIN');
@@ -1001,22 +1023,8 @@ const socialLoginHandler = async (req, res) => {
           const sl_firstName = firstName || '';
           const sl_lastName = lastName || '';
 
-          // No invite, but the provider vouched for this address and its domain may be
-          // claimed by a practice. Both halves are required: a claim without a
-          // provider-verified email would let anyone type a colleague's address, and a
-          // verified email at an unclaimed domain says nothing about where they belong.
-          // `auto_request` creates the account in 'pending' — the login route already
-          // refuses that with a clear message — rather than letting an unbound account
-          // through to an empty workspace.
-          const domainClaim = (!invite && providerEmailVerified)
-            ? await resolveDomainClaim(pool, email)
-            : null;
-          const claimPending = Boolean(domainClaim) && domainClaim.join_policy === 'auto_request';
-
-          // An invite makes this a STAFF signup: the account is created with the inviting
-          // practice's id and role. Without one it stays a patient self-registration, as
-          // before. practice_id set here is what binds every later request to a tenant —
-          // an unbound user resolves to `public`, which holds no tenant tables.
+          // An invite or a domain claim makes this a STAFF account with that practice's id
+          // and role. practice_id set here is what binds every later request to a tenant.
           const newUserResult = await sl_client.query(`
             INSERT INTO users (id, email, first_name, last_name, role, status, avatar, practice_id, created_at, updated_at)
             VALUES (gen_random_uuid(), $1, $2, $3, $5, $7, $4, $6, NOW(), NOW())
@@ -1026,8 +1034,8 @@ const socialLoginHandler = async (req, res) => {
             sl_firstName,
             sl_lastName,
             `${(sl_firstName[0] || '')}${(sl_lastName[0] || '')}`.toUpperCase(),
-            invite ? invite.role : (domainClaim ? domainClaim.default_role : 'patient'),
-            invite ? invite.practice_id : (domainClaim ? domainClaim.practice_id : null),
+            invite ? invite.role : domainClaim.default_role,
+            invite ? invite.practice_id : domainClaim.practice_id,
             claimPending ? 'pending' : 'active'
           ]);
 
@@ -1047,65 +1055,6 @@ const socialLoginHandler = async (req, res) => {
               [domainClaim.practice_id, user.id, email, domainClaim.default_role, `oauth:${provider}`]
             );
           }
-
-          // Staff do not get a patient chart. Skip straight past patient/role creation —
-          // the rest of this block is the patient self-registration path. A domain claim
-          // makes this a staff signup just as an invite does, so it skips it too;
-          // otherwise a new clinician would silently acquire a patient record.
-          if (!invite && !domainClaim) {
-          // SEC-05: `patients` and `roles` moved into the tenant schemas at the 068 cutover,
-          // and sl_client is a RAW pool connection whose search_path is the default — so
-          // these reads resolved against `public`, where the tables no longer exist, and
-          // every new social sign-up died with 42P01 reported as "Social login failed".
-          //
-          // A patient self-registering has no tenant context to pin: no invite, no domain
-          // claim, no session. There is genuinely no schema to write a chart into. Rather
-          // than fail the sign-in, create the account and skip the chart — which is the
-          // same unallocated state this path already produced, and which
-          // GET /api/auth/tenant-status explains. The savepoint keeps the skip from
-          // aborting the surrounding transaction.
-          await sl_client.query('SAVEPOINT patient_chart');
-          try {
-          // Create patient record — patients.id = users.id in current schema
-          const sl_patientCheck = await sl_client.query(
-            'SELECT id FROM patients WHERE id = $1 OR email = $2 LIMIT 1',
-            [user.id, user.email]
-          );
-          if (sl_patientCheck.rows.length === 0) {
-            const sl_mrnResult = await sl_client.query(
-              "SELECT MAX(CAST(SUBSTRING(mrn FROM 5) AS INTEGER)) as max_mrn FROM patients WHERE mrn LIKE 'MRN-%'"
-            );
-            const sl_mrn = `MRN-${(sl_mrnResult.rows[0].max_mrn || 1000) + 1}`;
-            await sl_client.query(
-              `INSERT INTO patients (id, first_name, last_name, mrn, date_of_birth, email, status, created_at, updated_at)
-               VALUES ($1, $2, $3, $4, '1990-01-01', $5, 'active', NOW(), NOW())`,
-              [user.id, sl_firstName, sl_lastName, sl_mrn, user.email]
-            );
-          }
-
-          // Assign patient role
-          const sl_roleResult = await sl_client.query(
-            "SELECT id FROM roles WHERE name = 'patient' AND is_active = true LIMIT 1"
-          );
-          if (sl_roleResult.rows.length > 0) {
-            await sl_client.query(
-              `INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
-              [user.id, sl_roleResult.rows[0].id]
-            );
-          }
-          await sl_client.query('RELEASE SAVEPOINT patient_chart');
-          } catch (chartErr) {
-            await sl_client.query('ROLLBACK TO SAVEPOINT patient_chart');
-            // Only a missing relation is tolerated. Anything else is a real fault and must
-            // still fail the sign-in rather than silently producing a half-made account.
-            if (chartErr.code !== '42P01') throw chartErr;
-            console.warn(
-              '[social-login] patients/roles are not reachable from the default search_path, '
-              + 'so ' + user.email + ' was created without a patient chart. A self-registration '
-              + 'has no tenant to write one into — see GET /api/auth/tenant-status.'
-            );
-          }
-          } // end patient self-registration path
 
           // Create social auth entry — set both user_id and patient_id to the same UUID
           // (patients.id = users.id in current schema, so both columns hold user.id)

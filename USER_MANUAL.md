@@ -597,14 +597,15 @@ There are three ways for staff to get an AureonCare account (patients: see **4**
 
 ### 2.3 Social Login (OAuth)
 
-AureonCare supports social login options:
+AureonCare supports signing in with Google or Microsoft:
 
-1. On the login screen, click one of the social login buttons:
-   - **Sign in with Google**
-   - **Sign in with Microsoft**
-   - **Sign in with Facebook**
-2. Authorize AureonCare to access your account
-3. Complete your profile setup if this is your first login
+1. On the login screen, click **Sign in with Google** or **Sign in with Microsoft**
+2. Authorize AureonCare with the provider
+
+Social sign-in signs you in to an account you **already have**, or creates one when you
+arrive with an invitation (or with a verified work email at a domain your practice has
+claimed — see 2.2.1). It does not create an account for an address AureonCare does not
+know: you will see *"No account found … Ask your practice to send you an invitation."*
 
 ### 2.4 Understanding the Interface
 
