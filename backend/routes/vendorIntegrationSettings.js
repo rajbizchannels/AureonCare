@@ -6,23 +6,19 @@ const { redactRow, redactRows } = require('../utils/redactSecrets');
 // to any signed-in user, and delete/toggle were open to any role. Reads are redacted,
 // every write is admin-only, and a blank secret on save keeps the stored one.
 const adminOnly = authorize('admin');
+// Vendor transaction history holds the raw request/response payloads of lab orders,
+// prescriptions and claims — PHI. Staff only; a patient never needs it.
+const staffOnly = (req, res, next) => (req.user && req.user.role !== 'patient'
+  ? next()
+  : res.status(403).json({ error: 'Staff access required' }));
 
-// The vendor manager is a process-wide singleton that loads settings through the shared
-// pool (where this table does not exist since the schema-per-tenant cutover), so a reload
-// threw AFTER the write had succeeded and the save answered 500. It is not tenant-aware
-// either (SEC-37): until it is, a failed reload must not fail the request.
-const reloadQuietly = async (vendorType) => {
-  try {
-    await vendorIntegrationManager.reloadVendorSettings(vendorType);
-  } catch (err) {
-    console.warn('[vendor-settings] runtime reload skipped:', err.message);
-  }
-};
 const { assertSafeExternalUrl } = require('../utils/safeUrl');
 const router = express.Router();
 router.use(authenticate);
 router.use(require('../middleware/planEnforcement').enforceActiveBilling); // SEC-05 S11: read-only when subscription past_due/canceled
-const vendorIntegrationManager = require('../services/vendorIntegrations');
+// SEC-37: vendor clients are per practice and pick up saved settings on the next request
+// (they are keyed by a fingerprint of the row), so a save needs no reload step.
+const { vendorsFor } = require('../services/vendorIntegrations');
 const { sendDbError } = require('../utils/dbErrors');
 
 /**
@@ -159,9 +155,6 @@ router.post('/:vendorType', adminOnly, async (req, res) => {
           JSON.stringify(settings || {})]);
     }
 
-    // Reload vendor settings in the manager
-    await reloadQuietly(vendorType);
-
     res.json(redactRow(result.rows[0]));
   } catch (error) {
     console.error('Error saving vendor settings:', error);
@@ -185,9 +178,6 @@ router.delete('/:vendorType', adminOnly, async (req, res) => {
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Vendor settings not found' });
     }
-
-    // Reload vendor settings in the manager
-    await reloadQuietly();
 
     res.json({ message: 'Vendor settings deleted successfully' });
   } catch (error) {
@@ -229,9 +219,6 @@ router.patch('/:vendorType/toggle', adminOnly, async (req, res) => {
       `, [vendorType, is_enabled]);
     }
 
-    // Reload vendor settings in the manager
-    await reloadQuietly(vendorType);
-
     res.json(redactRow(result.rows[0]));
   } catch (error) {
     console.error('Error toggling vendor status:', error);
@@ -244,7 +231,7 @@ router.patch('/:vendorType/toggle', adminOnly, async (req, res) => {
 // Get all vendor statuses
 router.get('/status/all', async (req, res) => {
   try {
-    const statuses = vendorIntegrationManager.getVendorStatuses();
+    const statuses = (await vendorsFor(req)).getVendorStatuses();
     res.json(statuses);
   } catch (error) {
     console.error('Error fetching vendor statuses:', error);
@@ -286,11 +273,11 @@ router.post('/:vendorType/test', authorize('admin'), async (req, res) => {
       }
     }
 
-    // Reload vendor with current settings
-    await reloadQuietly(vendorType);
-
-    // Get vendor instance
-    const vendor = vendorIntegrationManager.getVendor(vendorType);
+    // This practice's client, enabled or not: credentials are tested before switching on.
+    const vendor = (await vendorsFor(req)).clientForTest(vendorType);
+    if (!vendor) {
+      return res.status(404).json({ success: false, error: 'Unknown vendor type' });
+    }
 
     // Test connection
     const testResult = await vendor.testConnection();
@@ -332,10 +319,10 @@ router.post('/:vendorType/test', authorize('admin'), async (req, res) => {
 });
 
 // Get transaction history for a reference
-router.get('/transactions/:internalReferenceId', async (req, res) => {
+router.get('/transactions/:internalReferenceId', staffOnly, async (req, res) => {
   try {
     const { internalReferenceId } = req.params;
-    const transactions = await vendorIntegrationManager.getTransactionHistory(internalReferenceId);
+    const transactions = await (await vendorsFor(req)).getTransactionHistory(internalReferenceId);
     res.json(transactions);
   } catch (error) {
     console.error('Error fetching transaction history:', error);

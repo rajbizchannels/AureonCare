@@ -48,7 +48,8 @@
     "test:security-open-items": "node backend/test/security/open-items.test.js",
     "check:routes": "node backend/scripts/check-route-shadowing.js",
     "test:routes": "node backend/test/routing/shadowed-routes.test.js",
-    "test:settings-authz": "node backend/test/security/settings-authz.test.js"
+    "test:settings-authz": "node backend/test/security/settings-authz.test.js",
+    "test:vendor-tenancy": "node backend/test/security/vendor-tenancy.test.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.6.0",
