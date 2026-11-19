@@ -33,7 +33,7 @@ Backed by `backend/routes/auth.js` and `backend/routes/patient-portal.js`.
 - **Google sign-in** — native Google Sign-In SDK; posts to the existing social path (`provider: 'google'`), config from `REACT_APP_GG_CID` equivalent.
 - **Microsoft sign-in** — MSAL native broker (`@azure/msal-*` on web, `authority: .../common`); `provider: 'microsoft'`.
 - **Email + password** — staff login, and the separate patient-portal login.
-- **Register**, **Forgot password**, **Terms** and **Privacy Policy** screens (mirror `RegisterPage.js`, `ForgotPasswordModal.js`, `TermsOfServicePage.js`, `PrivacyPolicyPage.js`).
+- **Accept a portal invitation**, **Forgot password**, **Terms** and **Privacy Policy** screens (mirror `PortalActivatePage.js`, `ForgotPasswordModal.js`, `TermsOfServicePage.js`, `PrivacyPolicyPage.js`). There is no open self-registration.
 - **Social account linking** for patients (`POST /:patientId/link-social`).
 - **TOTP second factor** where enabled (`speakeasy` + `qrcode` already in the stack).
 - **Biometric unlock** (Face ID / fingerprint) to re-open a live session — mobile-only addition.

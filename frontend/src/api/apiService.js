@@ -949,20 +949,6 @@ const api = {
     return api._storePortalSessionToken(await response.json());
   },
 
-  // SEC-20: social SIGN-UP by authorization code. The browser holds a single-use code;
-  // the server redeems it, so no provider access token ever enters JavaScript. (The old
-  // socialLogin/socialRegister posted a browser-held access token and are removed.)
-  registerWithOAuthCode: async (provider, code, redirectUri, codeVerifier) => {
-    const response = await authenticatedFetch(`${API_BASE_URL}/auth/oauth/${provider}/register`, {
-      method: 'POST',
-      body: JSON.stringify({ code, redirectUri, codeVerifier }),
-    });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      throw new Error((data.error || 'Registration failed') + (data.providerError ? ` [${data.providerError}]` : ''));
-    }
-    return data;
-  },
 
   // Telehealth
   getTelehealthSessions: async () => {
@@ -1128,15 +1114,6 @@ const api = {
       const detail = await response.json().catch(() => ({}));
       throw new Error(detail.error || 'Failed to login to patient portal');
     }
-    return response.json();
-  },
-  registerPatientPortal: async (patientId, email, password) => {
-    const response = await authenticatedFetch(`${API_BASE_URL}/patient-portal/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ patientId, email, password })
-    });
-    if (!response.ok) throw new Error('Failed to register patient portal');
     return response.json();
   },
   getPatientAppointments: async (patientId) => {

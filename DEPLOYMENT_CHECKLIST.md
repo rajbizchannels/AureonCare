@@ -216,11 +216,9 @@ Then test **before** locking anything down:
 - [ ] An existing social user (created before this work) can still sign in
 
 Only once all four pass:
-- [ ] Staff social **sign-up** works with Google and Microsoft (it now uses the
-      code exchange, `/api/auth/oauth/:provider/register`)
 - [ ] Set `AC_DISABLE_LEGACY_SOCIAL_TOKEN=true` and redeploy. This is the step that closes
       SEC-20: every route that accepted a provider access token posted by the browser
-      answers 410 — `/api/auth/social-login`, `/api/auth/social-register`,
+      answers 410 — `/api/auth/social-login`,
       `/api/auth/link-social-account`, `/api/patient-portal/login` (with a token) and
       `/api/patient-portal/:id/link-social`. The code-exchange routes keep working.
 

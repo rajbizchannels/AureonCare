@@ -70,7 +70,6 @@ import SignupCompletePage from './components/modals/SignupCompletePage';
 import AcceptInvitePage from './components/modals/AcceptInvitePage';
 import PortalActivatePage from './components/modals/PortalActivatePage';
 import JoinPracticePage from './components/modals/JoinPracticePage';
-import RegisterPage from './components/modals/RegisterPage';
 import ForgotPasswordModal from './components/modals/ForgotPasswordModal';
 import ViewEditModal from './components/modals/ViewEditModal';
 import UserProfileModal from './components/modals/UserProfileModal';
@@ -113,8 +112,6 @@ function App() {
     setIsAuthenticated,
     showForgotPassword,
     setShowForgotPassword,
-    showRegister,
-    setShowRegister,
     currentModule,
     setCurrentModule,
     currentView,
@@ -894,7 +891,6 @@ function App() {
           setIsAuthenticated={setIsAuthenticated}
           addNotification={addNotification}
           setShowForgotPassword={setShowForgotPassword}
-          setShowRegister={setShowRegister}
           setCurrentModule={setCurrentModule}
           onBack={() => setShowBookingLogin(false)}
         />
@@ -913,21 +909,6 @@ function App() {
 
   // Show login page if not authenticated
   if (!isAuthenticated) {
-    // Show register page
-    if (showRegister) {
-      return (
-        <RegisterPage
-          theme={theme}
-          api={api}
-          addNotification={addNotification}
-          onClose={() => setShowRegister(false)}
-          onRegistered={() => {
-            setShowRegister(false);
-          }}
-        />
-      );
-    }
-
     // Show appropriate login page based on URL
     return (
       <>
@@ -940,7 +921,6 @@ function App() {
             setIsAuthenticated={setIsAuthenticated}
             addNotification={addNotification}
             setShowForgotPassword={setShowForgotPassword}
-            setShowRegister={setShowRegister}
             setCurrentModule={setCurrentModule}
           />
         ) : (
@@ -953,7 +933,6 @@ function App() {
             setIsAuthenticated={setIsAuthenticated}
             addNotification={addNotification}
             setShowForgotPassword={setShowForgotPassword}
-            setShowRegister={setShowRegister}
             setCurrentModule={setCurrentModule}
           />
         )}

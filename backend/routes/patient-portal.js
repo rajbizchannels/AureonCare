@@ -7,14 +7,11 @@ const { storeFor } = require('../middleware/rateLimitStore');
 const { getTimezoneFromCountry } = require('../utils/timezoneUtils');
 const { validateSocialToken } = require('../utils/socialTokenValidator');
 const { exchangeAuthCode } = require('../utils/oauthExchange');
-const { authenticate } = require('../middleware/auth');
 const { loadAttachment, recordReferencesAttachment, sendAttachment } = require('../utils/filedDocuments');
 const { resolveTenantForUser } = require('../services/tenantCatalog');
 const { makeTenantDb } = require('../db/requestTenantDb');
 const { withTenant } = require('../db/tenantClient');
 const { sendDbError } = require('../utils/dbErrors');
-// Was never imported: POST /register threw ReferenceError (500) on every call.
-const { BCRYPT_COST, checkNewPassword } = require('../utils/passwordPolicy');
 // A real bcrypt hash of a random value, compared against when no account matches so a
 // miss costs the same time as a hit (no account enumeration by timing). It was referenced
 // below but only ever defined in routes/auth.js, so every portal password login that
@@ -137,7 +134,7 @@ router.param('patientId', async (req, res, next, patientId) => {
 // lift a live token). The authorization-code routes redeem the code server-side and then
 // call the same handler; they mark the request so it is told apart from a client that
 // posted a token. AC_DISABLE_LEGACY_SOCIAL_TOKEN closes the client path, as it does for
-// /api/auth/social-login and /social-register.
+// /api/auth/social-login.
 const LEGACY_SOCIAL_DISABLED =
   String(process.env.AC_DISABLE_LEGACY_SOCIAL_TOKEN || '').toLowerCase() === 'true';
 const LEGACY_RETIRED = {
@@ -414,62 +411,9 @@ router.post('/oauth/:provider/exchange', loginIpLimiter, async (req, res) => {
   }
 });
 
-// Register/Enable patient portal
-// SEC-02: requires a valid staff JWT. Previously unauthenticated, which let
-// anyone enable the portal and set a password for ANY patientId (account takeover).
-router.post('/register', authenticate, async (req, res) => {
-  try {
-    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped on /:patientId routes
-    const { patientId, email, password } = req.body;
-
-    // Staff may enable any patient's portal; a patient may only enable their own.
-    if (req.user.role === 'patient' && String(req.user.id) !== String(patientId)) {
-      console.log(`[DEBUG sec02-register] blocked: patient ${req.user.id} tried to register portal for ${patientId}`);
-      return res.status(403).json({ error: 'You may only enable the portal for your own account' });
-    }
-
-    // SEC-12: enforce the shared password policy before enabling the portal
-    const pwCheck = await checkNewPassword(password);
-    if (!pwCheck.valid) {
-      return res.status(400).json({ error: pwCheck.message });
-    }
-
-    // Hash password
-    const passwordHash = await bcrypt.hash(password, BCRYPT_COST);
-
-    // Enable portal and set password
-    const result = await pool.query(`
-      UPDATE patients
-      SET portal_enabled = true, portal_password_hash = $1, email = COALESCE($2, email)
-      WHERE id = $3
-      RETURNING *
-    `, [passwordHash, email, patientId]);
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Patient not found' });
-    }
-
-    const { portal_password_hash, ...patientData } = result.rows[0];
-
-    // SEC-05 (Option D): record which tenant this address can sign in at, as a keyed
-    // hash — the shared table never stores the address itself, and holds no credential.
-    await registerIdentity(
-      req.app.locals.pool,
-      email || patientData.email,
-      (req.tenant && req.tenant.tenantId) || (await defaultTenant(req.app.locals.pool)).tenantId
-    );
-
-    res.json({
-      message: 'Patient portal enabled successfully',
-      patient: { ...patientData, role: 'patient' }
-    });
-  } catch (error) {
-    console.error('Error registering patient portal:', error);
-    // A constraint the request broke is the caller's to fix, not a server fault.
-    if (sendDbError(res, error, 'Registration failed')) return;
-    res.status(500).json({ error: 'Registration failed' });
-  }
-});
+// Portal access is granted by invitation (routes/portalInvites.js): staff send a one-time
+// link and the patient chooses their own password. The old POST /register, where a staff
+// member typed in the patient's password, was removed — staff should never know it.
 
 // Get patient appointments
 router.get('/:patientId/appointments', async (req, res) => {

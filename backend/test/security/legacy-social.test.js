@@ -3,7 +3,7 @@
 // code server-side) keep working for sign-in, sign-up and the patient portal.
 //
 // The flag used to guard only /api/auth/social-login. A browser-held token was still
-// accepted by /auth/social-register (which the sign-up page used), /auth/link-social-account,
+// accepted by /auth/social-register (since removed with the sign-up page), /auth/link-social-account,
 // /patient-portal/login and /patient-portal/:id/link-social — so setting the flag did
 // not actually finish SEC-20.
 
@@ -71,7 +71,11 @@ const report = (err) => {
     VALUES ($1,$2,'P','Q','patient','active',$3,NOW())`, [pid, pEmail, t.practiceId]);
   await pool.query(`INSERT INTO ${t.tenant.schema_name}.patients (id, first_name, last_name, status, mrn, date_of_birth, email)
     VALUES ($1,'P','Q','Active',$2,'1970-01-01',$3)`, [pid, `MRN-${RUN}`, pEmail]);
-  await call('POST', '/api/patient-portal/register', admin, { patientId: pid, email: pEmail, password: PW });
+  // Portal enabled with a password, as accepting a portal invitation leaves it, and the
+  // identity routed so password login can find the practice.
+  await pool.query(`UPDATE ${t.tenant.schema_name}.patients SET portal_enabled = true, portal_password_hash = $2 WHERE id = $1`,
+    [pid, await bcrypt.hash(PW, 12)]);
+  await require(path.join(BACKEND, 'services/portalRouting.js')).registerIdentity(pool, pEmail, t.tenant.id);
   const portal = await call('POST', '/api/patient-portal/login', null, { email: pEmail, password: PW });
   check('password portal login still works with the flag on', portal.status === 200);
   const portalTok = portal.body && portal.body.sessionToken;
@@ -81,7 +85,6 @@ const report = (err) => {
   const T = { provider: 'google', providerId: `g-${RUN}`, accessToken: 'token-from-the-browser' };
   const closed = [
     ['POST', '/api/auth/social-login', null, T],
-    ['POST', '/api/auth/social-register', null, T],
     ['POST', '/api/auth/link-social-account', admin, T],
     ['POST', '/api/patient-portal/login', null, T],
     ['POST', `/api/patient-portal/${pid}/link-social`, portalTok, T],
@@ -92,11 +95,11 @@ const report = (err) => {
   }
 
   // ── the authorization-code routes still work ────────────────────────────────────
-  // Sign-up by code must reach the registration logic rather than be refused as legacy.
-  // (That logic has its own pre-existing problem — it writes a patient chart with no
-  // practice to put it in — reported as SEC-39 and deliberately not changed here.)
-  const reg = await call('POST', '/api/auth/oauth/google/register', null, { code: 'one-time-code', redirectUri: 'postmessage' });
-  check(`social SIGN-UP by code is not refused as legacy (got ${reg.status}, not 410/400)`, reg.status !== 410 && reg.status !== 400);
+  // The public sign-up page and its routes are gone (SEC-39): accounts come from invitations.
+  for (const u of ['/api/auth/social-register', '/api/auth/oauth/google/register', '/api/patient-portal/register']) {
+    const r = await call('POST', u, admin, T);
+    check(`${u} no longer exists (got ${r.status})`, r.status === 404);
+  }
   const login = await call('POST', '/api/auth/oauth/google/exchange', null, { code: 'one-time-code', redirectUri: 'postmessage' });
   check(`social SIGN-IN by code still works (got ${login.status})`, login.status === 200 && login.body && login.body.token);
   // Portal: an identity no practice knows reaches the handler and is answered 404 — i.e.
@@ -104,7 +107,6 @@ const report = (err) => {
   IDENTITY = { email: `ghost_${RUN}@example.com`, emailVerified: true, providerId: `ghost-${RUN}` };
   const pex = await call('POST', '/api/patient-portal/oauth/google/exchange', null, { code: 'one-time-code', redirectUri: 'postmessage' });
   check(`the portal code exchange is not blocked by the flag (got ${pex.status}, not 410)`, pex.status !== 410 && pex.status < 500);
-  check('...and an unsupported provider is still refused', (await call('POST', '/api/auth/oauth/facebook/register', null, { code: 'x' })).status === 400);
 
   await pool.query('DELETE FROM public.users WHERE email = ANY($1)', [[adminEmail, pEmail, `new_${RUN}@example.com`]]).catch(() => {});
   report();

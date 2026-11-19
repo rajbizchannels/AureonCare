@@ -7,7 +7,7 @@ import { useAudit } from '../../hooks/useAudit';
 import PrivacyPolicyPage from './PrivacyPolicyPage';
 import TermsOfServicePage from './TermsOfServicePage';
 
-const PatientLoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, addNotification, setShowForgotPassword, setCurrentModule, setShowRegister }) => {
+const PatientLoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, addNotification, setShowForgotPassword, setCurrentModule }) => {
   const { logViewAccess, logError } = useAudit();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -250,14 +250,11 @@ const PatientLoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, a
         </div>
 
         <div className="mt-6 text-center space-y-3">
+          {/* Patients join through their practice's invitation (portal invites) — there
+              is no self-registration (SEC-39). */}
           <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-            New patient?{' '}
-            <button
-              onClick={() => setShowRegister(true)}
-              className="text-blue-500 hover:text-blue-400 font-medium transition-colors"
-            >
-              Register here
-            </button>
+            New to the portal? Your practice will email you an invitation to set it up —
+            ask them if you haven't received one.
           </p>
           <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
             Healthcare provider?{' '}

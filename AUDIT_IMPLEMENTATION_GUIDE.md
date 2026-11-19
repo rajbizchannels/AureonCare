@@ -221,7 +221,7 @@ Apply **Pattern 2** to these modals:
 2. **ePrescribeModal.js** - Module: 'EHR', track patient_id, medication
 3. **ForgotPasswordModal.js** - Module: 'Auth', track email
 4. **PatientLoginPage.js** - Module: 'Patient Portal'
-5. **RegisterPage.js** - Module: 'Auth', track registration attempts
+5. ~~**RegisterPage.js**~~ - removed with self-registration (SEC-39); portal invitations are recorded server-side in `portal_invites`
 6. **SettingsModal.js** - Module: 'Settings', track settings changes
 7. **UserFormModal.js** - Module: 'Admin', track user operations
 8. **UserProfileModal.js** - Module: 'Profile', track profile updates
