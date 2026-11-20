@@ -35,7 +35,7 @@ class WhatsAppService {
   /**
    * Send WhatsApp message via Twilio
    */
-  async sendViaTwilio(to, message) {
+  async sendViaTwilio(to, message, { mediaUrl } = {}) {
     if (!this.config.account_sid || !this.config.auth_token || !this.config.phone_number) {
       throw new Error('Twilio configuration is incomplete');
     }
@@ -48,7 +48,9 @@ class WhatsAppService {
         new URLSearchParams({
           From: `whatsapp:${this.config.phone_number}`,
           To: `whatsapp:${to}`,
-          Body: message
+          Body: message,
+          // Twilio fetches the image from this public URL and sends it with the text.
+          ...(mediaUrl ? { MediaUrl: mediaUrl } : {})
         }),
         {
           headers: {
@@ -72,7 +74,7 @@ class WhatsAppService {
   /**
    * Send WhatsApp message via WhatsApp Business API
    */
-  async sendViaWhatsAppAPI(to, message, template = null) {
+  async sendViaWhatsAppAPI(to, message, template = null, { mediaUrl } = {}) {
     if (!this.config.access_token || !this.config.phone_number_id) {
       throw new Error('WhatsApp Business API configuration is incomplete');
     }
@@ -89,12 +91,21 @@ class WhatsAppService {
               components: template.components || []
             }
           }
-        : {
-            messaging_product: 'whatsapp',
-            to: to,
-            type: 'text',
-            text: { body: message }
-          };
+        : mediaUrl && String(message || '').length <= 1024
+          // An image message: the QR code, with the whole text as its caption (WhatsApp
+          // allows 1024 characters there; longer texts go as plain text, no image).
+          ? {
+              messaging_product: 'whatsapp',
+              to: to,
+              type: 'image',
+              image: { link: mediaUrl, caption: message }
+            }
+          : {
+              messaging_product: 'whatsapp',
+              to: to,
+              type: 'text',
+              text: { body: message }
+            };
 
       const response = await axios.post(
         `https://graph.facebook.com/v18.0/${this.config.phone_number_id}/messages`,
@@ -122,13 +133,35 @@ class WhatsAppService {
    * Send WhatsApp message (auto-detects provider)
    */
   async sendMessage(to, message, template = null) {
-    if (this.provider === 'twilio') {
-      return await this.sendViaTwilio(to, message);
-    } else if (this.provider === 'whatsapp_business') {
-      return await this.sendViaWhatsAppAPI(to, message, template);
-    } else {
+    // A message carrying one of our short links (/s/<code>) also gets that link's QR code,
+    // so it can be scanned from another screen. If the provider will not take the image,
+    // the text goes out on its own — a message is never lost to its QR code.
+    const mediaUrl = template ? null : WhatsAppService.qrImageFor(message);
+    const send = (opts) => {
+      if (this.provider === 'twilio') return this.sendViaTwilio(to, message, opts);
+      if (this.provider === 'whatsapp_business') return this.sendViaWhatsAppAPI(to, message, template, opts);
       throw new Error(`Unknown WhatsApp provider: ${this.provider}`);
+    };
+    if (!mediaUrl) return await send({});
+    try {
+      return await send({ mediaUrl });
+    } catch (e) {
+      console.warn('[whatsapp] sending with the QR code failed, sending text only:', e.message);
+      return await send({});
     }
+  }
+
+  /**
+   * The QR image URL for the first short link in a message, or null.
+   * Only for links on our own short-link base over https: the messaging provider has to
+   * fetch the image from the public internet.
+   */
+  static qrImageFor(message) {
+    const base = require('./shortLinks').shortBase();
+    if (!/^https:\/\//i.test(base)) return null;
+    const esc = base.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const m = new RegExp(`${esc}/s/([A-Za-z0-9]{12})(?![A-Za-z0-9])`).exec(String(message || ''));
+    return m ? `${base}/s/${m[1]}/qr.png` : null;
   }
 
   /**
