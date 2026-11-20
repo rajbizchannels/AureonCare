@@ -100,7 +100,7 @@ footer{max-width:960px;margin:24px auto;padding:0 16px 32px;font-size:.85rem;col
 </style>
 ${jsonLd ? `<script type="application/ld+json">${jsonLd}</script>` : ''}
 </head><body>
-<header class="top"><div class="w"><span class="g">Aureon</span><span class="t">Care</span></div></header>
+<header class="top"><div class="w" style="display:flex;justify-content:space-between;align-items:center"><span><span class="g">Aureon</span><span class="t">Care</span></span><a href="/find" style="color:#CBD5E1;font-weight:500;font-size:.9rem;text-decoration:none">Find a practice</a></div></header>
 <main>
 <section class="hero" aria-labelledby="practice-name">
 ${p.cover_photo_id ? `<img class="cover" src="${photoUrl(p.cover_photo_id)}" alt="">` : ''}

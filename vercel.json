@@ -40,6 +40,14 @@
       "dest": "backend/server.js"
     },
     {
+      "src": "/sitemap-practices.xml",
+      "dest": "backend/server.js"
+    },
+    {
+      "src": "/robots.txt",
+      "dest": "backend/server.js"
+    },
+    {
       "src": "/uploads/(.*)",
       "dest": "backend/server.js"
     },
@@ -49,6 +57,10 @@
     },
     {
       "src": "/book/(.*)",
+      "dest": "frontend/index.html"
+    },
+    {
+      "src": "/find",
       "dest": "frontend/index.html"
     },
     {

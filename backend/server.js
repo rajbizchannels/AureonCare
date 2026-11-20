@@ -190,6 +190,7 @@ app.use('/api', apiLimiter);
 app.use('/s', require('./routes/shortLinks'));
 // Public practice profiles (/p/<slug>) — server-rendered, no session (routes/publicProfile.js).
 app.use('/p', require('./routes/publicProfile'));
+app.use('/', require('./routes/directory').sitemap);   // /sitemap-practices.xml
 
 // SEC-15: CSRF protection for cookie-authenticated requests. The session cookie must be
 // SameSite=None (the SPA and API are on different origins), so SameSite offers no
@@ -222,6 +223,7 @@ app.use('/api/invites', require('./routes/invites').router);
 app.use('/api/portal-invites', require('./routes/portalInvites'));
 app.use('/api/short-links', require('./routes/shortLinks').api);   // staff: share booking/meeting links
 app.use('/api/practice-profile', require('./routes/practiceProfile'));    // directory Phase 2
+app.use('/api/directory', require('./routes/directory').router);       // directory search (Phase 3)
 app.use('/api/team-access', require('./routes/teamAccess').router);
 app.use('/api/search', require('./routes/search'));
 app.use('/api/appointments', require('./routes/appointments'));

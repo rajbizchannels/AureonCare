@@ -61,6 +61,8 @@ const SESSION_INDEPENDENT = new Set([
   // worst sign the victim out of this browser — never act as them — and it must work when
   // the readable CSRF cookie has already expired alongside the session.
   'POST /api/auth/session/end',
+  // Read-only search over what practices published; ignores the session entirely.
+  'POST /api/directory/search',
 ]);
 
 /** True when this exact request is one of the session-independent endpoints. */

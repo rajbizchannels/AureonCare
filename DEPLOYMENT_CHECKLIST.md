@@ -762,3 +762,16 @@ refusal under the 24-hour rule is logged with the template to approve. Email is 
   choosing which details show; admins can hide but never list them. Consents carry a text version.
 - **Photos:** JPEG/PNG ≤ 2 MB, metadata (incl. GPS) stripped; provider photos need admin approval.
 - Every visibility, consent, hide and photo decision is in `public.directory_events` (append-only).
+
+## Directory search (Phase 3)
+
+- Public page **/find** (one search box: specialty, place, doctor). Results: only practices set
+  to **Searchable** (active practices), only consented and unhidden providers, neutral ranking
+  (specialty, place, name, then distance) — no paid placement.
+- **No search logs:** the query is sent in a POST body (never the URL), not logged, answered
+  `no-store`; "Use my location" is rounded to ~1 km in the browser and never stored.
+- Distance needs map coordinates on the practice's locations (Settings → Locations).
+- `/sitemap-practices.xml` and `/robots.txt` come from the backend (routed in `vercel.json` and
+  nginx); submit the sitemap in Google Search Console if you want profile pages indexed.
+- No migration needed. Ranking runs in memory from a 60-second cache; plan a database search
+  index when the directory passes ~10,000 practices.
