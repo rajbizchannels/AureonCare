@@ -711,3 +711,24 @@ short link on your own domain, e.g. `https://app.aureoncare.tech/s/k3J9xQ2mWb7Z`
   encrypted under a key derived from the code. Links expire with what they point to
   (invites at their expiry, reset links after 1 hour, meeting links a day after the session).
 - If the table is missing, messages still go out with the full link.
+
+## WhatsApp
+
+Credentials are environment variables only (platform-wide sender). Values left in
+`organization_settings.settings.whatsapp` are ignored, with a warning in the server log.
+
+| Provider | Variables |
+|---|---|
+| Twilio | `AC_WA_PROVIDER=twilio`, `AC_WA_TWILIO_SID`, `AC_WA_TWILIO_TOKEN`, `AC_WA_TWILIO_FROM` (+E.164 WhatsApp sender) |
+| Meta Cloud API | `AC_WA_PROVIDER=whatsapp_business`, `AC_WA_META_TOKEN` (permanent system-user token), `AC_WA_META_PHONE_ID`, optional `AC_WA_GRAPH_VERSION` (default `v26.0`) |
+
+- Redeploy after setting them; each server instance reads the configuration once.
+- Off switch without touching the environment:
+  `UPDATE public.organization_settings SET settings = jsonb_set(settings, '{whatsapp}', '{"enabled": false}') WHERE id = 1;`
+- Patients receive WhatsApp only after enabling it in their portal notification settings;
+  staff and admins when their profile has a phone number.
+- WhatsApp's 24-hour rule: free-form messages reach only people who messaged the number in
+  the last 24 hours. Reliable proactive notifications need approved message templates
+  (not implemented yet). Email notifications are unaffected.
+- When Meta retires the Graph API version, set `AC_WA_GRAPH_VERSION` to a current one
+  (https://developers.facebook.com/docs/graph-api/changelog/versions/).

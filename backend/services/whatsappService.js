@@ -1,5 +1,11 @@
 const axios = require('axios');
 
+// Meta Graph API version for the WhatsApp Cloud API. v18.0 (the old hard-coded value) is
+// past Meta's ~2-year support window; v26.0 was released 2026-07-29. Override with
+// AC_WA_GRAPH_VERSION when Meta retires it (developers.facebook.com/docs/graph-api/changelog/versions).
+const DEFAULT_GRAPH_VERSION = 'v26.0';
+const SECRET_KEYS = ['auth_token', 'account_sid', 'access_token', 'api_key', 'token', 'secret'];
+
 /**
  * WhatsApp Notification Service
  * Supports multiple providers: Twilio, WhatsApp Business API, etc.
@@ -12,24 +18,60 @@ class WhatsAppService {
   }
 
   /**
-   * Get WhatsApp configuration from organization settings
+   * The WhatsApp configuration, or null when WhatsApp is not set up.
+   *
+   * Credentials come ONLY from the environment (platform-level, like Stripe — SEC-38):
+   *   AC_WA_PROVIDER        'twilio' | 'whatsapp_business'
+   *   Twilio:               AC_WA_TWILIO_SID, AC_WA_TWILIO_TOKEN, AC_WA_TWILIO_FROM (+E.164)
+   *   Meta Cloud API:       AC_WA_META_TOKEN (system-user token), AC_WA_META_PHONE_ID
+   *   optional              AC_WA_GRAPH_VERSION (default DEFAULT_GRAPH_VERSION)
+   *
+   * They used to live in plain text in organization_settings.settings.whatsapp — one row
+   * shared by every practice, readable by anyone with database access and copied into every
+   * backup. Credentials found there are now IGNORED (with a warning). That row keeps one
+   * job: `"enabled": false` switches WhatsApp off without touching the environment.
    */
   static async getConfig(pool) {
+    const env = WhatsAppService.envConfig();
+    let dbSettings = null;
     try {
-      const result = await pool.query(
-        'SELECT settings FROM organization_settings WHERE id = 1'
-      );
-
-      if (result.rows.length === 0) {
-        return null;
-      }
-
-      const settings = result.rows[0].settings;
-      return settings?.whatsapp || null;
+      const result = await pool.query('SELECT settings FROM organization_settings WHERE id = 1');
+      dbSettings = (result.rows[0] && result.rows[0].settings && result.rows[0].settings.whatsapp) || null;
     } catch (error) {
-      console.error('Error getting WhatsApp config:', error);
-      return null;
+      console.warn('[whatsapp] could not read the on/off switch from organization_settings:', error.message);
     }
+    if (dbSettings && SECRET_KEYS.some((k) => dbSettings[k])) {
+      console.warn('[whatsapp] credentials in organization_settings.settings.whatsapp are ignored — '
+        + 'set AC_WA_* environment variables and remove them from the database (see DEPLOYMENT_CHECKLIST.md).');
+    }
+    if (!env) return null;
+    if (dbSettings && dbSettings.enabled === false) return null;
+    return env;
+  }
+
+  /** Configuration from AC_WA_* environment variables, or null when incomplete. */
+  static envConfig(e = process.env) {
+    const provider = String(e.AC_WA_PROVIDER || '').trim().toLowerCase();
+    if (provider === 'twilio') {
+      if (!e.AC_WA_TWILIO_SID || !e.AC_WA_TWILIO_TOKEN || !e.AC_WA_TWILIO_FROM) return null;
+      return {
+        enabled: true, provider,
+        account_sid: e.AC_WA_TWILIO_SID.trim(),
+        auth_token: e.AC_WA_TWILIO_TOKEN.trim(),
+        phone_number: e.AC_WA_TWILIO_FROM.trim().replace(/^whatsapp:/i, ''),
+      };
+    }
+    if (provider === 'whatsapp_business' || provider === 'meta') {
+      if (!e.AC_WA_META_TOKEN || !e.AC_WA_META_PHONE_ID) return null;
+      const v = String(e.AC_WA_GRAPH_VERSION || '').trim();
+      return {
+        enabled: true, provider: 'whatsapp_business',
+        access_token: e.AC_WA_META_TOKEN.trim(),
+        phone_number_id: e.AC_WA_META_PHONE_ID.trim(),
+        graph_version: /^v\d+\.\d+$/.test(v) ? v : DEFAULT_GRAPH_VERSION,
+      };
+    }
+    return null;
   }
 
   /**
@@ -108,7 +150,7 @@ class WhatsAppService {
             };
 
       const response = await axios.post(
-        `https://graph.facebook.com/v18.0/${this.config.phone_number_id}/messages`,
+        `https://graph.facebook.com/${this.config.graph_version || DEFAULT_GRAPH_VERSION}/${encodeURIComponent(this.config.phone_number_id)}/messages`,
         messageData,
         {
           headers: {
@@ -446,3 +488,4 @@ ${process.env.AC_CLN || 'AureonCare'}
 }
 
 module.exports = WhatsAppService;
+module.exports.DEFAULT_GRAPH_VERSION = DEFAULT_GRAPH_VERSION;
