@@ -4192,6 +4192,26 @@ const api = {
   },
   // From the Invite dialog (role "Patient"): the server finds the chart with this email, or
   // creates one from the name and date of birth, then sends the portal invitation.
+  // ── Guest booking requests (routes/bookingRequests.js) ──────────────────────────
+  getBookingRequests: async () => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/booking-requests`);
+    const data = await r.json().catch(() => ([]));
+    if (!r.ok) throw new Error(data.error || 'Could not load booking requests');
+    return data;
+  },
+  confirmBookingRequest: async (id, body) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/booking-requests/${id}/confirm`, { method: 'POST', body: JSON.stringify(body) });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || 'Could not confirm the request');
+    return data;
+  },
+  declineBookingRequest: async (id) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/booking-requests/${id}/decline`, { method: 'POST' });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || 'Could not decline the request');
+    return data;
+  },
+
   // ── Phase 1: the practices this person works at ──────────────────────────────────
   getMyPractices: async () => {
     const r = await authenticatedFetch(`${API_BASE_URL}/auth/memberships`);

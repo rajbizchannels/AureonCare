@@ -41,6 +41,8 @@ const PublicBookingPage = ({ providerSlug, patient = null, onSignIn }) => {
     });
 
     const [bookedAppointment, setBookedAppointment] = useState(null);
+    // A guest's booking is a request the practice confirms (signed-in patients book directly).
+    const [requested, setRequested] = useState(false);
 
     // A signed-in patient does not retype what the practice already holds.
     useEffect(() => {
@@ -118,9 +120,8 @@ const PublicBookingPage = ({ providerSlug, patient = null, onSignIn }) => {
         setLoading(true);
         setError(null);
         try {
-            // Deliberately no patient id: /api/scheduling/book is public, so it
-            // matches an existing record on email rather than trusting an id an
-            // anonymous caller could supply.
+            // Deliberately no patient id: a signed-in portal patient is recognised by their
+            // portal session; anyone else's booking is a request the practice confirms.
             const data = await api.bookPublicAppointment({
                 providerId: provider.provider_id,
                 patientInfo: {
@@ -138,6 +139,7 @@ const PublicBookingPage = ({ providerSlug, patient = null, onSignIn }) => {
             });
 
             setBookedAppointment(data.appointment);
+            setRequested(Boolean(data.requested));
             setSuccess(true);
             setStep(4);
         } catch (err) {
@@ -217,9 +219,11 @@ const PublicBookingPage = ({ providerSlug, patient = null, onSignIn }) => {
             <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
                 <div className="max-w-2xl w-full bg-white rounded-lg shadow-lg p-8">
                     <CheckCircle className="w-20 h-20 text-green-500 mx-auto mb-6" />
-                    <h2 className="text-3xl font-bold text-center mb-4">Appointment Confirmed!</h2>
+                    <h2 className="text-3xl font-bold text-center mb-4">{requested ? 'Request sent' : 'Appointment Confirmed!'}</h2>
                     <p className="text-gray-600 text-center mb-8">
-                        Your appointment has been successfully booked. You will receive a confirmation email shortly.
+                        {requested
+                            ? 'The practice will confirm your appointment by email. The time below is held for you until then.'
+                            : 'Your appointment has been successfully booked. You will receive a confirmation email shortly.'}
                     </p>
 
                     <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6">

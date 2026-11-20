@@ -140,7 +140,8 @@ ${slug ? `<a class="btn" href="/book/${esc(encodeURIComponent(slug))}">Book with
 ${photos.length ? `<section aria-labelledby="photos"><h2 id="photos">Photos</h2><div class="gal">
 ${photos.map((ph) => `<img src="${photoUrl(ph.id)}" alt="" loading="lazy">`).join('')}</div></section>` : ''}
 </main>
-<footer>This page is published by ${esc(name)} on AureonCare. Providers are listed only with their consent.</footer>
+<footer>This page is published by ${esc(name)} on AureonCare. Providers are listed only with their consent.
+<br><a href="${base}/join">Work here? Ask to join this practice</a></footer>
 </body></html>`;
     res.set('Cache-Control', 'public, max-age=60');
     res.set('X-Robots-Tag', indexable ? 'index, follow' : 'noindex, nofollow');
@@ -175,6 +176,142 @@ router.get('/:slug/photo/:id', async (req, res) => {
     res.type(ph.mime).send(ph.bytes);
   } catch (e) {
     res.status(404).end();
+  }
+});
+
+// ── "Work here? Ask to join" ─────────────────────────────────────────────────────────
+//
+// A staff member asks to join the practice from its public page. Nothing is granted here:
+//   form -> email link proves the address -> admins approve in Team access -> a normal staff
+//   invitation is sent -> accepting it is what gives access.
+// The answers never reveal whether someone already works here or already asked.
+const crypto = require('crypto');
+const joinLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, standardHeaders: true, legacyHeaders: false, store: storeFor('profile-join'),
+  // Same two-condition test switch as middleware/rateLimiters.js.
+  skip: () => process.env.AC_RL_TEST_BYPASS === '1' && process.env.NODE_ENV !== 'production' });
+const JOIN_ROLES = { doctor: 'Doctor', nurse: 'Nurse', staff: 'Staff (front desk, admin team)' };
+const sha = (t) => crypto.createHash('sha256').update(String(t)).digest('hex');
+
+function shell(title, inner) {
+  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex"><title>${esc(title)} · AureonCare</title>
+<style>:root{--bg:#F8FAFC;--card:#fff;--text:#0F172A;--muted:#475569;--line:#E2E8F0;--teal:#068573}
+@media (prefers-color-scheme:dark){:root{--bg:#0B1120;--card:#111827;--text:#E5E7EB;--muted:#94A3B8;--line:#1F2937;--teal:#2DD4BF}}
+*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--text);line-height:1.5}
+header{background:#0F172A;padding:12px 16px;font-weight:700}.g{color:#F9BD00}.t{color:#08B39C}
+main{max-width:480px;margin:24px auto;padding:0 16px}.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px}
+label{display:block;font-weight:600;margin:12px 0 4px}input,select{width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;font:inherit;background:var(--bg);color:var(--text)}
+button{margin-top:16px;width:100%;padding:11px;border:0;border-radius:8px;background:var(--teal);color:#fff;font-weight:600;font:inherit;cursor:pointer}
+.muted{color:var(--muted);font-size:.92rem}a{color:var(--teal)}.err{color:#DC2626}</style></head>
+<body><header><span class="g">Aureon</span><span class="t">Care</span></header><main><div class="card">${inner}</div></main></body></html>`;
+}
+const send = (res, status, title, inner) => {
+  res.set('Cache-Control', 'no-store');
+  res.set('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'");
+  res.status(status).type('html').send(shell(title, inner));
+};
+const joinForm = (p, slug, vals = {}, error = '') => `
+<h1 style="margin:0 0 4px;font-size:1.3rem">Ask to join ${esc(p.display_name || p.practice_name)}</h1>
+<p class="muted">For people who work, or are starting to work, at this practice. We email you a link to confirm your address; the practice's administrators then decide. You get no access until they invite you.</p>
+${error ? `<p class="err" role="alert">${esc(error)}</p>` : ''}
+<form method="post" action="/p/${esc(encodeURIComponent(slug))}/join">
+<label for="fn">First name</label><input id="fn" name="firstName" required maxlength="100" autocomplete="given-name" value="${esc(vals.firstName || '')}">
+<label for="ln">Last name</label><input id="ln" name="lastName" required maxlength="100" autocomplete="family-name" value="${esc(vals.lastName || '')}">
+<label for="em">Work email</label><input id="em" name="email" type="email" required maxlength="255" autocomplete="email" value="${esc(vals.email || '')}">
+<label for="rl">Your role</label><select id="rl" name="role">${Object.entries(JOIN_ROLES).map(([k, v]) => `<option value="${k}"${vals.role === k ? ' selected' : ''}>${esc(v)}</option>`).join('')}</select>
+<button type="submit">Send request</button></form>
+<p class="muted" style="margin-top:14px"><a href="/p/${esc(encodeURIComponent(slug))}">Back to the practice page</a></p>`;
+
+router.get('/:slug/join', async (req, res) => {
+  const ctx = await load(req).catch(() => null);
+  if (!ctx) return notFound(res);
+  send(res, 200, 'Ask to join', joinForm(ctx.profile, req.params.slug));
+});
+
+// The app-wide parser runs express.json first, which leaves req.body = {} for a form post,
+// so this route parses its own (small) form body.
+router.post('/:slug/join', joinLimiter, express.urlencoded({ extended: false, limit: '8kb' }), async (req, res) => {
+  const ctx = await load(req).catch(() => null);
+  if (!ctx) return notFound(res);
+  const { pool, profile: p } = ctx;
+  const b = req.body || {};
+  const vals = { firstName: String(b.firstName || '').trim().slice(0, 100), lastName: String(b.lastName || '').trim().slice(0, 100),
+    email: String(b.email || '').trim().toLowerCase().slice(0, 255), role: JOIN_ROLES[b.role] ? b.role : 'staff' };
+  if (!vals.firstName || !vals.lastName || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(vals.email)) {
+    return send(res, 400, 'Ask to join', joinForm(p, req.params.slug, vals, 'Please give your first name, last name and a valid email address.'));
+  }
+  const done = () => send(res, 200, 'Check your email', `<h1 style="margin:0 0 8px;font-size:1.3rem">Check your email</h1>
+<p>If ${esc(vals.email)} can receive mail, we have sent it a link to confirm your request to join ${esc(p.display_name || p.practice_name)}. The link works for 24 hours.</p>
+<p class="muted">The practice sees your request only after you confirm it.</p>`);
+  try {
+    // Already a member, or a request already confirmed: same answer, nothing new.
+    const { rows: member } = await pool.query(
+      `SELECT 1 FROM public.memberships m JOIN public.users u ON u.id = m.user_id
+        WHERE m.practice_id = $1 AND m.status = 'active' AND LOWER(u.email) = $2`, [p.practice_id, vals.email]);
+    const { rows: open } = await pool.query(
+      `SELECT id, status FROM public.join_requests WHERE practice_id = $1 AND LOWER(email) = $2 AND status IN ('unverified','pending')`,
+      [p.practice_id, vals.email]);
+    if (member.length || open.some((r) => r.status === 'pending')) return done();
+    const token = crypto.randomBytes(32).toString('base64url');
+    if (open.length) {
+      await pool.query(`UPDATE public.join_requests SET verify_token_hash = $2, verify_expires_at = now() + interval '24 hours',
+        first_name = $3, last_name = $4, requested_role = $5 WHERE id = $1`, [open[0].id, sha(token), vals.firstName, vals.lastName, vals.role]);
+    } else {
+      await pool.query(
+        `INSERT INTO public.join_requests (id, practice_id, user_id, email, requested_role, status, first_name, last_name, source,
+            verify_token_hash, verify_expires_at, created_at)
+         VALUES (gen_random_uuid(), $1, NULL, $2, $3, 'unverified', $4, $5, 'profile', $6, now() + interval '24 hours', now())`,
+        [p.practice_id, vals.email, vals.role, vals.firstName, vals.lastName, sha(token)]);
+    }
+    const { shorten } = require('../services/shortLinks');
+    const { sendEmail, buildEmailHtml, emailButton, escapeHtml } = require('../services/notificationService');
+    const link = await shorten(`${P.appBase()}/p/${encodeURIComponent(req.params.slug)}/join/verify?t=${token}`,
+      { expiresAt: new Date(Date.now() + 24 * 3600 * 1000), kind: 'join-verify' });
+    const practiceName = p.display_name || p.practice_name;
+    await sendEmail(vals.email, `Confirm your request to join ${practiceName}`, buildEmailHtml(
+      'Confirm your request', '#08B39C', `Hello ${escapeHtml(vals.firstName)},`,
+      `Please confirm that you asked to join <strong>${escapeHtml(practiceName)}</strong> on AureonCare. The practice's administrators will then review your request.`,
+      [['Practice', practiceName], ['Role requested', JOIN_ROLES[vals.role]]],
+      emailButton(link, 'Confirm my request') + `<p style="font-size:13px;color:#64748B">If you did not ask for this, ignore this email — nothing happens without the confirmation.</p>`,
+      { practiceName })).catch(() => {});
+    done();
+  } catch (e) {
+    console.error('[profile-join] request failed:', e.message);
+    send(res, 500, 'Ask to join', joinForm(p, req.params.slug, vals, 'Something went wrong. Please try again later.'));
+  }
+});
+
+router.get('/:slug/join/verify', joinLimiter, async (req, res) => {
+  const ctx = await load(req).catch(() => null);
+  if (!ctx) return notFound(res);
+  const { pool, profile: p } = ctx;
+  const practiceName = p.display_name || p.practice_name;
+  try {
+    const { rows: [r] } = await pool.query(
+      `UPDATE public.join_requests SET status = 'pending', verify_token_hash = NULL, email_verified_via = 'email-link'
+        WHERE verify_token_hash = $1 AND practice_id = $2 AND status = 'unverified' AND verify_expires_at > now()
+        RETURNING email, first_name, last_name, requested_role`, [sha(req.query.t || ''), p.practice_id]);
+    if (!r) {
+      return send(res, 410, 'Link expired', `<h1 style="margin:0 0 8px;font-size:1.3rem">This link has expired or was already used</h1>
+<p><a href="/p/${esc(encodeURIComponent(req.params.slug))}/join">Ask again</a></p>`);
+    }
+    // Tell the practice's admins.
+    try {
+      const { sendEmail, buildEmailHtml } = require('../services/notificationService');
+      const { rows: admins } = await pool.query(
+        `SELECT u.email FROM public.users u JOIN public.memberships m ON m.user_id = u.id
+          WHERE m.practice_id = $1 AND m.role = 'admin' AND m.status = 'active' AND u.status = 'active'`, [p.practice_id]);
+      const html = buildEmailHtml('Someone has asked to join your practice', '#08B39C', 'Hello,',
+        'A request to join came in from your practice\'s public page, and the email address has been confirmed.',
+        [['Name', `${r.first_name} ${r.last_name}`], ['Email', r.email], ['Role requested', JOIN_ROLES[r.requested_role] || r.requested_role]],
+        'Review it under Settings → User Management → Team access. Approving sends them a staff invitation.', { practiceName });
+      for (const a of admins) await sendEmail(a.email, `Request to join ${practiceName}`, html).catch(() => {});
+    } catch (_) { /* the request stands */ }
+    send(res, 200, 'Request sent', `<h1 style="margin:0 0 8px;font-size:1.3rem">Request sent</h1>
+<p>Thanks — ${esc(practiceName)}'s administrators will review your request. If they approve it, you will get an invitation by email.</p>`);
+  } catch (e) {
+    console.error('[profile-join] verify failed:', e.message);
+    send(res, 500, 'Ask to join', '<p>Something went wrong. Please try the link again later.</p>');
   }
 });
 

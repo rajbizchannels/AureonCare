@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import BookingRequestsPanel from '../components/scheduling/BookingRequestsPanel';
 import { Plus, List, Calendar, Eye, Edit, Trash2, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Search, Filter, X, Clock, User, CheckCircle, Bell, Video, Loader2, RefreshCw } from 'lucide-react';
 import { formatDate, formatTime } from '../utils/formatters';
 import { isProvider, isPatient } from '../utils/rolePermissions';
@@ -392,6 +393,9 @@ const PracticeManagementView = ({
       />
 
     <div className="space-y-6">
+      {/* Guest bookings from the public booking page, waiting to be confirmed. */}
+      <BookingRequestsPanel theme={theme} api={api} addNotification={addNotification}
+        onChanged={() => api.getAppointments().then((a) => setAppointments && setAppointments(a)).catch(() => {})} />
       <div className="flex items-center justify-end flex-wrap gap-4">
         <div className="flex items-center gap-3">
           {/* View Type Toggle */}

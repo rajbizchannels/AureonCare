@@ -65,7 +65,9 @@
     "test:whatsapp-templates": "node backend/test/notifications/whatsapp-templates.test.js",
     "test:practice-profile": "node backend/test/directory/profile.test.js",
     "test:directory-search": "node backend/test/directory/search.test.js",
-    "test:memberships": "node backend/test/identity/memberships.test.js"
+    "test:memberships": "node backend/test/identity/memberships.test.js",
+    "test:booking-requests": "node backend/test/scheduling/booking-requests.test.js",
+    "test:join-requests": "node backend/test/directory/join-requests.test.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.6.0",

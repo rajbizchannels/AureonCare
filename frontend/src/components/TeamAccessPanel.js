@@ -108,8 +108,13 @@ const TeamAccessPanel = ({ theme, api, addNotification }) => {
   const decide = async (id, decision) => {
     setBusy(`decide:${id}`);
     try {
-      await api.decideJoinRequest(id, decision);
-      addNotification?.('success', decision === 'approve' ? 'Access approved.' : 'Request rejected.');
+      const out = await api.decideJoinRequest(id, decision);
+      // A request from the public profile page has no account yet: approving sends an invitation.
+      const msg = decision !== 'approve' ? 'Request rejected.'
+        : out?.invite ? (out.invite.emailed ? 'Approved. An invitation has been emailed to them.'
+          : `Approved, but the invitation email could not be sent. Share this link with them: ${out.invite.inviteUrl || ''}`)
+        : 'Access approved.';
+      addNotification?.('success', msg);
       load();
     } catch (err) {
       addNotification?.('error', err.message || 'Could not record the decision.');
@@ -172,7 +177,9 @@ const TeamAccessPanel = ({ theme, api, addNotification }) => {
                     {`${r.first_name || ''} ${r.last_name || ''}`.trim() || r.email}
                   </div>
                   <div className={`text-xs ${muted}`}>
-                    {r.email} · wants {r.requested_role} · verified via {r.email_verified_via || 'unknown'}
+                    {r.email} · wants {r.requested_role} · {r.source === 'profile'
+                      ? 'asked from your public profile page (email confirmed); approving sends an invitation'
+                      : `verified via ${r.email_verified_via || 'unknown'}`}
                   </div>
                 </div>
                 <button

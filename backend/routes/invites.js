@@ -139,6 +139,77 @@ async function addMembershipFromInvite(client, userId, invite) {
 
 // ── Admin: create and manage invites ─────────────────────────────────────────
 
+/**
+ * Create (or re-issue) a staff invitation and email it. Used by the Invite dialog and by
+ * approving an "Ask to join" request from the practice's profile page.
+ * @returns {{ status: number, body: object }}
+ */
+async function createStaffInvite(pool, { email, practiceId, role, invitedBy, inviterName }) {
+  const cleanEmail = String(email || '').trim().toLowerCase();
+  const inviteRole = ['admin', 'doctor', 'staff', 'nurse'].includes(role) ? role : 'staff';
+  // An existing account blocks the invite only when it belongs to a practice. An unbound
+  // one (practice_id NULL, left by the old self-registration) is adopted on acceptance —
+  // see adoptUnboundAccount — so it no longer locks the address out for good.
+  // Phase 1: someone who already works at ANOTHER practice can be invited too — accepting
+  // adds this practice to their account. Only a membership HERE blocks the invite.
+  const dup = await pool.query(
+    `SELECT u.id, u.practice_id,
+            EXISTS (SELECT 1 FROM public.memberships m WHERE m.user_id = u.id AND m.practice_id = $2 AND m.status = 'active') AS member_here
+       FROM public.users u WHERE LOWER(u.email) = $1`, [cleanEmail, practiceId]);
+  if (dup.rows.length && dup.rows[0].member_here) {
+    return { status: 409, body: { error: 'That person already has an account in your practice. Find them in User Management.' } };
+  }
+  const existingAccount = Boolean(dup.rows.length && dup.rows[0].practice_id);
+
+  // Supersede any outstanding invite for the same address at this practice.
+  await pool.query(
+    `UPDATE public.staff_invites SET status='revoked'
+      WHERE LOWER(email)=$1 AND practice_id=$2 AND status='pending'`,
+    [cleanEmail, practiceId]
+  );
+
+  const token = crypto.randomBytes(32).toString('base64url');
+  const { rows } = await pool.query(
+    `INSERT INTO public.staff_invites (token_hash, email, practice_id, role, invited_by)
+     VALUES ($1,$2,$3,$4,$5)
+     RETURNING id, email, role, status, expires_at, created_at`,
+    [hashToken(token), cleanEmail, practiceId, inviteRole, invitedBy || null]
+  );
+
+  const base = (process.env.FRONTEND_URL || 'http://localhost:3000').split(',')[0].trim().replace(/\/$/, '');
+  // Short link on our own domain; it stops working when the invite expires.
+  const inviteUrl = await shorten(`${base}/accept-invite?token=${token}`,
+    { expiresAt: rows[0].expires_at, kind: 'staff-invite' });
+
+  const practice = await pool.query('SELECT name FROM public.practices WHERE id = $1', [practiceId]);
+  const delivery = await sendInviteEmail({
+    to: cleanEmail,
+    practiceName: (practice.rows[0] && practice.rows[0].name) || process.env.AC_CLN || 'AureonCare',
+    inviterName: inviterName || null,
+    role: inviteRole,
+    inviteUrl,
+    expiresAt: rows[0].expires_at,
+  });
+
+  // The raw token is returned exactly once, here. It is not stored and cannot be
+  // recovered — a lost invite must be reissued. The link is still returned even when the
+  // mail went out, so an admin can hand it over directly if the invitee never sees it.
+  return {
+    status: 201,
+    body: {
+      ...rows[0],
+      existingAccount,
+      inviteUrl,
+      emailed: delivery.sent,
+      emailError: delivery.sent ? undefined : delivery.reason,
+      // Shown to the practice admin who created the invite — they are the only person who
+      // can act on a mail-server rejection, and without it the failure is undiagnosable
+      // from anywhere but the server log.
+      emailErrorDetail: delivery.sent ? undefined : delivery.detail,
+    },
+  };
+}
+
 router.post('/', authenticate, authorize('admin'), async (req, res) => {
   const pool = req.app.locals.pool;
   const { email, role } = req.body || {};
@@ -155,64 +226,11 @@ router.post('/', authenticate, authorize('admin'), async (req, res) => {
   const inviteRole = ['admin', 'doctor', 'staff', 'nurse'].includes(role) ? role : 'staff';
 
   try {
-    // An existing account blocks the invite only when it belongs to a practice. An unbound
-    // one (practice_id NULL, left by the old self-registration) is adopted on acceptance —
-    // see adoptUnboundAccount — so it no longer locks the address out for good.
-    // Phase 1: someone who already works at ANOTHER practice can be invited too — accepting
-    // adds this practice to their account. Only a membership HERE blocks the invite.
-    const dup = await pool.query(
-      `SELECT u.id, u.practice_id,
-              EXISTS (SELECT 1 FROM public.memberships m WHERE m.user_id = u.id AND m.practice_id = $2 AND m.status = 'active') AS member_here
-         FROM public.users u WHERE LOWER(u.email) = $1`, [cleanEmail, req.user.practiceId]);
-    if (dup.rows.length && dup.rows[0].member_here) {
-      return res.status(409).json({ error: 'That person already has an account in your practice. Find them in User Management.' });
-    }
-    const existingAccount = Boolean(dup.rows.length && dup.rows[0].practice_id);
-
-    // Supersede any outstanding invite for the same address at this practice.
-    await pool.query(
-      `UPDATE public.staff_invites SET status='revoked'
-        WHERE LOWER(email)=$1 AND practice_id=$2 AND status='pending'`,
-      [cleanEmail, req.user.practiceId]
-    );
-
-    const token = crypto.randomBytes(32).toString('base64url');
-    const { rows } = await pool.query(
-      `INSERT INTO public.staff_invites (token_hash, email, practice_id, role, invited_by)
-       VALUES ($1,$2,$3,$4,$5)
-       RETURNING id, email, role, status, expires_at, created_at`,
-      [hashToken(token), cleanEmail, req.user.practiceId, inviteRole, req.user.id]
-    );
-
-    const base = (process.env.FRONTEND_URL || 'http://localhost:3000').split(',')[0].trim().replace(/\/$/, '');
-    // Short link on our own domain; it stops working when the invite expires.
-    const inviteUrl = await shorten(`${base}/accept-invite?token=${token}`,
-      { expiresAt: rows[0].expires_at, kind: 'staff-invite' });
-
-    const practice = await pool.query('SELECT name FROM public.practices WHERE id = $1', [req.user.practiceId]);
-    const delivery = await sendInviteEmail({
-      to: cleanEmail,
-      practiceName: (practice.rows[0] && practice.rows[0].name) || process.env.AC_CLN || 'AureonCare',
+    const out = await createStaffInvite(pool, {
+      email: cleanEmail, practiceId: req.user.practiceId, role: inviteRole, invitedBy: req.user.id,
       inviterName: [req.user.firstName, req.user.lastName].filter(Boolean).join(' ') || req.user.email,
-      role: inviteRole,
-      inviteUrl,
-      expiresAt: rows[0].expires_at,
     });
-
-    // The raw token is returned exactly once, here. It is not stored and cannot be
-    // recovered — a lost invite must be reissued. The link is still returned even when the
-    // mail went out, so an admin can hand it over directly if the invitee never sees it.
-    res.status(201).json({
-      ...rows[0],
-      existingAccount,
-      inviteUrl,
-      emailed: delivery.sent,
-      emailError: delivery.sent ? undefined : delivery.reason,
-      // Shown to the practice admin who created the invite — they are the only person who
-      // can act on a mail-server rejection, and without it the failure is undiagnosable
-      // from anywhere but the server log.
-      emailErrorDetail: delivery.sent ? undefined : delivery.detail,
-    });
+    res.status(out.status).json(out.body);
   } catch (err) {
     console.error('[invites] create error:', err);
     // A constraint the request broke is the caller's to fix, not a server fault.
@@ -363,4 +381,4 @@ router.post('/accept', acceptLimiter, async (req, res) => {
   }
 });
 
-module.exports = { router, findUsableInvite, claimInvite, adoptUnboundAccount, addMembershipFromInvite, hashToken };
+module.exports = { router, findUsableInvite, claimInvite, adoptUnboundAccount, addMembershipFromInvite, createStaffInvite, hashToken };
