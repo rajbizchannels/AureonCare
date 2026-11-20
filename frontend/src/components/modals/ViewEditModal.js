@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import QrCodeButton from '../common/QrCodeButton';
 import { X, Save, Pill, Video, ExternalLink, ToggleLeft, ToggleRight } from 'lucide-react';
 import { formatDate, formatTime, formatCurrency, toLocalDateTimeString, toLocalDateString } from '../../utils/formatters';
 import { isPhoneValid, validateOptionalPhone, validateOptionalEmail } from '../../utils/validators';
@@ -885,6 +886,17 @@ const ViewEditModal = ({
                       <ExternalLink className="w-4 h-4" />
                       Copy Link
                     </button>
+                    <QrCodeButton
+                      theme={theme}
+                      title="Telehealth session link"
+                      description="Scan to join the session on a phone."
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
+                        theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
+                      }`}
+                      getUrl={async () => (editData.id
+                        ? api.createShortLink({ kind: 'meeting', appointmentId: editData.id }).catch(() => editData.meeting_url)
+                        : editData.meeting_url)}
+                    />
                     <span className={`text-xs break-all ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
                       {editData.meeting_url}
                     </span>

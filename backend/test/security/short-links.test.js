@@ -77,6 +77,20 @@ const report = (err) => {
     /no-store/.test(r.headers.get('cache-control') || '') && r.headers.get('referrer-policy') === 'no-referrer' && /noindex/.test(r.headers.get('x-robots-tag') || ''));
   check('it can be opened more than once (until it expires)', (await open(short)).status === 302);
 
+  // ── 1b. QR code image for a short link ──────────────────────────────────────────
+  const qr = await fetch(`${short}/qr.png`.replace('https://app.example.test', BASE));
+  const qrBytes = Buffer.from(await qr.arrayBuffer());
+  check(`the QR image is a PNG (got ${qr.status} ${qr.headers.get('content-type')})`,
+    qr.status === 200 && /image\/png/.test(qr.headers.get('content-type') || '') && qrBytes.slice(1, 4).toString() === 'PNG');
+  check('...and fetching it does not count as opening the link', await (async () => {
+    const c = short.split('/s/')[1];
+    const before = (await pool.query('SELECT use_count FROM public.short_links WHERE code_hash = $1', [_codeHash(c)])).rows[0].use_count;
+    await fetch(`${BASE}/s/${c}/qr.png`);
+    const after = (await pool.query('SELECT use_count FROM public.short_links WHERE code_hash = $1', [_codeHash(c)])).rows[0].use_count;
+    return before === after;
+  })());
+  check('a malformed code gets no QR image (404)', (await fetch(`${BASE}/s/bad/qr.png`)).status === 404);
+
   // ── 2. nothing readable at rest ─────────────────────────────────────────────────
   const code = short.split('/s/')[1];
   const { rows: [row] } = await pool.query('SELECT * FROM public.short_links WHERE code_hash = $1', [_codeHash(code)]);
@@ -129,12 +143,14 @@ const report = (err) => {
   check(`a staff invite's link is short (got ${inv.body && inv.body.inviteUrl})`, /\/s\/[A-Za-z0-9]{12}$/.test(inv.body.inviteUrl || ''));
   const mailed = outbox.find((m) => m.to === inviteEmail);
   check('...the email carries the short link, not the token', mailed && mailed.html.includes(inv.body.inviteUrl) && !/accept-invite\?token=/.test(mailed.html));
+  check('...with a scan-to-open QR code of that link', mailed && mailed.html.includes(`src="${inv.body.inviteUrl}/qr.png"`) && /alt="QR code for the link above"/.test(mailed.html));
   const loc = (await open(inv.body.inviteUrl)).headers.get('location') || '';
   check('...and it opens the invite acceptance page', /^https:\/\/app\.example\.test\/accept-invite\?token=[A-Za-z0-9_-]{30,}$/.test(loc));
   await call('POST', '/api/auth/forgot-password', null, { email: A.email });
   const reset = outbox.find((m) => m.to === A.email && /reset/i.test(m.subject));
   const resetShort = reset && (/https:\/\/app\.example\.test\/s\/[A-Za-z0-9]{12}/.exec(reset.html) || [])[0];
   check('the password reset email carries a short link', Boolean(resetShort));
+  check('...and its QR code', reset && reset.html.includes(`${resetShort}/qr.png`));
   check('...which opens the reset page', resetShort && /\/reset-password\?token=[a-f0-9]{64}$/.test((await open(resetShort)).headers.get('location') || ''));
   const { rows: [exp] } = await pool.query('SELECT expires_at FROM public.short_links ORDER BY created_at DESC LIMIT 1');
   check('...and expires with the reset token (about an hour)', exp.expires_at && Math.abs(new Date(exp.expires_at) - Date.now() - 3600e3) < 120e3);

@@ -144,6 +144,27 @@ function emailButton(href, label, opts = {}) {
     </td></tr></table>`;
 }
 
+/**
+ * A scan-to-open QR code for one of our short links (/s/<code>), so a link read on a
+ * computer can be opened on a phone. The image is served by GET /s/<code>/qr.png, which
+ * only draws the short URL itself — it never resolves the code. Any other URL gets
+ * nothing: a QR code is offered only where the link is short and on our own domain.
+ * With images blocked, the alt text and the link above it still work.
+ */
+function emailQr(url, opts = {}) {
+  const base = require('./shortLinks').shortBase();
+  const m = /^(.*)\/s\/([A-Za-z0-9]{12})$/.exec(String(url || ''));
+  if (!base || !m || m[1] !== base) return '';
+  const src = `${base}/s/${m[2]}/qr.png`;
+  const caption = opts.caption || 'On your phone? Scan to open this link.';
+  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:${opts.margin || '14px 0 6px'}"><tr>
+    <td style="padding:8px;background:#FFFFFF;border:1px solid ${BRAND.border};border-radius:10px">
+      <img src="${escapeHtml(src)}" width="132" height="132" alt="QR code for the link above" style="display:block;width:132px;height:132px;border:0">
+    </td>
+    <td class="ac-muted" style="padding:0 0 0 14px;font-family:${FONT};font-size:13px;line-height:1.5;color:${BRAND.muted};vertical-align:middle">${escapeHtml(caption)}</td>
+  </tr></table>`;
+}
+
 /** A paragraph in the body text style. `html` is trusted markup. */
 function emailParagraph(html, opts = {}) {
   const muted = opts.muted;
@@ -720,6 +741,7 @@ const EVENTS = {
       ].join('');
       const extra = session.meeting_url
         ? `<strong>Join Link:</strong> <a href="${escapeHtml(session.meeting_url)}" style="color:${BRAND.primary}">${escapeHtml(session.meeting_url)}</a>`
+          + emailQr(session.meeting_url, { caption: 'Joining from your phone? Scan to open the session.' })
         : null;
       const html = buildEmailHtml('Telehealth Session Scheduled', '#8B5CF6', escapeHtml(greeting), escapeHtml(intro), rows, extra);
       const waText = `*Telehealth Session Scheduled*\n\n${greeting}\n\n${intro}\n\nDate: ${formatDate(session.start_time)}\nTime: ${formatTime(session.start_time)}${session.meeting_url ? `\n\nJoin: ${session.meeting_url}` : ''}`;
@@ -731,5 +753,5 @@ const EVENTS = {
 module.exports = {
   dispatch, sendEmail, buildEmailHtml,
   // Building blocks for templates that need more than buildEmailHtml's fixed slots.
-  detailRow, emailButton, emailParagraph, emailCallout, escapeHtml, BRAND, TAGLINE,
+  detailRow, emailButton, emailParagraph, emailCallout, emailQr, escapeHtml, BRAND, TAGLINE,
 };

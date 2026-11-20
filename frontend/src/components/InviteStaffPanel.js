@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Mail, Copy, Check, X, Loader2, UserPlus } from 'lucide-react';
+import QrCodeButton from './common/QrCodeButton';
 
 /**
  * Invite colleagues into this practice — the self-service half of onboarding.
@@ -191,6 +192,9 @@ const InviteStaffPanel = ({ theme, api, addNotification }) => {
           </div>
           <div className="flex gap-2">
             <code className={`flex-1 text-xs break-all ${text}`}>{freshLink}</code>
+            <QrCodeButton getUrl={freshLink} theme={theme}
+                          title={isPatient ? 'Patient portal invitation' : 'Team invitation'}
+                          description="Scan to open the invitation. It works once." />
             <button onClick={copy} className={`shrink-0 px-2 py-1 rounded border text-xs ${dark ? 'border-slate-600 text-slate-200' : 'border-gray-300 text-gray-700'}`}>
               {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
             </button>
