@@ -750,3 +750,15 @@ A message whose template is not set up yet, or fails, is still sent as free-form
 refusal under the 24-hour rule is logged with the template to approve. Email is unaffected.
 - When Meta retires the Graph API version, set `AC_WA_GRAPH_VERSION` to a current one
   (https://developers.facebook.com/docs/graph-api/changelog/versions/).
+
+## Practice profiles (directory Phase 2)
+
+- **Migration:** `backend/migrations/092_practice_profiles.sql` (safe to paste into the SQL editor).
+- **Routing:** `/p/(.*)` must reach the backend; `vercel.json` and `docker/nginx/nginx.conf` already do.
+- **Visibility** (Settings → Practice Profile, admins only, default **Off**):
+  Off = the page does not exist; Link only = by link/QR, `noindex`, optionally an unguessable
+  `/p/<random>` address (can be re-issued); Searchable = indexable (directory search is Phase 3).
+- **Providers** list themselves (avatar → My profile → Practice profile listing), per practice,
+  choosing which details show; admins can hide but never list them. Consents carry a text version.
+- **Photos:** JPEG/PNG ≤ 2 MB, metadata (incl. GPS) stripped; provider photos need admin approval.
+- Every visibility, consent, hide and photo decision is in `public.directory_events` (append-only).

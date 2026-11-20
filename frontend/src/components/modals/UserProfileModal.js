@@ -5,6 +5,7 @@ import { getTranslations } from '../../config/translations';
 import { useAudit } from '../../hooks/useAudit';
 import { isPhoneValid, validateOptionalPhone } from '../../utils/validators';
 import TwoFactorPanel from '../TwoFactorPanel';
+import ProviderListingPanel from '../ProviderListingPanel';
 
 const UserProfileModal = ({
   theme,
@@ -186,6 +187,9 @@ const UserProfileModal = ({
           {/* Security before preferences: this is the control that matters, and burying it
               under notification toggles is how it goes unused. */}
           <TwoFactorPanel theme={theme} api={api} addNotification={addNotification} />
+
+          {/* Providers only: consent to appear on the practice's public profile. */}
+          <ProviderListingPanel theme={theme} api={api} addNotification={addNotification} />
 
           <div className={`rounded-lg p-4 ${theme === 'dark' ? 'bg-slate-800/50' : 'bg-gray-100/50'}`}>
             <h4 className={`font-semibold mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.preferences || 'Preferences'}</h4>

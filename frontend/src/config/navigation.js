@@ -40,6 +40,7 @@ import {
   Truck,
   Tag,
   MapPin,
+  Globe,
   Megaphone,
   Send,
   Tent,
@@ -761,6 +762,15 @@ export const getNavigation = (t = {}) => [
             description: t.setupNavDescription || 'Specialty, starter services, forms and terminology',
             icon: Sparkles,
             module: 'practiceSetup',
+            access: 'adminPanel',
+          },
+          {
+            id: 'settings.practiceProfile',
+            label: t.practiceProfile || 'Practice Profile',
+            description: t.practiceProfileNavDescription || 'Public page: Off, link only or searchable',
+            icon: Globe,
+            module: 'admin',
+            tab: ADMIN_TABS.PROFILE,
             access: 'adminPanel',
           },
           {
