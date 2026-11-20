@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AI Suite - AureonCare</title>
+    <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+    <header class="doc-header">
+        <div class="doc-header-content">
+            <div class="doc-header-left">
+                <a href="/" class="home-button">
+                    <svg class="home-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                    </svg>
+                    Back to AureonCare
+                </a>
+                <div class="doc-header-title">
+                    <h1>&#129302; AI Suite</h1>
+                    <p>Optional AI assistance with mandatory human review</p>
+                </div>
+            </div>
+            <span class="version-badge">v1.6</span>
+        </div>
+    </header>
+    <div class="doc-container">
+        <a href="../index.html" class="back-link">&larr; Back to Documentation</a>
+        <div class="article-card">
+            <h1>AI Suite</h1>
+            <p>Found under <strong>Settings &rarr; Integrations &rarr; AI</strong>. Administrators configure; everyone uses.</p>
+            <p>The AI Suite is <strong>off by default</strong>, every feature is switched on individually, and nothing an AI produces reaches a patient record without a person approving it.</p>
+
+            <h2>The Governing Rule</h2>
+            <p><strong>Every AI output is a draft until a named reviewer accepts it.</strong></p>
+            <p>AI never writes to a chart, sends a message, or submits a claim on its own. It produces a suggestion, the suggestion waits in a review queue, and a person with the right role accepts, edits or rejects it. For clinical features, that person must be a clinician.</p>
+
+            <h2>Bringing Your Own Key</h2>
+            <p>AureonCare does not resell AI. You supply a key from a provider you already have a relationship with.</p>
+            <table>
+                <tr><th>Provider</th><th>Notes</th></tr>
+                <tr><td>Anthropic Claude</td><td></td></tr>
+                <tr><td>OpenAI</td><td></td></tr>
+                <tr><td>Azure OpenAI</td><td>Your own Azure tenancy</td></tr>
+                <tr><td>Google Gemini</td><td></td></tr>
+                <tr><td>Mistral AI</td><td>EU-hosted</td></tr>
+                <tr><td>Offline / self-hosted</td><td>Any OpenAI-compatible endpoint you run</td></tr>
+            </table>
+
+            <ol>
+                <li>Go to <strong>Settings &rarr; Integrations &rarr; AI &rarr; Providers</strong></li>
+                <li>Choose the provider and paste your API key</li>
+                <li>For a cloud provider, confirm you hold a <strong>BAA or DPA</strong></li>
+                <li>Click <strong>Test</strong> to verify the key</li>
+                <li>Save</li>
+            </ol>
+            <p><strong>Patient data cannot be sent to a cloud provider until the BAA/DPA confirmation is ticked.</strong> This is your practice's legal relationship with that provider, not AureonCare's.</p>
+            <p>Keys are encrypted at rest and never shown again after saving. To change one, replace it.</p>
+            <p>If your compliance position does not allow patient data to leave your infrastructure at all, use the <strong>offline / self-hosted</strong> option.</p>
+
+            <h2>How Patient Data Is Protected</h2>
+            <p>Before anything is sent, identifying details are <strong>replaced with placeholders</strong>. The response comes back with placeholders still in it, and AureonCare puts the real values back.</p>
+            <ul>
+                <li>The mapping is kept for the duration of one request</li>
+                <li>The originals in that mapping are encrypted</li>
+                <li>An auditor can see exactly which values were substituted</li>
+                <li>Requests are logged under the <strong>AI</strong> module in the audit trail</li>
+            </ul>
+
+            <h2>The Twelve Features</h2>
+            <h3>Clinical &mdash; reviewer must be a clinician</h3>
+            <table>
+                <tr><th>Feature</th><th>What it does</th></tr>
+                <tr><td>Ambient Scribe</td><td>Drafts a SOAP note from a visit transcript. Marks uncertainty with [verify], and will not invent vitals, doses or diagnoses</td></tr>
+                <tr><td>Chart Copilot</td><td>Answers questions about a patient's chart</td></tr>
+                <tr><td>Coding Suggestions</td><td>Proposes ICD-10 and CPT codes with the supporting sentence</td></tr>
+                <tr><td>Lab Explanations</td><td>Puts a result into plain language</td></tr>
+                <tr><td>Document Extraction</td><td>Pulls structured data out of an uploaded document</td></tr>
+            </table>
+            <h3>Revenue cycle</h3>
+            <table>
+                <tr><th>Feature</th><th>What it does</th></tr>
+                <tr><td>Claim Scrubbing</td><td>Flags problems on a claim before submission</td></tr>
+                <tr><td>Prior Authorisation</td><td>Drafts a prior-authorisation request</td></tr>
+            </table>
+            <h3>Operational</h3>
+            <table>
+                <tr><th>Feature</th><th>What it does</th></tr>
+                <tr><td>Message Drafts</td><td>Drafts a reply to a patient message</td></tr>
+                <tr><td>No-Show Prediction</td><td>Flags appointments at risk</td></tr>
+                <tr><td>Inventory Forecast</td><td>Projects stock needs</td></tr>
+                <tr><td>Camp Summaries</td><td>Summarises a medical camp's outcomes</td></tr>
+                <tr><td>Help Assistant</td><td>Answers questions about using AureonCare</td></tr>
+            </table>
+
+            <h2>Switching a Feature On</h2>
+            <ol>
+                <li>Go to <strong>Settings &rarr; Integrations &rarr; AI &rarr; Features &amp; cost</strong></li>
+                <li>Choose the <strong>provider</strong> and <strong>model</strong></li>
+                <li>Set the <strong>reviewer roles</strong> who may approve its output</li>
+                <li>Toggle it <strong>on</strong> and save</li>
+            </ol>
+            <p>The screen shows estimated cost per use and per month, actual usage this month, and any limit you set.</p>
+            <p><strong>Tip:</strong> Turn on one feature, watch the cost and the review queue for a week, then decide about the next.</p>
+
+            <h2>The Review Queue</h2>
+            <table>
+                <tr><th>Status</th><th>Meaning</th></tr>
+                <tr><td>Pending</td><td>Waiting for a reviewer</td></tr>
+                <tr><td>Accepted</td><td>Approved as written</td></tr>
+                <tr><td>Edited</td><td>Approved after the reviewer changed it</td></tr>
+                <tr><td>Rejected</td><td>Discarded</td></tr>
+                <tr><td>Expired</td><td>Nobody reviewed it in time</td></tr>
+            </table>
+            <ol>
+                <li>Open the draft</li>
+                <li>Read it against the source &mdash; the transcript, the chart, the document</li>
+                <li><strong>Accept</strong>, <strong>Edit</strong>, or <strong>Reject</strong></li>
+            </ol>
+            <p><strong>Read AI output against its source before accepting.</strong> The Ambient Scribe marks uncertainty with [verify], but it cannot flag everything it got wrong. Accepting is a clinical act and is recorded as yours.</p>
+
+            <h2>Working With AI Drafts</h2>
+            <p>Accepted drafts push straight into the right place:</p>
+            <ul>
+                <li><strong>SOAP text</strong> onto the clinical note</li>
+                <li><strong>Suggested codes</strong> onto the diagnosis</li>
+                <li><strong>Medications</strong> to Prescriptions &mdash; similar drugs suggested when one is not in the formulary</li>
+                <li><strong>Tests</strong> to Lab Orders</li>
+            </ul>
+            <p>AI assist buttons appear on the screens where each feature applies, not in a separate AI area.</p>
+
+            <h2>Best Practices</h2>
+            <ul>
+                <li>&#10003; Confirm your BAA or DPA before sending patient data anywhere</li>
+                <li>&#10003; Start with one or two features and watch the cost</li>
+                <li>&#10003; Set reviewer roles deliberately</li>
+                <li>&#10003; Clear the review queue daily; expired drafts are wasted spend</li>
+                <li>&#10003; Read every clinical draft against its source</li>
+                <li>&#10007; Don't accept a draft you have not read</li>
+                <li>&#10007; Don't treat [verify] markers as the only things worth checking</li>
+                <li>&#10007; Don't give clinical reviewer roles to non-clinical staff to clear the queue faster</li>
+            </ul>
+
+            <h2>Related Guides</h2>
+            <ul>
+                <li><a href="clinical-notes.html">Clinical Notes</a></li>
+                <li><a href="account-security.html">Account Security</a></li>
+            </ul>
+        </div>
+    </div>
+    <footer style="background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); color: white; padding: 2rem; text-align: center; margin-top: 3rem;">
+        <p>AureonCare v1.6 - AI Suite</p>
+    </footer>
+</body>
+</html>
