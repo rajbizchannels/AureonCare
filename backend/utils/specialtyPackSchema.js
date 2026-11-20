@@ -294,6 +294,16 @@ function validatePack(pack, opts = {}) {
     if (!SLUG.test(String(row.code || '').toLowerCase())) {
       err(`${path}.code is required and must be a slug (inventory_categories.code is NOT NULL)`);
     }
+    // The COLUMN widths, not just the shape. A 22-character code passed every structural
+    // check and then failed at apply time with `value too long for type character
+    // varying(20)` — after the transaction had already written other rows. A pack that
+    // validates must be a pack that applies.
+    if (String(row.code || '').length > 20) {
+      err(`${path}.code is ${row.code.length} characters; inventory_categories.code is varchar(20)`);
+    }
+    if (String(row.name || '').length > 100) {
+      err(`${path}.name is ${row.name.length} characters; inventory_categories.name is varchar(100)`);
+    }
   });
 
   if (pack.codeSets !== undefined) {

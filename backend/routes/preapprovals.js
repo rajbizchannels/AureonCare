@@ -1,9 +1,18 @@
 const express = require('express');
 const { authenticate } = require('../middleware/auth');
+const { requireModuleAccess } = require('../middleware/modulePermissions');
 const router = express.Router();
 router.use(authenticate);
+// Fine-grained permissions, enforced. The method decides the action (GET=view,
+// POST=create, PUT/PATCH=edit, DELETE=delete); an administrator edits this under
+// Admin Panel -> Roles & Permissions. Absent grants fall back to the role defaults in
+// utils/permissionRegistry.js, so this changes nothing until somebody edits something.
+router.use(requireModuleAccess('rcm', 'preapprovals'));
 router.use(require('../middleware/planEnforcement').enforceActiveBilling); // SEC-05 S11: read-only when subscription past_due/canceled
-const vendorIntegrationManager = require('../services/vendorIntegrations');
+// SEC-37: vendor clients are per practice — resolved from this request's tenant.
+const { vendorsFor } = require('../services/vendorIntegrations');
+const { insertNumbered } = require('../utils/recordNumbers');
+const { sendDbError } = require('../utils/dbErrors');
 
 // Get all preapprovals
 router.get('/', async (req, res) => {
@@ -65,7 +74,7 @@ router.get('/:id', async (req, res) => {
 // Check clearinghouse integration status
 router.get('/check-clearinghouse/status', async (req, res) => {
   try {
-    const isOptumEnabled = vendorIntegrationManager.isVendorEnabled('optum');
+    const isOptumEnabled = (await vendorsFor(req)).isVendorEnabled('optum');
     res.json({
       hasClearinghouse: isOptumEnabled,
       clearinghouseName: isOptumEnabled ? 'Optum' : null
@@ -95,8 +104,9 @@ router.post('/', async (req, res) => {
   try {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
 
-    // Create the preapproval record
-    const result = await pool.query(
+    // Create the preapproval record. Numbered here, as PA-YYYY-NNNNNN — the form used to
+    // send `PA-<epoch ms>` (see utils/recordNumbers.js). An explicit number is honoured.
+    const insertPreapproval = (q, number) => q.query(
       `INSERT INTO preapprovals
        (preapproval_number, patient_id, insurance_payer_id, requested_service,
         diagnosis_codes, procedure_codes, service_start_date, service_end_date,
@@ -104,7 +114,7 @@ router.post('/', async (req, res) => {
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'Pending', NOW(), NOW())
        RETURNING *`,
       [
-        preapproval_number,
+        number,
         patient_id,
         insurance_payer_id,
         requested_service,
@@ -116,11 +126,16 @@ router.post('/', async (req, res) => {
         clinical_notes
       ]
     );
+    const result = preapproval_number
+      ? await insertPreapproval(pool, preapproval_number)
+      : await insertNumbered(
+        pool, { table: 'preapprovals', column: 'preapproval_number', prefix: 'PA' }, insertPreapproval
+      );
 
     const preapproval = result.rows[0];
 
     // Submit to Optum clearinghouse if enabled and requested
-    if (submitToClearinghouse && vendorIntegrationManager.isVendorEnabled('optum')) {
+    if (submitToClearinghouse && (await vendorsFor(req)).isVendorEnabled('optum')) {
       try {
         // Get patient, provider, and payer details
         const patientResult = await pool.query(
@@ -144,7 +159,7 @@ router.post('/', async (req, res) => {
           ? JSON.parse(procedure_codes)
           : (procedure_codes || []);
 
-        const optum = vendorIntegrationManager.getOptum();
+        const optum = (await vendorsFor(req)).getOptum();
 
         // Build preapproval request data
         const preapprovalData = {
@@ -206,7 +221,7 @@ router.post('/', async (req, res) => {
           preapproval.status = 'Submitted';
 
           // Log transaction
-          await vendorIntegrationManager.logTransaction('optum', 'prior_authorization', {
+          await (await vendorsFor(req)).logTransaction('optum', 'prior_authorization', {
             request: preapprovalData,
             response: vendorResponse.response,
             status: 'success',
@@ -216,7 +231,7 @@ router.post('/', async (req, res) => {
           });
         } else {
           // Log failed transaction
-          await vendorIntegrationManager.logTransaction('optum', 'prior_authorization', {
+          await (await vendorsFor(req)).logTransaction('optum', 'prior_authorization', {
             request: preapprovalData,
             response: vendorResponse.response,
             status: 'failed',
@@ -237,6 +252,8 @@ router.post('/', async (req, res) => {
     res.status(201).json(preapproval);
   } catch (error) {
     console.error('Error creating preapproval:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to create preapproval')) return;
     res.status(500).json({ error: 'Failed to create preapproval' });
   }
 });
@@ -308,6 +325,8 @@ router.put('/:id', async (req, res) => {
     res.json(result.rows[0]);
   } catch (error) {
     console.error('Error updating preapproval:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to update preapproval')) return;
     res.status(500).json({ error: 'Failed to update preapproval' });
   }
 });
@@ -326,6 +345,8 @@ router.delete('/:id', async (req, res) => {
     res.json({ message: 'Preapproval deleted successfully' });
   } catch (error) {
     console.error('Error deleting preapproval:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to delete preapproval')) return;
     res.status(500).json({ error: 'Failed to delete preapproval' });
   }
 });

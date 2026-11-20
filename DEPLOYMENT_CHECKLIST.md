@@ -27,8 +27,15 @@ the repo, and (for `AC_MSG_KEY`) **not** alongside the backups it protects.
 |---|---|---|
 | `AC_MSG_KEY` | Encrypts PHI backups (SEC-26) and messages | Derived from `AC_TK_S` — rotating `AC_TK_S` would then make existing backups **unrecoverable** |
 | `AC_PLAT_S` | Signs super-admin console tokens (SEC-10/S10) | `/api/platform/*` returns 503; rest of the app unaffected |
-| `AC_IDX_K` | Blind-index pepper for portal tenant routing (SEC-05) | Portal always resolves to the default tenant |
+| `AC_IDX_K` | Blind-index pepper for portal tenant routing (SEC-05) | Portal **password** login only searches the default practice — patients of every other practice get "Invalid credentials" |
 | `AC_RD_H` (+ `AC_RD_P`, `AC_RD_W`) or `AC_RD_URL` | Shared rate limits and send quotas (SEC-21/24) | Limits and quotas are **per instance** — much weaker on Vercel |
+
+Not secrets, but new in this release:
+
+| Variable | Purpose | Default |
+|---|---|---|
+| `AC_PW_BREACH_CHECK` | Refuse new passwords found in public breach lists (SEC-12), via the Have I Been Pwned range API — only the first 5 hex characters of the password's SHA-1 leave the server. Needs outbound HTTPS to `api.pwnedpasswords.com`. If unreachable, the password is **accepted** and a warning logged. | `true`; set `false` for an air-gapped install |
+| `AC_PW_BREACH_TIMEOUT_MS` | How long to wait for that API before failing open | `2000` |
 
 - [ ] `AC_MSG_KEY` set **and escrowed separately from backups**
 - [ ] `AC_PLAT_S` set (≥32 bytes)
@@ -56,7 +63,8 @@ Then, and on every deploy after:
 
 ```bash
 node backend/run-migrations.js          # global: public + control — applies only what is new
-node backend/run-tenant-migrations.js   # fans tenant/001, 002, 003 out to every tenant schema
+node backend/run-tenant-migrations.js   # fans the tenant/*.sql set (001-011) out to
+                                        # every tenant schema and the golden `template`
 ```
 
 Add `--dry-run` to either to see what would run without touching anything.
@@ -98,6 +106,43 @@ isolation suite (10/10) → the app booting and a platform login succeeding.
 
 ---
 
+### What this release adds to the migration run
+
+Five global migrations and three tenant migrations, on top of everything above:
+
+| Migration | What it does | Needed before |
+|---|---|---|
+| `086_subscription_change_accounting.sql` | `actor_type`/`actor_label` on `control.audit_log`, `entry_kind` on `control.billing_events`, `current_period_start` on `control.subscriptions` | a practice admin changes their own plan — the audit write names them, and without the column it is a 500 |
+| `tenant/010_ai_integrations.sql` + `087` | the AI tables, then their registration for new tenants | any `/api/ai/*` call |
+| `tenant/011_module_permissions.sql` + `088` | `module_permissions`, and its registration | the Roles & Permissions screen |
+| `089_public_booking_routing.sql` | `control.booking_slug_route`: maps a public booking link to its practice, backfilled from existing links (SEC-30). Booking links become unique **across** practices; a collision is reported as a WARNING in the migration output and that link stays unreachable until renamed | the public booking page `/book/<slug>` — without it every anonymous booking call fails |
+| `tenant/012_portal_invites.sql` + `090` | `portal_invites` in each practice's schema, and `control.portal_invite_route` (token hash → practice only; no patient identifier in the shared plane), plus registration for new practices | the **Invite to portal** button on a patient's record and the `/portal/activate` link the patient opens. The invitation email links to `FRONTEND_URL`, so make sure it is the public address of the app |
+
+Both halves of each pair matter and the order is the usual one: the global runner
+registers a table in `control.tenant_tables` so newly provisioned tenants inherit it; the
+tenant runner creates it in `template` and in every existing schema. Run `migrate` then
+`migrate:tenants`, as always.
+
+Until `088` + `tenant/011` have run, permissions fall back to the built-in role defaults —
+the same behaviour as before the feature existed — so the gap is safe. Until `086` has
+run, a self-serve plan change fails outright.
+
+`backend/scripts/manual/apply-module-permissions.sql` carries both halves of the
+permissions pair for an operator who cannot run node against the database; the other
+manual scripts are listed in `backend/scripts/manual/README.md`.
+
+### Timezone-sensitive data
+
+`db.js` now returns `timestamp without time zone` and `date` as the characters Postgres
+holds, rather than letting node-postgres turn them into a JS `Date` that `res.json()` then
+serialises as a UTC instant. That conversion was shifting appointment times by the
+server/browser offset (a 6 PM booking listed as 7 PM) and moving dates of birth by a day
+for anyone behind UTC. `timestamptz` is untouched and still returns a `Date`, because that
+type genuinely is an instant.
+
+Nothing to run — it is a code change — but it is worth knowing when reading any stored
+timestamp, and `npm run test:endpoints` asserts the wall-clock behaviour end to end.
+
 ## 3. Deploy the application
 
 - [ ] Deploy backend + frontend
@@ -120,9 +165,15 @@ ALTER ROLE aureoncare_app WITH PASSWORD '<from your secret manager>';
 ```
 
 - [ ] Password set on the role created by migration `073`
-- [ ] `AC_DB_U=aureoncare_app`, `AC_DB_W=<password>`
-- [ ] Restart the API
-- [ ] Verify: `npm run check:db-role` → exits 0 (non-superuser, DDL refused)
+- [ ] Point the app at that role. **If `AC_PG_URI` is set it overrides every `AC_DB_*`
+      variable**, so change the user and password *inside the connection string* (on
+      Supabase's pooler the user is usually written `aureoncare_app.<project-ref>`).
+      Otherwise set `AC_DB_U=aureoncare_app`, `AC_DB_W=<password>`.
+- [ ] Keep the owner/admin connection string out of the app's environment — only the
+      migration runners use it (the app role is refused DDL by design)
+- [ ] Restart / redeploy the API
+- [ ] Verify: `npm run check:db-role` → exits 0 (non-superuser, DDL refused). It uses the
+      app's own connection (`AC_PG_URI` or `AC_DB_*`) and prints which one it checked.
 
 ---
 
@@ -165,8 +216,11 @@ Then test **before** locking anything down:
 - [ ] An existing social user (created before this work) can still sign in
 
 Only once all four pass:
-- [ ] Set `AC_DISABLE_LEGACY_SOCIAL_TOKEN=true` — this retires `POST /auth/social-login`
-      (410) and is the step that actually closes SEC-20
+- [ ] Set `AC_DISABLE_LEGACY_SOCIAL_TOKEN=true` and redeploy. This is the step that closes
+      SEC-20: every route that accepted a provider access token posted by the browser
+      answers 410 — `/api/auth/social-login`,
+      `/api/auth/link-social-account`, `/api/patient-portal/login` (with a token) and
+      `/api/patient-portal/:id/link-social`. The code-exchange routes keep working.
 
 ---
 
@@ -184,7 +238,12 @@ Only once all four pass:
 
 The isolation machinery is complete, but these are worth confirming deliberately:
 
-- [ ] `AC_IDX_K` is set (otherwise portal logins all resolve to the default tenant)
+- [ ] `AC_IDX_K` is set (otherwise portal password logins only search the default tenant)
+- [ ] **Backfill the portal identity index** with the same `AC_IDX_K` the app uses:
+      `npm run backfill:portal-identities -- --dry-run`, then without `--dry-run`.
+      Patients whose portal was enabled before the key existed have no entry, so their
+      login searches only the default practice and fails — and it cannot repair itself.
+      Safe to re-run.
 - [ ] Backfill portal session routes for existing sessions, or accept that current portal
       users are re-routed to the default tenant until they sign in again
 - [ ] Run `npm run test:sec05` against a copy that has two tenants provisioned
@@ -206,11 +265,17 @@ workspace; a forged redirect gets nothing.
 
 ## What must be configured once
 
-- [ ] `AC_STRIPE_SK` — the **platform** Stripe secret key (clinics paying you). This is a
-      different account from the per-clinic keys in Settings → Stripe, which are for
-      clinics collecting money from *their* patients. Platform billing never reads those.
+- [ ] `AC_STRIPE_SK` — the **platform** Stripe secret key (clinics paying you). Stripe is
+      configured only here, by the platform operator: practices no longer have Stripe keys
+      to enter (Settings → Integrations shows a read-only status). Patient payments are
+      taken outside AureonCare and recorded under Billing › Payments.
 - [ ] `AC_STRIPE_WHS` — webhook signing secret, with `checkout.session.completed` and the
-      `customer.subscription.*` events subscribed
+      `customer.subscription.*` events subscribed. This is the **only** supported source of
+      the webhook secret.
+      **Upgrading an install that saved a webhook secret on the old Integrations screen:**
+      set `AC_STRIPE_WHS` to that value. Until you do, the webhook falls back to the stored
+      value and logs `using the legacy webhook secret stored in the database` — that
+      fallback will be removed.
 - [ ] `FRONTEND_URL` — used to build the checkout return URLs
 - [ ] In the console's **Plans** tab, create or configure a plan and press **Create in
       Stripe** — that builds the Product and recurring Price in your Stripe account and
@@ -630,3 +695,108 @@ not to the SPA. `vercel.json` already carries:
 
 If you deploy behind your own proxy, add the equivalent rule — otherwise `/platform` will
 404 or fall through to the tenant app's index.html.
+
+## Short links (`/s/<code>`)
+
+Every link AureonCare sends or shares — staff and patient-portal invitations, password
+reset, telehealth join links, and the booking / meeting links staff copy — goes out as a
+short link on your own domain, e.g. `https://app.aureoncare.tech/s/k3J9xQ2mWb7Z`.
+
+- **Migration:** `backend/migrations/091_short_links.sql` (safe to paste into the SQL editor).
+- **Routing:** `/s/(.*)` must reach the backend. `vercel.json` and `docker/nginx/nginx.conf`
+  already route it.
+- **Optional:** `AC_SHORT_BASE=https://<short-domain>` to use a dedicated short domain. It must
+  route `/s/*` to the backend too. Without it, links use the first `FRONTEND_URL`.
+- Nothing readable is stored: the table keeps a hash of each code and the destination
+  encrypted under a key derived from the code. Links expire with what they point to
+  (invites at their expiry, reset links after 1 hour, meeting links a day after the session).
+- If the table is missing, messages still go out with the full link.
+
+## WhatsApp
+
+Credentials are environment variables only (platform-wide sender). Values left in
+`organization_settings.settings.whatsapp` are ignored, with a warning in the server log.
+
+| Provider | Variables |
+|---|---|
+| Twilio | `AC_WA_PROVIDER=twilio`, `AC_WA_TWILIO_SID`, `AC_WA_TWILIO_TOKEN`, `AC_WA_TWILIO_FROM` (+E.164 WhatsApp sender) |
+| Meta Cloud API | `AC_WA_PROVIDER=whatsapp_business`, `AC_WA_META_TOKEN` (permanent system-user token), `AC_WA_META_PHONE_ID`, optional `AC_WA_GRAPH_VERSION` (default `v26.0`) |
+
+- Redeploy after setting them; each server instance reads the configuration once.
+- Off switch without touching the environment:
+  `UPDATE public.organization_settings SET settings = jsonb_set(settings, '{whatsapp}', '{"enabled": false}') WHERE id = 1;`
+- Patients receive WhatsApp only after enabling it in their portal notification settings;
+  staff and admins when their profile has a phone number.
+### Message templates (WhatsApp's 24-hour rule)
+
+Free-form messages reach only people who messaged your number in the last 24 hours.
+Everything else must be an approved template. AureonCare has 9 (`npm run whatsapp:templates`
+prints them): appointment scheduled / changed / cancelled / status / reminder, telehealth
+session (with the QR code as its image), new prescription, new lab order, and a general
+update for staff notices.
+
+1. With the AC_WA_* variables available (e.g. `vercel env pull .env.vercel`, then prefix the
+   commands with `npx dotenv-cli -e .env.vercel --`):
+   - **Meta:** also set `AC_WA_META_WABA_ID` (WhatsApp Business Account ID) and
+     `AC_WA_META_APP_ID` (to upload the example image Meta requires for the QR header).
+   - `npm run whatsapp:templates -- --register` — submits them for approval.
+2. `npm run whatsapp:templates -- --status` — once approved, it prints the value to set:
+   - **Meta:** `AC_WA_TEMPLATES=all` (or a comma list of the approved ones)
+   - **Twilio:** `AC_WA_TWILIO_CONTENT_SIDS={"appointment_scheduled":"HX…",…}`
+3. Set it in the backend environment and redeploy.
+
+Optional: `AC_WA_TEMPLATE_PREFIX` (default `aureoncare_`), `AC_WA_TEMPLATE_LANG` (default `en`).
+A message whose template is not set up yet, or fails, is still sent as free-form text. A
+refusal under the 24-hour rule is logged with the template to approve. Email is unaffected.
+- When Meta retires the Graph API version, set `AC_WA_GRAPH_VERSION` to a current one
+  (https://developers.facebook.com/docs/graph-api/changelog/versions/).
+
+## Practice profiles (directory Phase 2)
+
+- **Migration:** `backend/migrations/092_practice_profiles.sql` (safe to paste into the SQL editor).
+- **Routing:** `/p/(.*)` must reach the backend; `vercel.json` and `docker/nginx/nginx.conf` already do.
+- **Visibility** (Settings → Practice Profile, admins only, default **Off**):
+  Off = the page does not exist; Link only = by link/QR, `noindex`, optionally an unguessable
+  `/p/<random>` address (can be re-issued); Searchable = indexable (directory search is Phase 3).
+- **Providers** list themselves (avatar → My profile → Practice profile listing), per practice,
+  choosing which details show; admins can hide but never list them. Consents carry a text version.
+- **Photos:** JPEG/PNG ≤ 2 MB, metadata (incl. GPS) stripped; provider photos need admin approval.
+- Every visibility, consent, hide and photo decision is in `public.directory_events` (append-only).
+
+## Directory search (Phase 3)
+
+- Public page **/find** (one search box: specialty, place, doctor). Results: only practices set
+  to **Searchable** (active practices), only consented and unhidden providers, neutral ranking
+  (specialty, place, name, then distance) — no paid placement.
+- **No search logs:** the query is sent in a POST body (never the URL), not logged, answered
+  `no-store`; "Use my location" is rounded to ~1 km in the browser and never stored.
+- Distance needs map coordinates on the practice's locations (Settings → Locations).
+- `/sitemap-practices.xml` and `/robots.txt` come from the backend (routed in `vercel.json` and
+  nginx); submit the sitemap in Google Search Console if you want profile pages indexed.
+- No migration needed. Ranking runs in memory from a 60-second cache; plan a database search
+  index when the directory passes ~10,000 practices.
+
+## People in several practices (Phase 1: memberships)
+
+**Order matters: apply the migration BEFORE deploying this code.**
+1. Paste `backend/migrations/093_memberships.sql` into the SQL editor. It creates
+   `public.memberships`, gives every existing account its membership, and adds a trigger that
+   keeps memberships in step with `users.practice_id` / `users.role`. Check:
+   `SELECT count(*) FROM public.users WHERE practice_id IS NOT NULL;` equals
+   `SELECT count(*) FROM public.memberships;`
+2. Deploy.
+
+What changes:
+- One account (login, password, 2FA, Google/Microsoft) can belong to several practices,
+  with a role at each. The top bar shows a practice switcher to people with more than one.
+- A session works in one practice at a time; sessions on different devices can be in
+  different practices. Removing someone from a practice ends their sessions there at once.
+- Inviting someone who already works at another practice adds this practice to their account
+  when they accept with their existing password or Google/Microsoft.
+- Admins manage a shared person's role in THEIR practice and can remove them from it; account
+  details (name, email, password, status) stay with the person.
+- Plan seats count memberships: a person at two practices takes a seat at each.
+- Sign-in starts in the most recently used practice; if that practice requires 2FA the person
+  lacks, it starts in one that does not (switching in then asks for 2FA).
+
+Not yet: a patient with charts at several practices still has one portal sign-in per practice.

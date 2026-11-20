@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Tag, Percent, X } from 'lucide-react';
+import { Tag, Percent, X, ToggleLeft, ToggleRight } from 'lucide-react';
 import ConfirmationModal from '../modals/ConfirmationModal';
 import { useAudit } from '../../hooks/useAudit';
 import ThemedSelect from './ThemedSelect';
@@ -116,7 +116,9 @@ const NewCouponForm = ({ theme, api, onClose, onSuccess, addNotification, t, edi
 
   const handleActualSubmit = async () => {
     setLoading(true);
-    setShowConfirmation(false);
+    // NOT closed here: ConfirmationModal awaits this handler and closes itself
+    // afterwards, showing a spinner meanwhile. Closing it first took that away and
+    // left the user on a screen with no sign that anything was happening.
 
     const couponData = {
       code: formData.code.trim().toUpperCase(),
@@ -401,17 +403,12 @@ const NewCouponForm = ({ theme, api, onClose, onSuccess, addNotification, t, edi
               {t.active || 'Active'}
             </span>
             <button
+              role="switch" aria-checked={!!(formData.isActive)}
               type="button"
               onClick={() => setFormData({ ...formData, isActive: !formData.isActive })}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-                formData.isActive ? 'bg-blue-600' : theme === 'dark' ? 'bg-slate-700' : 'bg-gray-300'
-              }`}
+              className="inline-flex shrink-0 items-center transition-opacity hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:opacity-50"
             >
-              <span
-                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                  formData.isActive ? 'translate-x-6' : 'translate-x-1'
-                }`}
-              />
+              {(formData.isActive) ? <ToggleRight className="w-6 h-6 text-green-400" /> : <ToggleLeft className="w-6 h-6 text-gray-400" />}
             </button>
           </div>
 

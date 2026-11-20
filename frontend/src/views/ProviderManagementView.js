@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  User, Calendar, Clock, Settings, Link2, Mail, Phone,
-  Plus, Edit2, Trash2, Eye, EyeOff, Copy, Check, AlertCircle
+  Calendar, Clock, Settings, Link2, Mail, Phone,
+  Eye, EyeOff, Copy, Check, AlertCircle
 } from 'lucide-react';
 import { DoctorAvailabilityManager } from '../components/scheduling';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
+import QrCodeButton from '../components/common/QrCodeButton';
 import { useAudit } from '../hooks/useAudit';
-import { apiFetch } from '../api/apiService';
+import api, { apiFetch } from '../api/apiService';
 
 
 const ProviderManagementView = ({ theme = 'dark', setCurrentModule }) => {
@@ -226,7 +227,6 @@ const ProviderManagementView = ({ theme = 'dark', setCurrentModule }) => {
 
       // Create booking configuration only if it doesn't exist
       if (!bookingConfig) {
-        const provider = providers.find(p => p.id === providerId);
         const slug = `dr${providerId}`.toLowerCase();
 
         const bookingConfigResponse = await apiFetch('/scheduling/booking-config', {
@@ -262,10 +262,21 @@ const ProviderManagementView = ({ theme = 'dark', setCurrentModule }) => {
     }
   };
 
-  const copyBookingUrl = () => {
+  // The booking link to share: short (/s/<code>) when the server can make one — a smaller,
+  // easier-to-scan QR code — else the full /book/<slug> link. Short booking links do not
+  // expire, so a printed code keeps working.
+  const shareableBookingUrl = useCallback(async () => {
+    const slug = bookingConfig?.booking_url_slug;
+    if (!slug) return '';
+    return api.createShortLink({ kind: 'booking', slug }).catch(() => `${window.location.origin}/book/${slug}`);
+  }, [bookingConfig?.booking_url_slug]);
+
+  // Copies the short link (/s/<code>) when the server can make one, else the full link.
+  const copyBookingUrl = async () => {
     if (bookingConfig?.booking_url_slug) {
-      const url = `${window.location.origin}/book/${bookingConfig.booking_url_slug}`;
-      navigator.clipboard.writeText(url);
+      const full = `${window.location.origin}/book/${bookingConfig.booking_url_slug}`;
+      const url = await api.createShortLink({ kind: 'booking', slug: bookingConfig.booking_url_slug }).catch(() => full);
+      try { await navigator.clipboard.writeText(url); } catch { /* clipboard blocked */ }
       setCopiedUrl(true);
       setTimeout(() => setCopiedUrl(false), 2000);
     }
@@ -557,6 +568,14 @@ const ProviderManagementView = ({ theme = 'dark', setCurrentModule }) => {
                               <code className={`text-sm ${theme === 'dark' ? 'text-cyan-300' : 'text-gray-700'}`}>
                                 {window.location.origin}/book/{bookingConfig.booking_url_slug}
                               </code>
+                              <div className="flex items-center gap-2">
+                              <QrCodeButton
+                                getUrl={shareableBookingUrl}
+                                theme={theme}
+                                title={selectedProvider ? `Book with ${[selectedProvider.first_name, selectedProvider.last_name].filter(Boolean).join(' ')}` : 'Book an appointment'}
+                                description="Scan to book an appointment online."
+                                filename={`booking-${bookingConfig.booking_url_slug}`}
+                              />
                               <button
                                 onClick={copyBookingUrl}
                                 className={`flex items-center gap-2 px-3 py-1 text-sm rounded transition-colors ${
@@ -577,6 +596,7 @@ const ProviderManagementView = ({ theme = 'dark', setCurrentModule }) => {
                                   </>
                                 )}
                               </button>
+                              </div>
                             </div>
                           </div>
                           <p className={`text-sm mt-3 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>

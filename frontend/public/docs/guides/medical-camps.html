@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Medical Camps - AureonCare</title>
+    <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+    <header class="doc-header">
+        <div class="doc-header-content">
+            <div class="doc-header-left">
+                <a href="/" class="home-button">
+                    <svg class="home-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                    </svg>
+                    Back to AureonCare
+                </a>
+                <div class="doc-header-title">
+                    <h1>⛺ Medical Camps</h1>
+                    <p>Outreach events run as a station pipeline</p>
+                </div>
+            </div>
+            <span class="version-badge">v1.5</span>
+        </div>
+    </header>
+    <div class="doc-container">
+        <a href="../index.html" class="back-link">← Back to Documentation</a>
+        <div class="article-card">
+            <h1>Medical Camps</h1>
+            <p>Found under <strong>Scheduling → Medical Camps</strong>. Available on Clinical Pro and above.</p>
+            <p>Medical Camps supports time-boxed outreach events held at a venue your practice does not own — a school hall, a community centre, a partner site.</p>
+
+            <h2>How a Camp Differs From a Clinic Day</h2>
+            <p>A camp is <strong>not</strong> a slot calendar. Nobody books a 09:20 appointment. Instead:</p>
+            <ul>
+                <li>Attendees arrive as walk-ins and are registered at a desk</li>
+                <li>They receive a <strong>queue token</strong></li>
+                <li>They move through a pipeline of <strong>stations</strong> — registration, vitals, consultation, pharmacy</li>
+                <li>Each station has its own queue</li>
+            </ul>
+            <p>A camp is a scheduling and reporting context laid over your normal clinical records. Notes, diagnoses, prescriptions and lab orders written at a camp live in the usual places — there is no second clinical system to reconcile afterwards.</p>
+
+            <h2>Camp Planning</h2>
+            <ol>
+                <li>Go to <strong>Scheduling → Medical Camps → Camp Planning</strong></li>
+                <li>Click <strong>+ New Camp</strong></li>
+                <li>Enter the camp details</li>
+                <li>Add the <strong>services</strong> the camp will offer</li>
+                <li>Define the <strong>stations</strong> attendees pass through, in order</li>
+                <li>Assign <strong>staff</strong> to stations</li>
+                <li>List the <strong>supplies</strong> needed, drawn from Inventory where you track it</li>
+                <li>Click <strong>Save</strong></li>
+            </ol>
+
+            <table>
+                <tr><th>Field</th><th>Description</th></tr>
+                <tr><td>Camp Name</td><td>What the event is called</td></tr>
+                <tr><td>Venue</td><td>Choose a location, or create one of type <em>Camp</em></td></tr>
+                <tr><td>Start / End Date</td><td>The window the camp runs</td></tr>
+                <tr><td>Sponsor</td><td>Organisation funding or hosting, if any</td></tr>
+                <tr><td>Expected Attendance</td><td>Used for planning supplies and staffing</td></tr>
+            </table>
+
+            <h3>Camp Statuses</h3>
+            <ul>
+                <li><strong>Draft</strong> — Being planned, not visible to the desk</li>
+                <li><strong>Published</strong> — Plan agreed, staff and stations fixed</li>
+                <li><strong>In Progress</strong> — Running; the desk and board are live</li>
+                <li><strong>Completed</strong> — Finished; reporting available</li>
+                <li><strong>Cancelled</strong> — Called off</li>
+            </ul>
+
+            <h2>Registration Desk</h2>
+            <p>Built for speed under queue pressure.</p>
+            <ol>
+                <li>Enter <strong>name</strong>, <strong>phone number</strong> and <strong>age</strong></li>
+                <li>Capture <strong>consent</strong></li>
+                <li>Click <strong>Register</strong></li>
+                <li>A <strong>queue token</strong> is issued</li>
+            </ol>
+
+            <p><strong>A camp registration is deliberately not a patient record.</strong> The patient index requires an MRN and an exact date of birth; a registration desk has a name, a number and an approximate age. Keeping them separate is what lets the desk move quickly without filling your patient list with half-complete records.</p>
+
+            <p><strong>Consent is enforced at the station too.</strong> An attendee without recorded consent cannot be started at a station, not just at the desk — so "we'll take the consent later" is not available under pressure.</p>
+
+            <h2>Promoting a Registration to a Patient</h2>
+            <p>When a camp attendee becomes an ongoing patient — a referral, a follow-up, a prescription to dispense later — promote their registration.</p>
+            <ol>
+                <li>Open the registration</li>
+                <li>Click <strong>Promote to Patient</strong></li>
+                <li>The system shows <strong>existing patients who may be the same person</strong>, with phone-number matches ranked highest</li>
+                <li>Either <strong>link</strong> to an existing patient, or <strong>create</strong> a new record</li>
+                <li>Supply a <strong>date of birth</strong></li>
+            </ol>
+            <p><strong>Promotion will not invent a date of birth.</strong> Enter the real one, or explicitly ask for an estimate — in which case the record is marked as holding an estimated date, so nobody later mistakes it for a verified one.</p>
+            <p><strong>Tip:</strong> Promotion is the only bridge between camp registrations and your patient index, and it always shows possible duplicates first. That makes merging a decision someone made, rather than something that happened by accident at volume.</p>
+
+            <h2>Station Board</h2>
+            <p>A live view of the camp while it runs:</p>
+            <ul>
+                <li>Every station, with its current queue length</li>
+                <li>Average and current waiting time per station</li>
+                <li>Which attendee is in progress at each station</li>
+                <li>Completed counts per station</li>
+            </ul>
+            <p>Use it to spot a bottleneck and move staff while the camp is still running.</p>
+
+            <h3>Working a Station</h3>
+            <ol>
+                <li>Select your station</li>
+                <li>Call the next token</li>
+                <li>Click <strong>Start Visit</strong> — refused if consent was never recorded</li>
+                <li>Deliver care and document it as you normally would</li>
+                <li>Click <strong>Complete</strong> — the attendee moves to the next station</li>
+            </ol>
+
+            <h2>Camp Outcomes</h2>
+            <p>Two distinct reports:</p>
+            <table>
+                <tr><th>Report</th><th>For</th><th>Contains</th></tr>
+                <tr><td>Clinical report</td><td>The practice</td><td>Attendees seen, conditions found, referrals, prescriptions, throughput per station and per hour</td></tr>
+                <tr><td>Sponsor report</td><td>The funding organisation</td><td>Aggregate only, from an explicit list of permitted fields</td></tr>
+            </table>
+
+            <p><strong>Privacy:</strong> in the sponsor report, any category with fewer than five people is merged into a larger bucket. In a camp of eighty, a count of one plus local knowledge identifies somebody. Do not work around this by exporting the clinical report to a sponsor.</p>
+
+            <p>Exports: PDF, Excel and CSV.</p>
+
+            <h2>Best Practices</h2>
+            <ul>
+                <li>✓ Create the venue as a <strong>Location</strong> before planning the camp</li>
+                <li>✓ Publish the camp before the day so the desk and board are ready</li>
+                <li>✓ Order stations in the sequence attendees physically walk</li>
+                <li>✓ Record consent at registration, every time</li>
+                <li>✓ Promote registrations the same day, while staff still recall the attendee</li>
+                <li>✓ Send sponsors the sponsor report, never the clinical one</li>
+                <li>✗ Don't register attendees as full patients to "save time later"</li>
+                <li>✗ Don't skip consent under queue pressure — the station will refuse the visit anyway</li>
+            </ul>
+
+            <h2>Related Guides</h2>
+            <ul>
+                <li><a href="locations.html">Locations</a></li>
+                <li><a href="inventory.html">Inventory Management</a></li>
+            </ul>
+        </div>
+    </div>
+    <footer style="background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); color: white; padding: 2rem; text-align: center; margin-top: 3rem;">
+        <p>AureonCare v1.5 - Medical Camps</p>
+    </footer>
+</body>
+</html>

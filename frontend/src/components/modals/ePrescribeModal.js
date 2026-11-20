@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { X, Search, AlertCircle, CheckCircle, Pill, Building2, Send, Printer, Plus, Trash2 } from 'lucide-react';
+import { X, Search, AlertCircle, Pill, Building2, Send, Printer, Plus, Trash2, ToggleLeft, ToggleRight } from 'lucide-react';
 import { useAudit } from '../../hooks/useAudit';
 import ThemedSelect from '../../components/forms/ThemedSelect';
 
@@ -36,7 +36,7 @@ const EPrescribeModal = ({
   const [pharmaciesLoading, setPharmaciesLoading] = useState(false);
   const [safetyCheckLoading, setSafetyCheckLoading] = useState(false);
   const [safetyWarnings, setSafetyWarnings] = useState([]);
-  const [generalInstructions, setGeneralInstructions] = useState('');
+  const [generalInstructions] = useState('');
 
   // Current medication details (for adding new medication to list)
   const [currentDetails, setCurrentDetails] = useState({
@@ -73,7 +73,7 @@ const EPrescribeModal = ({
     }
 
     if (!patient || !patient.id) {
-      console.error('[ePrescribe] Patient data is missing or invalid:', patient);
+      console.error('[ePrescribe] Patient data is missing or invalid'); // SEC-14: never log the record
       if (!hasShownErrorRef.current) {
         hasShownErrorRef.current = true;
         addNotification('alert', 'Cannot open ePrescribe: Patient data is missing');
@@ -83,8 +83,6 @@ const EPrescribeModal = ({
     }
     if (!normalizedProvider || !normalizedProvider.id) {
       console.error('[ePrescribe] Provider data is missing or invalid:', {
-        provider,
-        normalizedProvider,
         hasId: !!provider?.id,
         hasUserId: !!provider?.user_id
       });
@@ -216,7 +214,9 @@ const EPrescribeModal = ({
 
       // Check for specific error types
       if (error.message && error.message.includes('501')) {
-        addNotification('alert', 'ePrescribing functionality requires migration 015 to be run. Please contact your system administrator.');
+        // A migration number is an internal detail; to a prescriber it is noise that
+        // makes the product look half-built. Say what they can do about it instead.
+        addNotification('alert', 'Medication search is not available yet. Please contact your administrator.');
       } else if (error.message && error.message.includes('Failed to fetch')) {
         addNotification('alert', 'Cannot connect to server. Please check if the backend is running.');
       } else if (error.message && error.message.includes('404')) {
@@ -473,8 +473,11 @@ const EPrescribeModal = ({
       console.error('[ePrescribe] Error loading pharmacies:', error);
 
       // Check if it's a "not available" error
-      if (error.message && (error.message.includes('501') || error.message.includes('migration 015'))) {
-        addNotification('alert', 'Pharmacy network requires migration 015. Please contact your administrator.');
+      // Matched on the status alone. The second arm sniffed for the words
+      // "migration 015" in the server's message — a string match on prose, which breaks
+      // the moment that wording changes, as it just has.
+      if (error.message && error.message.includes('501')) {
+        addNotification('alert', 'The pharmacy network is not available yet. Please contact your administrator.');
       } else {
         addNotification('alert', `Failed to load pharmacies: ${error.message}`);
       }
@@ -494,7 +497,8 @@ const EPrescribeModal = ({
   useEffect(() => {
     if (!prescription) return;
 
-    console.log('[ePrescribe] Loading prescription for editing:', prescription);
+    // SEC-14: ids only — the prescription object is PHI.
+    console.log('[ePrescribe] Loading prescription for editing:', prescription.id);
 
     // Create a medication object from prescription data
     const medicationFromPrescription = {
@@ -540,7 +544,7 @@ const EPrescribeModal = ({
     if (!initialMedication) return;
     if (prescription) return; // Don't override if editing prescription
 
-    console.log('[ePrescribe] Loading initial medication:', initialMedication);
+    console.log('[ePrescribe] Loading initial medication');
 
     // Pre-select the medication
     handleSelectMedication(initialMedication);
@@ -549,7 +553,7 @@ const EPrescribeModal = ({
   // Submit all prescriptions
   const handleSubmitPrescriptions = async () => {
     console.log('[ePrescribe] Submitting prescriptions...');
-    console.log('[ePrescribe] Using provider:', normalizedProvider);
+    console.log('[ePrescribe] Using provider:', normalizedProvider?.id); // SEC-14: not the DEA/NPI record
     console.log('[ePrescribe] Is editing:', !!prescription);
     console.log('[ePrescribe] Number of medications:', addedMedications.length);
 
@@ -698,310 +702,6 @@ const EPrescribeModal = ({
     addNotification('info', 'Print functionality will be enhanced in a future update');
   };
 
-  // Old print function (keeping for reference, will be updated later)
-  const handlePrintPrescriptionOld = async () => {
-    setLoading(true);
-    try {
-      // Create prescription using api service (old implementation)
-      const prescriptionPayload = {
-        patientId: patient.id,
-        providerId: normalizedProvider.id,
-        medicationName: currentMedication.drugName || currentMedication.drug_name,
-        ndcCode: currentMedication.ndcCode || currentMedication.ndc_code,
-        dosage: currentDetails.dosage,
-        frequency: currentDetails.frequency,
-        duration: currentDetails.duration,
-        quantity: parseInt(currentDetails.quantity) || 0,
-        refills: parseInt(currentDetails.refills) || 0,
-        instructions: currentDetails.instructions,
-        substitutionAllowed: currentDetails.substitutionAllowed,
-        status: 'Active',
-        prescribedDate: new Date().toISOString().split('T')[0]
-      };
-
-      // Add pharmacy info if selected
-      if (selectedPharmacy) {
-        prescriptionPayload.pharmacyId = selectedPharmacy.id;
-        prescriptionPayload.prescriberDeaNumber = normalizedProvider?.deaNumber || normalizedProvider?.dea_number || '';
-      }
-
-      console.log('[ePrescribe] Creating prescription before printing:', prescriptionPayload);
-
-      const prescription = await api.createPrescription(prescriptionPayload);
-      console.log('[ePrescribe] Prescription created successfully:', prescription);
-
-      // Now generate the print document
-      const printWindow = window.open('', '_blank');
-
-      if (!printWindow) {
-        addNotification('alert', 'Pop-up blocked. Please allow pop-ups to print prescriptions.');
-        setLoading(false);
-        return;
-      }
-
-      const patientName = `${patient.firstName || patient.first_name || ''} ${patient.lastName || patient.last_name || ''}`.trim();
-      const providerName = normalizedProvider ? `Dr. ${normalizedProvider.firstName || normalizedProvider.first_name || ''} ${normalizedProvider.lastName || normalizedProvider.last_name || ''}`.trim() : 'N/A';
-      const currentDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
-
-      const printContent = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Prescription - ${patientName}</title>
-          <style>
-            @page {
-              size: letter;
-              margin: 0.5in;
-            }
-
-            body {
-              font-family: 'Arial', 'Helvetica', sans-serif;
-              margin: 0;
-              padding: 20px;
-              color: #000;
-              background: #fff;
-              font-size: 12pt;
-            }
-
-            .prescription-container {
-              max-width: 7.5in;
-              margin: 0 auto;
-              border: 2px solid #000;
-              padding: 30px;
-            }
-
-            .header {
-              text-align: center;
-              border-bottom: 2px solid #000;
-              padding-bottom: 20px;
-              margin-bottom: 20px;
-            }
-
-            .header h1 {
-              margin: 0 0 10px 0;
-              font-size: 24pt;
-              font-weight: bold;
-            }
-
-            .header p {
-              margin: 5px 0;
-              font-size: 11pt;
-            }
-
-            .section {
-              margin: 20px 0;
-              padding: 15px;
-              border: 1px solid #ccc;
-              background: #f9f9f9;
-            }
-
-            .section-title {
-              font-weight: bold;
-              font-size: 14pt;
-              margin-bottom: 10px;
-              border-bottom: 1px solid #000;
-              padding-bottom: 5px;
-            }
-
-            .info-row {
-              display: flex;
-              margin: 8px 0;
-              padding: 5px 0;
-            }
-
-            .info-label {
-              font-weight: bold;
-              width: 150px;
-              flex-shrink: 0;
-            }
-
-            .info-value {
-              flex: 1;
-            }
-
-            .medication-box {
-              background: #fff;
-              border: 2px solid #000;
-              padding: 20px;
-              margin: 20px 0;
-              font-size: 13pt;
-            }
-
-            .rx-symbol {
-              font-size: 36pt;
-              font-weight: bold;
-              margin-bottom: 10px;
-            }
-
-            .footer {
-              margin-top: 40px;
-              padding-top: 20px;
-              border-top: 1px solid #000;
-              font-size: 10pt;
-            }
-
-            .signature-line {
-              margin-top: 40px;
-              border-top: 2px solid #000;
-              width: 300px;
-              padding-top: 10px;
-            }
-
-            @media print {
-              body {
-                padding: 0;
-              }
-
-              .prescription-container {
-                border: none;
-              }
-
-              .no-print {
-                display: none;
-              }
-            }
-          </style>
-        </head>
-        <body>
-          <div class="prescription-container">
-            <div class="header">
-              <h1>℞ PRESCRIPTION</h1>
-              <p><strong>Date:</strong> ${currentDate}</p>
-            </div>
-
-            <div class="section">
-              <div class="section-title">Patient Information</div>
-              <div class="info-row">
-                <span class="info-label">Patient Name:</span>
-                <span class="info-value">${patientName}</span>
-              </div>
-              <div class="info-row">
-                <span class="info-label">Date of Birth:</span>
-                <span class="info-value">${patient.dateOfBirth || patient.date_of_birth || 'N/A'}</span>
-              </div>
-              <div class="info-row">
-                <span class="info-label">Address:</span>
-                <span class="info-value">${patient.address || patient.addressLine1 || 'N/A'}</span>
-              </div>
-            </div>
-
-            <div class="section">
-              <div class="section-title">Prescriber Information</div>
-              <div class="info-row">
-                <span class="info-label">Prescriber:</span>
-                <span class="info-value">${providerName}</span>
-              </div>
-              ${normalizedProvider?.deaNumber || normalizedProvider?.dea_number ? `
-              <div class="info-row">
-                <span class="info-label">DEA Number:</span>
-                <span class="info-value">${normalizedProvider.deaNumber || normalizedProvider.dea_number}</span>
-              </div>
-              ` : ''}
-            </div>
-
-            <div class="medication-box">
-              <div class="rx-symbol">℞</div>
-              <div class="info-row">
-                <span class="info-label">Medication:</span>
-                <span class="info-value"><strong>${currentMedication?.genericName || currentMedication?.brandName || currentMedication?.drugName || 'N/A'}</strong></span>
-              </div>
-              ${currentMedication?.ndcCode || currentMedication?.ndc_code ? `
-              <div class="info-row">
-                <span class="info-label">NDC Code:</span>
-                <span class="info-value">${currentMedication.ndcCode || currentMedication.ndc_code}</span>
-              </div>
-              ` : ''}
-              <div class="info-row">
-                <span class="info-label">Dosage:</span>
-                <span class="info-value"><strong>${currentDetails.dosage}</strong></span>
-              </div>
-              <div class="info-row">
-                <span class="info-label">Frequency:</span>
-                <span class="info-value"><strong>${currentDetails.frequency}</strong></span>
-              </div>
-              <div class="info-row">
-                <span class="info-label">Duration:</span>
-                <span class="info-value"><strong>${currentDetails.duration}</strong></span>
-              </div>
-              <div class="info-row">
-                <span class="info-label">Quantity:</span>
-                <span class="info-value"><strong>${currentDetails.quantity}</strong></span>
-              </div>
-              <div class="info-row">
-                <span class="info-label">Refills:</span>
-                <span class="info-value"><strong>${currentDetails.refills}</strong></span>
-              </div>
-              ${currentDetails.instructions ? `
-              <div class="info-row" style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #ccc;">
-                <span class="info-label">Instructions:</span>
-                <span class="info-value">${currentDetails.instructions}</span>
-              </div>
-              ` : ''}
-              <div class="info-row" style="margin-top: 10px;">
-                <span class="info-label">Generic Substitution:</span>
-                <span class="info-value">${currentDetails.substitutionAllowed ? 'Allowed' : 'Not Allowed (Dispense as Written)'}</span>
-              </div>
-            </div>
-
-            ${selectedPharmacy ? `
-            <div class="section">
-              <div class="section-title">Pharmacy Information</div>
-              <div class="info-row">
-                <span class="info-label">Pharmacy Name:</span>
-                <span class="info-value">${selectedPharmacy.pharmacyName}</span>
-              </div>
-              <div class="info-row">
-                <span class="info-label">Address:</span>
-                <span class="info-value">${selectedPharmacy.addressLine1}, ${selectedPharmacy.city}, ${selectedPharmacy.state} ${selectedPharmacy.zipCode}</span>
-              </div>
-              ${selectedPharmacy.phone ? `
-              <div class="info-row">
-                <span class="info-label">Phone:</span>
-                <span class="info-value">${selectedPharmacy.phone}</span>
-              </div>
-              ` : ''}
-            </div>
-            ` : ''}
-
-            <div class="signature-line">
-              <strong>Provider Signature</strong>
-            </div>
-
-            <div class="footer">
-              <p style="margin: 5px 0; font-size: 9pt; color: #666;">
-                <strong>Note:</strong> This prescription is valid for ${currentDetails.refills > 0 ? `${currentDetails.refills} refill(s)` : 'no refills'}.
-                Contact your healthcare provider if you have any questions or concerns about this medication.
-              </p>
-            </div>
-          </div>
-        </body>
-      </html>
-    `;
-
-      printWindow.document.write(printContent);
-      printWindow.document.close();
-
-      // Wait for content to load, then print
-      printWindow.onload = () => {
-        printWindow.focus();
-        printWindow.print();
-        // Close window after printing (optional - user may want to keep it open)
-        // printWindow.close();
-      };
-
-      console.log('[ePrescribe] Print window opened successfully');
-      addNotification('success', 'Prescription saved and printed successfully');
-
-      // Call onSuccess callback and close modal
-      if (onSuccess) onSuccess(prescription);
-      onClose();
-    } catch (error) {
-      console.error('[ePrescribe] Error creating prescription for print:', error);
-      addNotification('alert', `Failed to save prescription: ${error.message}`);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // Content component (shared between modal and inline modes)
   const content = (
@@ -1099,17 +799,14 @@ const EPrescribeModal = ({
                   <p className={`text-sm mt-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                     Try a different search term or NDC code
                   </p>
-                  <div className={`mt-4 p-3 rounded text-left ${theme === 'dark' ? 'bg-slate-900 border border-slate-700' : 'bg-white border border-gray-200'}`}>
-                    <p className={`text-xs font-mono ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
-                      <strong className={theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}>Troubleshooting:</strong>
-                    </p>
-                    <ul className={`text-xs mt-2 space-y-1 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
-                      <li>• Check browser console (F12) for error details</li>
-                      <li>• Ensure migration 015 has been run on the database</li>
-                      <li>• Verify backend server is running on port 3001</li>
-                      <li>• Try common medications: lisinopril, metformin, atorvastatin</li>
-                    </ul>
-                  </div>
+                  {/* A "Troubleshooting" panel used to sit here, telling whoever was
+                      prescribing to open the browser console, check that migration 015 had
+                      run, and confirm the backend was up on port 3001. That is a
+                      developer's checklist on a clinician's screen: none of it is
+                      something a prescriber can act on, and spelling out the internals
+                      makes an empty search result read as a broken product rather than as
+                      a drug that is not in the list. The line above is the part that was
+                      actually advice. */}
                 </div>
               )}
 
@@ -1304,18 +1001,11 @@ const EPrescribeModal = ({
                       Allow generic substitution
                     </span>
                     <button
+                      role="switch" aria-checked={!!(currentDetails.substitutionAllowed)}
                       onClick={() => setCurrentDetails({ ...currentDetails, substitutionAllowed: !currentDetails.substitutionAllowed })}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
-                        currentDetails.substitutionAllowed
-                          ? 'bg-blue-500'
-                          : theme === 'dark' ? 'bg-slate-700' : 'bg-gray-300'
-                      }`}
+                      className="inline-flex shrink-0 items-center transition-opacity hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:opacity-50"
                     >
-                      <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                          currentDetails.substitutionAllowed ? 'translate-x-6' : 'translate-x-1'
-                        }`}
-                      />
+                      {(currentDetails.substitutionAllowed) ? <ToggleRight className="w-6 h-6 text-green-400" /> : <ToggleLeft className="w-6 h-6 text-gray-400" />}
                     </button>
                   </div>
                 </div>

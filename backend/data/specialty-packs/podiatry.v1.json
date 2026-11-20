@@ -1,0 +1,279 @@
+{
+  "code": "podiatry",
+  "version": 1,
+  "label": "Podiatry",
+  "description": "Starting configuration for a podiatry practice: routine care, nail surgery and biomechanics appointment types, with a diabetic foot catalogue.",
+  "modules": {
+    "hide": [
+      "camps"
+    ]
+  },
+  "terminology": {
+    "provider": "Podiatrist",
+    "providers": "Podiatrists"
+  },
+  "appointmentTypes": [
+    {
+      "name": "New Patient Assessment",
+      "durationMinutes": 45,
+      "color": "#2563EB",
+      "displayOrder": 10
+    },
+    {
+      "name": "Routine Foot Care",
+      "durationMinutes": 30,
+      "color": "#0EA5E9",
+      "displayOrder": 20
+    },
+    {
+      "name": "Diabetic Foot Check",
+      "durationMinutes": 30,
+      "color": "#14B8A6",
+      "displayOrder": 30
+    },
+    {
+      "name": "Nail Surgery",
+      "durationMinutes": 60,
+      "color": "#8B5CF6",
+      "displayOrder": 40
+    },
+    {
+      "name": "Biomechanical Assessment",
+      "durationMinutes": 45,
+      "color": "#F59E0B",
+      "displayOrder": 50
+    },
+    {
+      "name": "Orthotic Fitting",
+      "durationMinutes": 30,
+      "color": "#64748B",
+      "displayOrder": 60
+    }
+  ],
+  "serviceCategories": [
+    {
+      "name": "Assessment",
+      "icon": "clipboard-list",
+      "displayOrder": 10
+    },
+    {
+      "name": "Routine Care",
+      "icon": "scissors",
+      "displayOrder": 20
+    },
+    {
+      "name": "Diabetic Foot",
+      "icon": "shield",
+      "displayOrder": 30
+    },
+    {
+      "name": "Biomechanics",
+      "icon": "footprints",
+      "displayOrder": 40
+    }
+  ],
+  "offerings": [
+    {
+      "name": "New Patient Podiatry Assessment",
+      "categoryName": "Assessment",
+      "durationMinutes": 45
+    },
+    {
+      "name": "Nail Debridement",
+      "categoryName": "Routine Care",
+      "durationMinutes": 30,
+      "cptCodes": [
+        "11721"
+      ]
+    },
+    {
+      "name": "Paring of Corn or Callus, Single Lesion",
+      "categoryName": "Routine Care",
+      "durationMinutes": 20,
+      "cptCodes": [
+        "11055"
+      ]
+    },
+    {
+      "name": "Paring of Corns or Calluses, Multiple",
+      "categoryName": "Routine Care",
+      "durationMinutes": 30,
+      "cptCodes": [
+        "11056"
+      ]
+    },
+    {
+      "name": "Ingrown Toenail Surgery",
+      "categoryName": "Routine Care",
+      "durationMinutes": 60,
+      "consentFormRequired": true,
+      "requiresPreparation": true,
+      "preparationInstructions": "Wear open or loose footwear to the appointment, and bring someone with you if you would rather not travel home alone."
+    },
+    {
+      "name": "Diabetic Foot Screening",
+      "categoryName": "Diabetic Foot",
+      "durationMinutes": 30
+    },
+    {
+      "name": "Diabetic Foot Ulcer Care",
+      "categoryName": "Diabetic Foot",
+      "durationMinutes": 40
+    },
+    {
+      "name": "Offloading and Footwear Advice",
+      "categoryName": "Diabetic Foot",
+      "durationMinutes": 30
+    },
+    {
+      "name": "Biomechanical Assessment",
+      "categoryName": "Biomechanics",
+      "durationMinutes": 45
+    },
+    {
+      "name": "Gait Analysis",
+      "categoryName": "Biomechanics",
+      "durationMinutes": 45
+    },
+    {
+      "name": "Custom Orthotic Casting",
+      "categoryName": "Biomechanics",
+      "durationMinutes": 40
+    },
+    {
+      "name": "Verruca Treatment",
+      "categoryName": "Routine Care",
+      "durationMinutes": 25
+    }
+  ],
+  "formTemplates": [
+    {
+      "slug": "podiatry-intake",
+      "name": "Podiatry Intake",
+      "templateType": "onboarding",
+      "categorySlug": "onboarding",
+      "version": "1.0",
+      "languages": [
+        "en"
+      ],
+      "complianceTags": [
+        "HIPAA"
+      ],
+      "fields": [
+        {
+          "id": "main_concern",
+          "type": "textarea",
+          "label": "What would you like us to look at?",
+          "required": true
+        },
+        {
+          "id": "which_foot",
+          "type": "radio",
+          "label": "Which foot?",
+          "options": [
+            "Left",
+            "Right",
+            "Both"
+          ]
+        },
+        {
+          "id": "pain_walking",
+          "type": "checkbox",
+          "label": "Does it hurt to walk?"
+        },
+        {
+          "id": "diabetes",
+          "type": "radio",
+          "label": "Do you have diabetes?",
+          "options": [
+            "No",
+            "Type 1",
+            "Type 2"
+          ],
+          "required": true
+        },
+        {
+          "id": "circulation",
+          "type": "checkboxes",
+          "label": "Have you been told you have any of these?",
+          "options": [
+            "Poor circulation",
+            "Nerve damage in the feet",
+            "Previous foot ulcer",
+            "Previous amputation",
+            "None of these"
+          ]
+        },
+        {
+          "id": "footwear",
+          "type": "text",
+          "label": "What footwear do you usually wear?"
+        },
+        {
+          "id": "activity",
+          "type": "text",
+          "label": "Work and activity — how much are you on your feet?"
+        },
+        {
+          "id": "self_care",
+          "type": "radio",
+          "label": "Can you reach and see your own feet?",
+          "options": [
+            "Yes",
+            "With difficulty",
+            "No"
+          ]
+        },
+        {
+          "id": "medications",
+          "type": "textarea",
+          "label": "Current medicines, including blood thinners"
+        }
+      ]
+    }
+  ],
+  "inventoryCategories": [
+    {
+      "code": "pod_instruments",
+      "name": "Podiatry Instruments"
+    },
+    {
+      "code": "pod_orthotics",
+      "name": "Orthotic Materials"
+    },
+    {
+      "code": "pod_dressings",
+      "name": "Foot Dressings"
+    },
+    {
+      "code": "pod_nailsurgery",
+      "name": "Nail Surgery Packs"
+    }
+  ],
+  "codeSets": {
+    "icd10": [
+      "L84",
+      "B07.0",
+      "M20.11",
+      "E11.621",
+      "L60.0",
+      "M77.31",
+      "L97.509"
+    ],
+    "cpt": [
+      "11055",
+      "11056",
+      "11721"
+    ]
+  },
+  "settings": {
+    "defaultAppointmentDuration": 30,
+    "slotIntervalMinutes": 15
+  },
+  "reports": {
+    "show": [
+      "clinical",
+      "operational"
+    ]
+  }
+}

@@ -6,6 +6,7 @@ import { PublicClientApplication } from '@azure/msal-browser';
 
 // Context
 import { AppProvider, useApp } from './context/AppContext';
+import ActivityIndicator from './components/common/ActivityIndicator';
 
 // OAuth Config
 import { googleOAuthConfig, microsoftOAuthConfig } from './config/oauthConfig';
@@ -67,31 +68,25 @@ import PatientLoginPage from './components/modals/PatientLoginPage';
 import SignupPage from './components/modals/SignupPage';
 import SignupCompletePage from './components/modals/SignupCompletePage';
 import AcceptInvitePage from './components/modals/AcceptInvitePage';
+import PortalActivatePage from './components/modals/PortalActivatePage';
 import JoinPracticePage from './components/modals/JoinPracticePage';
-import RegisterPage from './components/modals/RegisterPage';
+import DirectorySearchPage from './components/directory/DirectorySearchPage';
 import ForgotPasswordModal from './components/modals/ForgotPasswordModal';
 import ViewEditModal from './components/modals/ViewEditModal';
 import UserProfileModal from './components/modals/UserProfileModal';
 
-// Forms
-import NewAppointmentForm from './components/forms/NewAppointmentForm';
-import NewPatientForm from './components/forms/NewPatientForm';
-import NewClaimForm from './components/forms/NewClaimForm';
 import NewPaymentForm from './components/forms/NewPaymentForm';
-import NewTaskForm from './components/forms/NewTaskForm';
 import NewUserForm from './components/forms/NewUserForm';
 import NewInsurancePayerForm from './components/forms/NewInsurancePayerForm';
 import NewAppointmentTypeForm from './components/forms/NewAppointmentTypeForm';
 import NewHealthcareOfferingForm from './components/forms/NewHealthcareOfferingForm';
 import NewCampaignForm from './components/forms/NewCampaignForm';
-import DiagnosisForm from './components/forms/DiagnosisForm';
 import NewPharmacyForm from './components/forms/NewPharmacyForm';
 import NewLaboratoryForm from './components/forms/NewLaboratoryForm';
 
 // Panels
 import NotificationsPanel from './components/panels/NotificationsPanel';
 import SearchPanel from './components/panels/SearchPanel';
-import AIAssistantPanel from './components/panels/AIAssistantPanel';
 
 // Help System Components
 import HelpDrawer from './components/help/HelpDrawer';
@@ -117,9 +112,9 @@ function App() {
     isAuthenticated,
     setIsAuthenticated,
     showForgotPassword,
+    sessionChecking,
+    sessionNotice,
     setShowForgotPassword,
-    showRegister,
-    setShowRegister,
     currentModule,
     setCurrentModule,
     currentView,
@@ -129,7 +124,6 @@ function App() {
     theme,
     setTheme,
     language,
-    setLanguage,
     planTier,
     selectedItem,
     setSelectedItem,
@@ -158,13 +152,10 @@ function App() {
     patients,
     setPatients,
     providers,
-    setProviders,
     claims,
     setClaims,
     payments,
-    setPayments,
     notifications,
-    setNotifications,
     tasks,
     setTasks,
     users,
@@ -210,11 +201,11 @@ function App() {
   const [patientHistoryInitialTab, setPatientHistoryInitialTab] = React.useState('overview');
 
   // Local state for campaigns and appointment types
-  const [editingCampaign, setEditingCampaign] = React.useState(null);
-  const [editingAppointmentType, setEditingAppointmentType] = React.useState(null);
+  const [, setEditingCampaign] = React.useState(null);
+  const [, setEditingAppointmentType] = React.useState(null);
 
   // CRM refresh trigger - increment this to force CRM counts to refresh
-  const [crmRefreshKey, setCrmRefreshKey] = React.useState(0);
+  const [crmRefreshKey] = React.useState(0);
 
   // Help system state
   const [showHelpDrawer, setShowHelpDrawer] = React.useState(false);
@@ -416,6 +407,12 @@ function App() {
       return { kind: 'acceptInvite', token: params.get('token') };
     }
     if (/^\/join\/?$/.test(path)) return { kind: 'join' };
+    // Public directory search (Phase 3).
+    if (/^\/find\/?$/.test(path)) return { kind: 'find' };
+    // Patient portal invitation sent by the practice (Phase 1 onboarding).
+    if (/^\/portal\/activate\/?$/.test(path) && params.get('token')) {
+      return { kind: 'portalActivate', token: params.get('token') };
+    }
     return null;
   });
   const [showSignup, setShowSignup] = React.useState(false);
@@ -659,7 +656,7 @@ function App() {
       case 'crm':
         return <CRMView theme={theme} api={api} setShowForm={handleSetShowForm} setCurrentModule={setCurrentModule} currentModule={currentModule} crmRefreshKey={crmRefreshKey} t={t} />;
       case 'integrations':
-        return <IntegrationsView theme={theme} setCurrentModule={setCurrentModule} />;
+        return <IntegrationsView theme={theme} setCurrentModule={setCurrentModule} t={t} user={user} />;
       case 'clinicalServices':
         return (
           <ClinicalServicesView
@@ -832,8 +829,31 @@ function App() {
   if (publicRoute?.kind === 'signupComplete') {
     return <SignupCompletePage theme={theme} intentId={publicRoute.intentId} onSignIn={goToSignIn} />;
   }
+  if (publicRoute?.kind === 'find') {
+    return <DirectorySearchPage theme={theme} />;
+  }
   if (publicRoute?.kind === 'join') {
     return <JoinPracticePage theme={theme} api={api} onSignIn={goToSignIn} />;
+  }
+  if (publicRoute?.kind === 'portalActivate') {
+    return (
+      <PortalActivatePage
+        theme={theme}
+        token={publicRoute.token}
+        api={api}
+        // Accepting signs the patient in (the server set the portal cookie and the API
+        // client stored the session), so go straight into the portal. The URL is reset so a
+        // reload does not try to reopen the now-used link.
+        onActivated={(patient) => {
+          setUser(patient);
+          setIsAuthenticated(true);
+          setCurrentModule('patientPortal');
+          window.history.replaceState({}, '', '/');
+          setPublicRoute(null);
+        }}
+        onSignIn={goToSignIn}
+      />
+    );
   }
   if (publicRoute?.kind === 'acceptInvite') {
     return (
@@ -879,7 +899,6 @@ function App() {
           setIsAuthenticated={setIsAuthenticated}
           addNotification={addNotification}
           setShowForgotPassword={setShowForgotPassword}
-          setShowRegister={setShowRegister}
           setCurrentModule={setCurrentModule}
           onBack={() => setShowBookingLogin(false)}
         />
@@ -897,25 +916,26 @@ function App() {
   }
 
   // Show login page if not authenticated
-  if (!isAuthenticated) {
-    // Show register page
-    if (showRegister) {
-      return (
-        <RegisterPage
-          theme={theme}
-          api={api}
-          addNotification={addNotification}
-          onClose={() => setShowRegister(false)}
-          onRegistered={() => {
-            setShowRegister(false);
-          }}
-        />
-      );
-    }
+  // The server is being asked whether this tab's session is still valid (a reload resumes
+  // it). Hold a neutral screen rather than flashing the sign-in page.
+  if (sessionChecking && !isAuthenticated) {
+    return (
+      <div className={`min-h-screen flex items-center justify-center ${theme === 'dark' ? 'bg-slate-950' : 'bg-gray-50'}`}
+           role="status" aria-label="Checking your session">
+        <div className="w-8 h-8 rounded-full border-2 border-cyan-500 border-t-transparent animate-spin" />
+      </div>
+    );
+  }
 
+  if (!isAuthenticated) {
     // Show appropriate login page based on URL
     return (
       <>
+        {sessionNotice && (
+          <div role="status" className="fixed top-3 left-1/2 -translate-x-1/2 z-50 max-w-lg w-[calc(100%-2rem)] px-4 py-3 rounded-lg bg-amber-50 border border-amber-300 text-amber-900 text-sm shadow">
+            {sessionNotice}
+          </div>
+        )}
         {isPatientLoginUrl ? (
           <PatientLoginPage
             theme={theme}
@@ -925,7 +945,6 @@ function App() {
             setIsAuthenticated={setIsAuthenticated}
             addNotification={addNotification}
             setShowForgotPassword={setShowForgotPassword}
-            setShowRegister={setShowRegister}
             setCurrentModule={setCurrentModule}
           />
         ) : (
@@ -938,7 +957,6 @@ function App() {
             setIsAuthenticated={setIsAuthenticated}
             addNotification={addNotification}
             setShowForgotPassword={setShowForgotPassword}
-            setShowRegister={setShowRegister}
             setCurrentModule={setCurrentModule}
           />
         )}
@@ -1005,7 +1023,11 @@ function App() {
             // Patients manage their profile from the portal's profile tab
             if (user?.role !== 'patient') handleSetShowForm('userProfile');
           },
-          onLogout: () => {
+          onLogout: async () => {
+            // End the session on the SERVER (revokes the JWT and portal sessions, clears the
+            // HttpOnly cookies). This used to clear only the screen, leaving the session
+            // cookie valid (SEC-40). Local state is cleared whatever the network does.
+            try { await api.logout(); } catch (e) { /* signed out locally regardless */ }
             api.clearToken();
             setIsAuthenticated(false);
             setUser(null);
@@ -1294,7 +1316,7 @@ function App() {
           theme={theme}
           onClose={() => setShowSearch(false)}
           onSelectResult={(result) => {
-            console.log('Search result selected:', result);
+            console.log('Search result selected:', result?.result_type); // SEC-14: the result may be a patient
             setShowSearch(false);
 
             // Navigate to the appropriate module and open the record
@@ -1311,7 +1333,8 @@ function App() {
               'offering': 'clinicalServices',
               'campaign': 'crm',
               'preapproval': 'rcm',
-              'denial': 'rcm'
+              'denial': 'rcm',
+              'ai_suggestion': 'integrations'
             };
 
             // A patient's results are their own records; every one of them
@@ -1525,6 +1548,11 @@ export default function AppWithProvider() {
     <GoogleOAuthProvider clientId={googleOAuthConfig.clientId}>
       <MsalProvider instance={msalInstance}>
         <AppProvider>
+          {/* OUTSIDE <App />, deliberately. App returns early for the sign-in, patient
+              sign-in and sign-up screens, so an indicator mounted inside it did not exist
+              on any of them — which is exactly where the first thing a user ever clicks
+              lives. Here it is mounted for every screen, signed in or not. */}
+          <ActivityIndicator />
           <App />
         </AppProvider>
       </MsalProvider>

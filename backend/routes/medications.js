@@ -1,5 +1,6 @@
 const express = require('express');
 const { authenticate } = require('../middleware/auth');
+const { sendDbError } = require('../utils/dbErrors');
 const router = express.Router();
 router.use(authenticate);
 
@@ -228,6 +229,8 @@ router.post('/check-interactions', async (req, res) => {
     });
   } catch (error) {
     console.error('Error checking drug interactions:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to check drug interactions')) return;
     res.status(500).json({ error: 'Failed to check drug interactions' });
   }
 });
@@ -281,6 +284,8 @@ router.post('/', async (req, res) => {
     if (error.code === '23505') { // Unique violation
       res.status(400).json({ error: 'Medication with this NDC code already exists' });
     } else {
+      // A constraint the request broke is the caller's to fix, not a server fault.
+      if (sendDbError(res, error, 'Failed to create medication')) return;
       res.status(500).json({ error: 'Failed to create medication' });
     }
   }
@@ -330,6 +335,8 @@ router.put('/:id', async (req, res) => {
     res.json(toCamelCase(result.rows[0]));
   } catch (error) {
     console.error('Error updating medication:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to update medication')) return;
     res.status(500).json({ error: 'Failed to update medication' });
   }
 });

@@ -1,11 +1,18 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, authorize } = require('../middleware/auth');
+
+// SEC-36: connecting, re-keying, refreshing and disconnecting the practice's OAuth integrations (Zoom,
+// Google Drive, OneDrive...) was open to any signed-in user, and the credentials read returned
+// the stored client secret. These are admin-only; the secret is masked. The callback stays
+// unauthenticated by design — it authorises on its signed state (see the router.use above).
+const adminOnly = authorize('admin');
 const { makeTenantDb } = require('../db/requestTenantDb');
 const { microsoftClientId, googleClientId } = require('../utils/oauthClientIds');
 const router = express.Router();
 const crypto = require('crypto');
 const axios = require('axios');
+const { sendDbError } = require('../utils/dbErrors');
 
 const JWT_SECRET = process.env.AC_TK_S;
 
@@ -38,12 +45,12 @@ const signOAuthState = (providerType, userId, tenantId) =>
   jwt.sign(
     { providerType, uid: String(userId), tid: tenantId ? String(tenantId) : null },
     JWT_SECRET,
-    { expiresIn: '10m' }
+    { expiresIn: '10m', algorithm: 'HS256' }
   );
 
 const verifyOAuthState = (state, providerType) => {
   try {
-    const claims = jwt.verify(state, JWT_SECRET);
+    const claims = jwt.verify(state, JWT_SECRET, { algorithms: ['HS256'] }); // SEC-11
     return claims.providerType === providerType ? claims : null;
   } catch (err) {
     return null;
@@ -355,7 +362,7 @@ function getTableInfo(providerType) {
 
 // ─── Initiate OAuth flow ────────────────────────────────────────────────────
 
-router.get('/:providerType/initiate', async (req, res) => {
+router.get('/:providerType/initiate', adminOnly, async (req, res) => {
   try {
     const { providerType } = req.params;
     const config = OAUTH_CONFIGS[providerType];
@@ -736,7 +743,7 @@ router.get('/:providerType/redirect-url', (req, res) => {
 
 // ─── Get provider client credentials (for editing) ─────────────────────────
 
-router.get('/:providerType/credentials', async (req, res) => {
+router.get('/:providerType/credentials', adminOnly, async (req, res) => {
   try {
     const { providerType } = req.params;
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped (OAuth callback falls back to default tenant)
@@ -764,7 +771,8 @@ router.get('/:providerType/credentials', async (req, res) => {
 
     res.json({
       client_id: result.rows[0].client_id,
-      client_secret: result.rows[0].client_secret,
+      // Masked like the platform fallback above: the browser never needs the secret back.
+      client_secret: result.rows[0].client_secret ? '••••' + String(result.rows[0].client_secret).slice(-4) : '',
       source: 'database',
     });
   } catch (error) {
@@ -775,7 +783,7 @@ router.get('/:providerType/credentials', async (req, res) => {
 
 // ─── Save provider client credentials ───────────────────────────────────────
 
-router.post('/:providerType/credentials', async (req, res) => {
+router.post('/:providerType/credentials', adminOnly, async (req, res) => {
   try {
     const { providerType } = req.params;
     const { client_id, client_secret } = req.body;
@@ -804,11 +812,13 @@ router.post('/:providerType/credentials', async (req, res) => {
     );
 
     if (existing.rows.length > 0) {
+      // A masked value (as the credentials read returns it) means "unchanged".
+      const keep = String(client_secret).startsWith('••••');
       await pool.query(
         `UPDATE ${info.table}
-         SET client_id = $1, client_secret = $2, updated_at = CURRENT_TIMESTAMP
+         SET client_id = $1, client_secret = COALESCE($2, client_secret), updated_at = CURRENT_TIMESTAMP
          WHERE ${info.field} = $3`,
-        [client_id, client_secret, providerType]
+        [client_id, keep ? null : client_secret, providerType]
       );
     } else {
       await pool.query(
@@ -821,13 +831,15 @@ router.post('/:providerType/credentials', async (req, res) => {
     res.json({ success: true, message: 'Credentials saved successfully' });
   } catch (error) {
     console.error('Error saving credentials:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to save credentials')) return;
     res.status(500).json({ error: 'Failed to save credentials' });
   }
 });
 
 // ─── Refresh OAuth access token ─────────────────────────────────────────────
 
-router.post('/:providerType/refresh', async (req, res) => {
+router.post('/:providerType/refresh', adminOnly, async (req, res) => {
   try {
     const { providerType } = req.params;
     const config = OAUTH_CONFIGS[providerType];
@@ -916,13 +928,15 @@ router.post('/:providerType/refresh', async (req, res) => {
     res.json({ success: true, message: 'Token refreshed successfully' });
   } catch (error) {
     console.error('Error refreshing token:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to refresh token')) return;
     res.status(500).json({ error: 'Failed to refresh token' });
   }
 });
 
 // ─── Disconnect / clear OAuth tokens ────────────────────────────────────────
 
-router.delete('/:providerType', async (req, res) => {
+router.delete('/:providerType', adminOnly, async (req, res) => {
   try {
     const { providerType } = req.params;
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped (OAuth callback falls back to default tenant)
@@ -959,6 +973,8 @@ router.delete('/:providerType', async (req, res) => {
     res.json({ success: true, message: 'OAuth configuration cleared' });
   } catch (error) {
     console.error('Error deleting OAuth configuration:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to delete OAuth configuration')) return;
     res.status(500).json({ error: 'Failed to delete OAuth configuration' });
   }
 });

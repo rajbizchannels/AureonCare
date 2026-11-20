@@ -2,6 +2,34 @@ const express = require('express');
 const router = express.Router();
 const { authenticate, authorize, optionalAuth } = require('../middleware/auth');
 const { rosteredCampWindows } = require('../services/camps');
+const { sendDbError } = require('../utils/dbErrors');
+// SEC-30: anonymous public-booking requests carry the booking link's slug, which picks
+// the practice. See middleware/publicBookingTenant.js.
+const { publicBookingTenant } = require('../middleware/publicBookingTenant');
+const { registerBookingSlug, forgetBookingSlug, tenantIdFor, isValidSlug } = require('../services/bookingRouting');
+
+/**
+ * SEC-30: claim a booking slug for the caller's practice in the control-plane routing
+ * table, so the public page can find the practice. Slugs are unique across practices.
+ * Sends the response and returns false when the slug cannot be used.
+ */
+async function claimBookingSlug(req, res, slug, providerId) {
+    if (!isValidSlug(slug)) {
+        res.status(400).json({ error: 'Booking URL may contain only letters, numbers, - and _ (max 100), starting with a letter or number' });
+        return false;
+    }
+    const base = req.app.locals.pool;
+    const tenantId = await tenantIdFor(base, req);
+    if (!tenantId) {
+        res.status(409).json({ error: 'No practice context', message: 'Your account is not linked to a practice.' });
+        return false;
+    }
+    if (!(await registerBookingSlug(base, slug, tenantId, providerId))) {
+        res.status(409).json({ error: 'Booking URL slug already exists' });
+        return false;
+    }
+    return true;
+}
 
 // ============================================================================
 // DOCTOR AVAILABILITY ROUTES
@@ -12,7 +40,7 @@ const { rosteredCampWindows } = require('../services/camps');
  * Get all availability schedules for a provider
  * Optional authentication - public can view, authenticated users get enhanced access
  */
-router.get('/availability/:providerId', optionalAuth, async (req, res) => {
+router.get('/availability/:providerId', optionalAuth, publicBookingTenant, async (req, res) => {
     try {
         const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
         const { providerId } = req.params;
@@ -62,6 +90,8 @@ router.post('/availability', authenticate, authorize('admin', 'receptionist', 'd
         res.status(201).json(result.rows[0]);
     } catch (error) {
         console.error('Error creating availability:', error);
+        // A constraint the request broke is the caller's to fix, not a server fault.
+        if (sendDbError(res, error, 'Failed to create availability')) return;
         res.status(500).json({ error: 'Failed to create availability' });
     }
 });
@@ -97,6 +127,8 @@ router.put('/availability/:id', authenticate, authorize('admin', 'receptionist',
         res.json(result.rows[0]);
     } catch (error) {
         console.error('Error updating availability:', error);
+        // A constraint the request broke is the caller's to fix, not a server fault.
+        if (sendDbError(res, error, 'Failed to update availability')) return;
         res.status(500).json({ error: 'Failed to update availability' });
     }
 });
@@ -123,6 +155,8 @@ router.delete('/availability/:id', authenticate, authorize('admin', 'receptionis
         res.json({ message: 'Availability deleted successfully' });
     } catch (error) {
         console.error('Error deleting availability:', error);
+        // A constraint the request broke is the caller's to fix, not a server fault.
+        if (sendDbError(res, error, 'Failed to delete availability')) return;
         res.status(500).json({ error: 'Failed to delete availability' });
     }
 });
@@ -170,6 +204,8 @@ router.post('/availability/bulk', authenticate, authorize('admin', 'receptionist
     } catch (error) {
         await client.query('ROLLBACK');
         console.error('Error bulk creating availability:', error);
+        // A constraint the request broke is the caller's to fix, not a server fault.
+        if (sendDbError(res, error, 'Failed to create availability schedules')) return;
         res.status(500).json({ error: 'Failed to create availability schedules' });
     } finally {
         client.release();
@@ -185,7 +221,7 @@ router.post('/availability/bulk', authenticate, authorize('admin', 'receptionist
  * Get all time-off periods for a provider
  * Optional authentication - public can view
  */
-router.get('/time-off/:providerId', optionalAuth, async (req, res) => {
+router.get('/time-off/:providerId', optionalAuth, publicBookingTenant, async (req, res) => {
     try {
         const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
         const { providerId } = req.params;
@@ -230,6 +266,8 @@ router.post('/time-off', authenticate, authorize('admin', 'receptionist', 'docto
         res.status(201).json(result.rows[0]);
     } catch (error) {
         console.error('Error creating time-off:', error);
+        // A constraint the request broke is the caller's to fix, not a server fault.
+        if (sendDbError(res, error, 'Failed to create time-off period')) return;
         res.status(500).json({ error: 'Failed to create time-off period' });
     }
 });
@@ -265,6 +303,8 @@ router.put('/time-off/:id', authenticate, authorize('admin', 'receptionist', 'do
         res.json(result.rows[0]);
     } catch (error) {
         console.error('Error updating time-off:', error);
+        // A constraint the request broke is the caller's to fix, not a server fault.
+        if (sendDbError(res, error, 'Failed to update time-off period')) return;
         res.status(500).json({ error: 'Failed to update time-off period' });
     }
 });
@@ -291,6 +331,8 @@ router.delete('/time-off/:id', authenticate, authorize('admin', 'receptionist', 
         res.json({ message: 'Time-off period deleted successfully' });
     } catch (error) {
         console.error('Error deleting time-off:', error);
+        // A constraint the request broke is the caller's to fix, not a server fault.
+        if (sendDbError(res, error, 'Failed to delete time-off period')) return;
         res.status(500).json({ error: 'Failed to delete time-off period' });
     }
 });
@@ -304,7 +346,7 @@ router.delete('/time-off/:id', authenticate, authorize('admin', 'receptionist', 
  * Get all appointment types for a provider
  * Optional authentication - public can view for booking purposes
  */
-router.get('/appointment-types/:providerId', optionalAuth, async (req, res) => {
+router.get('/appointment-types/:providerId', optionalAuth, publicBookingTenant, async (req, res) => {
     try {
         const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
         const { providerId } = req.params;
@@ -329,7 +371,7 @@ router.get('/appointment-types/:providerId', optionalAuth, async (req, res) => {
  * Get all appointment types (clinic-wide)
  * Optional authentication - public can view for booking purposes
  */
-router.get('/appointment-types', optionalAuth, async (req, res) => {
+router.get('/appointment-types', optionalAuth, publicBookingTenant, async (req, res) => {
     try {
         const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
         const result = await pool.query(
@@ -393,6 +435,8 @@ router.post('/appointment-types', authenticate, authorize('admin', 'receptionist
         res.status(201).json(result.rows[0]);
     } catch (error) {
         console.error('Error creating appointment type:', error);
+        // A constraint the request broke is the caller's to fix, not a server fault.
+        if (sendDbError(res, error, 'Failed to create appointment type')) return;
         res.status(500).json({ error: 'Failed to create appointment type' });
     }
 });
@@ -456,6 +500,8 @@ router.put('/appointment-types/:id', authenticate, authorize('admin', 'reception
         res.json(result.rows[0]);
     } catch (error) {
         console.error('Error updating appointment type:', error);
+        // A constraint the request broke is the caller's to fix, not a server fault.
+        if (sendDbError(res, error, 'Failed to update appointment type')) return;
         res.status(500).json({ error: 'Failed to update appointment type' });
     }
 });
@@ -482,6 +528,8 @@ router.delete('/appointment-types/:id', authenticate, authorize('admin'), async 
         res.json({ message: 'Appointment type deleted successfully' });
     } catch (error) {
         console.error('Error deleting appointment type:', error);
+        // A constraint the request broke is the caller's to fix, not a server fault.
+        if (sendDbError(res, error, 'Failed to delete appointment type')) return;
         res.status(500).json({ error: 'Failed to delete appointment type' });
     }
 });
@@ -495,7 +543,7 @@ router.delete('/appointment-types/:id', authenticate, authorize('admin'), async 
  * Get booking configuration for a provider
  * Optional authentication - authenticated users get full config, public gets limited info
  */
-router.get('/booking-config/:providerId', optionalAuth, async (req, res) => {
+router.get('/booking-config/:providerId', optionalAuth, publicBookingTenant, async (req, res) => {
     try {
         const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
         const { providerId } = req.params;
@@ -521,7 +569,7 @@ router.get('/booking-config/:providerId', optionalAuth, async (req, res) => {
  * Get provider by booking URL slug (for public booking page)
  * No authentication required - public endpoint
  */
-router.get('/booking-config/slug/:slug', async (req, res) => {
+router.get('/booking-config/slug/:slug', optionalAuth, publicBookingTenant, async (req, res) => {
     try {
         const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
         const { slug } = req.params;
@@ -588,6 +636,7 @@ router.post('/booking-config', authenticate, authorize('admin', 'receptionist', 
         if (!providerId) {
             return res.status(400).json({ error: 'Provider ID is required' });
         }
+        if (bookingUrlSlug && !(await claimBookingSlug(req, res, bookingUrlSlug, providerId))) return;
 
         const result = await pool.query(
             `INSERT INTO provider_booking_config
@@ -623,6 +672,8 @@ router.post('/booking-config', authenticate, authorize('admin', 'receptionist', 
         if (error.code === '23505') { // Unique constraint violation
             return res.status(409).json({ error: 'Booking URL slug already exists' });
         }
+        // A constraint the request broke is the caller's to fix, not a server fault.
+        if (sendDbError(res, error, 'Failed to create booking configuration')) return;
         res.status(500).json({ error: 'Failed to create booking configuration' });
     }
 });
@@ -653,6 +704,13 @@ router.put('/booking-config/:providerId', authenticate, authorize('admin', 'rece
             bookingInstructions,
             customFields
         } = req.body;
+
+        // SEC-30: claim the new slug before taking it, and release the old one after.
+        const before = await pool.query(
+            'SELECT booking_url_slug FROM provider_booking_config WHERE provider_id = $1', [providerId]);
+        const oldSlug = before.rows[0] ? before.rows[0].booking_url_slug : null;
+        if (bookingUrlSlug && bookingUrlSlug !== oldSlug
+            && !(await claimBookingSlug(req, res, bookingUrlSlug, providerId))) return;
 
         const result = await pool.query(
             `UPDATE provider_booking_config
@@ -697,6 +755,13 @@ router.put('/booking-config/:providerId', authenticate, authorize('admin', 'rece
         if (result.rows.length === 0) {
             return res.status(404).json({ error: 'Booking configuration not found' });
         }
+        if (oldSlug && bookingUrlSlug && bookingUrlSlug !== oldSlug) {
+            try {
+                await forgetBookingSlug(req.app.locals.pool, oldSlug, await tenantIdFor(req.app.locals.pool, req));
+            } catch (e) {
+                console.warn('[scheduling] could not release old booking slug:', e.message);
+            }
+        }
 
         res.json(result.rows[0]);
     } catch (error) {
@@ -704,6 +769,8 @@ router.put('/booking-config/:providerId', authenticate, authorize('admin', 'rece
         if (error.code === '23505') {
             return res.status(409).json({ error: 'Booking URL slug already exists' });
         }
+        // A constraint the request broke is the caller's to fix, not a server fault.
+        if (sendDbError(res, error, 'Failed to update booking configuration')) return;
         res.status(500).json({ error: 'Failed to update booking configuration' });
     }
 });
@@ -725,7 +792,7 @@ router.put('/booking-config/:providerId', authenticate, authorize('admin', 'rece
 // req.db) for a signed-in caller while still letting the endpoint answer anonymously.
 // The genuinely anonymous path remains unresolved — a public booking page needs tenant
 // routing of its own (see services/portalRouting.js); that is a separate fix.
-router.get('/slots/:providerId', optionalAuth, async (req, res) => {
+router.get('/slots/:providerId', optionalAuth, publicBookingTenant, async (req, res) => {
     try {
         const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
         const { providerId } = req.params;
@@ -903,7 +970,7 @@ router.get('/slots/:providerId', optionalAuth, async (req, res) => {
  * Query params: startDate, endDate, appointmentTypeId
  * No authentication required - public endpoint for booking
  */
-router.get('/available-dates/:providerId', optionalAuth, async (req, res) => {
+router.get('/available-dates/:providerId', optionalAuth, publicBookingTenant, async (req, res) => {
     try {
         const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
         const { providerId } = req.params;
@@ -987,7 +1054,7 @@ router.get('/available-dates/:providerId', optionalAuth, async (req, res) => {
  * Check if a specific time slot is available
  * Body: { providerId, startTime, endTime }
  */
-router.post('/check-availability', async (req, res) => {
+router.post('/check-availability', optionalAuth, publicBookingTenant, async (req, res) => {
     try {
         const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
         const { providerId, startTime, endTime } = req.body;
@@ -1005,6 +1072,8 @@ router.post('/check-availability', async (req, res) => {
         res.json({ available: result.rows[0].available });
     } catch (error) {
         console.error('Error checking availability:', error);
+        // A constraint the request broke is the caller's to fix, not a server fault.
+        if (sendDbError(res, error, 'Failed to check availability')) return;
         res.status(500).json({ error: 'Failed to check availability' });
     }
 });
@@ -1018,7 +1087,7 @@ router.post('/check-availability', async (req, res) => {
  * Public booking endpoint - create appointment without authentication
  * Body: { providerId, patientInfo, startTime, appointmentTypeId, customFormData }
  */
-router.post('/book', async (req, res) => {
+router.post('/book', optionalAuth, publicBookingTenant, async (req, res) => {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const client = await req.app.locals.pool.connect();
     try {
@@ -1154,6 +1223,8 @@ router.post('/book', async (req, res) => {
     } catch (error) {
         await client.query('ROLLBACK');
         console.error('Error booking appointment:', error);
+        // A constraint the request broke is the caller's to fix, not a server fault.
+        if (sendDbError(res, error, 'Failed to book appointment')) return;
         res.status(500).json({ error: 'Failed to book appointment' });
     } finally {
         client.release();
@@ -1240,6 +1311,8 @@ router.post('/cancel/:appointmentId', async (req, res) => {
         });
     } catch (error) {
         console.error('Error cancelling appointment:', error);
+        // A constraint the request broke is the caller's to fix, not a server fault.
+        if (sendDbError(res, error, 'Failed to cancel appointment')) return;
         res.status(500).json({ error: 'Failed to cancel appointment' });
     }
 });
@@ -1351,6 +1424,8 @@ router.post('/reschedule/:appointmentId', async (req, res) => {
     } catch (error) {
         await client.query('ROLLBACK');
         console.error('Error rescheduling appointment:', error);
+        // A constraint the request broke is the caller's to fix, not a server fault.
+        if (sendDbError(res, error, 'Failed to reschedule appointment')) return;
         res.status(500).json({ error: 'Failed to reschedule appointment' });
     } finally {
         client.release();

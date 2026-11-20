@@ -4,6 +4,7 @@ const router = express.Router();
 const { resolveActor, requireStaffActor } = require('../middleware/messagingAuth');
 const { encrypt, decrypt, decryptToBuffer } = require('../utils/messageCrypto');
 const { fileAttachment, unfileMessage } = require('../services/messageDocumentFiling');
+const { sendDbError } = require('../utils/dbErrors');
 
 /**
  * Secure messaging API.
@@ -429,6 +430,8 @@ router.post('/threads', async (req, res) => {
         error: 'Messaging tables do not exist. Run migration 059_create_secure_messaging.sql.',
       });
     }
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to create message thread')) return;
     res.status(500).json({ error: 'Failed to create message thread' });
   } finally {
     client.release();
@@ -548,6 +551,8 @@ router.patch('/threads/:threadId', async (req, res) => {
     res.json({ success: true, thread: result.rows[0] });
   } catch (error) {
     console.error('Error updating message thread:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to update message thread')) return;
     res.status(500).json({ error: 'Failed to update message thread' });
   }
 });
@@ -755,6 +760,8 @@ router.post('/threads/:threadId/messages', async (req, res) => {
   } catch (error) {
     await client.query('ROLLBACK').catch(() => {});
     console.error('Error sending message:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to send message')) return;
     res.status(500).json({ error: 'Failed to send message' });
   } finally {
     client.release();
@@ -808,6 +815,8 @@ router.post('/threads/:threadId/read', async (req, res) => {
   } catch (error) {
     await client.query('ROLLBACK').catch(() => {});
     console.error('Error marking thread read:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to mark thread as read')) return;
     res.status(500).json({ error: 'Failed to mark thread as read' });
   } finally {
     client.release();
@@ -885,6 +894,8 @@ router.delete('/messages/:messageId', async (req, res) => {
     res.json({ success: true });
   } catch (error) {
     console.error('Error withdrawing message:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to withdraw message')) return;
     res.status(500).json({ error: 'Failed to withdraw message' });
   }
 });
@@ -1034,6 +1045,8 @@ router.post('/threads/:threadId/participants', requireStaffActor, async (req, re
   } catch (error) {
     await client.query('ROLLBACK').catch(() => {});
     console.error('Error adding thread participant:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to add participant')) return;
     res.status(500).json({ error: 'Failed to add participant' });
   } finally {
     client.release();
@@ -1097,6 +1110,8 @@ router.delete('/threads/:threadId/participants/:participantRowId', requireStaffA
   } catch (error) {
     await client.query('ROLLBACK').catch(() => {});
     console.error('Error removing thread participant:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to remove participant')) return;
     res.status(500).json({ error: 'Failed to remove participant' });
   } finally {
     client.release();

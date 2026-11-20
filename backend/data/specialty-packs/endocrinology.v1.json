@@ -1,0 +1,300 @@
+{
+  "code": "endocrinology",
+  "version": 1,
+  "label": "Endocrinology and Diabetes",
+  "description": "Starting configuration for an endocrine and diabetes service: review and education appointment types, with a glucose-monitoring and thyroid catalogue.",
+  "modules": {
+    "hide": [
+      "camps"
+    ]
+  },
+  "terminology": {
+    "provider": "Endocrinologist",
+    "providers": "Endocrinologists"
+  },
+  "appointmentTypes": [
+    {
+      "name": "New Patient Consultation",
+      "durationMinutes": 45,
+      "color": "#2563EB",
+      "displayOrder": 10
+    },
+    {
+      "name": "Follow-up Consultation",
+      "durationMinutes": 25,
+      "color": "#0EA5E9",
+      "displayOrder": 20
+    },
+    {
+      "name": "Diabetes Review",
+      "durationMinutes": 30,
+      "color": "#14B8A6",
+      "displayOrder": 30
+    },
+    {
+      "name": "Insulin Start",
+      "durationMinutes": 60,
+      "color": "#8B5CF6",
+      "displayOrder": 40
+    },
+    {
+      "name": "CGM Fitting and Review",
+      "durationMinutes": 40,
+      "color": "#F59E0B",
+      "displayOrder": 50
+    },
+    {
+      "name": "Diabetic Foot Check",
+      "durationMinutes": 30,
+      "color": "#64748B",
+      "displayOrder": 60
+    },
+    {
+      "name": "Education Session",
+      "durationMinutes": 90,
+      "color": "#DC2626",
+      "displayOrder": 70
+    }
+  ],
+  "serviceCategories": [
+    {
+      "name": "Consultations",
+      "icon": "stethoscope",
+      "displayOrder": 10
+    },
+    {
+      "name": "Diabetes",
+      "icon": "droplet",
+      "displayOrder": 20
+    },
+    {
+      "name": "Thyroid",
+      "icon": "activity",
+      "displayOrder": 30
+    },
+    {
+      "name": "Education",
+      "icon": "book-open",
+      "displayOrder": 40
+    }
+  ],
+  "offerings": [
+    {
+      "name": "New Patient Endocrine Consultation",
+      "categoryName": "Consultations",
+      "durationMinutes": 45,
+      "cptCodes": [
+        "99204"
+      ]
+    },
+    {
+      "name": "Follow-up Endocrine Consultation",
+      "categoryName": "Consultations",
+      "durationMinutes": 25,
+      "cptCodes": [
+        "99213"
+      ]
+    },
+    {
+      "name": "Diabetes Annual Review",
+      "categoryName": "Diabetes",
+      "durationMinutes": 40
+    },
+    {
+      "name": "Insulin Initiation and Titration",
+      "categoryName": "Diabetes",
+      "durationMinutes": 60
+    },
+    {
+      "name": "Continuous Glucose Monitor Fitting",
+      "categoryName": "Diabetes",
+      "durationMinutes": 40,
+      "cptCodes": [
+        "95250"
+      ]
+    },
+    {
+      "name": "Continuous Glucose Monitor Interpretation",
+      "categoryName": "Diabetes",
+      "durationMinutes": 20,
+      "cptCodes": [
+        "95251"
+      ]
+    },
+    {
+      "name": "Insulin Pump Review",
+      "categoryName": "Diabetes",
+      "durationMinutes": 45
+    },
+    {
+      "name": "Diabetic Foot Screening",
+      "categoryName": "Diabetes",
+      "durationMinutes": 30
+    },
+    {
+      "name": "Thyroid Function Review",
+      "categoryName": "Thyroid",
+      "durationMinutes": 25
+    },
+    {
+      "name": "Thyroid Nodule Assessment",
+      "categoryName": "Thyroid",
+      "durationMinutes": 30
+    },
+    {
+      "name": "Osteoporosis Review",
+      "categoryName": "Consultations",
+      "durationMinutes": 30
+    },
+    {
+      "name": "Structured Diabetes Education",
+      "categoryName": "Education",
+      "durationMinutes": 90
+    }
+  ],
+  "formTemplates": [
+    {
+      "slug": "diabetes-endocrine-intake",
+      "name": "Diabetes and Endocrine Intake",
+      "templateType": "onboarding",
+      "categorySlug": "onboarding",
+      "version": "1.0",
+      "languages": [
+        "en"
+      ],
+      "complianceTags": [
+        "HIPAA"
+      ],
+      "fields": [
+        {
+          "id": "referral_reason",
+          "type": "textarea",
+          "label": "Reason for referral",
+          "required": true
+        },
+        {
+          "id": "diabetes_type",
+          "type": "select",
+          "label": "Diabetes",
+          "options": [
+            "None",
+            "Type 1",
+            "Type 2",
+            "Gestational",
+            "Other"
+          ]
+        },
+        {
+          "id": "year_diagnosed",
+          "type": "text",
+          "label": "Year diagnosed"
+        },
+        {
+          "id": "current_treatment",
+          "type": "checkboxes",
+          "label": "Current treatment",
+          "options": [
+            "Diet only",
+            "Tablets",
+            "Injectables other than insulin",
+            "Insulin",
+            "Insulin pump"
+          ]
+        },
+        {
+          "id": "monitoring",
+          "type": "select",
+          "label": "How do you check your glucose?",
+          "options": [
+            "Not at all",
+            "Finger prick",
+            "Flash sensor",
+            "Continuous monitor"
+          ]
+        },
+        {
+          "id": "hypos",
+          "type": "text",
+          "label": "Hypos in the last month, and whether you felt them coming"
+        },
+        {
+          "id": "complications",
+          "type": "checkboxes",
+          "label": "Have you been told you have any of these?",
+          "options": [
+            "Eye changes",
+            "Kidney changes",
+            "Nerve damage",
+            "Foot ulcer",
+            "Heart disease"
+          ]
+        },
+        {
+          "id": "thyroid_symptoms",
+          "type": "checkboxes",
+          "label": "Any of these?",
+          "options": [
+            "Weight change",
+            "Feeling hot or cold",
+            "Palpitations",
+            "Tiredness",
+            "Hair or skin change",
+            "Neck swelling"
+          ]
+        },
+        {
+          "id": "medications",
+          "type": "textarea",
+          "label": "Current medicines, with doses",
+          "required": true
+        }
+      ]
+    }
+  ],
+  "inventoryCategories": [
+    {
+      "code": "endo_glucose",
+      "name": "Glucose Monitoring Supplies"
+    },
+    {
+      "code": "endo_insulin",
+      "name": "Insulin and Pen Needles"
+    },
+    {
+      "code": "endo_cgm",
+      "name": "CGM Sensors"
+    },
+    {
+      "code": "endo_foot",
+      "name": "Foot Screening Equipment"
+    }
+  ],
+  "codeSets": {
+    "icd10": [
+      "E11.9",
+      "E10.9",
+      "E03.9",
+      "E05.90",
+      "E66.9",
+      "E21.3",
+      "M81.0",
+      "E27.1"
+    ],
+    "cpt": [
+      "99204",
+      "99213",
+      "95250",
+      "95251"
+    ]
+  },
+  "settings": {
+    "defaultAppointmentDuration": 25,
+    "slotIntervalMinutes": 15
+  },
+  "reports": {
+    "show": [
+      "clinical",
+      "operational"
+    ]
+  }
+}

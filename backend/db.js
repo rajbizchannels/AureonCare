@@ -7,7 +7,35 @@ const path = require('path');
 // matters on Windows where there is no `set -a && . ./.env` idiom.
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 require('dotenv').config();
-const { Pool } = require('pg');
+const { Pool, types: pgTypes } = require('pg');
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Calendar values are NOT instants. Stop node-postgres turning them into one.
+//
+// THE BUG THIS FIXES. An appointment booked for 6 PM was listed as 7 PM. The chain:
+// the form sends the wall-clock string "2026-11-17 18:00:00"; Postgres stores 18:00 in a
+// `timestamp without time zone`; node-postgres then builds a JS Date from it, interpreting
+// those digits in the NODE PROCESS's timezone; res.json() serialises that Date through
+// toJSON() as "2026-11-17T18:00:00.000Z" — an instant, tagged UTC — and the browser
+// renders the instant in ITS timezone. One hour ahead of the server, 6 PM becomes 7 PM.
+//
+// The same thing happens to `date`: a date of birth of 1980-04-02 arrives as
+// "1980-04-02T00:00:00.000Z" and reads as 1 April to every browser behind UTC. On a
+// clinical record that is worse than a shifted appointment.
+//
+// An appointment at 6 PM is 6 PM at the clinic. A date of birth is a date. Neither has a
+// timezone, so neither should be converted by one. Returning the raw string keeps the
+// characters Postgres holds all the way to the screen, and the conversion that corrupted
+// them simply never happens.
+//
+// SCOPE: only the two types that carry a calendar value with no zone. `timestamptz`
+// (OID 1184) still returns a Date, because that genuinely IS an instant and converting it
+// to the reader's local time is the right behaviour.
+const PG_TIMESTAMP = 1114;   // timestamp without time zone
+const PG_DATE = 1082;        // date
+pgTypes.setTypeParser(PG_TIMESTAMP, (value) => value);
+pgTypes.setTypeParser(PG_DATE, (value) => value);
+// ─────────────────────────────────────────────────────────────────────────────
 
 // Supabase uses PostgreSQL with SSL.
 // Prefer AC_PG_URI (Supabase connection string) over individual vars.

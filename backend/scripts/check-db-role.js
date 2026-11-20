@@ -3,24 +3,35 @@
 //
 // A superuser bypasses REVOKE, table/column grants and Row-Level Security, so every
 // database-side control in this project is inert when the app connects as one. This
-// check connects with the app's own AC_DB_* settings and fails if the role is a
-// superuser, or if it can still perform DDL.
+// check fails if the role is a superuser, or if it can still perform DDL.
+//
+// It uses the app's OWN pool (backend/db.js), so it checks exactly the connection the
+// app makes: AC_PG_URI when set (which takes precedence over every AC_DB_* variable),
+// otherwise AC_DB_*, with backend/.env loaded the same way. It used to build its own pool
+// from AC_DB_* only, with a hard-coded fallback password — so on a deployment configured
+// through AC_PG_URI it checked some other connection (often localhost) and said nothing
+// about the real one.
 //
 // Run: node backend/scripts/check-db-role.js
 // Exit: 0 pass, 1 fail, 2 could not connect.
 
-const { Pool } = require('pg');
+const path = require('path');
+const pool = require(path.join(__dirname, '..', 'db.js'));
 
-const pool = new Pool({
-  host: process.env.AC_DB_H || 'localhost',
-  port: process.env.AC_DB_P || 5432,
-  database: process.env.AC_DB_N || 'aureoncare',
-  user: process.env.AC_DB_U || 'postgres',
-  password: process.env.AC_DB_W || 'AureonCare2024!',
-});
+// Which connection is being checked — host and user only, never the password.
+const describe = () => {
+  if (process.env.AC_PG_URI) {
+    try {
+      const u = new URL(process.env.AC_PG_URI);
+      return `AC_PG_URI -> ${decodeURIComponent(u.username)}@${u.hostname}:${u.port || 5432}${u.pathname}`;
+    } catch { return 'AC_PG_URI (unparseable)'; }
+  }
+  return `AC_DB_* -> ${process.env.AC_DB_U || 'postgres'}@${process.env.AC_DB_H || 'localhost'}:${process.env.AC_DB_P || 5432}/${process.env.AC_DB_N || 'aureoncare'}`;
+};
 
 (async () => {
   let failures = 0;
+  console.log(`checking ${describe()}`);
   try {
     const { rows } = await pool.query(
       'SELECT current_user AS role, usesuper FROM pg_user WHERE usename = current_user'
@@ -31,8 +42,8 @@ const pool = new Pool({
     if (isSuper) {
       console.error(`FAIL: the app connects as "${role}", which is a SUPERUSER.`);
       console.error('      Superusers bypass REVOKE, grants and RLS — the tenant-isolation');
-      console.error('      controls are inert. Run migration 073 and set AC_DB_U to the');
-      console.error('      least-privilege role (aureoncare_app).');
+      console.error('      controls are inert. Run migration 073, give aureoncare_app a password,');
+      console.error('      and connect as it (the user in AC_PG_URI, or AC_DB_U).');
       failures++;
     } else {
       console.log(`ok  connects as non-superuser role "${role}"`);

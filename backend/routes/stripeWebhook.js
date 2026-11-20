@@ -12,28 +12,31 @@ const TOLERANCE_SECONDS = 300; // 5 minutes — Stripe's own default
 
 /**
  * Resolve the active webhook secret.
- * Priority: per-subscriber DB value → platform env var.
+ * Source: AC_STRIPE_WHS / STRIPE_WEBHOOK_SECRET. A secret left in the old settings row is
+ * read only when neither is set (deprecated, logged).
  */
+let legacyWarned = false;
 async function resolveWebhookSecret(pool) {
+  // The platform's own secret is the only supported source (SEC-38: the shared DB row used
+  // to override it, which let whoever could edit that row sign forged events).
+  const platformSecret = process.env.AC_STRIPE_WHS || process.env.STRIPE_WEBHOOK_SECRET || null;
+  if (platformSecret) return platformSecret;
+  // Deprecated fallback, for an install upgraded from when the secret was entered on the
+  // Integrations screen. Nothing in the product can write this row any more, so it can
+  // only hold what was saved before; move it to AC_STRIPE_WHS.
   try {
-    const result = await pool.query(
-      'SELECT webhook_secret, use_platform_integration FROM stripe_integration_settings LIMIT 1'
-    );
-    const row = result.rows[0];
-    // No settings row at all is the normal state for a deployment that only does platform
-    // billing (clinics paying us) and has never configured per-clinic Stripe. Returning
-    // null here meant the webhook could never be verified and every event was rejected —
-    // including the signup events that provision tenants.
-    if (!row) return process.env.AC_STRIPE_WHS || process.env.STRIPE_WEBHOOK_SECRET || null;
-
-    if (row.use_platform_integration) {
-      return process.env.AC_STRIPE_WHS || process.env.STRIPE_WEBHOOK_SECRET || null;
+    const { rows } = await pool.query('SELECT webhook_secret FROM stripe_integration_settings LIMIT 1');
+    const legacy = rows[0] && rows[0].webhook_secret;
+    if (legacy) {
+      if (!legacyWarned) {
+        legacyWarned = true;
+        console.warn('[stripe-webhook] using the legacy webhook secret stored in the database. '
+          + 'Set AC_STRIPE_WHS instead; this fallback will be removed.');
+      }
+      return legacy;
     }
-    return row.webhook_secret || null;
-  } catch {
-    // Table may not exist yet — fall back to env var
-    return process.env.AC_STRIPE_WHS || process.env.STRIPE_WEBHOOK_SECRET || null;
-  }
+  } catch { /* table absent: no legacy value */ }
+  return null;
 }
 
 /**
@@ -395,16 +398,23 @@ async function handleSubscriptionChange(pool, subscription) {
   const periodEnd = subscription.current_period_end
     ? new Date(subscription.current_period_end * 1000)
     : null;
+  // Stripe sends both ends of the period. Storing the start too is what lets a mid-period
+  // change be prorated against the real period rather than one inferred from the billing
+  // cycle, which is only approximate across months of unequal length.
+  const periodStart = subscription.current_period_start
+    ? new Date(subscription.current_period_start * 1000)
+    : null;
 
   const { rows } = await pool.query(
     `UPDATE control.subscriptions
         SET status = $1,
             stripe_subscription_id = COALESCE($2, stripe_subscription_id),
             current_period_end = COALESCE($3, current_period_end),
+            current_period_start = COALESCE($5, current_period_start),
             updated_at = now()
       WHERE stripe_customer_id = $4
       RETURNING tenant_id, practice_id`,
-    [status, subscription.id || null, periodEnd, customerId]
+    [status, subscription.id || null, periodEnd, customerId, periodStart]
   );
 
   if (rows.length === 0) {
@@ -435,6 +445,8 @@ async function handleSubscriptionChange(pool, subscription) {
     const { logPlatformAction } = require('../services/platformAudit');
     await logPlatformAction(pool, {
       action: 'subscription.stripe_sync',
+      actorType: 'stripe',
+      actorLabel: 'stripe webhook',
       targetType: 'tenant',
       targetId: rows[0].tenant_id,
       tenantId: rows[0].tenant_id,

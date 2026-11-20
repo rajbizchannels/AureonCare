@@ -140,6 +140,22 @@ jobs:
         with:
           node-version: "18"
 
+      # SEC-11: every jwt.verify must pin its algorithms.
+      - name: Run JWT algorithm guard
+        run: npm run check:jwt
+
+      # SEC-14: no console call may log a whole patient record or a credential.
+      - name: Run frontend PHI-logging guard
+        run: npm run check:frontend-logs
+
+      # No route may be unreachable behind an earlier /:param route.
+      - name: Run route-shadowing guard
+        run: npm run check:routes
+
+      # SEC-23: the 835 remittance parser survives 10,000 malformed inputs.
+      - name: Fuzz the EDI 835 parser
+        run: npm run test:edi-fuzz
+
       # Static check — no dependencies or database needed. Fails the build if a route
       # bypasses tenant isolation (raw shared pool on a tenant table, hardcoded tenant
       # schema, or a tenant table pinned to public.*).
@@ -190,22 +206,13 @@ jobs:
       - name: Install psql client
         run: sudo apt-get update && sudo apt-get install -y postgresql-client
 
-      - name: Load schema + SEC-05 migrations
-        run: |
-          PSQL="psql -h localhost -U postgres -d aureoncare"
-          # schema.sql is a pg_dump; a newer-server SET is a harmless error on pg16.
-          $PSQL -q -f backend/schema.sql || true
-          # accounts/inventory feature tables (best-effort; some depend on other features).
-          $PSQL -q -f backend/migrations/053_create_accounts_tables.sql || true
-          $PSQL -q -f backend/migrations/055_create_inventory_tables.sql || true
-          # SEC-05 control plane + template + cutover must apply cleanly.
-          for m in 063_sec05_control_plane 064_sec05_template_schema 065_sec05_users_practice_id \
-                   066_sec05_cutover_default_tenant 067_sec05_provisioner_from_template \
-                   068_sec05_expand_tenant_set 069_sec05_control_plane_console \
-                   070_sec05_subscriptions 071_sec05_lazy_created_tenant_tables \
-                   072_global_runtime_ddl 073_sec05_least_privilege_role; do
-            $PSQL -v ON_ERROR_STOP=1 -q -f "backend/migrations/$m.sql"
-          done
+      # The same two runners a deployment uses (backend/migrations/README.md). On this empty
+      # database the global runner seeds from baseline/000_baseline.sql, records the
+      # superseded files, then applies every later migration in order. This replaced a
+      # hand-picked list (schema.sql + 063..073) that had drifted from the real chain:
+      # tenant migration 009 needs a column from global 057, which the list never applied.
+      - name: Apply global migrations (baseline + everything after it)
+        run: node backend/run-migrations.js
 
       - name: Apply tenant migrations (fan-out to every tenant schema + template)
         run: node backend/run-tenant-migrations.js
@@ -216,8 +223,14 @@ jobs:
       # The app must not connect as a superuser: superusers bypass REVOKE, grants and
       # RLS, which makes every database-side isolation control inert. Runs as the
       # least-privilege role created by migration 073.
+      # Migration 073 creates aureoncare_app with no password, on purpose: a deployment sets
+      # one from its secret store. CI does the same with a throwaway value; with none the
+      # role cannot authenticate at all.
       - name: Verify least-privilege database role
         env:
           AC_DB_U: aureoncare_app
-          AC_DB_W: ""
-        run: node backend/scripts/check-db-role.js
+          AC_DB_W: ci-app-password
+        run: |
+          psql -h localhost -U postgres -d aureoncare -v ON_ERROR_STOP=1 \
+            -c "ALTER ROLE aureoncare_app WITH PASSWORD 'ci-app-password'"
+          node backend/scripts/check-db-role.js

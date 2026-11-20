@@ -1,8 +1,22 @@
 const express = require('express');
 const { authenticate } = require('../middleware/auth');
+const { requireModuleAccessByPath } = require('../middleware/modulePermissions');
 const { loadAttachment, sendAttachment } = require('../utils/filedDocuments');
+const { sendDbError } = require('../utils/dbErrors');
 const router = express.Router();
 router.use(authenticate);
+// Fine-grained permissions, enforced. The method decides the action (GET=view,
+// POST=create, PUT/PATCH=edit, DELETE=delete); an administrator edits this under
+// Admin Panel -> Roles & Permissions. Absent grants fall back to the role defaults in
+// utils/permissionRegistry.js, so this changes nothing until somebody edits something.
+// Per path, because templates and submissions are different things to be allowed: a role
+// that may fill in a form is not necessarily one that may redesign it. Paths not listed —
+// stats, audit-logs, categories — keep their existing checks.
+router.use(requireModuleAccessByPath('forms', {
+  templates: 'form_templates',
+  'intake-flows': 'form_templates',
+  submissions: 'form_submissions',
+}));
 router.use(require('../middleware/planEnforcement').enforceActiveBilling); // SEC-05 S11: read-only when subscription past_due/canceled
 
 // ============================================================================
@@ -67,6 +81,8 @@ router.post('/categories', async (req, res) => {
     res.status(201).json(result.rows[0]);
   } catch (error) {
     console.error('Error creating form category:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to create form category')) return;
     res.status(500).json({ error: 'Failed to create form category' });
   }
 });
@@ -209,6 +225,8 @@ router.post('/templates', async (req, res) => {
     res.status(201).json(template);
   } catch (error) {
     console.error('Error creating form template:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to create form template')) return;
     res.status(500).json({ error: 'Failed to create form template' });
   }
 });
@@ -303,6 +321,8 @@ router.put('/templates/:id', async (req, res) => {
     res.json(updated);
   } catch (error) {
     console.error('Error updating form template:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to update form template')) return;
     res.status(500).json({ error: 'Failed to update form template' });
   }
 });
@@ -323,6 +343,8 @@ router.delete('/templates/:id', async (req, res) => {
     res.json({ message: 'Template deleted successfully' });
   } catch (error) {
     console.error('Error deleting form template:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to delete form template')) return;
     res.status(500).json({ error: 'Failed to delete form template' });
   }
 });
@@ -384,6 +406,8 @@ router.post('/templates/:id/versions/:versionId/restore', async (req, res) => {
     res.json(result.rows[0]);
   } catch (error) {
     console.error('Error restoring template version:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to restore template version')) return;
     res.status(500).json({ error: 'Failed to restore template version' });
   }
 });
@@ -519,6 +543,8 @@ router.post('/submissions/:id/acknowledge', async (req, res) => {
     res.json({ success: true, submission: updated.rows[0] });
   } catch (error) {
     console.error('Error acknowledging document request:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to complete request')) return;
     res.status(500).json({ error: 'Failed to complete request' });
   }
 });
@@ -650,6 +676,8 @@ router.post('/submissions', async (req, res) => {
     res.status(201).json(submission);
   } catch (error) {
     console.error('Error creating form submission:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to create form submission')) return;
     res.status(500).json({ error: 'Failed to create form submission' });
   }
 });
@@ -695,6 +723,8 @@ router.put('/submissions/:id', async (req, res) => {
     res.json(updated);
   } catch (error) {
     console.error('Error updating form submission:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to update form submission')) return;
     res.status(500).json({ error: 'Failed to update form submission' });
   }
 });
@@ -713,6 +743,8 @@ router.delete('/submissions/:id', async (req, res) => {
     res.json({ message: 'Submission deleted successfully' });
   } catch (error) {
     console.error('Error deleting form submission:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to delete form submission')) return;
     res.status(500).json({ error: 'Failed to delete form submission' });
   }
 });
@@ -749,6 +781,8 @@ router.post('/submissions/:id/sign', async (req, res) => {
     res.status(201).json(sig.rows[0]);
   } catch (error) {
     console.error('Error adding signature:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to add signature')) return;
     res.status(500).json({ error: 'Failed to add signature' });
   }
 });
@@ -850,6 +884,8 @@ router.post('/intake-flows/:flowId/templates', async (req, res) => {
     res.json({ message: 'Templates assigned to flow', count: assignments.length });
   } catch (error) {
     console.error('Error assigning templates to flow:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to assign templates to flow')) return;
     res.status(500).json({ error: 'Failed to assign templates to flow' });
   }
 });

@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { authenticate, authorize } = require('../middleware/auth');
+const { sendDbError } = require('../utils/dbErrors');
 
 // Helper function to convert snake_case to camelCase
 const toCamelCase = (obj) => {
@@ -56,7 +57,7 @@ router.get('/', authenticate, async (req, res) => {
         SELECT p.*, u.status, u.role
         FROM providers p
         JOIN users u ON p.id = u.id
-        WHERE u.practice_id = $1
+        WHERE EXISTS (SELECT 1 FROM public.memberships mem WHERE mem.user_id = u.id AND mem.practice_id = $1 AND mem.status = 'active')
         ORDER BY p.last_name, p.first_name ASC
       `, [practiceId]);
     } else if (userRole === 'doctor') {
@@ -83,6 +84,50 @@ router.get('/', authenticate, async (req, res) => {
   }
 });
 
+/**
+ * The providers a booking screen may offer — every active provider in the caller's
+ * practice, name and specialization only.
+ *
+ * WHY THIS IS SEPARATE from GET /. That route is provider MANAGEMENT, and it restricts a
+ * caller whose role is `doctor` to their own record. For managing provider profiles that
+ * is a defensible rule. For scheduling it is not: it meant a doctor opening the
+ * appointment form saw exactly one provider in the dropdown — themselves — and could not
+ * book a colleague's clinic at all. (A patient of the same practice, meanwhile, already
+ * receives the full list with licence numbers and phone numbers through GET /, so the
+ * restriction was never protecting provider details from the practice's own clinicians.)
+ *
+ * Rather than widen a permission someone may have set deliberately, this adds the narrow
+ * listing scheduling actually needs. It returns FEWER fields than GET / — no licence
+ * number, no contact details — so a doctor gains a colleague's name and specialty and
+ * nothing else.
+ *
+ * Declared before GET /:id, or Express would route /bookable into it as an id.
+ */
+router.get('/bookable', authenticate, async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    const practiceId = requirePractice(req, res);
+    if (!practiceId) return;
+
+    // providers.id = users.id (migration 025), so the join is the practice scope.
+    // Inactive users are excluded: a departed clinician must not be bookable, which is the
+    // one thing this list has to get right.
+    const result = await pool.query(`
+      SELECT p.id, p.first_name, p.last_name, p.specialization, u.role
+        FROM providers p
+        JOIN users u ON p.id = u.id
+       WHERE EXISTS (SELECT 1 FROM public.memberships mem WHERE mem.user_id = u.id AND mem.practice_id = $1 AND mem.status = 'active')
+         AND u.status = 'active'
+       ORDER BY p.last_name, p.first_name ASC
+    `, [practiceId]);
+
+    res.json(result.rows.map(toCamelCase));
+  } catch (error) {
+    console.error('Error fetching bookable providers:', error);
+    res.status(500).json({ error: 'Failed to fetch bookable providers' });
+  }
+});
+
 // Get single provider (requires authentication)
 router.get('/:id', authenticate, async (req, res) => {
   try {
@@ -99,7 +144,7 @@ router.get('/:id', authenticate, async (req, res) => {
        FROM providers p
        JOIN users u ON p.id = u.id
        WHERE p.id::text = $1::text
-         AND (p.id::text = $2::text OR u.practice_id = $3)`,
+         AND (p.id::text = $2::text OR EXISTS (SELECT 1 FROM public.memberships mem WHERE mem.user_id = u.id AND mem.practice_id = $3 AND mem.status = 'active'))`,
       [providerId, userId, req.user.practiceId ?? null]
     );
 
@@ -159,6 +204,8 @@ router.post('/', authenticate, authorize('admin', 'receptionist'), async (req, r
     res.status(201).json(toCamelCase(result.rows[0]));
   } catch (error) {
     console.error('Error creating provider:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to create provider')) return;
     res.status(500).json({ error: 'Failed to create provider' });
   }
 });
@@ -180,7 +227,7 @@ router.put('/:id', authenticate, async (req, res) => {
       `SELECT p.* FROM providers p
        JOIN users u ON p.id = u.id
        WHERE p.id::text = $1::text
-         AND (p.id::text = $2::text OR u.practice_id = $3)`,
+         AND (p.id::text = $2::text OR EXISTS (SELECT 1 FROM public.memberships mem WHERE mem.user_id = u.id AND mem.practice_id = $3 AND mem.status = 'active'))`,
       [providerId, userId, req.user.practiceId ?? null]
     );
 
@@ -234,6 +281,8 @@ router.put('/:id', authenticate, async (req, res) => {
     res.json(toCamelCase(result.rows[0]));
   } catch (error) {
     console.error('Error updating provider:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to update provider')) return;
     res.status(500).json({ error: 'Failed to update provider' });
   }
 });
@@ -250,7 +299,7 @@ router.delete('/:id', authenticate, authorize('admin'), async (req, res) => {
 
     const result = await pool.query(
       `DELETE FROM providers WHERE id::text = $1::text
-         AND id IN (SELECT id FROM users WHERE practice_id = $2) RETURNING *`,
+         AND id IN (SELECT user_id FROM public.memberships WHERE practice_id = $2 AND status = 'active') RETURNING *`,
       [req.params.id, practiceId]
     );
 
@@ -261,6 +310,8 @@ router.delete('/:id', authenticate, authorize('admin'), async (req, res) => {
     res.json({ message: 'Provider deleted successfully' });
   } catch (error) {
     console.error('Error deleting provider:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to delete provider')) return;
     res.status(500).json({ error: 'Failed to delete provider' });
   }
 });

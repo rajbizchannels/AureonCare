@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Loader2, AlertCircle, UserPlus, CheckCircle2 } from 'lucide-react';
 import { useGoogleLogin } from '@react-oauth/google';
+import { getMicrosoftAuthCode } from '../../utils/msAuthCode';
+import { microsoftOAuthConfig } from '../../config/oauthConfig';
 
 /**
  * Accept a staff invite — with a password, or with Google/Microsoft.
@@ -42,15 +44,45 @@ const AcceptInvitePage = ({ theme = 'light', token, api, addNotification, onAcce
   const acceptWithPassword = async (e) => {
     e.preventDefault();
     setError('');
-    if (form.password !== form.confirmPassword) return setError('Passwords do not match.');
-    if (form.password.length < 12) return setError('Password must be at least 12 characters.');
+    // An existing account (another practice) confirms with its CURRENT password.
+    const existing = Boolean(invite && invite.existingAccount);
+    if (!existing && form.password !== form.confirmPassword) return setError('Passwords do not match.');
+    if (!existing && form.password.length < 12) return setError('Password must be at least 12 characters.');
     setBusy('password');
     try {
-      await api.acceptInvite({ token, password: form.password, firstName: form.firstName, lastName: form.lastName });
-      addNotification?.('Account created. Please sign in.', 'success');
+      const r = await api.acceptInvite({ token, password: form.password, firstName: form.firstName, lastName: form.lastName });
+      addNotification?.('success', r && r.addedToPractice
+        ? `${invite.practiceName} was added to your account. Sign in to start working there.`
+        : 'Account created. Please sign in.');
       onAccepted?.();
     } catch (err) {
       setError(err.message || 'Could not accept the invite.');
+    } finally {
+      setBusy('');
+    }
+  };
+
+  // Shared by Google and Microsoft: the server has verified the identity, matched it to
+  // the invited email and issued the session.
+  const finishOAuth = (res) => {
+    if (res && res.token && res.user) {
+      api.storeToken(res.token);
+      setConnected(res);
+      addNotification?.('success', `Connected as ${res.user.email}`);
+    } else {
+      addNotification?.('success', 'Account created. Please sign in.');
+      onAccepted?.();
+    }
+  };
+
+  // Microsoft: authorization-code + PKCE in a popup (SEC-20); the server redeems the code.
+  const withMicrosoft = async () => {
+    setBusy('microsoft'); setError('');
+    try {
+      const { code, redirectUri, codeVerifier } = await getMicrosoftAuthCode(microsoftOAuthConfig.auth.clientId);
+      finishOAuth(await api.exchangeMicrosoftCode(code, redirectUri, codeVerifier, token));
+    } catch (err) {
+      setError(err.message || 'Microsoft sign-up failed.');
     } finally {
       setBusy('');
     }
@@ -71,11 +103,11 @@ const AcceptInvitePage = ({ theme = 'light', token, api, addNotification, onAcce
         if (res && res.token && res.user) {
           api.storeToken(res.token);
           setConnected(res);
-          addNotification?.(`Connected as ${res.user.email}`, 'success');
+          addNotification?.('success', `Connected as ${res.user.email}`);
         } else {
           // Older server, or a response without a session: fall back to the sign-in page
           // rather than leaving the user on a page with nowhere to go.
-          addNotification?.('Account created. Please sign in.', 'success');
+          addNotification?.('success', 'Account created. Please sign in.');
           onAccepted?.();
         }
       } catch (err) {
@@ -154,6 +186,25 @@ const AcceptInvitePage = ({ theme = 'light', token, api, addNotification, onAcce
           </div>
         )}
 
+        {invite.existingAccount ? (
+        <form onSubmit={acceptWithPassword} className="mt-5 space-y-3">
+          <p className={`text-sm ${muted}`}>
+            You already have an AureonCare account. Confirm it to add <strong>{invite.practiceName}</strong> to it —
+            you keep one sign-in and switch between your practices from the top bar.
+          </p>
+          {invite.hasPassword && (
+            <>
+              <input className={input} type="password" placeholder="Your current AureonCare password" required
+                     autoComplete="current-password" aria-label="Your current AureonCare password" value={form.password} onChange={set('password')} />
+              <button type="submit" disabled={!!busy}
+                      className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-blue-600 text-white font-medium disabled:opacity-60">
+                {busy === 'password' ? <Loader2 className="animate-spin" size={16} /> : null}
+                Add {invite.practiceName}
+              </button>
+            </>
+          )}
+        </form>
+        ) : (
         <form onSubmit={acceptWithPassword} className="mt-5 space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <input className={input} placeholder="First name" value={form.firstName} onChange={set('firstName')} />
@@ -169,6 +220,7 @@ const AcceptInvitePage = ({ theme = 'light', token, api, addNotification, onAcce
             Create account
           </button>
         </form>
+        )}
 
         <div className={`my-4 text-center text-sm ${muted}`}>or</div>
 
@@ -176,8 +228,12 @@ const AcceptInvitePage = ({ theme = 'light', token, api, addNotification, onAcce
                 className={`w-full py-2.5 rounded-lg border ${card} ${text} font-medium disabled:opacity-60`}>
           {busy === 'google' ? 'Connecting…' : 'Continue with Google'}
         </button>
+        <button type="button" onClick={withMicrosoft} disabled={!!busy}
+                className={`mt-2 w-full py-2.5 rounded-lg border ${card} ${text} font-medium disabled:opacity-60`}>
+          {busy === 'microsoft' ? 'Connecting…' : 'Continue with Microsoft'}
+        </button>
         <p className={`mt-3 text-xs text-center ${muted}`}>
-          You must sign in with <strong>{invite.email}</strong> — the invite is tied to that address.
+          Use the Google or Microsoft account for <strong>{invite.email}</strong> — the invite is tied to that address.
         </p>
       </div>
     </div>

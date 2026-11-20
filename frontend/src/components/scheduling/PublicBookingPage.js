@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Calendar, Clock, User, Mail, Phone, CheckCircle, AlertCircle, ChevronLeft, ChevronRight, LogIn } from 'lucide-react';
+import { Calendar, Clock, User, CheckCircle, AlertCircle, ChevronLeft, ChevronRight, LogIn } from 'lucide-react';
 import { format, addDays, startOfWeek, addWeeks, subWeeks, isSameDay, parseISO } from 'date-fns';
 
 import api from '../../api/apiService';

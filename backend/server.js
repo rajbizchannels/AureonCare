@@ -185,6 +185,13 @@ app.get('/api/test', (req, res) => {
 const { apiLimiter, authLimiter } = require('./middleware/rateLimiters');
 app.use('/api', apiLimiter);
 
+// Short links (/s/<code>) — what recipients click in emails and messages. Outside /api:
+// no session, no CSRF, own rate limit (routes/shortLinks.js).
+app.use('/s', require('./routes/shortLinks'));
+// Public practice profiles (/p/<slug>) — server-rendered, no session (routes/publicProfile.js).
+app.use('/p', require('./routes/publicProfile'));
+app.use('/', require('./routes/directory').sitemap);   // /sitemap-practices.xml
+
 // SEC-15: CSRF protection for cookie-authenticated requests. The session cookie must be
 // SameSite=None (the SPA and API are on different origins), so SameSite offers no
 // protection and this double-submit check is what prevents forged state-changing
@@ -211,6 +218,12 @@ app.use('/api/auth', authLimiter, require('./routes/auth'));
 // partly unauthenticated by design and carry their own rate limits.
 app.use('/api/signup', require('./routes/signup'));
 app.use('/api/invites', require('./routes/invites').router);
+// Patient portal invitations: staff send a one-time link; the patient accepts it with a
+// password or Google/Microsoft. The accept routes are public by design.
+app.use('/api/portal-invites', require('./routes/portalInvites'));
+app.use('/api/short-links', require('./routes/shortLinks').api);   // staff: share booking/meeting links
+app.use('/api/practice-profile', require('./routes/practiceProfile'));    // directory Phase 2
+app.use('/api/directory', require('./routes/directory').router);       // directory search (Phase 3)
 app.use('/api/team-access', require('./routes/teamAccess').router);
 app.use('/api/search', require('./routes/search'));
 app.use('/api/appointments', require('./routes/appointments'));
@@ -237,6 +250,7 @@ app.use('/api/vendor-integration-settings', require('./routes/vendorIntegrationS
 app.use('/api/integrations/oauth', require('./routes/integrationOAuth'));
 app.use('/api/backup-providers', require('./routes/backupProviders'));
 app.use('/api/stripe-settings', require('./routes/stripeSettings'));
+app.use('/api/ai', require('./routes/aiIntegrations')); // AI: bring-your-own-key, feature switches, human review
 app.use('/api/clinic-settings', require('./routes/clinicSettings'));
 app.use('/api/locations', require('./routes/locations'));
 app.use('/api/camps', require('./routes/camps'));

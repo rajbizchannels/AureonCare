@@ -1,10 +1,25 @@
 const express = require('express');
 const { authenticate, authorize } = require('../middleware/auth');
+const { redactRow, redactRows } = require('../utils/redactSecrets');
+
+// SEC-36: the reads returned SELECT * — vendor API secrets, client secrets and passwords —
+// to any signed-in user, and delete/toggle were open to any role. Reads are redacted,
+// every write is admin-only, and a blank secret on save keeps the stored one.
+const adminOnly = authorize('admin');
+// Vendor transaction history holds the raw request/response payloads of lab orders,
+// prescriptions and claims — PHI. Staff only; a patient never needs it.
+const staffOnly = (req, res, next) => (req.user && req.user.role !== 'patient'
+  ? next()
+  : res.status(403).json({ error: 'Staff access required' }));
+
 const { assertSafeExternalUrl } = require('../utils/safeUrl');
 const router = express.Router();
 router.use(authenticate);
 router.use(require('../middleware/planEnforcement').enforceActiveBilling); // SEC-05 S11: read-only when subscription past_due/canceled
-const vendorIntegrationManager = require('../services/vendorIntegrations');
+// SEC-37: vendor clients are per practice and pick up saved settings on the next request
+// (they are keyed by a fingerprint of the row), so a save needs no reload step.
+const { vendorsFor } = require('../services/vendorIntegrations');
+const { sendDbError } = require('../utils/dbErrors');
 
 /**
  * Vendor Integration Settings API
@@ -20,7 +35,7 @@ router.get('/', async (req, res) => {
       ORDER BY vendor_type
     `);
 
-    res.json(result.rows);
+    res.json(redactRows(result.rows));
   } catch (error) {
     console.error('Error fetching vendor integration settings:', error);
     // Check if the error is due to missing table
@@ -49,7 +64,7 @@ router.get('/:vendorType', async (req, res) => {
       return res.status(404).json({ error: 'Vendor settings not found' });
     }
 
-    res.json(result.rows[0]);
+    res.json(redactRow(result.rows[0]));
   } catch (error) {
     console.error('Error fetching vendor settings:', error);
     res.status(500).json({ error: 'Failed to fetch vendor settings' });
@@ -60,7 +75,7 @@ router.get('/:vendorType', async (req, res) => {
 // SSRF/RBAC: writing these settings decides where the server sends requests — and it
 // sends the integration's credentials with them — so it is admin-only. Previously any
 // authenticated user (a patient included) could point base_url anywhere.
-router.post('/:vendorType', authorize('admin'), async (req, res) => {
+router.post('/:vendorType', adminOnly, async (req, res) => {
   try {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { vendorType } = req.params;
@@ -103,11 +118,11 @@ router.post('/:vendorType', authorize('admin'), async (req, res) => {
         SET
           is_enabled = COALESCE($1, is_enabled),
           api_key = COALESCE($2, api_key),
-          api_secret = COALESCE($3, api_secret),
+          api_secret = COALESCE(NULLIF($3, ''), api_secret),
           client_id = COALESCE($4, client_id),
-          client_secret = COALESCE($5, client_secret),
+          client_secret = COALESCE(NULLIF($5, ''), client_secret),
           username = COALESCE($6, username),
-          password = COALESCE($7, password),
+          password = COALESCE(NULLIF($7, ''), password),
           base_url = COALESCE($8, base_url),
           sandbox_mode = COALESCE($9, sandbox_mode),
           settings = COALESCE($10, settings),
@@ -140,18 +155,17 @@ router.post('/:vendorType', authorize('admin'), async (req, res) => {
           JSON.stringify(settings || {})]);
     }
 
-    // Reload vendor settings in the manager
-    await vendorIntegrationManager.reloadVendorSettings(vendorType);
-
-    res.json(result.rows[0]);
+    res.json(redactRow(result.rows[0]));
   } catch (error) {
     console.error('Error saving vendor settings:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to save vendor settings')) return;
     res.status(500).json({ error: 'Failed to save vendor settings' });
   }
 });
 
 // Delete vendor settings
-router.delete('/:vendorType', async (req, res) => {
+router.delete('/:vendorType', adminOnly, async (req, res) => {
   try {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { vendorType } = req.params;
@@ -165,18 +179,17 @@ router.delete('/:vendorType', async (req, res) => {
       return res.status(404).json({ error: 'Vendor settings not found' });
     }
 
-    // Reload vendor settings in the manager
-    await vendorIntegrationManager.reloadVendorSettings();
-
     res.json({ message: 'Vendor settings deleted successfully' });
   } catch (error) {
     console.error('Error deleting vendor settings:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to delete vendor settings')) return;
     res.status(500).json({ error: 'Failed to delete vendor settings' });
   }
 });
 
 // Toggle vendor enabled status
-router.patch('/:vendorType/toggle', async (req, res) => {
+router.patch('/:vendorType/toggle', adminOnly, async (req, res) => {
   try {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { vendorType } = req.params;
@@ -206,12 +219,11 @@ router.patch('/:vendorType/toggle', async (req, res) => {
       `, [vendorType, is_enabled]);
     }
 
-    // Reload vendor settings in the manager
-    await vendorIntegrationManager.reloadVendorSettings(vendorType);
-
-    res.json(result.rows[0]);
+    res.json(redactRow(result.rows[0]));
   } catch (error) {
     console.error('Error toggling vendor status:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to toggle vendor status')) return;
     res.status(500).json({ error: 'Failed to toggle vendor status' });
   }
 });
@@ -219,7 +231,7 @@ router.patch('/:vendorType/toggle', async (req, res) => {
 // Get all vendor statuses
 router.get('/status/all', async (req, res) => {
   try {
-    const statuses = vendorIntegrationManager.getVendorStatuses();
+    const statuses = (await vendorsFor(req)).getVendorStatuses();
     res.json(statuses);
   } catch (error) {
     console.error('Error fetching vendor statuses:', error);
@@ -261,11 +273,11 @@ router.post('/:vendorType/test', authorize('admin'), async (req, res) => {
       }
     }
 
-    // Reload vendor with current settings
-    await vendorIntegrationManager.reloadVendorSettings(vendorType);
-
-    // Get vendor instance
-    const vendor = vendorIntegrationManager.getVendor(vendorType);
+    // This practice's client, enabled or not: credentials are tested before switching on.
+    const vendor = (await vendorsFor(req)).clientForTest(vendorType);
+    if (!vendor) {
+      return res.status(404).json({ success: false, error: 'Unknown vendor type' });
+    }
 
     // Test connection
     const testResult = await vendor.testConnection();
@@ -307,10 +319,10 @@ router.post('/:vendorType/test', authorize('admin'), async (req, res) => {
 });
 
 // Get transaction history for a reference
-router.get('/transactions/:internalReferenceId', async (req, res) => {
+router.get('/transactions/:internalReferenceId', staffOnly, async (req, res) => {
   try {
     const { internalReferenceId } = req.params;
-    const transactions = await vendorIntegrationManager.getTransactionHistory(internalReferenceId);
+    const transactions = await (await vendorsFor(req)).getTransactionHistory(internalReferenceId);
     res.json(transactions);
   } catch (error) {
     console.error('Error fetching transaction history:', error);

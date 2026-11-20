@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { DollarSign, X, Save, FileText } from 'lucide-react';
+import { DollarSign, X, Save } from 'lucide-react';
 import ConfirmationModal from '../modals/ConfirmationModal';
 import { useAudit } from '../../hooks/useAudit';
 import ThemedSelect from './ThemedSelect';
@@ -108,7 +108,7 @@ const NewPaymentPostingForm = ({ theme, api, patients, claims, insurancePayers, 
 
     // Validation
     if (!formData.patientId || !formData.claimId || !formData.payment_amount || !formData.posting_date) {
-      addNotification('Please fill in all required fields', 'error');
+      addNotification('error', 'Please fill in all required fields');
       return;
     }
 
@@ -120,8 +120,6 @@ const NewPaymentPostingForm = ({ theme, api, patients, claims, insurancePayers, 
     setProcessing(true);
 
     const patient = patients.find(p => p.id.toString() === formData.patientId);
-    const claim = claims.find(c => c.id.toString() === formData.claimId);
-    const payer = insurancePayers.find(ip => ip.id === formData.insurance_payer_id);
 
     const postingData = {
       claim_id: formData.claimId,
@@ -166,12 +164,14 @@ const NewPaymentPostingForm = ({ theme, api, patients, claims, insurancePayers, 
         },
       });
 
-      setShowConfirmation(false);
+      // NOT closed here: ConfirmationModal awaits this handler and closes itself
+    // afterwards, showing a spinner meanwhile. Closing it first took that away and
+    // left the user on a screen with no sign that anything was happening.
       onSuccess(result);
       onClose();
     } catch (error) {
       console.error('Error creating payment posting:', error);
-      addNotification(error.message || 'Failed to create payment posting', 'error');
+      addNotification('error', error.message || 'Failed to create payment posting');
 
       // Log error
       logError('NewPaymentPostingForm', 'form', error.message || 'Failed to create payment posting', {

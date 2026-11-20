@@ -299,7 +299,9 @@
       var rows = await api('/billing/tenants');
       ten.innerHTML = rows.length
         ? '<table><tr><th>Tenant</th><th>Plan</th><th>Status</th><th>MRR</th>' +
-          '<th>Collected</th><th>Refunded</th><th>Net</th><th>Last payment</th></tr>' +
+          '<th>Collected</th><th>Refunded</th><th>Net</th><th title="Prorated credits and ' +
+          'charges from mid-period plan changes, recognised but not yet invoiced. Not ' +
+          'included in Collected.">Unbilled</th><th>Last payment</th></tr>' +
           rows.map(function (r) {
             return '<tr><td>' + esc(r.name || r.slug) + '</td>' +
               '<td>' + esc(r.plan_name || '—') + '</td>' +
@@ -308,6 +310,7 @@
               '<td>' + esc(money(r.collected, r.currency)) + '</td>' +
               '<td>' + esc(money(r.refunded, r.currency)) + '</td>' +
               '<td>' + esc(money(r.net, r.currency)) + '</td>' +
+              '<td>' + (r.accrued ? esc(money(r.accrued, r.currency)) : '—') + '</td>' +
               '<td>' + esc(r.last_payment_at ? new Date(r.last_payment_at).toLocaleDateString() : '—') + '</td></tr>';
           }).join('') + '</table>'
         : '<p class="muted small">No tenants.</p>';
@@ -318,11 +321,18 @@
     try {
       var events = await api('/billing/events?limit=50');
       ev.innerHTML = events.length
-        ? '<table><tr><th>When</th><th>Tenant</th><th>Event</th><th>Amount</th><th>Detail</th></tr>' +
+        // "When" is occurred_at, which for a proration is the date the plan change took
+        // effect rather than the moment the row was written — the column means the same
+        // thing an accountant means by a posting date.
+        ? '<table><tr><th>When</th><th>Tenant</th><th>Event</th><th>Kind</th><th>Amount</th><th>Detail</th></tr>' +
           events.map(function (e2) {
+            var accrual = e2.entry_kind === 'accrual';
             return '<tr><td>' + esc(new Date(e2.occurred_at).toLocaleString()) + '</td>' +
               '<td>' + esc(e2.tenant_name || e2.tenant_slug || '—') + '</td>' +
               '<td>' + esc(e2.event_type) + '</td>' +
+              '<td>' + (accrual
+                ? '<span class="pill" title="Recognised now, settled on the next invoice. Not counted as collected revenue.">accrual</span>'
+                : '<span class="muted small">cash</span>') + '</td>' +
               '<td>' + esc(money(e2.amount, e2.currency)) + '</td>' +
               '<td>' + esc(e2.description || '') + '</td></tr>';
           }).join('') + '</table>'
@@ -673,15 +683,43 @@
             }).join('') + '</select></label>' +
           '<label>Seats<input data-f="seats" type="number" min="0" value="' + esc(sub && sub.seats || 0) + '" /></label>' +
           '<button data-act="save-sub" class="primary">Save</button></div>' +
-          '<p class="muted small">past_due or canceled makes the workspace read-only.</p>';
+          '<p class="muted small">past_due or canceled makes the workspace read-only. ' +
+          'A plan change is prorated from the moment you confirm it.</p>';
+        detail.dataset.planWas = sub && sub.plan_id != null ? String(sub.plan_id) : '';
       } else if (btn.dataset.act === 'save-sub') {
         var body = {
           planId: Number(detail.querySelector('[data-f=plan]').value),
           status: detail.querySelector('[data-f=status]').value,
           seats: Number(detail.querySelector('[data-f=seats]').value)
         };
-        await api('/tenants/' + id + '/subscription', { method: 'PUT', body: body });
-        toast('Subscription updated');
+        // Quote the change and have the operator confirm the figure BEFORE it is applied.
+        // Moving a customer between tiers is a charge on their card; doing that without
+        // ever showing what it costs is how a support call becomes a chargeback. The
+        // quoted proration date is sent back so they are billed the amount they saw.
+        if (String(body.planId) !== detail.dataset.planWas) {
+          var q = await api('/tenants/' + id + '/subscription/preview/' + body.planId)
+            .catch(function () { return null; });
+          if (q && q.prorated) {
+            var lines = (q.lines || []).map(function (l) {
+              return '\n  ' + l.description + ': ' + (l.amount < 0 ? '-' : '') + Math.abs(l.amount).toFixed(2);
+            }).join('');
+            if (!confirm('Change this tenant\'s plan?\n\nDue now: ' +
+                         Number(q.amountDue).toFixed(2) + ' ' + String(q.currency || '').toUpperCase() +
+                         lines + '\n\nThe credit and charge appear on their next invoice.')) return;
+            body.prorationDate = q.prorationDate;
+          } else if (!confirm('Change this tenant\'s plan?\n\nThis tenant is not billed through Stripe, ' +
+                              'so nothing will be charged automatically. The prorated amount is recorded ' +
+                              'against their account for manual invoicing.')) {
+            return;
+          }
+        }
+        var saved = await api('/tenants/' + id + '/subscription', { method: 'PUT', body: body });
+        toast(saved && saved.proration && saved.proration.net
+          ? 'Subscription updated — ' + saved.proration.net.toFixed(2) + ' ' +
+            String(saved.proration.currency || '').toUpperCase() + ' prorated from ' +
+            new Date(saved.proration.effectiveAt).toLocaleString()
+          : 'Subscription updated');
+        if (saved && saved.accountingWarning) toast(saved.accountingWarning, true);
         detail.hidden = true;
       } else if (btn.dataset.act === 'bg') {
         var reason = prompt('Break-glass access is time-boxed and audited.\n\nWhy do you need to read this tenant\'s activity? (min 8 characters)');
@@ -730,9 +768,14 @@
     try {
       var rows = await api('/audit?limit=100');
       if (!rows.length) { el.textContent = 'No entries.'; return; }
-      el.innerHTML = '<table><tr><th>When</th><th>Operator</th><th>Action</th><th>Target</th><th>Detail</th></tr>' +
+      // "Who" rather than "Operator": a practice admin changing their own plan and the
+      // Stripe webhook both appear here, and labelling them as operators — or leaving them
+      // as a blank dash, which is what happened before — misreads the trail.
+      el.innerHTML = '<table><tr><th>When</th><th>Who</th><th>Action</th><th>Target</th><th>Detail</th></tr>' +
         rows.map(function (r) {
-          return '<tr><td>' + esc(fmt(r.created_at)) + '</td><td>' + esc(r.operator_email || '—') +
+          var who = esc(r.actor_email || '—');
+          if (r.actor && r.actor !== 'operator') who += ' <span class="muted small">(' + esc(r.actor) + ')</span>';
+          return '<tr><td>' + esc(fmt(r.created_at)) + '</td><td>' + who +
             '</td><td>' + esc(r.action) + '</td><td>' + esc(r.target_type || '') + ' ' + esc((r.target_id || '').slice(0, 8)) +
             '</td><td class="small muted">' + esc(r.detail ? JSON.stringify(r.detail) : '') + '</td></tr>';
         }).join('') + '</table>';

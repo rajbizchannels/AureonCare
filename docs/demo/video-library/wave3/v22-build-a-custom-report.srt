@@ -1,0 +1,35 @@
+1
+00:00:03,222 --> 00:00:11,782
+Build a custom report and export it — Insights ▸ Custom Report — The escape hatch for when no standard report answers your question.
+
+2
+00:00:17,140 --> 00:00:22,011
+Insights ▸ Custom Report is for the question no standard report answers.
+
+3
+00:00:22,011 --> 00:00:31,151
+The standard reports cover the usual questions. This is the escape hatch for yours.
+
+4
+00:00:31,151 --> 00:00:41,633
+The data source comes first, because it decides which fields even exist — appointments, claims, patients.
+
+5
+00:00:41,633 --> 00:00:54,164
+Pick the columns you want. Then filter before you run — otherwise you are reading the wrong rows carefully.
+
+6
+00:00:54,164 --> 00:01:01,169
+Run it, and the result is a table you can read or hand over.
+
+7
+00:01:01,169 --> 00:01:06,752
+Save the definition and it stops being a one-off — next month you re-run it rather than rebuild it.
+
+8
+00:01:07,012 --> 00:01:19,122
+What you just did
+
+9
+00:01:19,754 --> 00:01:28,754
+Health | Efficiency | Growth — More in the Getting Started series — the next video is linked on screen.

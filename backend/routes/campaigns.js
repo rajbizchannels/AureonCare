@@ -1,7 +1,14 @@
 const express = require('express');
 const { authenticate } = require('../middleware/auth');
+const { requireModuleAccess } = require('../middleware/modulePermissions');
+const { sendDbError } = require('../utils/dbErrors');
 const router = express.Router();
 router.use(authenticate);
+// Fine-grained permissions, enforced. The method decides the action (GET=view,
+// POST=create, PUT/PATCH=edit, DELETE=delete); an administrator edits this under
+// Admin Panel -> Roles & Permissions. Absent grants fall back to the role defaults in
+// utils/permissionRegistry.js, so this changes nothing until somebody edits something.
+router.use(requireModuleAccess('crm', 'campaigns'));
 router.use(require('../middleware/planEnforcement').enforceActiveBilling); // SEC-05 S11: read-only when subscription past_due/canceled
 
 // Helper function to convert snake_case to camelCase
@@ -120,7 +127,9 @@ router.post('/', async (req, res) => {
     res.status(201).json(toCamelCase(result.rows[0]));
   } catch (error) {
     console.error('Error creating campaign:', error);
-    res.status(500).json({ error: 'Failed to create campaign', details: error.message });
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to create campaign')) return;
+    res.status(500).json({ error: 'Failed to create campaign' });
   }
 });
 
@@ -164,6 +173,8 @@ router.put('/:id', async (req, res) => {
     res.json(toCamelCase(result.rows[0]));
   } catch (error) {
     console.error('Error updating campaign:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to update campaign')) return;
     res.status(500).json({ error: 'Failed to update campaign' });
   }
 });
@@ -186,6 +197,8 @@ router.delete('/:id', async (req, res) => {
     res.json({ message: 'Campaign deleted successfully' });
   } catch (error) {
     console.error('Error deleting campaign:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to delete campaign')) return;
     res.status(500).json({ error: 'Failed to delete campaign' });
   }
 });

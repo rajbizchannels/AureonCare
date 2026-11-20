@@ -1,10 +1,8 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Plus, Search, FileText, Edit2, Trash2, Eye, Download, Copy, History,
-  CheckCircle, XCircle, Clock, Shield, GitBranch, Filter, ChevronDown,
-  ChevronLeft, LayoutGrid, List, Activity, Settings, Users, BookOpen,
-  ClipboardList, PenLine, Globe, Tag, AlertCircle, RefreshCw, X, Check,
-  ArrowLeft, ChevronRight, Languages, Send, Star
+  Plus, Search, FileText, Eye, Download, History,
+  CheckCircle, XCircle, Clock, LayoutGrid, List, Activity, ClipboardList, PenLine, AlertCircle, RefreshCw, X, Check,
+  ArrowLeft, Send
 } from 'lucide-react';
 import { useAudit } from '../hooks/useAudit';
 import DynamicFormBuilder from '../components/forms/DynamicFormBuilder';
@@ -148,7 +146,7 @@ const FormManagementView = ({
   t = {}
 }) => {
   const dark = theme === 'dark';
-  const { logViewAccess, logAction } = useAudit();
+  const { logViewAccess } = useAudit();
 
   // Tabs: templates | submissions | builder | audit
   const [activeTab, setActiveTab, tabsInShell] = useShellTab(shellTab, onTabChange, 'templates');
@@ -161,13 +159,12 @@ const FormManagementView = ({
 
   // Submissions
   const [submissions, setSubmissions] = useState([]);
-  const [selectedSubmission, setSelectedSubmission] = useState(null);
 
   // Audit
   const [auditLogs, setAuditLogs] = useState([]);
 
   // Stats
-  const [stats, setStats] = useState({});
+  const [, setStats] = useState({});
 
   // UI
   const [loading, setLoading] = useState(false);
@@ -177,11 +174,10 @@ const FormManagementView = ({
   const [viewMode, setViewMode] = useState('grid');
   const [submissionFormData, setSubmissionFormData] = useState({});
   const [submissionLanguage, setSubmissionLanguage] = useState('en');
-  const [showSignatureCapture, setShowSignatureCapture] = useState(false);
   const [signatures, setSignatures] = useState([]);
   const [confirmModal, setConfirmModal] = useState({ isOpen: false });
   const [showVersionHistory, setShowVersionHistory] = useState(false);
-  const [versions, setVersions] = useState([]);
+  const [versions] = useState([]);
   const [errors, setErrors] = useState({});
 
   // Builder state
@@ -324,52 +320,8 @@ const FormManagementView = ({
     setActiveTab('builder');
   };
 
-  const handleDeleteTemplate = (template) => {
-    if (template._seed || template.is_system_template) {
-      addNotification && addNotification({ type: 'error', message: 'System templates cannot be deleted.' });
-      return;
-    }
-    setConfirmModal({
-      isOpen: true,
-      title: 'Delete Template',
-      message: `Are you sure you want to delete "${template.name}"? This cannot be undone.`,
-      type: 'danger',
-      onConfirm: async () => {
-        await api.deleteFormTemplate(template.id).catch(() => null);
-        await loadData();
-        addNotification && addNotification({ type: 'success', message: 'Template deleted.' });
-        setConfirmModal({ isOpen: false });
-      }
-    });
-  };
 
-  const handleDuplicateTemplate = async (template) => {
-    const dup = {
-      ...template,
-      name: template.name + ' (Copy)',
-      slug: undefined,
-      is_system_template: false,
-      _seed: undefined,
-      id: undefined
-    };
-    delete dup._seed;
-    delete dup.id;
-    delete dup.slug;
-    try {
-      await api.createFormTemplate(dup);
-      await loadData();
-      addNotification && addNotification({ type: 'success', message: 'Template duplicated.' });
-    } catch (e) {
-      addNotification && addNotification({ type: 'error', message: 'Failed to duplicate template.' });
-    }
-  };
 
-  const loadVersionHistory = async (template) => {
-    if (template._seed) return;
-    const v = await api.getFormTemplateVersions(template.id).catch(() => []);
-    setVersions(v);
-    setShowVersionHistory(true);
-  };
 
   // ─── Submission actions ────────────────────────────────────────────────
 

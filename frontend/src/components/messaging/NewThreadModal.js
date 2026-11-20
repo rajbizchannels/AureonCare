@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { X, Search, Check, Loader2, UserCircle, Stethoscope, AlertTriangle } from 'lucide-react';
+import AIAssistButton from '../integrations/AIAssistButton';
 
 /**
  * Compose a new conversation.
@@ -274,9 +275,19 @@ const NewThreadModal = ({ theme, api, mode, me, onClose, onCreated, addNotificat
 
           {/* ── Message ────────────────────────────────────────────────── */}
           <div>
-            <label htmlFor="thread-body" className={`block text-sm font-medium mb-1.5 ${dark ? 'text-slate-300' : 'text-gray-700'}`}>
-              Message
-            </label>
+            <div className="flex items-center justify-between gap-2 mb-1.5">
+              <label htmlFor="thread-body" className={`block text-sm font-medium ${dark ? 'text-slate-300' : 'text-gray-700'}`}>
+                Message
+              </label>
+              {/* Staff only: AI drafts the message from the subject and notes; only on click */}
+              {isStaff && (
+                <AIAssistButton featureKey="message_drafts" theme={theme}
+                  patientId={selected.find((s) => s.kind === 'patient')?.id || null} entityType="message_thread"
+                  labelKey="aiDraftMessage" label="AI draft"
+                  getInput={() => [subject && `Subject: ${subject}`, body && `Notes for the message:\n${body}`].filter(Boolean).join('\n\n')}
+                  onApply={(text) => setBody(text)} />
+              )}
+            </div>
             <textarea
               id="thread-body"
               value={body}

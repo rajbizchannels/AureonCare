@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { X, MessageCircle, Phone, Edit2, Check } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { X, MessageCircle, Phone, Edit2, Check, ToggleLeft, ToggleRight } from 'lucide-react';
 import ConfirmationModal from './ConfirmationModal';
 import { getTranslations } from '../../config/translations';
 import { useAudit } from '../../hooks/useAudit';
 import { isPhoneValid, validateOptionalPhone } from '../../utils/validators';
 import TwoFactorPanel from '../TwoFactorPanel';
+import ProviderListingPanel from '../ProviderListingPanel';
 
 const UserProfileModal = ({
   theme,
@@ -51,7 +52,7 @@ const UserProfileModal = ({
   }, [logModalOpen, startAction, user?.id, user?.role]);
 
   // Handle close with audit logging
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     logModalClose('UserProfileModal', {
       module: 'Profile',
       metadata: {
@@ -61,7 +62,7 @@ const UserProfileModal = ({
     });
     setShowChangePassword(false);
     onClose();
-  };
+  }, [logModalClose, onClose, setShowChangePassword, user?.id, user?.role]);
 
   // ESC key handler
   useEffect(() => {
@@ -187,12 +188,16 @@ const UserProfileModal = ({
               under notification toggles is how it goes unused. */}
           <TwoFactorPanel theme={theme} api={api} addNotification={addNotification} />
 
+          {/* Providers only: consent to appear on the practice's public profile. */}
+          <ProviderListingPanel theme={theme} api={api} addNotification={addNotification} />
+
           <div className={`rounded-lg p-4 ${theme === 'dark' ? 'bg-slate-800/50' : 'bg-gray-100/50'}`}>
             <h4 className={`font-semibold mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.preferences || 'Preferences'}</h4>
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <span className={`${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{t.emailNotifications || 'Email Notifications'}</span>
                 <button
+                  role="switch" aria-checked={!!((user.preferences?.emailNotifications ?? true))}
                   type="button"
                   onClick={async () => {
                     const newValue = !(user.preferences?.emailNotifications ?? true);
@@ -201,17 +206,9 @@ const UserProfileModal = ({
                       await addNotification('success', t.preferenceSaved);
                     }
                   }}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
-                    (user.preferences?.emailNotifications ?? true)
-                      ? 'bg-blue-500'
-                      : theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'
-                  }`}
+                  className="inline-flex shrink-0 items-center transition-opacity hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:opacity-50"
                 >
-                  <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      (user.preferences?.emailNotifications ?? true) ? 'translate-x-6' : 'translate-x-1'
-                    }`}
-                  />
+                  {(user.preferences?.emailNotifications ?? true) ? <ToggleRight className="w-6 h-6 text-green-400" /> : <ToggleLeft className="w-6 h-6 text-gray-400" />}
                 </button>
               </div>
               {/* Moved here when the header settings dialog was removed. This modal is the
@@ -222,6 +219,7 @@ const UserProfileModal = ({
                   {t.pushNotifications || 'Push Notifications'}
                 </span>
                 <button
+                  role="switch" aria-checked={!!((user.preferences?.pushNotifications ?? true))}
                   type="button"
                   onClick={async () => {
                     const newValue = !(user.preferences?.pushNotifications ?? true);
@@ -230,22 +228,15 @@ const UserProfileModal = ({
                       await addNotification('success', t.preferenceSaved);
                     }
                   }}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
-                    (user.preferences?.pushNotifications ?? true)
-                      ? 'bg-blue-500'
-                      : theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'
-                  }`}
+                  className="inline-flex shrink-0 items-center transition-opacity hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:opacity-50"
                 >
-                  <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      (user.preferences?.pushNotifications ?? true) ? 'translate-x-6' : 'translate-x-1'
-                    }`}
-                  />
+                  {(user.preferences?.pushNotifications ?? true) ? <ToggleRight className="w-6 h-6 text-green-400" /> : <ToggleLeft className="w-6 h-6 text-gray-400" />}
                 </button>
               </div>
               <div className="flex items-center justify-between">
                 <span className={`${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{t.smsAlerts || 'SMS Alerts'}</span>
                 <button
+                  role="switch" aria-checked={!!((user.preferences?.smsAlerts ?? true))}
                   type="button"
                   onClick={async () => {
                     const newValue = !(user.preferences?.smsAlerts ?? true);
@@ -254,17 +245,9 @@ const UserProfileModal = ({
                       await addNotification('success', t.preferenceSaved);
                     }
                   }}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
-                    (user.preferences?.smsAlerts ?? true)
-                      ? 'bg-blue-500'
-                      : theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'
-                  }`}
+                  className="inline-flex shrink-0 items-center transition-opacity hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:opacity-50"
                 >
-                  <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      (user.preferences?.smsAlerts ?? true) ? 'translate-x-6' : 'translate-x-1'
-                    }`}
-                  />
+                  {(user.preferences?.smsAlerts ?? true) ? <ToggleRight className="w-6 h-6 text-green-400" /> : <ToggleLeft className="w-6 h-6 text-gray-400" />}
                 </button>
               </div>
               {/* WhatsApp Number + Notification Toggle */}
@@ -363,6 +346,7 @@ const UserProfileModal = ({
                     )}
                   </div>
                   <button
+                    role="switch" aria-checked={!!((user.preferences?.whatsappNotifications && isPhoneValid(whatsappNumber)))}
                     type="button"
                     disabled={!isPhoneValid(whatsappNumber)}
                     onClick={async () => {
@@ -371,19 +355,9 @@ const UserProfileModal = ({
                       const success = await updateUserPreferences({ whatsappNotifications: newValue });
                       if (success) await addNotification('success', t.preferenceSaved || 'Preference saved');
                     }}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                      !isPhoneValid(whatsappNumber)
-                        ? `opacity-40 cursor-not-allowed ${theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'}`
-                        : (user.preferences?.whatsappNotifications && isPhoneValid(whatsappNumber))
-                          ? 'bg-green-500 cursor-pointer'
-                          : `cursor-pointer ${theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'}`
-                    }`}
+                    className="inline-flex shrink-0 items-center transition-opacity hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:opacity-50"
                   >
-                    <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                        (user.preferences?.whatsappNotifications && isPhoneValid(whatsappNumber)) ? 'translate-x-6' : 'translate-x-1'
-                      }`}
-                    />
+                    {(user.preferences?.whatsappNotifications && isPhoneValid(whatsappNumber)) ? <ToggleRight className="w-6 h-6 text-green-400" /> : <ToggleLeft className="w-6 h-6 text-gray-400" />}
                   </button>
                 </div>
               </div>
@@ -391,6 +365,7 @@ const UserProfileModal = ({
               <div className="flex items-center justify-between">
                 <span className={`${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{t.darkMode || 'Dark Mode'}</span>
                 <button
+                  role="switch" aria-checked={!!(theme === 'dark')}
                   type="button"
                   onClick={async () => {
                     const isDark = theme !== 'dark';
@@ -400,17 +375,9 @@ const UserProfileModal = ({
                       await addNotification('success', t.themePreferenceSaved);
                     }
                   }}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
-                    theme === 'dark'
-                      ? 'bg-blue-500'
-                      : 'bg-gray-300'
-                  }`}
+                  className="inline-flex shrink-0 items-center transition-opacity hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:opacity-50"
                 >
-                  <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      theme === 'dark' ? 'translate-x-6' : 'translate-x-1'
-                    }`}
-                  />
+                  {(theme === 'dark') ? <ToggleRight className="w-6 h-6 text-green-400" /> : <ToggleLeft className="w-6 h-6 text-gray-400" />}
                 </button>
               </div>
             </div>

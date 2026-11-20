@@ -18,48 +18,7 @@
 
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import PropTypes from 'prop-types';
-import {
-  Settings,
-  Users,
-  Clock,
-  Building2,
-  Save,
-  Edit,
-  Trash2,
-  UserPlus,
-  Shield,
-  Lock,
-  Unlock,
-  CheckCircle,
-  CreditCard,
-  Check,
-  Video,
-  Plus,
-  HardDrive,
-  Cloud,
-  Download,
-  Upload,
-  RefreshCw,
-  X,
-  User,
-  Mail,
-  Phone,
-  FileText,
-  Stethoscope,
-  Globe,
-  Languages,
-  MapPin,
-  Archive,
-  ChevronDown,
-  ChevronUp,
-  ExternalLink,
-  Copy,
-  MessageCircle,
-  Edit2,
-  Bell,
-  BookOpen,
-  Package,
-} from 'lucide-react';
+import { Settings, Users, Clock, Building2, Save, Edit, Trash2, UserPlus, Shield, Lock, Unlock, CheckCircle, CreditCard, Check, Video, Plus, HardDrive, Cloud, Download, Upload, RefreshCw, X, User, Mail, Phone, FileText, Stethoscope, Globe, Languages, MapPin, Archive, ChevronDown, ChevronUp, ExternalLink, Copy, MessageCircle, Edit2, Bell, BookOpen, Package, ToggleLeft, ToggleRight } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 import InviteStaffPanel from '../components/InviteStaffPanel';
@@ -68,22 +27,21 @@ import SubscriptionPlansPanel from '../components/SubscriptionPlansPanel';
 import CredentialModal from '../components/modals/CredentialModal';
 import BackupDestinationModal from '../components/modals/BackupDestinationModal';
 import { useAudit } from '../hooks/useAudit';
-import IntegrationCard from '../components/IntegrationCard';
 import AuditLogsTab from '../components/admin/AuditLogsTab';
 import ArchiveManagementTab from '../components/admin/ArchiveManagementTab';
 import LocationsTab from '../components/admin/LocationsTab';
+import PracticeProfileTab from '../components/admin/PracticeProfileTab';
+import ModulePermissionsTab from '../components/admin/ModulePermissionsTab';
+import BusyButton from '../components/common/BusyButton';
 import { useClinicSettings } from '../hooks/useClinicSettings';
 import { apiFetch } from '../api/apiService';
 import { useShellTab } from '../hooks/useShellTab';
 import {
-  USER_ROLES,
   USER_STATUS,
   DEFAULT_APPOINTMENT_SETTINGS,
   DEFAULT_WORKING_HOURS,
-  DEFAULT_ROLE_PERMISSIONS,
   ADMIN_TABS,
   TELEHEALTH_PROVIDERS,
-  VENDOR_TYPES,
 } from '../constants/adminConstants';
 import {
   validateAppointmentDuration,
@@ -94,7 +52,6 @@ import {
   safeJSONParse,
   isPhoneValid,
   validateOptionalPhone,
-  validateOptionalEmail,
 } from '../utils/validators';
 import { hasPermission, isAdmin } from '../utils/rolePermissions';
 import ThemedSelect from '../components/forms/ThemedSelect';
@@ -368,15 +325,10 @@ const AdminPanelView = ({
     maxAdvanceBooking: DEFAULT_APPOINTMENT_SETTINGS.MAX_ADVANCE_BOOKING,
     cancellationDeadline: DEFAULT_APPOINTMENT_SETTINGS.CANCELLATION_DEADLINE,
   });
-  const [rolePermissions, setRolePermissions] = useState(DEFAULT_ROLE_PERMISSIONS);
 
   // Accounts module RBAC & backup
-  const [acctPermissions, setAcctPermissions] = useState([]);
-  const [acctPermLoading, setAcctPermLoading] = useState(false);
   const [acctBackups, setAcctBackups] = useState([]);
   const [acctBackupLoading, setAcctBackupLoading] = useState(false);
-  const [invPermissions, setInvPermissions] = useState([]);
-  const [invPermLoading, setInvPermLoading] = useState(false);
   const [invBackups, setInvBackups] = useState([]);
   const [invBackupLoading, setInvBackupLoading] = useState(false);
 
@@ -390,55 +342,15 @@ const AdminPanelView = ({
   });
   const [telehealthDbMissing, setTelehealthDbMissing] = useState(false);
 
-  const [vendorStatus, setVendorStatus] = useState({
-    surescripts: { is_enabled: false, is_configured: false, sandbox_mode: true },
-    labcorp: { is_enabled: false, is_configured: false, sandbox_mode: true },
-    optum: { is_enabled: false, is_configured: false, sandbox_mode: true },
-  });
-  const [vendorDbMissing, setVendorDbMissing] = useState(false);
-
-  // Stripe integration state
-  const [stripeStatus, setStripeStatus] = useState({
-    is_enabled: false,
-    is_configured: false,
-    has_secret_key: false,
-    has_webhook_secret: false,
-    use_platform_integration: false,
-    publishable_key: '',
-    sandbox_mode: true,
-    test_status: null,
-    test_message: null,
-  });
-  const [stripeExpanded, setStripeExpanded] = useState(false);
-  const [stripeForm, setStripeForm] = useState({
-    publishable_key: '',
-    secret_key: '',
-    webhook_secret: '',
-    sandbox_mode: true,
-    use_platform_integration: false,
-  });
-  const [savingStripe, setSavingStripe] = useState(false);
-  const [testingStripe, setTestingStripe] = useState(false);
 
   // Custom role creation state
   const [showCustomRoleForm, setShowCustomRoleForm] = useState(false);
   const [customRoleName, setCustomRoleName] = useState('');
-  const [customRolePermissions, setCustomRolePermissions] = useState({
-    patients: { view: false, create: false, edit: false, delete: false },
-    appointments: { view: false, create: false, edit: false, delete: false },
-    claims: { view: false, create: false, edit: false, delete: false },
-    ehr: { view: false, create: false, edit: false, delete: false },
-    telehealth: { view: false, create: false, edit: false, delete: false },
-    crm: { view: false, create: false, edit: false, delete: false },
-    rcm: { view: false, create: false, edit: false, delete: false },
-    practiceManagement: { view: false, create: false, edit: false, delete: false },
-    clinicalServices: { view: false, create: false, edit: false, delete: false },
-    reports: { view: false, create: false, edit: false, delete: false },
-    users: { view: false, create: false, edit: false, delete: false },
-    settings: { view: false, create: false, edit: false, delete: false },
-    backup: { view: false, create: false, edit: false, delete: false },
-    audit: { view: false, create: false, edit: false, delete: false },
-  });
+  // A role is a NAME. The create-role form used to carry a grid of module x action
+  // checkboxes backed by this state; they wrote to public.permissions / role_permissions,
+  // which are empty on every installation checked and read by nothing. What a role may do
+  // is granted in the module permissions grid, which is enforced.
+  const [customRoles, setCustomRoles] = useState([]);
 
   // Confirmation modal state
   const [showSaveConfirmation, setShowSaveConfirmation] = useState(false);
@@ -515,13 +427,14 @@ const AdminPanelView = ({
   const tabs = useMemo(
     () => [
       { id: ADMIN_TABS.CLINIC, label: t.clinicSettings || 'Clinic Settings', icon: Building2 },
+      { id: ADMIN_TABS.PROFILE, label: t.practiceProfile || 'Practice Profile', icon: Globe },
       { id: ADMIN_TABS.LOCATIONS, label: t.locations || 'Locations', icon: MapPin },
       { id: ADMIN_TABS.USERS, label: t.userManagement || 'User Management', icon: Users },
       { id: ADMIN_TABS.ROLES, label: t.rolesPermissions || 'Roles & Permissions', icon: Shield },
       // Billing is admin-only. The API enforces this too (authorize('admin') on
       // PUT /api/plans/current); hiding the tab stops non-admins reaching a 403.
       ...(isAdmin(user) ? [{ id: ADMIN_TABS.PLANS, label: t.subscriptionPlans || 'Subscription Plans', icon: CreditCard }] : []),
-      { id: ADMIN_TABS.TELEHEALTH, label: t.integrations || 'Integrations', icon: Video },
+      { id: ADMIN_TABS.TELEHEALTH, label: t.telehealthSetup || 'Telehealth Setup', icon: Video },
       { id: ADMIN_TABS.HOURS, label: t.workingHours || 'Working Hours', icon: Clock },
       { id: ADMIN_TABS.APPOINTMENTS, label: t.appointmentSettings || 'Appointment Settings', icon: Settings },
       { id: ADMIN_TABS.BACKUP, label: 'Backup & Restore', icon: HardDrive },
@@ -531,13 +444,8 @@ const AdminPanelView = ({
     [t, user]
   );
 
-  /**
-   * Memoized role permission entries to avoid recalculating Object.entries on every render
-   */
-  const rolePermissionEntries = useMemo(
-    () => Object.entries(rolePermissions),
-    [rolePermissions]
-  );
+  // rolePermissionEntries memoised the rows of the coarse module x role matrix. That
+  // matrix is gone; the roles list below reads the same object directly.
 
   /**
    * Filter users by status for display
@@ -592,14 +500,9 @@ const AdminPanelView = ({
   /**
    * Load accounts RBAC permissions when Roles tab is active
    */
-  useEffect(() => {
-    if (activeTab !== ADMIN_TABS.ROLES) return;
-    setAcctPermLoading(true);
-    api.getAccountPermissions()
-      .then(setAcctPermissions)
-      .catch(err => console.error('Failed to load accounts permissions:', err))
-      .finally(() => setAcctPermLoading(false));
-  }, [activeTab, api]);
+  // The accounts-permissions request used to live here, beside the inventory one.
+  // ModulePermissionsTab loads every module's grants from a single endpoint, so both were
+  // left fetching data that nothing rendered.
 
   /**
    * Load accounts backup history when Backup tab is active
@@ -611,14 +514,19 @@ const AdminPanelView = ({
       .catch(err => console.error('Failed to load accounts backups:', err));
   }, [activeTab, api]);
 
+  // The practice's custom roles, read from the roles endpoint rather than from the
+  // hardcoded defaults object — so a role created here appears straight away, before
+  // anyone holds it, and Delete has an id to work with.
   useEffect(() => {
     if (activeTab !== ADMIN_TABS.ROLES) return;
-    setInvPermLoading(true);
-    api.getInventoryPermissions()
-      .then(setInvPermissions)
-      .catch(err => console.error('Failed to load inventory permissions:', err))
-      .finally(() => setInvPermLoading(false));
+    api.getRoles(true)
+      .then((rows) => setCustomRoles(Array.isArray(rows) ? rows : []))
+      .catch((err) => console.error('Failed to load roles:', err));
   }, [activeTab, api]);
+
+  // The inventory permissions fetch used to live here. ModulePermissionsTab loads every
+  // module's grants from one endpoint, so this request was left making a call whose result
+  // nothing rendered.
 
   useEffect(() => {
     if (activeTab !== ADMIN_TABS.BACKUP) return;
@@ -677,103 +585,10 @@ const AdminPanelView = ({
     loadTelehealthStatus();
   }, [api, addNotification]);
 
-  /**
-   * Load vendor integration status (NOT credentials)
-   * SECURITY: Only status information is loaded, credentials remain server-side
-   */
-  useEffect(() => {
-    const loadVendorStatus = async () => {
-      try {
-        const settings = await api.getVendorIntegrationSettings();
-        if (settings && settings.length > 0) {
-          const statusMap = {};
-          settings.forEach((s) => {
-            // Only extract status information, NOT credentials
-            statusMap[s.vendor_type] = {
-              is_enabled: s.is_enabled || false,
-              is_configured: Boolean(s.client_id || s.api_key), // Check if configured
-              sandbox_mode: s.sandbox_mode !== undefined ? s.sandbox_mode : true,
-            };
-          });
-
-          setVendorStatus((prev) => ({
-            ...prev,
-            ...statusMap,
-          }));
-        }
-      } catch (error) {
-        console.error('Error loading vendor integration settings:', error);
-        if (
-          error.message &&
-          (error.message.includes('vendor_integration_settings') || error.message.includes('503'))
-        ) {
-          console.warn(
-            'Vendor integration settings table does not exist. Please run the database migration: 033_add_vendor_integrations.sql'
-          );
-          setVendorDbMissing(true);
-          await addNotification(
-            'warning',
-            'Vendor integration database table missing. Please run migrations.'
-          );
-        } else {
-          await addNotification('error', 'Failed to load vendor integration status');
-        }
-      }
-    };
-    loadVendorStatus();
-  }, [api, addNotification]);
-
-  /**
-   * Load Stripe integration status
-   */
-  useEffect(() => {
-    const loadStripeStatus = async () => {
-      try {
-        const data = await api.getStripeSettings();
-        if (data && (data.id || data.is_enabled !== undefined)) {
-          setStripeStatus({
-            is_enabled: data.is_enabled || false,
-            is_configured: data.use_platform_integration || !!(data.publishable_key) || !!(data.has_secret_key),
-            has_secret_key: data.has_secret_key || false,
-            has_webhook_secret: data.has_webhook_secret || false,
-            use_platform_integration: data.use_platform_integration || false,
-            publishable_key: data.publishable_key || '',
-            sandbox_mode: data.sandbox_mode !== undefined ? data.sandbox_mode : true,
-            test_status: data.test_status || null,
-            test_message: data.test_message || null,
-          });
-          setStripeForm((prev) => ({
-            ...prev,
-            publishable_key: data.publishable_key || '',
-            sandbox_mode: data.sandbox_mode !== undefined ? data.sandbox_mode : true,
-            use_platform_integration: data.use_platform_integration || false,
-          }));
-        }
-      } catch (error) {
-        console.error('Error loading Stripe settings:', error);
-      }
-    };
-    loadStripeStatus();
-  }, [api]);
-
-  /**
-   * Load role permissions from backend
-   */
-  useEffect(() => {
-    const loadPermissions = async () => {
-      try {
-        const permissions = await api.getPermissions();
-        if (Object.keys(permissions).length > 0) {
-          setRolePermissions(permissions);
-        }
-      } catch (error) {
-        console.error('Error loading permissions:', error);
-        await addNotification('error', 'Failed to load role permissions');
-        // Continue with default permissions
-      }
-    };
-    loadPermissions();
-  }, [api, addNotification]);
+  // The coarse role permissions were loaded here for the module x role matrix. That matrix
+  // is gone, and GET /api/permissions reads public.permissions / role_permissions, which
+  // are empty on every installation checked — so this ran on every visit to the tab and
+  // handed its result to nothing.
 
   /**
    * Load working hours from backend
@@ -843,14 +658,19 @@ const AdminPanelView = ({
    */
   const handleDeleteUser = useCallback(
     (userId) => {
+      // Phase 1: someone who also works at another practice is only REMOVED from this one.
+      const target = (users || []).find((u) => u.id === userId);
+      const shared = Boolean(target && target.otherPractices > 0);
       setConfirmModalConfig({
-        title: t.deleteUser || 'Delete User',
-        message: t.confirmDeleteUser || 'Are you sure you want to delete this user? This action cannot be undone.',
+        title: shared ? 'Remove from this practice' : (t.deleteUser || 'Delete User'),
+        message: shared
+          ? 'This person also works at another practice. They will lose access to this practice only; their account and their other practices are not affected.'
+          : (t.confirmDeleteUser || 'Are you sure you want to delete this user? This action cannot be undone.'),
         onConfirm: async () => {
           try {
             await api.deleteUser(userId);
             setUsers((prevUsers) => prevUsers.filter((u) => u.id !== userId));
-            await addNotification('success', t.userDeletedSuccessfully || 'User deleted successfully');
+            await addNotification('success', shared ? 'Removed from this practice' : (t.userDeletedSuccessfully || 'User deleted successfully'));
           } catch (error) {
             console.error('Error deleting user:', error);
             await addNotification('alert', t.failedToDeleteUser || 'Failed to delete user');
@@ -859,7 +679,7 @@ const AdminPanelView = ({
       });
       setShowConfirmModal(true);
     },
-    [api, setUsers, addNotification, t]
+    [api, users, setUsers, addNotification, t]
   );
 
   /**
@@ -1007,63 +827,37 @@ const AdminPanelView = ({
     [editingUser, api, setUsers, t, addNotification]
   );
 
-  /**
-   * Save role permissions
-   */
-  const handleSaveRolePermissions = useCallback(async () => {
-    try {
-      await api.updatePermissions(rolePermissions);
-      await addNotification('success', t.rolePermissionsSaved || 'Role permissions saved successfully');
-    } catch (error) {
-      console.error('Error saving permissions:', error);
-      await addNotification('alert', t.failedToSaveRolePermissions || 'Failed to save role permissions');
-    }
-  }, [api, rolePermissions, addNotification, t]);
+  // handleSaveRolePermissions bulk-saved the coarse module x role matrix through
+  // PUT /api/permissions. That matrix and its Save button are gone, and the endpoint wrote
+  // to public.permissions / role_permissions, which are empty on every installation
+  // checked and read by nothing.
 
-  const handleSaveRolePermissionsClick = useCallback(() => {
-    setPendingSaveAction(() => handleSaveRolePermissions);
-    setShowSaveConfirmation(true);
-  }, [handleSaveRolePermissions]);
-
-  /**
-   * Toggle permission for a specific role and module
-   */
-  const handleTogglePermission = useCallback((role, module, action) => {
-    setRolePermissions((prev) => ({
-      ...prev,
-      [role]: {
-        ...prev[role],
-        [module]: {
-          ...prev[role][module],
-          [action]: !prev[role][module][action],
-        },
-      },
-    }));
-  }, []);
+  // handleSaveRolePermissionsClick and handleTogglePermission drove the coarse module x
+  // role matrix. Both wrote to public.permissions / role_permissions, which are empty on
+  // every installation checked and read by nothing, so the toggles changed a checkbox and
+  // the Save button wrote rows that never took effect. ModulePermissionsTab saves each
+  // change as it is made, to a table the middleware actually enforces.
 
   /**
    * Delete custom role
    */
   const handleDeleteCustomRole = useCallback(
-    (roleName) => {
+    (role) => {
       setConfirmModalConfig({
-        title: 'Delete Custom Role',
-        message: `Are you sure you want to delete the "${roleName}" role? This action cannot be undone.`,
+        title: 'Delete role',
+        message: `Delete the "${role.display_name || role.name}" role? Any permissions `
+          + 'granted to it are discarded.',
         onConfirm: async () => {
           try {
-            // Remove from state
-            setRolePermissions((prev) => {
-              const updated = { ...prev };
-              delete updated[roleName];
-              return updated;
-            });
-
-            // Delete from API
-            await api.deleteRole(roleName);
-            await addNotification('success', `Custom role "${roleName}" deleted successfully`);
+            // By id: the route is DELETE /api/roles/:id. It used to be called with the
+            // role NAME, through an api.deleteRole that did not exist at all — so the
+            // button threw a TypeError and reported a generic failure.
+            await api.deleteRole(role.id);
+            setCustomRoles((prev) => prev.filter((r) => r.id !== role.id));
+            await addNotification('success', `Role "${role.display_name || role.name}" deleted`);
           } catch (error) {
-            console.error('Error deleting custom role:', error);
-            await addNotification('alert', 'Failed to delete custom role');
+            console.error('Error deleting role:', error);
+            await addNotification('alert', error.message || 'Failed to delete role');
           }
         },
       });
@@ -1075,49 +869,31 @@ const AdminPanelView = ({
   /**
    * Create or update custom role
    */
+  /**
+   * Create a role.
+   *
+   * POST /api/roles, which is the endpoint that actually creates one. This used to call
+   * PUT /api/permissions/:role — that looks the role up in `roles` BEFORE writing its
+   * permissions, so for a role that did not exist yet it answered 404 and the button never
+   * worked at all. It also wrote to role_permissions, which nothing reads.
+   */
   const handleCreateCustomRole = useCallback(
-    async (roleName, permissions) => {
+    async (roleName) => {
+      const typed = roleName.trim();
+      const sanitizedName = sanitizeString(typed).toLowerCase().replace(/\s+/g, '_');
       try {
-        // Sanitize role name
-        const sanitizedName = sanitizeString(roleName);
-
-        // Check if role already exists (editing mode)
-        const isEditMode = rolePermissions.hasOwnProperty(sanitizedName);
-
-        // Add to state
-        setRolePermissions((prev) => ({
-          ...prev,
-          [sanitizedName]: permissions,
-        }));
-
-        // Save to API using updateRolePermissions
-        await api.updateRolePermissions(sanitizedName, permissions);
-
-        await addNotification(
-          'success',
-          isEditMode
-            ? `Role "${sanitizedName}" updated successfully`
-            : `Custom role "${sanitizedName}" created successfully`
-        );
-
+        const created = await api.createRole({ name: sanitizedName, displayName: typed });
+        setCustomRoles((prev) => [...prev.filter((r) => r.name !== created.name), created]);
+        await addNotification('success',
+          `Role "${typed}" created. It can do nothing until you grant it something below.`);
         setShowCustomRoleForm(false);
         setCustomRoleName('');
-        setCustomRolePermissions({
-          patients: { view: false, create: false, edit: false, delete: false },
-          appointments: { view: false, create: false, edit: false, delete: false },
-          claims: { view: false, create: false, edit: false, delete: false },
-          ehr: { view: false, create: false, edit: false, delete: false },
-          users: { view: false, create: false, edit: false, delete: false },
-          reports: { view: false, create: false, edit: false, delete: false },
-          settings: { view: false, create: false, edit: false, delete: false },
-          backup: { view: false, create: false, edit: false, delete: false },
-        });
       } catch (error) {
-        console.error('Error saving custom role:', error);
-        await addNotification('alert', 'Failed to save custom role');
+        console.error('Error creating role:', error);
+        await addNotification('alert', error.message || 'Failed to create role');
       }
     },
-    [api, addNotification, rolePermissions]
+    [api, addNotification]
   );
 
   /**
@@ -1312,82 +1088,6 @@ const AdminPanelView = ({
     return () => clearInterval(pollTimer);
   }, []);
 
-  /**
-   * Handle reconfigure integration - fetches existing credentials and shows edit modal
-   */
-  const handleReconfigureIntegration = useCallback(
-    async (providerType, providerName, credentialType = 'oauth') => {
-      try {
-        // Fetch existing credentials
-        const response = await apiFetch(`/integrations/oauth/${providerType}/credentials`);
-        const data = await response.json();
-
-        if (!response.ok) {
-          throw new Error(data.error || 'Failed to fetch credentials');
-        }
-
-        // Helper: initiate OAuth popup and poll for completion
-        const initiateOAuthPopup = async () => {
-          const oauthResponse = await apiFetch(`/integrations/oauth/${providerType}/initiate`);
-          const oauthData = await oauthResponse.json();
-
-          if (!oauthResponse.ok) {
-            throw new Error(oauthData.error || 'Failed to initiate OAuth flow');
-          }
-
-          if (oauthData.authUrl) {
-            const width = 600;
-            const height = 700;
-            const left = window.screen.width / 2 - width / 2;
-            const top = window.screen.height / 2 - height / 2;
-            const popup = window.open(
-              oauthData.authUrl,
-              'OAuth Authorization',
-              `width=${width},height=${height},left=${left},top=${top}`
-            );
-
-            // Poll backend OAuth status (COOP-safe, no popup.closed dependency)
-            pollOAuthStatus(providerType, popup, async (success) => {
-              if (success) {
-                if (['zoom', 'google_meet', 'webex', 'microsoft_teams'].includes(providerType)) {
-                  const settings = await api.getTelehealthSettings();
-                  setTelehealthStatus((prev) => ({ ...prev, ...settings }));
-                } else if (['google_drive', 'onedrive'].includes(providerType)) {
-                  await fetchBackupConfigStatus();
-                }
-                setShowCredentialModal(false);
-                await addNotification('success', `${providerName} configured successfully.`);
-              }
-            });
-          }
-        };
-
-        // onSuccess: called after saving updated credentials → triggers OAuth
-        const onSuccess = credentialType === 'oauth' ? initiateOAuthPopup : null;
-
-        // onConnect: one-click connect (credentials already saved, go straight to OAuth)
-        const onConnect = credentialType === 'oauth' ? async () => {
-          await addNotification('info', `Connecting to ${providerName}...`);
-          await initiateOAuthPopup();
-        } : null;
-
-        // Show credential modal with existing data
-        setCredentialModalConfig({
-          providerName,
-          providerType,
-          credentialType,
-          existingCredentials: data,
-          onSuccess,
-          onConnect,
-        });
-        setShowCredentialModal(true);
-      } catch (error) {
-        console.error('Error fetching credentials for reconfiguration:', error);
-        await addNotification('alert', 'Failed to load existing credentials');
-      }
-    },
-    [api, addNotification, fetchBackupConfigStatus, pollOAuthStatus]
-  );
 
   /**
    * Helper: open OAuth popup and poll for completion
@@ -1554,137 +1254,8 @@ const AdminPanelView = ({
         await addNotification('alert', error.message || 'Failed to start configuration flow');
       }
     },
-    [addNotification, openOAuthPopup]
+    [api, addNotification, openOAuthPopup]
   );
-
-  /**
-   * Toggle vendor integration
-   */
-  const handleToggleVendorIntegration = useCallback(
-    async (vendorType, isEnabled) => {
-      const previousState = vendorStatus[vendorType];
-
-      try {
-        // Optimistically update UI
-        setVendorStatus((prev) => ({
-          ...prev,
-          [vendorType]: {
-            ...prev[vendorType],
-            is_enabled: isEnabled,
-          },
-        }));
-
-        await api.toggleVendorIntegration(vendorType, isEnabled);
-        const vendorName = vendorType.charAt(0).toUpperCase() + vendorType.slice(1);
-        await addNotification(
-          'success',
-          `${vendorName} ${isEnabled ? 'enabled' : 'disabled'} successfully`
-        );
-      } catch (error) {
-        console.error('Error toggling vendor integration:', error);
-        // Revert to previous state on error
-        setVendorStatus((prev) => ({
-          ...prev,
-          [vendorType]: previousState,
-        }));
-        await addNotification('alert', `Failed to toggle ${vendorType}`);
-      }
-    },
-    [api, vendorStatus, addNotification]
-  );
-
-  /**
-   * Configure vendor integration (API key based)
-   */
-  const handleConfigureVendorIntegration = useCallback(async (vendorType) => {
-    try {
-      const vendorNames = {
-        surescripts: 'Surescripts ePrescribe',
-        labcorp: 'Labcorp',
-        optum: 'Optum',
-      };
-      const displayName = vendorNames[vendorType] || vendorType;
-
-      setCredentialModalConfig({
-        providerName: displayName,
-        providerType: vendorType,
-        credentialType: 'api_key',
-        onSuccess: async () => {
-          // Update vendor status
-          setVendorStatus((prev) => ({
-            ...prev,
-            [vendorType]: {
-              ...prev[vendorType],
-              is_configured: true,
-            },
-          }));
-          await addNotification('success', `${displayName} configured successfully.`);
-        }
-      });
-      setShowCredentialModal(true);
-    } catch (error) {
-      console.error('Error configuring vendor integration:', error);
-      await addNotification('alert', error.message || 'Failed to configure vendor integration');
-    }
-  }, [addNotification]);
-
-  const handleToggleStripe = useCallback(async () => {
-    const newEnabled = !stripeStatus.is_enabled;
-    try {
-      setStripeStatus((prev) => ({ ...prev, is_enabled: newEnabled }));
-      await api.toggleStripeIntegration(newEnabled);
-      await addNotification('success', `Stripe ${newEnabled ? 'enabled' : 'disabled'} successfully`);
-    } catch (error) {
-      setStripeStatus((prev) => ({ ...prev, is_enabled: !newEnabled }));
-      await addNotification('alert', 'Failed to toggle Stripe integration');
-    }
-  }, [api, stripeStatus.is_enabled, addNotification]);
-
-  const handleSaveStripe = useCallback(async () => {
-    setSavingStripe(true);
-    try {
-      const payload = { ...stripeForm };
-      if (!payload.secret_key) delete payload.secret_key;
-      if (!payload.webhook_secret) delete payload.webhook_secret;
-      const updated = await api.saveStripeSettings(payload);
-      setStripeStatus((prev) => ({
-        ...prev,
-        is_configured: updated.use_platform_integration || !!(updated.publishable_key) || !!(updated.has_secret_key),
-        has_secret_key: updated.has_secret_key || false,
-        has_webhook_secret: updated.has_webhook_secret || false,
-        use_platform_integration: updated.use_platform_integration || false,
-        publishable_key: updated.publishable_key || '',
-        sandbox_mode: updated.sandbox_mode !== undefined ? updated.sandbox_mode : true,
-      }));
-      setStripeForm((prev) => ({
-        ...prev,
-        secret_key: '',
-        webhook_secret: '',
-        publishable_key: updated.publishable_key || prev.publishable_key,
-        use_platform_integration: updated.use_platform_integration || false,
-        sandbox_mode: updated.sandbox_mode !== undefined ? updated.sandbox_mode : true,
-      }));
-      await addNotification('success', 'Stripe settings saved successfully');
-    } catch (error) {
-      await addNotification('alert', 'Failed to save Stripe settings: ' + error.message);
-    } finally {
-      setSavingStripe(false);
-    }
-  }, [api, stripeForm, addNotification]);
-
-  const handleTestStripe = useCallback(async () => {
-    setTestingStripe(true);
-    try {
-      const result = await api.testStripeConnection();
-      setStripeStatus((prev) => ({ ...prev, test_status: 'success', test_message: result.message }));
-      await addNotification('success', 'Stripe connection test passed');
-    } catch (error) {
-      setStripeStatus((prev) => ({ ...prev, test_status: 'failed', test_message: error.message }));
-      await addNotification('alert', 'Stripe test failed: ' + error.message);
-    } finally {
-      setTestingStripe(false);
-    }
-  }, [api, addNotification]);
 
   /**
    * Save working hours with validation
@@ -2077,22 +1648,15 @@ const AdminPanelView = ({
       return;
     }
 
-    const sanitizedName = customRoleName.toLowerCase().replace(/\s+/g, '_');
-    await handleCreateCustomRole(sanitizedName, customRolePermissions);
-  }, [customRoleName, customRolePermissions, handleCreateCustomRole, addNotification]);
+    await handleCreateCustomRole(customRoleName);
+  }, [customRoleName, handleCreateCustomRole, addNotification]);
 
   /**
    * Toggle custom role permission
    */
-  const handleToggleCustomRolePermission = useCallback((module, action) => {
-    setCustomRolePermissions((prev) => ({
-      ...prev,
-      [module]: {
-        ...(prev[module] || { view: false, create: false, edit: false, delete: false }),
-        [action]: !(prev[module]?.[action] || false),
-      },
-    }));
-  }, []);
+  // handleToggleCustomRolePermission drove the checkbox grid inside the create-role form.
+  // That grid is gone: a role is a name, and what it may do is granted in the permissions
+  // grid instead.
 
   /**
    * Update working hours
@@ -2502,21 +2066,16 @@ const AdminPanelView = ({
               </span>
             </div>
             <button
+              role="switch" aria-checked={!!((user.preferences?.emailNotifications ?? true))}
               type="button"
               onClick={async () => {
                 const next = !(user.preferences?.emailNotifications ?? true);
                 const ok = await updateUserPreferences({ emailNotifications: next });
                 if (ok) await addNotification('success', t.preferenceSaved || 'Preference saved');
               }}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
-                (user.preferences?.emailNotifications ?? true)
-                  ? 'bg-blue-500'
-                  : theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'
-              }`}
+              className="inline-flex shrink-0 items-center transition-opacity hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:opacity-50"
             >
-              <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                (user.preferences?.emailNotifications ?? true) ? 'translate-x-6' : 'translate-x-1'
-              }`} />
+              {(user.preferences?.emailNotifications ?? true) ? <ToggleRight className="w-6 h-6 text-green-400" /> : <ToggleLeft className="w-6 h-6 text-gray-400" />}
             </button>
           </div>
 
@@ -2529,21 +2088,16 @@ const AdminPanelView = ({
               </span>
             </div>
             <button
+              role="switch" aria-checked={!!((user.preferences?.smsAlerts ?? true))}
               type="button"
               onClick={async () => {
                 const next = !(user.preferences?.smsAlerts ?? true);
                 const ok = await updateUserPreferences({ smsAlerts: next });
                 if (ok) await addNotification('success', t.preferenceSaved || 'Preference saved');
               }}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
-                (user.preferences?.smsAlerts ?? true)
-                  ? 'bg-blue-500'
-                  : theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'
-              }`}
+              className="inline-flex shrink-0 items-center transition-opacity hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:opacity-50"
             >
-              <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                (user.preferences?.smsAlerts ?? true) ? 'translate-x-6' : 'translate-x-1'
-              }`} />
+              {(user.preferences?.smsAlerts ?? true) ? <ToggleRight className="w-6 h-6 text-green-400" /> : <ToggleLeft className="w-6 h-6 text-gray-400" />}
             </button>
           </div>
 
@@ -2638,6 +2192,7 @@ const AdminPanelView = ({
                 )}
               </div>
               <button
+                role="switch" aria-checked={!!((user.preferences?.whatsappNotifications && isPhoneValid(prefWhatsappNumber)))}
                 type="button"
                 disabled={!isPhoneValid(prefWhatsappNumber)}
                 onClick={async () => {
@@ -2646,17 +2201,9 @@ const AdminPanelView = ({
                   const ok = await updateUserPreferences({ whatsappNotifications: next });
                   if (ok) await addNotification('success', t.preferenceSaved || 'Preference saved');
                 }}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                  !isPhoneValid(prefWhatsappNumber)
-                    ? `opacity-40 cursor-not-allowed ${theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'}`
-                    : (user.preferences?.whatsappNotifications && isPhoneValid(prefWhatsappNumber))
-                      ? 'bg-green-500 cursor-pointer'
-                      : `cursor-pointer ${theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'}`
-                }`}
+                className="inline-flex shrink-0 items-center transition-opacity hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:opacity-50"
               >
-                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                  (user.preferences?.whatsappNotifications && isPhoneValid(prefWhatsappNumber)) ? 'translate-x-6' : 'translate-x-1'
-                }`} />
+                {(user.preferences?.whatsappNotifications && isPhoneValid(prefWhatsappNumber)) ? <ToggleRight className="w-6 h-6 text-green-400" /> : <ToggleLeft className="w-6 h-6 text-gray-400" />}
               </button>
             </div>
           </div>
@@ -2832,23 +2379,16 @@ const AdminPanelView = ({
                     )}
                   </div>
                   <button
+                    role="switch" aria-checked={!!((userFormData.whatsappNotifications && isPhoneValid(userFormData.whatsappNumber)))}
                     type="button"
                     disabled={!isPhoneValid(userFormData.whatsappNumber)}
                     onClick={() => {
                       if (!isPhoneValid(userFormData.whatsappNumber)) return;
                       handleUserFormChange('whatsappNotifications', !userFormData.whatsappNotifications);
                     }}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                      !isPhoneValid(userFormData.whatsappNumber)
-                        ? `opacity-40 cursor-not-allowed ${theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'}`
-                        : (userFormData.whatsappNotifications && isPhoneValid(userFormData.whatsappNumber))
-                          ? 'bg-green-500 cursor-pointer'
-                          : `cursor-pointer ${theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'}`
-                    }`}
+                    className="inline-flex shrink-0 items-center transition-opacity hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:opacity-50"
                   >
-                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      (userFormData.whatsappNotifications && isPhoneValid(userFormData.whatsappNumber)) ? 'translate-x-6' : 'translate-x-1'
-                    }`} />
+                    {(userFormData.whatsappNotifications && isPhoneValid(userFormData.whatsappNumber)) ? <ToggleRight className="w-6 h-6 text-green-400" /> : <ToggleLeft className="w-6 h-6 text-gray-400" />}
                   </button>
                 </div>
               </div>
@@ -3128,7 +2668,7 @@ const AdminPanelView = ({
                     {user.name || (user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.firstName || user.lastName || user.email)}
                   </h4>
                   <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                    {user.email} • {user.role}
+                    {user.email} • {user.role}{user.otherPractices > 0 ? ` • also at ${user.otherPractices} other practice${user.otherPractices > 1 ? 's' : ''}` : ''}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -3188,7 +2728,7 @@ const AdminPanelView = ({
                     {user.name || (user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.firstName || user.lastName || user.email)}
                   </h4>
                   <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                    {user.email} • {user.role}
+                    {user.email} • {user.role}{user.otherPractices > 0 ? ` • also at ${user.otherPractices} other practice${user.otherPractices > 1 ? 's' : ''}` : ''}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -3234,7 +2774,7 @@ const AdminPanelView = ({
                     {user.name || (user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.firstName || user.lastName || user.email)}
                   </h4>
                   <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                    {user.email} • {user.role}
+                    {user.email} • {user.role}{user.otherPractices > 0 ? ` • also at ${user.otherPractices} other practice${user.otherPractices > 1 ? 's' : ''}` : ''}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -3414,16 +2954,10 @@ const AdminPanelView = ({
               disabled={!status.has_tokens}
               role="switch"
               aria-checked={status.is_enabled}
-              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                !status.has_tokens
-                  ? theme === 'dark' ? 'bg-slate-700 cursor-not-allowed' : 'bg-gray-200 cursor-not-allowed'
-                  : status.is_enabled ? 'bg-green-500 cursor-pointer' : theme === 'dark' ? 'bg-slate-600 cursor-pointer' : 'bg-gray-300 cursor-pointer'
-              }`}
+              className="inline-flex shrink-0 items-center transition-opacity hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:opacity-50"
               title={!status.has_tokens ? `Connect ${cfg.displayName} account first` : ''}
             >
-              <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                status.is_enabled ? 'translate-x-6' : 'translate-x-1'
-              }`} />
+              {(status.is_enabled) ? <ToggleRight className="w-6 h-6 text-green-400" /> : <ToggleLeft className="w-6 h-6 text-gray-400" />}
             </button>
           </div>
         </div>
@@ -3541,263 +3075,7 @@ const AdminPanelView = ({
       {/* Developer-only setup guide — collapsed by default */}
       <PlatformSetupGuide theme={theme} />
 
-      <div className="mt-8">
-        <h2 className={`text-xl font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-          Vendor Integrations
-        </h2>
-
-        {vendorDbMissing && (
-          <div
-            className={`mb-4 p-4 rounded-lg border ${
-              theme === 'dark'
-                ? 'bg-yellow-500/10 border-yellow-500/20'
-                : 'bg-yellow-50 border-yellow-200'
-            }`}
-          >
-            <p className={`font-medium ${theme === 'dark' ? 'text-yellow-400' : 'text-yellow-700'}`}>
-              Database Migration Required
-            </p>
-            <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-yellow-400/80' : 'text-yellow-600'}`}>
-              Please run: 033_add_vendor_integrations.sql
-            </p>
-          </div>
-        )}
-
-        <div className="grid grid-cols-1 gap-6">
-          {/* Surescripts Integration */}
-          <IntegrationCard
-            name={VENDOR_TYPES.SURESCRIPTS}
-            displayName="Surescripts ePrescribe"
-            description="Electronic prescribing network"
-            isEnabled={vendorStatus.surescripts.is_enabled}
-            isConfigured={vendorStatus.surescripts.is_configured}
-            theme={theme}
-            onToggle={handleToggleVendorIntegration}
-            onConfigure={handleConfigureVendorIntegration}
-            t={t}
-          />
-
-          {/* Labcorp Integration */}
-          <IntegrationCard
-            name={VENDOR_TYPES.LABCORP}
-            displayName="Labcorp"
-            description="Laboratory test ordering and results"
-            isEnabled={vendorStatus.labcorp.is_enabled}
-            isConfigured={vendorStatus.labcorp.is_configured}
-            theme={theme}
-            onToggle={handleToggleVendorIntegration}
-            onConfigure={handleConfigureVendorIntegration}
-            t={t}
-          />
-
-          {/* Optum Integration */}
-          <IntegrationCard
-            name={VENDOR_TYPES.OPTUM}
-            displayName="Optum"
-            description="Claims processing and eligibility verification"
-            isEnabled={vendorStatus.optum.is_enabled}
-            isConfigured={vendorStatus.optum.is_configured}
-            theme={theme}
-            onToggle={handleToggleVendorIntegration}
-            onConfigure={handleConfigureVendorIntegration}
-            t={t}
-          />
-        </div>
-      </div>
-
-      {/* Stripe / Payment Processing */}
-      <div className="mt-8">
-        <h2 className={`text-xl font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-          Payment Processing
-        </h2>
-
-        <div className={`border rounded-lg overflow-hidden ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-300'}`}>
-          {/* Header row */}
-          <div className={`p-6 border-b ${theme === 'dark' ? 'border-slate-700' : 'border-gray-200'}`}>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className={`p-3 rounded-lg ${theme === 'dark' ? 'bg-indigo-500/10' : 'bg-indigo-50'}`}>
-                  <svg className="w-6 h-6 text-indigo-500" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M13.976 9.15c-2.172-.806-3.356-1.426-3.356-2.409 0-.831.683-1.305 1.901-1.305 2.227 0 4.515.858 6.09 1.631l.89-5.494C18.252.975 15.697 0 12.165 0 9.667 0 7.589.654 6.104 1.872 4.56 3.147 3.757 4.992 3.757 7.218c0 4.039 2.467 5.76 6.476 7.219 2.585.92 3.445 1.574 3.445 2.583 0 .98-.84 1.545-2.354 1.545-1.875 0-4.965-.921-6.99-2.109l-.9 5.555C5.175 22.99 8.385 24 11.714 24c2.641 0 4.843-.624 6.328-1.813 1.664-1.305 2.525-3.236 2.525-5.732 0-4.128-2.524-5.851-6.591-7.305z"/>
-                  </svg>
-                </div>
-                <div>
-                  <h3 className={`text-lg font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                    Stripe
-                  </h3>
-                  <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                    Accept payments from patients via card, ACH, and more
-                  </p>
-                  {stripeStatus.is_configured && (
-                    <div className="flex items-center gap-2 mt-2">
-                      <svg className="w-4 h-4 text-green-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>
-                      <span className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                        {stripeStatus.use_platform_integration ? 'Using platform Stripe account' : 'Configured'}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => setStripeExpanded((v) => !v)}
-                  className={`px-3 py-1.5 rounded-lg text-sm border transition-colors ${
-                    theme === 'dark'
-                      ? 'border-slate-600 text-slate-300 hover:bg-slate-700'
-                      : 'border-gray-300 text-gray-600 hover:bg-gray-50'
-                  }`}
-                >
-                  {stripeExpanded ? 'Hide' : 'Configure'}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleToggleStripe}
-                  disabled={!stripeStatus.is_configured}
-                  role="switch"
-                  aria-checked={stripeStatus.is_enabled}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                    !stripeStatus.is_configured
-                      ? theme === 'dark' ? 'bg-slate-700 cursor-not-allowed' : 'bg-gray-200 cursor-not-allowed'
-                      : stripeStatus.is_enabled ? 'bg-green-500 cursor-pointer' : theme === 'dark' ? 'bg-slate-600 cursor-pointer' : 'bg-gray-300 cursor-pointer'
-                  }`}
-                  title={!stripeStatus.is_configured ? 'Configure Stripe before enabling' : ''}
-                >
-                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${stripeStatus.is_enabled ? 'translate-x-6' : 'translate-x-1'}`} />
-                </button>
-              </div>
-            </div>
-
-            {!stripeStatus.is_configured && (
-              <div className={`mt-4 p-3 rounded-lg flex items-start gap-2 ${theme === 'dark' ? 'bg-yellow-500/10' : 'bg-yellow-50'}`}>
-                <svg className="w-5 h-5 text-yellow-500 mt-0.5 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                <div>
-                  <p className={`text-sm font-medium ${theme === 'dark' ? 'text-yellow-400' : 'text-yellow-700'}`}>Configuration Required</p>
-                  <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-yellow-400/80' : 'text-yellow-600'}`}>
-                    Add your Stripe keys below or enable platform integration, then save.
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Expandable config form */}
-          {stripeExpanded && (
-            <div className="p-6 space-y-4">
-              {/* Platform integration */}
-              <div className={`flex items-start gap-3 p-4 rounded-lg border ${theme === 'dark' ? 'bg-slate-700/50 border-slate-600' : 'bg-blue-50 border-blue-200'}`}>
-                <input
-                  type="checkbox"
-                  id="stripe-platform-admin"
-                  checked={stripeForm.use_platform_integration}
-                  onChange={(e) => setStripeForm((prev) => ({ ...prev, use_platform_integration: e.target.checked }))}
-                  className="mt-0.5 rounded"
-                />
-                <div>
-                  <label htmlFor="stripe-platform-admin" className={`text-sm font-medium cursor-pointer ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'}`}>
-                    Use platform Stripe account
-                  </label>
-                  <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
-                    Subscribers process payments through the platform's Stripe account. No custom keys needed.
-                  </p>
-                </div>
-              </div>
-
-              {!stripeForm.use_platform_integration && (
-                <>
-                  <div>
-                    <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                      Publishable Key
-                    </label>
-                    <input
-                      type="text"
-                      value={stripeForm.publishable_key}
-                      onChange={(e) => setStripeForm((prev) => ({ ...prev, publishable_key: e.target.value }))}
-                      className={`w-full px-3 py-2 rounded-lg text-sm font-mono border ${
-                        theme === 'dark' ? 'bg-slate-900 text-white border-slate-600' : 'bg-white text-gray-900 border-gray-300'
-                      } focus:outline-none focus:ring-2 focus:ring-indigo-500`}
-                      placeholder="pk_live_... or pk_test_..."
-                    />
-                    <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>Safe to expose in client-side code</p>
-                  </div>
-
-                  <div>
-                    <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                      Secret Key {stripeStatus.has_secret_key && <span className="text-green-500 font-normal ml-1">(saved)</span>}
-                    </label>
-                    <input
-                      type="password"
-                      value={stripeForm.secret_key}
-                      onChange={(e) => setStripeForm((prev) => ({ ...prev, secret_key: e.target.value }))}
-                      className={`w-full px-3 py-2 rounded-lg text-sm font-mono border ${
-                        theme === 'dark' ? 'bg-slate-900 text-white border-slate-600' : 'bg-white text-gray-900 border-gray-300'
-                      } focus:outline-none focus:ring-2 focus:ring-indigo-500`}
-                      placeholder={stripeStatus.has_secret_key ? '•••••••••••••• (leave blank to keep existing)' : 'sk_live_... or sk_test_...'}
-                    />
-                  </div>
-
-                  <div>
-                    <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                      Webhook Secret {stripeStatus.has_webhook_secret && <span className="text-green-500 font-normal ml-1">(saved)</span>}
-                    </label>
-                    <input
-                      type="password"
-                      value={stripeForm.webhook_secret}
-                      onChange={(e) => setStripeForm((prev) => ({ ...prev, webhook_secret: e.target.value }))}
-                      className={`w-full px-3 py-2 rounded-lg text-sm font-mono border ${
-                        theme === 'dark' ? 'bg-slate-900 text-white border-slate-600' : 'bg-white text-gray-900 border-gray-300'
-                      } focus:outline-none focus:ring-2 focus:ring-indigo-500`}
-                      placeholder={stripeStatus.has_webhook_secret ? '•••••••••••••• (leave blank to keep existing)' : 'whsec_...'}
-                    />
-                  </div>
-                </>
-              )}
-
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="stripe-sandbox-admin"
-                  checked={stripeForm.sandbox_mode}
-                  onChange={(e) => setStripeForm((prev) => ({ ...prev, sandbox_mode: e.target.checked }))}
-                  className="rounded"
-                />
-                <label htmlFor="stripe-sandbox-admin" className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                  Test / Sandbox Mode
-                </label>
-              </div>
-
-              {stripeStatus.test_status && (
-                <p className={`text-sm ${stripeStatus.test_status === 'success' ? 'text-green-500' : 'text-red-400'}`}>
-                  Last test: {stripeStatus.test_status === 'success' ? 'Passed' : 'Failed'}
-                  {stripeStatus.test_message ? ` — ${stripeStatus.test_message}` : ''}
-                </p>
-              )}
-
-              <div className="flex gap-3 pt-2">
-                <button
-                  onClick={handleSaveStripe}
-                  disabled={savingStripe}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors text-white ${
-                    savingStripe ? 'bg-indigo-400 cursor-not-allowed' : 'bg-indigo-500 hover:bg-indigo-600 cursor-pointer'
-                  }`}
-                >
-                  {savingStripe ? 'Saving...' : 'Save Configuration'}
-                </button>
-                <button
-                  onClick={handleTestStripe}
-                  disabled={testingStripe || !stripeStatus.is_configured}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    testingStripe || !stripeStatus.is_configured
-                      ? 'opacity-50 cursor-not-allowed ' + (theme === 'dark' ? 'bg-slate-700 text-slate-400' : 'bg-gray-100 text-gray-400')
-                      : theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600 text-slate-200' : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
-                  }`}
-                >
-                  {testingStripe ? 'Testing...' : 'Test Connection'}
-                </button>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
+      {/* Vendor, payment and AI integrations live on Settings › System › Integrations. */}
     </div>
   );
 
@@ -3824,23 +3102,15 @@ const AdminPanelView = ({
         <div className="flex justify-between items-center">
           <div>
             <h2 className={`text-xl font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-              Role Permissions
+              Roles &amp; Permissions
             </h2>
-            {/* Legend */}
-            <div className={`flex gap-4 mt-2 text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-              <span className="flex items-center gap-1">
-                <span className="text-green-500 font-semibold">V</span> = View
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="text-blue-500 font-semibold">C</span> = Create
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="text-yellow-500 font-semibold">E</span> = Edit
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="text-red-500 font-semibold">D</span> = Delete
-              </span>
-            </div>
+            {/* The V/C/E/D legend lived here for the coarse matrix that this tab used to
+                show. That matrix, and the separate Accounts and Inventory grids, are all
+                gone: the one grid below spells its actions out in full. */}
+            <p className={`mt-1 text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+              Create the roles your practice uses here; set what each one may do in
+              Module Permissions below.
+            </p>
           </div>
           <button
             onClick={() => setShowCustomRoleForm(true)}
@@ -3857,454 +3127,133 @@ const AdminPanelView = ({
           </button>
         </div>
 
-      {/* Inline Custom Role Form */}
+      {/* Create a role — NAME ONLY.
+          This form used to carry a grid of module x action checkboxes. They wrote to
+          public.permissions / role_permissions, which are empty on every installation
+          checked and read by nothing, so the picker was decorative — and the Create button
+          never worked at all: it called PUT /api/permissions/:role, which looks the role up
+          in `roles` before writing permissions, so for a role that did not exist yet it
+          answered 404 every time.
+          A role is now just a name. What it may do is set in the permissions grid below,
+          which is the one place that is enforced. */}
       {showCustomRoleForm && (
         <div className={`rounded-xl border p-6 ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-gray-50 border-gray-300'}`}>
-          <h3 className={`text-lg font-bold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-            {customRoleName && !['admin', 'doctor', 'staff', 'patient'].includes(customRoleName)
-              ? 'Edit Custom Role'
-              : customRoleName
-                ? `Edit ${customRoleName.charAt(0).toUpperCase() + customRoleName.slice(1)} Permissions`
-                : 'Create Custom Role'}
+          <h3 className={`text-lg font-bold mb-1 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+            Create a role
           </h3>
+          <p className={`text-xs mb-4 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+            The new role starts able to do nothing. Grant it what it needs in Module
+            Permissions below.
+          </p>
 
-          <div className="space-y-6">
-            {/* Role Name - only editable for new roles */}
-            {!customRoleName || !['admin', 'doctor', 'staff', 'patient'].includes(customRoleName) ? (
-              <div>
-                <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                  Role Name <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={customRoleName}
-                  onChange={(e) => setCustomRoleName(e.target.value)}
-                  className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                    theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-gray-300 text-gray-900'
-                  }`}
-                  placeholder="e.g., Nurse, Receptionist, Billing Manager"
-                />
-              </div>
-            ) : (
-              <div className={`p-4 rounded-lg ${
-                theme === 'dark' ? 'bg-blue-500/10 border border-blue-500/20' : 'bg-blue-50 border border-blue-200'
-              }`}>
-                <p className={`text-sm ${theme === 'dark' ? 'text-blue-400' : 'text-blue-700'}`}>
-                  Editing permissions for <strong>{customRoleName}</strong> role
-                </p>
-              </div>
-            )}
-
-            {/* Permissions Grid */}
+          <div className="space-y-4">
             <div>
-              <h4 className={`text-lg font-semibold mb-4 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                Permissions
-              </h4>
-              <div className="space-y-4">
-                {['patients', 'appointments', 'claims', 'ehr', 'users', 'reports', 'settings', 'backup'].map((module) => {
-                  return (
-                    <div key={module} className={`p-4 border rounded-lg ${
-                      theme === 'dark' ? 'border-slate-700 bg-slate-800' : 'border-gray-300 bg-gray-50'
-                    }`}>
-                      <h5 className={`font-medium mb-3 capitalize ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                        {module}
-                      </h5>
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                        {['view', 'create', 'edit', 'delete'].map((action) => {
-                          return (
-                            <label key={action} className="flex items-center gap-2 cursor-pointer">
-                              <input
-                                type="checkbox"
-                                checked={customRolePermissions[module]?.[action] || false}
-                                onChange={() => handleToggleCustomRolePermission(module, action)}
-                                className="w-4 h-4 text-blue-500 rounded focus:ring-2 focus:ring-blue-500"
-                              />
-                              <span className={`text-sm capitalize ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
-                                {action}
-                              </span>
-                            </label>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+              <label
+                htmlFor="new-role-name"
+                className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}
+              >
+                Role name <span className="text-red-500">*</span>
+              </label>
+              <input
+                id="new-role-name"
+                type="text"
+                value={customRoleName}
+                onChange={(e) => setCustomRoleName(e.target.value)}
+                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                  theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-gray-300 text-gray-900'
+                }`}
+                placeholder="e.g. Ward Clerk"
+              />
+              {customRoleName.trim() && (
+                <p className={`mt-1 text-xs ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>
+                  Stored as <code>{customRoleName.trim().toLowerCase().replace(/\s+/g, '_')}</code>
+                </p>
+              )}
             </div>
 
-            {/* Actions */}
             <div className="flex gap-3">
               <button
-                onClick={() => {
-                  setShowCustomRoleForm(false);
-                  setCustomRoleName('');
-                  setCustomRolePermissions({
-                    patients: { view: false, create: false, edit: false, delete: false },
-                    appointments: { view: false, create: false, edit: false, delete: false },
-                    claims: { view: false, create: false, edit: false, delete: false },
-                    ehr: { view: false, create: false, edit: false, delete: false },
-                    users: { view: false, create: false, edit: false, delete: false },
-                    reports: { view: false, create: false, edit: false, delete: false },
-                    settings: { view: false, create: false, edit: false, delete: false },
-                    backup: { view: false, create: false, edit: false, delete: false },
-                  });
-                }}
+                type="button"
+                onClick={() => { setShowCustomRoleForm(false); setCustomRoleName(''); }}
                 className={`flex-1 px-4 py-2 border rounded-lg font-medium transition-colors ${
                   theme === 'dark' ? 'border-slate-700 text-slate-300 hover:bg-slate-800' : 'border-gray-300 text-gray-700 hover:bg-gray-50'
                 }`}
               >
                 Cancel
               </button>
-              <button
+              <BusyButton
                 onClick={handleSubmitCustomRole}
-                className="flex-1 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors"
+                busyLabel="Creating…"
+                disabled={!customRoleName.trim()}
+                className="flex-1 px-4 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
               >
-                {customRoleName && rolePermissions.hasOwnProperty(customRoleName.toLowerCase().replace(/\s+/g, '_')) ? 'Update Role' : 'Create Role'}
-              </button>
+                Create role
+              </BusyButton>
             </div>
           </div>
         </div>
       )}
 
-      {/* Permission Legend */}
-      <div className={`p-4 rounded-lg ${theme === 'dark' ? 'bg-slate-800/50 border border-slate-700' : 'bg-gray-50 border border-gray-300'}`}>
-        <h4 className={`text-sm font-semibold mb-3 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-          Permission Legend
-        </h4>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="flex items-center gap-2">
-            <span className="text-green-500 font-semibold text-lg">V</span>
-            <span className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>View</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-blue-500 font-semibold text-lg">C</span>
-            <span className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Create</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-yellow-500 font-semibold text-lg">E</span>
-            <span className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Edit</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-red-500 font-semibold text-lg">D</span>
-            <span className={`text-sm ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Delete</span>
-          </div>
-        </div>
-      </div>
 
-      {/* Roles & Permissions Table */}
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse">
-          <thead>
-            <tr className={`${theme === 'dark' ? 'bg-slate-800 border-b-2 border-slate-700' : 'bg-gray-100 border-b-2 border-gray-300'}`}>
-              <th className={`px-4 py-3 text-left text-sm font-semibold ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'}`}>
-                Role
-              </th>
-              <th className={`px-4 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'}`}>
-                Patients
-              </th>
-              <th className={`px-4 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'}`}>
-                Appointments
-              </th>
-              <th className={`px-4 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'}`}>
-                Claims
-              </th>
-              <th className={`px-4 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'}`}>
-                EHR
-              </th>
-              <th className={`px-4 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'}`}>
-                Users
-              </th>
-              <th className={`px-4 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'}`}>
-                Reports
-              </th>
-              <th className={`px-4 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'}`}>
-                Settings
-              </th>
-              <th className={`px-4 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'}`}>
-                Backup
-              </th>
-              <th className={`px-4 py-3 text-center text-sm font-semibold ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'}`}>
-                Actions
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            {rolePermissionEntries.map(([role, permissions], index) => (
-              <tr
-                key={role}
-                className={`border-b ${theme === 'dark' ? 'border-slate-800' : 'border-gray-200'} ${
-                  index % 2 === 0
-                    ? theme === 'dark' ? 'bg-slate-900/30' : 'bg-white'
-                    : theme === 'dark' ? 'bg-slate-900/50' : 'bg-gray-50'
-                } hover:${theme === 'dark' ? 'bg-slate-800' : 'bg-blue-50'} transition-colors`}
-              >
-                <td className={`px-4 py-4 font-medium capitalize ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
-                  <div className="flex items-center gap-2">
-                    <span>{role.replace(/_/g, ' ')}</span>
-                    {role === 'admin' && (
-                      <span className={`px-2 py-0.5 text-xs rounded-full ${
-                        theme === 'dark' ? 'bg-purple-500/20 text-purple-400' : 'bg-purple-100 text-purple-700'
-                      }`}>
-                        Protected
-                      </span>
-                    )}
-                  </div>
-                </td>
-                {['patients', 'appointments', 'claims', 'ehr', 'users', 'reports', 'settings', 'backup'].map((module) => (
-                  <td key={module} className="px-4 py-4">
-                    <div className="flex justify-center gap-1.5">
-                      {permissions[module]?.view && (
-                        <span className="text-green-500 font-bold text-base" title="View">V</span>
-                      )}
-                      {permissions[module]?.create && (
-                        <span className="text-blue-500 font-bold text-base" title="Create">C</span>
-                      )}
-                      {permissions[module]?.edit && (
-                        <span className="text-yellow-500 font-bold text-base" title="Edit">E</span>
-                      )}
-                      {permissions[module]?.delete && (
-                        <span className="text-red-500 font-bold text-base" title="Delete">D</span>
-                      )}
-                      {!permissions[module]?.view && !permissions[module]?.create && !permissions[module]?.edit && !permissions[module]?.delete && (
-                        <span className={`text-xs ${theme === 'dark' ? 'text-slate-600' : 'text-gray-400'}`}>-</span>
-                      )}
-                    </div>
-                  </td>
-                ))}
-                <td className="px-4 py-4">
-                  <div className="flex justify-center gap-2">
-                    {/* Allow editing for doctor and staff roles */}
-                    {(['doctor', 'staff'].includes(role)) && (
-                      <button
-                        onClick={() => {
-                          setCustomRoleName(role);
-                          setCustomRolePermissions(permissions);
-                          setShowCustomRoleForm(true);
-                        }}
-                        className={`p-2 rounded-lg transition-colors ${
-                          theme === 'dark'
-                            ? 'hover:bg-slate-700 bg-slate-800'
-                            : 'hover:bg-blue-50 bg-white border border-gray-300'
-                        }`}
-                        title="Edit permissions"
-                      >
-                        <Edit className="w-4 h-4 text-blue-500" />
-                      </button>
-                    )}
-                    {/* Allow editing and deleting custom roles only */}
-                    {!['admin', 'doctor', 'staff', 'patient'].includes(role) && (
-                      <>
-                        <button
-                          onClick={() => {
-                            setCustomRoleName(role);
-                            setCustomRolePermissions(permissions);
-                            setShowCustomRoleForm(true);
-                          }}
-                          className={`p-2 rounded-lg transition-colors ${
-                            theme === 'dark'
-                              ? 'hover:bg-slate-700 bg-slate-800'
-                              : 'hover:bg-blue-50 bg-white border border-gray-300'
-                          }`}
-                          title="Edit permissions"
-                        >
-                          <Edit className="w-4 h-4 text-blue-500" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteCustomRole(role)}
-                          className={`p-2 rounded-lg transition-colors ${
-                            theme === 'dark'
-                              ? 'hover:bg-red-900/30 bg-slate-800'
-                              : 'hover:bg-red-50 bg-white border border-gray-300'
-                          }`}
-                          title="Delete role"
-                        >
-                          <Trash2 className="w-4 h-4 text-red-500" />
-                        </button>
-                      </>
-                    )}
-                    {role === 'admin' && (
-                      <span className={`px-3 py-2 text-xs ${theme === 'dark' ? 'text-slate-600' : 'text-gray-400'}`}>
-                        N/A
-                      </span>
-                    )}
-                    {role === 'patient' && (
-                      <span className={`px-3 py-2 text-xs ${theme === 'dark' ? 'text-slate-600' : 'text-gray-400'}`}>
-                        N/A
-                      </span>
-                    )}
-                  </div>
-                </td>
-              </tr>
+
+      {/* The practice's roles.
+          This replaces the last column of the coarse matrix, which is where Delete lived —
+          removing the matrix would otherwise have taken the only way to remove a custom
+          role with it. Built-in roles cannot be deleted; a custom one can. */}
+      <div className={`rounded-xl border p-6 ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-gray-200'}`}>
+        <h3 className={`text-base font-semibold mb-1 ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Roles</h3>
+        <p className={`text-xs mb-4 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
+          A role created here appears in the permissions grid below with nothing granted, so a
+          new role can do nothing until you say what it may do.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {/* The built-in roles, then the practice's own. Listed from the roles endpoint
+              rather than from the hardcoded defaults object, so a role created above shows
+              here immediately and carries the id that Delete needs. */}
+          {['admin', 'doctor', 'nurse', 'receptionist', 'billing_manager', 'crm_manager', 'staff']
+            .map((role) => (
+              <span key={role}
+                    className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs ${
+                      theme === 'dark' ? 'bg-slate-700 text-slate-200' : 'bg-gray-100 text-gray-700'}`}>
+                <span className="capitalize">{role.replace(/_/g, ' ')}</span>
+                <span className={theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}>built-in</span>
+              </span>
             ))}
-          </tbody>
-        </table>
+          {customRoles.map((role) => (
+            <span key={role.id}
+                  className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs ${
+                    theme === 'dark' ? 'bg-purple-500/20 text-purple-200' : 'bg-purple-50 text-purple-700'}`}>
+              <span>{role.display_name || role.name}</span>
+              {canManageRoles && (
+                <button
+                  type="button"
+                  onClick={() => handleDeleteCustomRole(role)}
+                  title={`Delete the ${role.display_name || role.name} role`}
+                  className="text-red-500 hover:text-red-600"
+                >
+                  <Trash2 className="w-3 h-3" />
+                </button>
+              )}
+            </span>
+          ))}
+        </div>
       </div>
 
-      {/* Accounts Module RBAC */}
-      <div className={`rounded-xl border p-6 ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-gray-200'}`}>
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h3 className={`text-base font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Accounts Module Permissions</h3>
-            <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>Fine-grained access control for the Accounts Management module</p>
-          </div>
-          {acctPermLoading && <RefreshCw className="w-4 h-4 animate-spin text-emerald-500" />}
-        </div>
-        {acctPermissions.length > 0 ? (
-          <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-slate-700">
-            <table className="w-full text-xs">
-              <thead className={`${theme === 'dark' ? 'bg-slate-900 text-slate-400' : 'bg-gray-50 text-gray-500'}`}>
-                <tr>
-                  <th className="px-4 py-2.5 text-left font-medium">Role</th>
-                  <th className="px-4 py-2.5 text-left font-medium">Resource</th>
-                  {['View','Create','Edit','Delete','Approve','Export'].map(a => (
-                    <th key={a} className="px-3 py-2.5 text-center font-medium">{a}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className={`divide-y ${theme === 'dark' ? 'divide-slate-700 bg-slate-800' : 'divide-gray-100 bg-white'}`}>
-                {['admin','billing_manager','doctor','nurse','receptionist','crm_manager'].map(role =>
-                  ['chart_of_accounts','journal_entries','accounts_receivable','accounts_payable','reconciliation','statements'].map((resource, ri) => {
-                    const perm = acctPermissions.find(p => p.roleName === role && p.resource === resource) || {};
-                    const permMap = { View:'canView', Create:'canCreate', Edit:'canEdit', Delete:'canDelete', Approve:'canApprove', Export:'canExport' };
-                    return (
-                      <tr key={`${role}-${resource}`} className={theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-50'}>
-                        {ri === 0 && (
-                          <td className={`px-4 py-2 font-medium capitalize ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'}`} rowSpan={6}>
-                            {role.replace('_',' ')}
-                          </td>
-                        )}
-                        <td className={`px-4 py-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>{resource.replace(/_/g,' ')}</td>
-                        {['View','Create','Edit','Delete','Approve','Export'].map(action => (
-                          <td key={action} className="px-3 py-2 text-center">
-                            <button
-                              disabled={!canManageRoles || role === 'admin'}
-                              onClick={async () => {
-                                if (!canManageRoles || role === 'admin') return;
-                                const key = permMap[action];
-                                const newVal = !perm[key];
-                                try {
-                                  const updated = await api.updateAccountPermission({
-                                    roleName: role, resource,
-                                    canView: perm.canView || false, canCreate: perm.canCreate || false,
-                                    canEdit: perm.canEdit || false, canDelete: perm.canDelete || false,
-                                    canApprove: perm.canApprove || false, canExport: perm.canExport || false,
-                                    [key]: newVal
-                                  });
-                                  setAcctPermissions(prev => {
-                                    const idx = prev.findIndex(p => p.roleName === role && p.resource === resource);
-                                    if (idx >= 0) return prev.map((p, i) => i === idx ? updated : p);
-                                    return [...prev, updated];
-                                  });
-                                } catch (err) {
-                                  addNotification('error', 'Failed to update permission');
-                                }
-                              }}
-                              className={`w-5 h-5 rounded flex items-center justify-center mx-auto transition-colors ${
-                                perm[permMap[action]]
-                                  ? 'bg-emerald-500 text-white'
-                                  : theme === 'dark' ? 'bg-slate-700 text-slate-500' : 'bg-gray-100 text-gray-400'
-                              } ${(!canManageRoles || role === 'admin') ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-80 cursor-pointer'}`}
-                            >
-                              {perm[permMap[action]] ? <Check className="w-3 h-3" /> : null}
-                            </button>
-                          </td>
-                        ))}
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className={`text-center py-8 text-sm ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>
-            {acctPermLoading ? 'Loading accounts permissions…' : 'No accounts permissions found — visit Accounts Management to initialize.'}
-          </div>
-        )}
-      </div>
-
-      {/* Inventory Module RBAC */}
-      <div className={`rounded-xl border p-6 ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-white border-gray-200'}`}>
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h3 className={`text-base font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Inventory Module Permissions</h3>
-            <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>Fine-grained access control for the Inventory Management module</p>
-          </div>
-          {invPermLoading && <RefreshCw className="w-4 h-4 animate-spin text-orange-500" />}
-        </div>
-        {invPermissions.length > 0 ? (
-          <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-slate-700">
-            <table className="w-full text-xs">
-              <thead className={`${theme === 'dark' ? 'bg-slate-900 text-slate-400' : 'bg-gray-50 text-gray-500'}`}>
-                <tr>
-                  <th className="px-4 py-2.5 text-left font-medium">Role</th>
-                  <th className="px-4 py-2.5 text-left font-medium">Resource</th>
-                  {['View','Create','Edit','Delete','Approve','Export'].map(a => (
-                    <th key={a} className="px-3 py-2.5 text-center font-medium">{a}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className={`divide-y ${theme === 'dark' ? 'divide-slate-700 bg-slate-800' : 'divide-gray-100 bg-white'}`}>
-                {['admin','billing_manager','doctor','nurse','receptionist','crm_manager'].map(role =>
-                  ['items','categories','suppliers','stock_movements','purchase_orders'].map((resource, ri) => {
-                    const perm = invPermissions.find(p => p.roleName === role && p.resource === resource) || {};
-                    const permMap = { View:'canView', Create:'canCreate', Edit:'canEdit', Delete:'canDelete', Approve:'canApprove', Export:'canExport' };
-                    return (
-                      <tr key={`inv-${role}-${resource}`} className={theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-50'}>
-                        {ri === 0 && (
-                          <td className={`px-4 py-2 font-medium capitalize ${theme === 'dark' ? 'text-slate-200' : 'text-gray-800'}`} rowSpan={5}>
-                            {role.replace('_',' ')}
-                          </td>
-                        )}
-                        <td className={`px-4 py-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>{resource.replace(/_/g,' ')}</td>
-                        {['View','Create','Edit','Delete','Approve','Export'].map(action => (
-                          <td key={action} className="px-3 py-2 text-center">
-                            <button
-                              disabled={!canManageRoles || role === 'admin'}
-                              onClick={async () => {
-                                if (!canManageRoles || role === 'admin') return;
-                                const key = permMap[action];
-                                const newVal = !perm[key];
-                                try {
-                                  const updated = await api.updateInventoryPermission({
-                                    roleName: role, resource,
-                                    canView: perm.canView || false, canCreate: perm.canCreate || false,
-                                    canEdit: perm.canEdit || false, canDelete: perm.canDelete || false,
-                                    canApprove: perm.canApprove || false, canExport: perm.canExport || false,
-                                    [key]: newVal
-                                  });
-                                  setInvPermissions(prev => {
-                                    const idx = prev.findIndex(p => p.roleName === role && p.resource === resource);
-                                    if (idx >= 0) return prev.map((p, i) => i === idx ? updated : p);
-                                    return [...prev, updated];
-                                  });
-                                } catch (err) {
-                                  addNotification('error', 'Failed to update inventory permission');
-                                }
-                              }}
-                              className={`w-5 h-5 rounded flex items-center justify-center mx-auto transition-colors ${
-                                perm[permMap[action]]
-                                  ? 'bg-orange-500 text-white'
-                                  : theme === 'dark' ? 'bg-slate-700 text-slate-500' : 'bg-gray-100 text-gray-400'
-                              } ${(!canManageRoles || role === 'admin') ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-80 cursor-pointer'}`}
-                            >
-                              {perm[permMap[action]] ? <Check className="w-3 h-3" /> : null}
-                            </button>
-                          </td>
-                        ))}
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className={`text-center py-8 text-sm ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>
-            {invPermLoading ? 'Loading inventory permissions…' : 'No inventory permissions found — visit Inventory Management to initialize.'}
-          </div>
-        )}
-      </div>
+      {/* THE permissions surface — one grid for every module.
+          There used to be three on this tab: a coarse module x role matrix writing to the
+          legacy permissions/role_permissions tables (both empty on every installation
+          checked, and read by nothing), plus a hand-written grid each for Accounts and
+          Inventory with their own hardcoded roles, resources and endpoints. Same job, three
+          implementations, two of which changed nothing when you clicked them.
+          This one draws its modules, resources, roles and actions from the server registry,
+          so it covers every module including those two, lists the roles the practice
+          actually uses, and is enforced. */}
+      <ModulePermissionsTab
+        theme={theme}
+        api={api}
+        addNotification={addNotification}
+        canManage={canManageRoles}
+      />
     </div>
   );
 };
@@ -4367,17 +3316,12 @@ const AdminPanelView = ({
               </div>
 
               <button
+                role="switch" aria-checked={!!(hours.enabled)}
                 type="button"
                 onClick={() => handleWorkingHoursChange(day, 'enabled', !hours.enabled)}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                  hours.enabled ? 'bg-green-500' : theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'
-                }`}
+                className="inline-flex shrink-0 items-center transition-opacity hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:opacity-50"
               >
-                <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    hours.enabled ? 'translate-x-6' : 'translate-x-1'
-                  }`}
-                />
+                {(hours.enabled) ? <ToggleRight className="w-6 h-6 text-green-400" /> : <ToggleLeft className="w-6 h-6 text-gray-400" />}
               </button>
             </div>
           </div>
@@ -4935,6 +3879,9 @@ const AdminPanelView = ({
           {activeTab === ADMIN_TABS.LOCATIONS && (
             <LocationsTab theme={theme} t={t} api={api} addNotification={addNotification} />
           )}
+          {activeTab === ADMIN_TABS.PROFILE && (
+            <PracticeProfileTab theme={theme} api={api} addNotification={addNotification} />
+          )}
           {activeTab === ADMIN_TABS.USERS && renderUserManagementTab()}
           {activeTab === ADMIN_TABS.ROLES && renderRolesPermissionsTab()}
           {activeTab === ADMIN_TABS.PLANS && renderSubscriptionPlansTab()}
@@ -5112,7 +4059,6 @@ AdminPanelView.propTypes = {
   api: PropTypes.shape({
     getBackupConfig: PropTypes.func,
     getTelehealthSettings: PropTypes.func,
-    getVendorIntegrationSettings: PropTypes.func,
     getPermissions: PropTypes.func,
     updatePermissions: PropTypes.func,
     deleteUser: PropTypes.func,

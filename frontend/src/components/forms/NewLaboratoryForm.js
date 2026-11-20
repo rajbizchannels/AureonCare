@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Microscope, X, Save } from 'lucide-react';
+import { Microscope, X, Save, ToggleLeft, ToggleRight } from 'lucide-react';
 import ConfirmationModal from '../modals/ConfirmationModal';
 import { useAudit } from '../../hooks/useAudit';
 
@@ -424,37 +424,23 @@ const NewLaboratoryForm = ({ theme, api, editingLaboratory, onClose, onSuccess, 
                   <div className="flex items-center justify-between">
                     <span className={`text-sm font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Active</span>
                     <button
+                      role="switch" aria-checked={!!(formData.isActive)}
                       type="button"
                       onClick={() => setFormData({...formData, isActive: !formData.isActive})}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
-                        formData.isActive
-                          ? 'bg-blue-500'
-                          : theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'
-                      }`}
+                      className="inline-flex shrink-0 items-center transition-opacity hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:opacity-50"
                     >
-                      <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                          formData.isActive ? 'translate-x-6' : 'translate-x-1'
-                        }`}
-                      />
+                      {(formData.isActive) ? <ToggleRight className="w-6 h-6 text-green-400" /> : <ToggleLeft className="w-6 h-6 text-gray-400" />}
                     </button>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className={`text-sm font-medium ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>Accepts Electronic Orders</span>
                     <button
+                      role="switch" aria-checked={!!(formData.acceptsElectronicOrders)}
                       type="button"
                       onClick={() => setFormData({...formData, acceptsElectronicOrders: !formData.acceptsElectronicOrders})}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
-                        formData.acceptsElectronicOrders
-                          ? 'bg-blue-500'
-                          : theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'
-                      }`}
+                      className="inline-flex shrink-0 items-center transition-opacity hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:opacity-50"
                     >
-                      <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                          formData.acceptsElectronicOrders ? 'translate-x-6' : 'translate-x-1'
-                        }`}
-                      />
+                      {(formData.acceptsElectronicOrders) ? <ToggleRight className="w-6 h-6 text-green-400" /> : <ToggleLeft className="w-6 h-6 text-gray-400" />}
                     </button>
                   </div>
                 </div>

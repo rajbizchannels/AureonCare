@@ -1,5 +1,7 @@
 import React from 'react';
 import { Bell, HelpCircle, LogOut, Menu, MessageSquare, Moon, Search, Sun } from 'lucide-react';
+import BrandLogo from '../common/BrandLogo';
+import PracticeSwitcher from './PracticeSwitcher';
 
 /**
  * The app-shell top bar. Spans all three panes and owns the global actions
@@ -53,13 +55,12 @@ const TopBar = ({
         <Menu className="w-5 h-5" />
       </button>
 
-      <button onClick={onLogoClick} className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-        <img
-          src="/assets/aureoncare-logo-wide.png"
-          alt="AureonCare"
-          className="h-9 w-auto object-contain"
-          style={{ aspectRatio: '3/1' }}
-        />
+      {/* The tagline is hidden on the narrowest screens, where the row has to hold the
+          menu, search, messages, notifications and the avatar. It is the first thing to
+          give up space, and it is decoration rather than navigation. */}
+      <button onClick={onLogoClick} className="flex items-center hover:opacity-80 transition-opacity">
+        <BrandLogo theme={theme} size={40} showTagline={false} className="sm:hidden" />
+        <BrandLogo theme={theme} size={40} className="hidden sm:inline-flex" />
       </button>
 
       <div className="flex-1" />
@@ -113,6 +114,8 @@ const TopBar = ({
         >
           {dark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
         </button>
+
+        {!isPatient && <div className="hidden sm:block"><PracticeSwitcher theme={theme} /></div>}
 
         <div className={`hidden sm:block w-px h-6 mx-1 ${dark ? 'bg-slate-800' : 'bg-gray-200'}`} />
 

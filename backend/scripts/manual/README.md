@@ -39,14 +39,81 @@ Global first, then tenant. Always.
 | 1 | `apply-pending-migrations.sql` | globals 080–082, and tenant/003 |
 | 2 | `apply-global-083-084.sql` | globals 083–084 — registers `locations` and the camp tables, and gates camps by plan |
 | 3 | `apply-tenant-migrations.sql` | tenant 001–006 — creates the tables in every tenant schema and in `template` |
+| 4 | `apply-tenant-migrations-007-009.sql` | tenant 007–009 — pack provenance columns, the system form library, and handing five specialty forms to their packs |
+| 5 | `apply-global-085.sql` | global 085 — the specialty taxonomy, pack catalogue and `practices.setup` |
+| 6 | `apply-specialty-packs.sql` | publishes the specialty packs — the SQL equivalent of `npm run packs:load` |
+| 7 | `apply-global-086.sql` | global 086 — lets a subscription change be attributed to a practice admin, and keeps prorations apart from collected cash |
+| 8 | `apply-module-permissions.sql` | global 088 **and** tenant/011 — the `module_permissions` table behind fine-grained, per-module access control |
+| 9 | `apply-portal-invites.sql` | global 090 **and** tenant/012 — patient portal invitation links (`control.portal_invite_route` + `portal_invites` in every tenant). Pasting `tenant/012_portal_invites.sql` directly fails with 42P01 `relation "patients" does not exist`; run this instead |
+| 10 | `../../migrations/091_short_links.sql` | global 091 — short links (`/s/<code>`) for every link AureonCare emails or shares. Paste it as is: it records itself in the migration ledger. (Tenant 013, `appointments.meeting_url`, is a no-op on databases upgraded from before the tenant split; run it through `npm run migrate:tenants` on a fresh install.) |
+
+Without step 6 the setup wizard lists every specialty as having **"no starter content
+yet"**. That is not a fault in the wizard: `public.specialty_packs` is simply empty,
+because the packs are JSON files that a node script normally publishes.
+
+If you can run node, `npm run packs:load` does the same thing, and
+`npm run check:form-library` confirms every tenant has the form library.
 
 Step 2 before step 3 matters because `control.provision_schema` clones exactly what
 `control.tenant_tables` lists. Get the order wrong and nothing breaks permanently — a
 tenant provisioned in the gap is picked up by the next tenant run — but until then it is
 missing those tables.
 
-All three are safe to re-run: every statement is idempotent and the ledgers are consulted
+Step 5 before `packs:load`, because the loader refuses to run until `public.specialties`
+exists.
+
+Step 8 carries both halves itself: it registers the table for new tenants AND creates it in
+`template` and every existing tenant schema, so it does not need a separate tenant run. The
+permissions screen reports that permissions are not set up until it has run, and enforcement
+falls back to the built-in role defaults in the meantime — the same behaviour as before the
+feature existed, so nothing breaks in the gap.
+
+Step 7 stands on its own — it touches only the control-plane billing tables and can be run
+at any point. Until it is applied, a practice admin changing their own plan gets a 500: the
+audit write names them as the actor and there is no column to put that in.
+
+All of them are safe to re-run: every statement is idempotent and the ledgers are consulted
 first, so a re-paste reports `0 file(s) applied`.
+
+## `apply-specialty-packs.sql` is generated
+
+```bash
+node backend/scripts/build-manual-specialty-packs.js > backend/scripts/manual/apply-specialty-packs.sql
+```
+
+Each pack is written as one INSERT for everything except its form templates, then one
+UPDATE per form template. A whole pack as a single quoted literal reaches 17 KB and this
+project's SQL has been rejected by the editor for exactly that before; split this way no
+literal passes about 4 KB. Re-running replaces the definition and rebuilds the templates,
+so the end state is the same however many times it runs, and a pack a clinician has
+approved is skipped entirely.
+
+Checked against the node loader rather than eyeballed: on two databases, one published by
+`npm run packs:load` and one by this script, the pack definitions are identical across all
+3,440 lines of pretty-printed JSON, and still identical after three runs.
+
+## `apply-tenant-migrations-007-009.sql` is generated
+
+tenant/008 is 283 form-field definitions inside jsonb literals. The other scripts run their
+DDL from inside a loop via `EXECUTE '...'`, which here would mean doubling every single
+quote in all of it. So `backend/scripts/build-manual-tenant-007-009.js` embeds 008's body
+**verbatim** at the top level, under a `search_path` pinned to `template`, then copies the
+rows out of `template` into every tenant schema — the same copy that provisioning and
+`scripts/repair-form-library.js` already perform. Nothing is retyped and nothing is escaped.
+
+Regenerate it rather than hand-editing:
+
+```bash
+node backend/scripts/build-manual-tenant-007-009.js > backend/scripts/manual/apply-tenant-migrations-007-009.sql
+```
+
+One subtlety worth knowing if you change it: the embedded 008 body is plain top-level SQL
+and therefore has **no ledger guard** — a second run re-inserts the five specialty forms
+into `template`, because migration 009 removed them and so `ON CONFLICT` does not fire. The
+script repeats the removal from `template` unconditionally, immediately after the body and
+before the fan-out, so the end state is the same however many times it runs. Without that,
+a second run would leave `template` holding 22 base templates instead of 17 and every
+tenant provisioned afterwards would silently get the five back.
 
 ## Why these scripts look the way they do
 
@@ -72,10 +139,12 @@ npm run check:schema-health     # every tenant schema complete and matching temp
 npm run check:tenant-scoping
 ```
 
-`apply-tenant-migrations.sql` is checked against the runner rather than only eyeballed: on
-a database built by the script, `template` and `tenant_default` match a runner-built
-database across all ~2,400 column, constraint and index facts, including the seeded primary
-location (one row in `tenant_default`, none in `template`).
+Both tenant scripts are checked against the runner rather than only eyeballed: on a
+database built from the scripts alone, `template` and `tenant_default` match a runner-built
+database across all 2,411 and 1,638 facts respectively — columns, constraints, indexes, the
+seeded primary location, and every form template's id, field count, signature and witness
+flags, category, subcategory, languages, tags and compliance tags. Run three times in
+succession with the same result each time.
 
 ## `audit-stored-secrets.sql`
 

@@ -1,0 +1,55 @@
+1
+00:00:04,187 --> 00:00:12,607
+Answer a question with a report — Insights ▸ Reports — Start from the question, find the report that answers it, and read it properly.
+
+2
+00:00:20,119 --> 00:00:30,368
+Insights ▸ Reports groups reports by the question they answer: operational, financial, insurance, patient, provider, compliance.
+
+3
+00:00:30,368 --> 00:00:40,840
+So start from the question. "How many people are not turning up?" is an operational question.
+
+4
+00:00:40,840 --> 00:00:48,594
+The No-Show Report opens on the numbers that answer it: how many were scheduled, how many did not arrive, and the rate.
+
+5
+00:00:48,594 --> 00:00:59,549
+Late cancellations sit alongside them, because a slot cancelled an hour before is lost just as completely.
+
+6
+00:00:59,549 --> 00:01:06,650
+Set the date range before you read the rate. A percentage with no period attached means nothing.
+
+7
+00:01:06,650 --> 00:01:13,508
+Ninety days smooths out a bad week. Seven days is what you look at when you have just changed something.
+
+8
+00:01:13,508 --> 00:01:21,650
+The chart is the trend: no-shows per day. One bad Monday is noise — the same day every week is a pattern.
+
+9
+00:01:21,650 --> 00:01:29,988
+Switch between bar, line and area if a different shape makes the pattern easier to see.
+
+10
+00:01:29,988 --> 00:01:37,792
+Detailed Records is the part that lets you act: who missed, which provider, what it was for, and their phone number.
+
+11
+00:01:37,792 --> 00:01:50,384
+A rate tells you the size of the problem. The names tell you what to do about it — and one patient appearing three times is its own answer.
+
+12
+00:01:50,384 --> 00:01:58,658
+Export to PDF for a meeting or Excel when someone needs to work the list. Both carry the range you set.
+
+13
+00:02:00,397 --> 00:02:17,427
+What you just did
+
+14
+00:02:18,044 --> 00:02:27,044
+Health | Efficiency | Growth — More in the Getting Started series — the next video is linked on screen.

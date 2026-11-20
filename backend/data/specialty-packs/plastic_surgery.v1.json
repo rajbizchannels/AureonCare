@@ -1,0 +1,282 @@
+{
+  "code": "plastic_surgery",
+  "version": 1,
+  "label": "Plastic and Reconstructive Surgery",
+  "description": "Starting configuration for a plastic surgery practice: consultation, minor procedure and theatre appointment types, with a reconstructive and scar catalogue.",
+  "modules": {
+    "hide": [
+      "camps"
+    ]
+  },
+  "terminology": {
+    "provider": "Plastic Surgeon",
+    "providers": "Plastic Surgeons"
+  },
+  "appointmentTypes": [
+    {
+      "name": "New Patient Consultation",
+      "durationMinutes": 45,
+      "color": "#2563EB",
+      "displayOrder": 10
+    },
+    {
+      "name": "Follow-up Consultation",
+      "durationMinutes": 20,
+      "color": "#0EA5E9",
+      "displayOrder": 20
+    },
+    {
+      "name": "Minor Procedure",
+      "durationMinutes": 45,
+      "color": "#14B8A6",
+      "displayOrder": 30
+    },
+    {
+      "name": "Day Surgery",
+      "durationMinutes": 120,
+      "color": "#8B5CF6",
+      "displayOrder": 40
+    },
+    {
+      "name": "Dressing Clinic",
+      "durationMinutes": 20,
+      "color": "#F59E0B",
+      "displayOrder": 50
+    },
+    {
+      "name": "Scar Review",
+      "durationMinutes": 20,
+      "color": "#64748B",
+      "displayOrder": 60
+    }
+  ],
+  "serviceCategories": [
+    {
+      "name": "Consultations",
+      "icon": "stethoscope",
+      "displayOrder": 10
+    },
+    {
+      "name": "Skin Lesions",
+      "icon": "scissors",
+      "displayOrder": 20
+    },
+    {
+      "name": "Hand Surgery",
+      "icon": "hand",
+      "displayOrder": 30
+    },
+    {
+      "name": "Reconstruction",
+      "icon": "layers",
+      "displayOrder": 40
+    },
+    {
+      "name": "Scar and Wound",
+      "icon": "bandage",
+      "displayOrder": 50
+    }
+  ],
+  "offerings": [
+    {
+      "name": "New Patient Plastic Surgery Consultation",
+      "categoryName": "Consultations",
+      "durationMinutes": 45,
+      "cptCodes": [
+        "99204"
+      ]
+    },
+    {
+      "name": "Follow-up Consultation",
+      "categoryName": "Consultations",
+      "durationMinutes": 20,
+      "cptCodes": [
+        "99213"
+      ]
+    },
+    {
+      "name": "Excision of Skin Lesion with Closure",
+      "categoryName": "Skin Lesions",
+      "durationMinutes": 45,
+      "consentFormRequired": true
+    },
+    {
+      "name": "Skin Graft",
+      "categoryName": "Reconstruction",
+      "durationMinutes": 90,
+      "consentFormRequired": true
+    },
+    {
+      "name": "Local Flap Reconstruction",
+      "categoryName": "Reconstruction",
+      "durationMinutes": 120,
+      "consentFormRequired": true
+    },
+    {
+      "name": "Carpal Tunnel Release",
+      "categoryName": "Hand Surgery",
+      "durationMinutes": 45,
+      "consentFormRequired": true
+    },
+    {
+      "name": "Trigger Finger Release",
+      "categoryName": "Hand Surgery",
+      "durationMinutes": 30,
+      "consentFormRequired": true
+    },
+    {
+      "name": "Dupuytren Assessment",
+      "categoryName": "Hand Surgery",
+      "durationMinutes": 30
+    },
+    {
+      "name": "Scar Revision",
+      "categoryName": "Scar and Wound",
+      "durationMinutes": 60,
+      "consentFormRequired": true
+    },
+    {
+      "name": "Keloid Injection",
+      "categoryName": "Scar and Wound",
+      "durationMinutes": 20,
+      "consentFormRequired": true
+    },
+    {
+      "name": "Complex Wound Review",
+      "categoryName": "Scar and Wound",
+      "durationMinutes": 30
+    },
+    {
+      "name": "Burns Review",
+      "categoryName": "Reconstruction",
+      "durationMinutes": 30
+    }
+  ],
+  "formTemplates": [
+    {
+      "slug": "plastic-surgery-consultation",
+      "name": "Plastic Surgery Consultation",
+      "templateType": "onboarding",
+      "categorySlug": "onboarding",
+      "version": "1.0",
+      "languages": [
+        "en"
+      ],
+      "complianceTags": [
+        "HIPAA"
+      ],
+      "fields": [
+        {
+          "id": "concern",
+          "type": "textarea",
+          "label": "What would you like to discuss?",
+          "required": true
+        },
+        {
+          "id": "area",
+          "type": "text",
+          "label": "Which part of the body?",
+          "required": true
+        },
+        {
+          "id": "duration",
+          "type": "text",
+          "label": "How long has it been a problem?"
+        },
+        {
+          "id": "functional_impact",
+          "type": "textarea",
+          "label": "How does it affect what you can do day to day?"
+        },
+        {
+          "id": "previous_surgery_area",
+          "type": "textarea",
+          "label": "Previous surgery or injury to this area"
+        },
+        {
+          "id": "healing_problems",
+          "type": "checkboxes",
+          "label": "Have you ever had any of these?",
+          "options": [
+            "Thick or raised scars",
+            "Keloid scars",
+            "Wound infection",
+            "Slow healing",
+            "None of these"
+          ]
+        },
+        {
+          "id": "smoking",
+          "type": "radio",
+          "label": "Smoking",
+          "options": [
+            "Never",
+            "Ex-smoker",
+            "Current smoker"
+          ],
+          "required": true
+        },
+        {
+          "id": "diabetes",
+          "type": "checkbox",
+          "label": "Do you have diabetes?"
+        },
+        {
+          "id": "medications",
+          "type": "textarea",
+          "label": "Current medicines, including blood thinners",
+          "required": true
+        },
+        {
+          "id": "expectations",
+          "type": "textarea",
+          "label": "What are you hoping for from treatment?"
+        }
+      ]
+    }
+  ],
+  "inventoryCategories": [
+    {
+      "code": "plast_sutures",
+      "name": "Fine Sutures"
+    },
+    {
+      "code": "plast_dressings",
+      "name": "Specialist Dressings"
+    },
+    {
+      "code": "plast_theatre",
+      "name": "Theatre Consumables"
+    },
+    {
+      "code": "plast_injectables",
+      "name": "Injectables"
+    }
+  ],
+  "codeSets": {
+    "icd10": [
+      "L91.0",
+      "D22.9",
+      "G56.00",
+      "M65.30",
+      "M72.0",
+      "T30.0",
+      "L89.90",
+      "S51.809A"
+    ],
+    "cpt": [
+      "99204",
+      "99213"
+    ]
+  },
+  "settings": {
+    "defaultAppointmentDuration": 30,
+    "slotIntervalMinutes": 15
+  },
+  "reports": {
+    "show": [
+      "clinical",
+      "operational"
+    ]
+  }
+}

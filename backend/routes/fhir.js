@@ -3,7 +3,9 @@ const { authenticate } = require('../middleware/auth');
 const router = express.Router();
 router.use(authenticate);
 router.use(require('../middleware/planEnforcement').enforceActiveBilling); // SEC-05 S11: read-only when subscription past_due/canceled
-const vendorIntegrationManager = require('../services/vendorIntegrations');
+// SEC-37: vendor clients are per practice — resolved from this request's tenant.
+const { vendorsFor } = require('../services/vendorIntegrations');
+const { sendDbError } = require('../utils/dbErrors');
 
 // Get all FHIR resources
 router.get('/resources', async (req, res) => {
@@ -88,7 +90,7 @@ router.post('/resources', async (req, res) => {
     const fhirResource = result.rows[0];
 
     // If this is a ServiceRequest (lab order) and Labcorp is enabled, create lab order and send to vendor
-    if (resourceType === 'ServiceRequest' && vendorIntegrationManager.isVendorEnabled('labcorp')) {
+    if (resourceType === 'ServiceRequest' && (await vendorsFor(req)).isVendorEnabled('labcorp')) {
       try {
         // Extract lab order details from FHIR ServiceRequest
         const labOrderData = {
@@ -150,7 +152,7 @@ router.post('/resources', async (req, res) => {
         const patientResult = await pool.query('SELECT * FROM users WHERE id = $1', [patientId]);
         const providerResult = await pool.query('SELECT * FROM users WHERE id = $1', [labOrderData.provider_id]);
 
-        const labcorp = vendorIntegrationManager.getLabcorp();
+        const labcorp = (await vendorsFor(req)).getLabcorp();
 
         const vendorOrder = {
           ...labOrder,
@@ -180,7 +182,7 @@ router.post('/resources', async (req, res) => {
           ]);
 
           // Log transaction
-          await vendorIntegrationManager.logTransaction('labcorp', 'lab_order_submit_fhir', {
+          await (await vendorsFor(req)).logTransaction('labcorp', 'lab_order_submit_fhir', {
             request: vendorOrder,
             response: vendorResponse.response,
             status: 'success',
@@ -194,7 +196,7 @@ router.post('/resources', async (req, res) => {
           fhirResource.vendor_order_id = vendorResponse.vendorOrderId;
         } else {
           // Log failed transaction
-          await vendorIntegrationManager.logTransaction('labcorp', 'lab_order_submit_fhir', {
+          await (await vendorsFor(req)).logTransaction('labcorp', 'lab_order_submit_fhir', {
             request: vendorOrder,
             response: vendorResponse.response,
             status: 'failed',
@@ -212,6 +214,8 @@ router.post('/resources', async (req, res) => {
     res.status(201).json(fhirResource);
   } catch (error) {
     console.error('Error creating FHIR resource:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to create FHIR resource')) return;
     res.status(500).json({ error: 'Failed to create FHIR resource' });
   }
 });
@@ -340,6 +344,8 @@ router.post('/sync/patient/:patientId', async (req, res) => {
     });
   } catch (error) {
     console.error('Error syncing patient to FHIR:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to sync patient to FHIR')) return;
     res.status(500).json({ error: 'Failed to sync patient to FHIR' });
   }
 });

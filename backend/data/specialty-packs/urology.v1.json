@@ -1,0 +1,281 @@
+{
+  "code": "urology",
+  "version": 1,
+  "label": "Urology",
+  "description": "Starting configuration for a urology practice: clinic, cystoscopy and flow-study appointment types, with a prostate, stone and continence catalogue.",
+  "modules": {
+    "hide": [
+      "camps"
+    ]
+  },
+  "terminology": {
+    "provider": "Urologist",
+    "providers": "Urologists"
+  },
+  "appointmentTypes": [
+    {
+      "name": "New Patient Consultation",
+      "durationMinutes": 30,
+      "color": "#2563EB",
+      "displayOrder": 10
+    },
+    {
+      "name": "Follow-up Consultation",
+      "durationMinutes": 20,
+      "color": "#0EA5E9",
+      "displayOrder": 20
+    },
+    {
+      "name": "Flexible Cystoscopy",
+      "durationMinutes": 30,
+      "color": "#14B8A6",
+      "displayOrder": 30
+    },
+    {
+      "name": "Uroflowmetry",
+      "durationMinutes": 30,
+      "color": "#8B5CF6",
+      "displayOrder": 40
+    },
+    {
+      "name": "Prostate Biopsy",
+      "durationMinutes": 45,
+      "color": "#F59E0B",
+      "displayOrder": 50
+    },
+    {
+      "name": "Catheter Change",
+      "durationMinutes": 20,
+      "color": "#64748B",
+      "displayOrder": 60
+    }
+  ],
+  "serviceCategories": [
+    {
+      "name": "Consultations",
+      "icon": "stethoscope",
+      "displayOrder": 10
+    },
+    {
+      "name": "Prostate",
+      "icon": "activity",
+      "displayOrder": 20
+    },
+    {
+      "name": "Stones",
+      "icon": "circle",
+      "displayOrder": 30
+    },
+    {
+      "name": "Continence",
+      "icon": "droplet",
+      "displayOrder": 40
+    }
+  ],
+  "offerings": [
+    {
+      "name": "New Patient Urology Consultation",
+      "categoryName": "Consultations",
+      "durationMinutes": 30,
+      "cptCodes": [
+        "99204"
+      ]
+    },
+    {
+      "name": "Follow-up Urology Consultation",
+      "categoryName": "Consultations",
+      "durationMinutes": 20,
+      "cptCodes": [
+        "99213"
+      ]
+    },
+    {
+      "name": "Flexible Cystoscopy",
+      "categoryName": "Consultations",
+      "durationMinutes": 30,
+      "cptCodes": [
+        "52000"
+      ],
+      "consentFormRequired": true,
+      "requiresPreparation": true,
+      "preparationInstructions": "Drink normally beforehand. You may be asked for a urine sample on arrival; tell us if you think you have an infection, as the test may need to be postponed."
+    },
+    {
+      "name": "Uroflowmetry and Post-void Residual",
+      "categoryName": "Continence",
+      "durationMinutes": 30,
+      "requiresPreparation": true,
+      "preparationInstructions": "Arrive with a comfortably full bladder. Drink about a pint of water an hour before."
+    },
+    {
+      "name": "Prostate Assessment",
+      "categoryName": "Prostate",
+      "durationMinutes": 30
+    },
+    {
+      "name": "Prostate Biopsy",
+      "categoryName": "Prostate",
+      "durationMinutes": 45,
+      "consentFormRequired": true
+    },
+    {
+      "name": "PSA Review",
+      "categoryName": "Prostate",
+      "durationMinutes": 15
+    },
+    {
+      "name": "Kidney Stone Review",
+      "categoryName": "Stones",
+      "durationMinutes": 25
+    },
+    {
+      "name": "Stone Prevention Counselling",
+      "categoryName": "Stones",
+      "durationMinutes": 30
+    },
+    {
+      "name": "Urinary Incontinence Assessment",
+      "categoryName": "Continence",
+      "durationMinutes": 40
+    },
+    {
+      "name": "Catheter Change",
+      "categoryName": "Continence",
+      "durationMinutes": 20
+    },
+    {
+      "name": "Recurrent Urinary Infection Review",
+      "categoryName": "Consultations",
+      "durationMinutes": 25
+    }
+  ],
+  "formTemplates": [
+    {
+      "slug": "urology-intake",
+      "name": "Urology Intake",
+      "templateType": "onboarding",
+      "categorySlug": "onboarding",
+      "version": "1.0",
+      "languages": [
+        "en"
+      ],
+      "complianceTags": [
+        "HIPAA"
+      ],
+      "fields": [
+        {
+          "id": "main_problem",
+          "type": "checkboxes",
+          "label": "What brings you in?",
+          "options": [
+            "Difficulty passing urine",
+            "Going too often",
+            "Getting up at night",
+            "Leaking",
+            "Blood in urine",
+            "Pain",
+            "Raised PSA",
+            "Stones"
+          ],
+          "required": true
+        },
+        {
+          "id": "duration",
+          "type": "text",
+          "label": "How long has this been going on?"
+        },
+        {
+          "id": "nocturia",
+          "type": "number",
+          "label": "How many times do you get up at night to pass urine?"
+        },
+        {
+          "id": "stream",
+          "type": "select",
+          "label": "Urinary stream",
+          "options": [
+            "Normal",
+            "Slow",
+            "Very slow",
+            "Stop-start",
+            "Needing to strain"
+          ]
+        },
+        {
+          "id": "leakage",
+          "type": "select",
+          "label": "Leaking",
+          "options": [
+            "None",
+            "On coughing or exercise",
+            "With sudden urgency",
+            "Both",
+            "Continuous"
+          ]
+        },
+        {
+          "id": "blood",
+          "type": "checkbox",
+          "label": "Have you ever seen blood in your urine?"
+        },
+        {
+          "id": "stone_history",
+          "type": "textarea",
+          "label": "Previous stones, and how they were treated"
+        },
+        {
+          "id": "previous_surgery",
+          "type": "textarea",
+          "label": "Previous urological surgery"
+        },
+        {
+          "id": "medications",
+          "type": "textarea",
+          "label": "Current medicines, with doses",
+          "required": true
+        }
+      ]
+    }
+  ],
+  "inventoryCategories": [
+    {
+      "code": "uro_catheters",
+      "name": "Catheters and Drainage"
+    },
+    {
+      "code": "uro_cystoscopy",
+      "name": "Cystoscopy Consumables"
+    },
+    {
+      "code": "uro_biopsy",
+      "name": "Biopsy Supplies"
+    }
+  ],
+  "codeSets": {
+    "icd10": [
+      "N40.1",
+      "N39.0",
+      "N20.0",
+      "R31.9",
+      "N39.41",
+      "R35.0",
+      "C61",
+      "N13.9"
+    ],
+    "cpt": [
+      "99204",
+      "99213",
+      "52000"
+    ]
+  },
+  "settings": {
+    "defaultAppointmentDuration": 20,
+    "slotIntervalMinutes": 10
+  },
+  "reports": {
+    "show": [
+      "clinical",
+      "operational"
+    ]
+  }
+}

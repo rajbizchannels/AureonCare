@@ -40,6 +40,7 @@ import {
   Truck,
   Tag,
   MapPin,
+  Globe,
   Megaphone,
   Send,
   Tent,
@@ -764,6 +765,15 @@ export const getNavigation = (t = {}) => [
             access: 'adminPanel',
           },
           {
+            id: 'settings.practiceProfile',
+            label: t.practiceProfile || 'Practice Profile',
+            description: t.practiceProfileNavDescription || 'Public page: Off, link only or searchable',
+            icon: Globe,
+            module: 'admin',
+            tab: ADMIN_TABS.PROFILE,
+            access: 'adminPanel',
+          },
+          {
             id: 'settings.locations',
             label: t.locations || 'Locations',
             icon: MapPin,
@@ -826,8 +836,13 @@ export const getNavigation = (t = {}) => [
           {
             id: 'settings.integrations',
             label: t.integrations || 'Integrations',
+            description: t.integrationsNavDescription || 'Vendor connections and AI',
             icon: Plug,
             module: 'integrations',
+            // Vendors and AI used to be configured inside the admin panel's telehealth tab, which
+            // every plan has. Gated like the other System items so moving them here
+            // takes nothing away from any plan.
+            access: 'adminPanel',
           },
           {
             id: 'settings.telehealthSetup',

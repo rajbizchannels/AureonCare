@@ -1,7 +1,9 @@
 const jwt = require('jsonwebtoken');
-const { getSessionCookie } = require('../utils/authCookies');
+const { getSessionCookie, getPortalCookie } = require('../utils/authCookies');
 const { resolveTenantForUser } = require('../services/tenantCatalog');
 const { makeTenantDb } = require('../db/requestTenantDb');
+const { withTenant } = require('../db/tenantClient');
+const { tenantForSession } = require('../services/portalRouting');
 const crypto = require('crypto');
 
 /**
@@ -32,7 +34,8 @@ const looksLikeJwt = (token) => token.split('.').length === 3;
 const resolveStaffActor = async (pool, token) => {
   let payload;
   try {
-    payload = jwt.verify(token, JWT_SECRET);
+    // SEC-11: pin the algorithm, as middleware/auth.js does for the same tokens.
+    payload = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
   } catch {
     return null;
   }
@@ -65,15 +68,23 @@ const resolveStaffActor = async (pool, token) => {
 };
 
 const resolvePatientActor = async (pool, token) => {
-  const result = await pool.query(
+  // patient_portal_sessions and patients are tenant tables. This used to query them through
+  // the shared pool (search_path `public`, where they no longer exist since the SEC-05
+  // cutover), so every portal patient's messaging request — and every refused JWT that
+  // fell through to here — answered 500. Route the token hash to its tenant first, exactly
+  // as the portal's own guard does.
+  const tokenHash = hashToken(token);
+  const routed = await tenantForSession(pool, tokenHash);
+  if (!routed || !routed.schemaName || routed.schemaName === 'public') return null;
+  const result = await withTenant(pool, routed.schemaName, (client) => client.query(
     `SELECT p.id, p.email, p.first_name, p.last_name
        FROM patient_portal_sessions s
        JOIN patients p ON p.id = s.patient_id
       WHERE s.session_token = $1
         AND s.expires_at > NOW()
         AND p.portal_enabled = true`,
-    [hashToken(token)]
-  );
+    [tokenHash]
+  ));
   if (result.rows.length === 0) return null;
 
   const p = result.rows[0];
@@ -83,6 +94,10 @@ const resolvePatientActor = async (pool, token) => {
     email: p.email,
     role: 'patient',
     displayName: [p.first_name, p.last_name].filter(Boolean).join(' ') || p.email,
+    // The practice the session routed to — authoritative for a portal patient, who has no
+    // users row to resolve a practice from.
+    tenantId: routed.tenantId,
+    schemaName: routed.schemaName,
   };
 };
 
@@ -96,10 +111,13 @@ const resolveActor = async (req, res, next) => {
     // cookie, so requiring a Bearer header here meant every messaging request from a
     // cookie session was rejected before it was ever looked up. Portal patients still
     // present their opaque token as a Bearer header, which the first branch covers.
+    // SEC-15: portal patients in a browser now hold their session in the HttpOnly
+    // ac_portal cookie instead. Staff cookie first: a staff member previewing the portal
+    // is still acting as staff.
     const authHeader = req.headers['authorization'];
     const token = (authHeader && authHeader.startsWith('Bearer '))
       ? authHeader.slice(7)
-      : getSessionCookie(req);
+      : (getSessionCookie(req) || getPortalCookie(req));
 
     if (!token) {
       return res.status(401).json({ error: 'Authentication required' });
@@ -124,7 +142,9 @@ const resolveActor = async (req, res, next) => {
     // tenant schema). Defensive: only set req.db when a real tenant resolves, else
     // handlers fall back to the default pool.
     try {
-      const t = await resolveTenantForUser(pool, actor.id);
+      const t = actor.schemaName
+        ? { tenantId: actor.tenantId, schemaName: actor.schemaName, practiceId: null }
+        : await resolveTenantForUser(pool, actor.id);
       if (t && t.tenantId) {
         req.tenant = { practiceId: t.practiceId, tenantId: t.tenantId, schemaName: t.schemaName || 'public' };
         req.db = makeTenantDb(pool, req.tenant.schemaName, req.res);
@@ -148,4 +168,4 @@ const requireStaffActor = (req, res, next) => {
   next();
 };
 
-module.exports = { resolveActor, requireStaffActor };
+module.exports = { resolveActor, requireStaffActor, resolvePatientActor };

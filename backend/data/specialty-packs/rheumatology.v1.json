@@ -1,0 +1,295 @@
+{
+  "code": "rheumatology",
+  "version": 1,
+  "label": "Rheumatology",
+  "description": "Starting configuration for a rheumatology practice: review and injection appointment types, with a joint-injection and biologic-monitoring catalogue.",
+  "modules": {
+    "hide": [
+      "camps"
+    ]
+  },
+  "terminology": {
+    "provider": "Rheumatologist",
+    "providers": "Rheumatologists"
+  },
+  "appointmentTypes": [
+    {
+      "name": "New Patient Consultation",
+      "durationMinutes": 45,
+      "color": "#2563EB",
+      "displayOrder": 10
+    },
+    {
+      "name": "Follow-up Consultation",
+      "durationMinutes": 25,
+      "color": "#0EA5E9",
+      "displayOrder": 20
+    },
+    {
+      "name": "Joint Injection",
+      "durationMinutes": 30,
+      "color": "#14B8A6",
+      "displayOrder": 30
+    },
+    {
+      "name": "Infusion",
+      "durationMinutes": 120,
+      "color": "#8B5CF6",
+      "displayOrder": 40
+    },
+    {
+      "name": "Disease Activity Review",
+      "durationMinutes": 30,
+      "color": "#F59E0B",
+      "displayOrder": 50
+    },
+    {
+      "name": "Monitoring Blood Review",
+      "durationMinutes": 15,
+      "color": "#64748B",
+      "displayOrder": 60
+    }
+  ],
+  "serviceCategories": [
+    {
+      "name": "Consultations",
+      "icon": "stethoscope",
+      "displayOrder": 10
+    },
+    {
+      "name": "Injections",
+      "icon": "syringe",
+      "displayOrder": 20
+    },
+    {
+      "name": "Inflammatory Arthritis",
+      "icon": "activity",
+      "displayOrder": 30
+    },
+    {
+      "name": "Infusions",
+      "icon": "droplet",
+      "displayOrder": 40
+    }
+  ],
+  "offerings": [
+    {
+      "name": "New Patient Rheumatology Consultation",
+      "categoryName": "Consultations",
+      "durationMinutes": 45,
+      "cptCodes": [
+        "99204"
+      ]
+    },
+    {
+      "name": "Follow-up Rheumatology Consultation",
+      "categoryName": "Consultations",
+      "durationMinutes": 25,
+      "cptCodes": [
+        "99213"
+      ]
+    },
+    {
+      "name": "Major Joint Injection or Aspiration",
+      "categoryName": "Injections",
+      "durationMinutes": 30,
+      "cptCodes": [
+        "20610"
+      ],
+      "consentFormRequired": true
+    },
+    {
+      "name": "Intermediate Joint Injection",
+      "categoryName": "Injections",
+      "durationMinutes": 25,
+      "cptCodes": [
+        "20605"
+      ],
+      "consentFormRequired": true
+    },
+    {
+      "name": "Small Joint Injection",
+      "categoryName": "Injections",
+      "durationMinutes": 20,
+      "cptCodes": [
+        "20600"
+      ],
+      "consentFormRequired": true
+    },
+    {
+      "name": "Soft Tissue Injection",
+      "categoryName": "Injections",
+      "durationMinutes": 20,
+      "cptCodes": [
+        "20550"
+      ],
+      "consentFormRequired": true
+    },
+    {
+      "name": "Therapeutic Injection, Intramuscular",
+      "categoryName": "Injections",
+      "durationMinutes": 15,
+      "cptCodes": [
+        "96372"
+      ]
+    },
+    {
+      "name": "Rheumatoid Arthritis Review",
+      "categoryName": "Inflammatory Arthritis",
+      "durationMinutes": 30
+    },
+    {
+      "name": "Psoriatic Arthritis Review",
+      "categoryName": "Inflammatory Arthritis",
+      "durationMinutes": 30
+    },
+    {
+      "name": "Axial Spondyloarthritis Review",
+      "categoryName": "Inflammatory Arthritis",
+      "durationMinutes": 30
+    },
+    {
+      "name": "Biologic Infusion",
+      "categoryName": "Infusions",
+      "durationMinutes": 120,
+      "consentFormRequired": true
+    },
+    {
+      "name": "DMARD Monitoring Review",
+      "categoryName": "Consultations",
+      "durationMinutes": 15
+    }
+  ],
+  "formTemplates": [
+    {
+      "slug": "rheumatology-intake",
+      "name": "Rheumatology Intake",
+      "templateType": "onboarding",
+      "categorySlug": "onboarding",
+      "version": "1.0",
+      "languages": [
+        "en"
+      ],
+      "complianceTags": [
+        "HIPAA"
+      ],
+      "fields": [
+        {
+          "id": "affected_joints",
+          "type": "checkboxes",
+          "label": "Which joints are affected?",
+          "options": [
+            "Hands",
+            "Wrists",
+            "Elbows",
+            "Shoulders",
+            "Neck",
+            "Back",
+            "Hips",
+            "Knees",
+            "Ankles",
+            "Feet"
+          ],
+          "required": true
+        },
+        {
+          "id": "morning_stiffness",
+          "type": "select",
+          "label": "Morning stiffness",
+          "options": [
+            "None",
+            "Under 30 minutes",
+            "30 to 60 minutes",
+            "Over an hour"
+          ]
+        },
+        {
+          "id": "pattern",
+          "type": "radio",
+          "label": "Is the pain worse with rest or with use?",
+          "options": [
+            "Worse with rest, better with movement",
+            "Worse with use",
+            "No clear pattern"
+          ]
+        },
+        {
+          "id": "swelling",
+          "type": "checkbox",
+          "label": "Do the joints swell?"
+        },
+        {
+          "id": "skin_psoriasis",
+          "type": "checkbox",
+          "label": "Do you have psoriasis, or has anyone in your family?"
+        },
+        {
+          "id": "eye_symptoms",
+          "type": "checkbox",
+          "label": "Any red or painful eyes?"
+        },
+        {
+          "id": "previous_dmards",
+          "type": "textarea",
+          "label": "Any disease-modifying drugs you have taken before, and why they stopped"
+        },
+        {
+          "id": "infections",
+          "type": "textarea",
+          "label": "Any recent or recurrent infections, or TB exposure"
+        },
+        {
+          "id": "medications",
+          "type": "textarea",
+          "label": "Current medicines, with doses",
+          "required": true
+        }
+      ]
+    }
+  ],
+  "inventoryCategories": [
+    {
+      "code": "rheum_injectables",
+      "name": "Injectable Steroids and Local Anaesthetic"
+    },
+    {
+      "code": "rheum_biologics",
+      "name": "Biologic Agents"
+    },
+    {
+      "code": "rheum_procedure",
+      "name": "Joint Injection Packs"
+    }
+  ],
+  "codeSets": {
+    "icd10": [
+      "M06.9",
+      "M05.79",
+      "L40.50",
+      "M45.9",
+      "M10.9",
+      "M15.9",
+      "M32.9",
+      "M79.7"
+    ],
+    "cpt": [
+      "99204",
+      "99213",
+      "20600",
+      "20605",
+      "20610",
+      "20550",
+      "96372"
+    ]
+  },
+  "settings": {
+    "defaultAppointmentDuration": 25,
+    "slotIntervalMinutes": 15
+  },
+  "reports": {
+    "show": [
+      "clinical",
+      "operational"
+    ]
+  }
+}

@@ -1,12 +1,21 @@
 const express = require('express');
 const { authenticate } = require('../middleware/auth');
+const { requireModuleAccess } = require('../middleware/modulePermissions');
 const router = express.Router();
 const { auditPhiRead } = require('../middleware/phiAccessLog');
 router.use(authenticate);
+// Fine-grained permissions, enforced. The method decides the action (GET=view,
+// POST=create, PUT/PATCH=edit, DELETE=delete); an administrator edits this under
+// Admin Panel -> Roles & Permissions. Absent grants fall back to the role defaults in
+// utils/permissionRegistry.js, so this changes nothing until somebody edits something.
+router.use(requireModuleAccess('clinical', 'lab_orders'));
 router.use(require('../middleware/planEnforcement').enforceActiveBilling); // SEC-05 S11: read-only when subscription past_due/canceled
-const vendorIntegrationManager = require('../services/vendorIntegrations');
+// SEC-37: vendor clients are per practice — resolved from this request's tenant.
+const { vendorsFor } = require('../services/vendorIntegrations');
 const fhirTrackingIntegration = require('../services/fhirTrackingIntegration');
 const notificationService = require('../services/notificationService');
+const { insertNumbered } = require('../utils/recordNumbers');
+const { sendDbError } = require('../utils/dbErrors');
 
 /**
  * Lab Orders API
@@ -137,8 +146,8 @@ router.post('/', async (req, res) => {
       send_to_vendor
     } = req.body;
 
-    // Generate order number
-    const orderNumber = `LO-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+    // Numbered as LAB-YYYY-NNNNNN by insertNumbered below. It used to be
+    // LO-<epoch ms>-<random>: unique, but not a number anyone can read out to a lab.
 
     // Check if new columns exist, if not add them
     try {
@@ -156,7 +165,7 @@ router.post('/', async (req, res) => {
     }
 
     // Insert lab order
-    const result = await pool.query(`
+    const insertLabOrder = (q, orderNumber) => q.query(`
       INSERT INTO lab_orders (
         patient_id,
         provider_id,
@@ -201,6 +210,9 @@ router.post('/', async (req, res) => {
       collection_class || 'clinic-collect',
       result_recipients || '[]'
     ]);
+    const result = await insertNumbered(
+      pool, { table: 'lab_orders', column: 'order_number', prefix: 'LAB' }, insertLabOrder
+    );
 
     const labOrder = result.rows[0];
 
@@ -218,7 +230,7 @@ router.post('/', async (req, res) => {
     }
 
     // Send to Labcorp if requested and integration is enabled
-    if (send_to_vendor && vendorIntegrationManager.isVendorEnabled('labcorp')) {
+    if (send_to_vendor && (await vendorsFor(req)).isVendorEnabled('labcorp')) {
       try {
         // Fetch full patient and provider details
         const patientResult = await pool.query(
@@ -230,7 +242,7 @@ router.post('/', async (req, res) => {
           [provider_id]
         );
 
-        const labcorp = vendorIntegrationManager.getLabcorp();
+        const labcorp = (await vendorsFor(req)).getLabcorp();
 
         const vendorOrder = {
           ...labOrder,
@@ -264,7 +276,7 @@ router.post('/', async (req, res) => {
           labOrder.status = 'sent_to_lab';
 
           // Log transaction
-          await vendorIntegrationManager.logTransaction('labcorp', 'lab_order_submit', {
+          await (await vendorsFor(req)).logTransaction('labcorp', 'lab_order_submit', {
             request: vendorOrder,
             response: vendorResponse.response,
             status: 'success',
@@ -299,7 +311,7 @@ router.post('/', async (req, res) => {
           }
         } else {
           // Log failed transaction
-          await vendorIntegrationManager.logTransaction('labcorp', 'lab_order_submit', {
+          await (await vendorsFor(req)).logTransaction('labcorp', 'lab_order_submit', {
             request: vendorOrder,
             response: vendorResponse.response,
             status: 'failed',
@@ -353,6 +365,8 @@ router.post('/', async (req, res) => {
     }).catch(() => {});
   } catch (error) {
     console.error('Error creating lab order:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to create lab order')) return;
     res.status(500).json({ error: 'Failed to create lab order' });
   }
 });
@@ -456,6 +470,8 @@ router.put('/:id', async (req, res) => {
     }
   } catch (error) {
     console.error('Error updating lab order:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to update lab order')) return;
     res.status(500).json({ error: 'Failed to update lab order' });
   }
 });
@@ -479,9 +495,9 @@ router.delete('/:id', async (req, res) => {
     const order = orderResult.rows[0];
 
     // If order was sent to vendor, try to cancel it
-    if (order.vendor_order_id && vendorIntegrationManager.isVendorEnabled('labcorp')) {
+    if (order.vendor_order_id && (await vendorsFor(req)).isVendorEnabled('labcorp')) {
       try {
-        const labcorp = vendorIntegrationManager.getLabcorp();
+        const labcorp = (await vendorsFor(req)).getLabcorp();
         await labcorp.cancelLabOrder(order.vendor_order_id, {
           reason: req.body.reason || 'Cancelled by provider'
         });
@@ -500,6 +516,8 @@ router.delete('/:id', async (req, res) => {
     res.json({ message: 'Lab order cancelled successfully' });
   } catch (error) {
     console.error('Error cancelling lab order:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to cancel lab order')) return;
     res.status(500).json({ error: 'Failed to cancel lab order' });
   }
 });
@@ -523,9 +541,9 @@ router.get('/:id/results', async (req, res) => {
     const order = orderResult.rows[0];
 
     // If order has vendor ID and Labcorp is enabled, fetch latest results
-    if (order.vendor_order_id && vendorIntegrationManager.isVendorEnabled('labcorp')) {
+    if (order.vendor_order_id && (await vendorsFor(req)).isVendorEnabled('labcorp')) {
       try {
-        const labcorp = vendorIntegrationManager.getLabcorp();
+        const labcorp = (await vendorsFor(req)).getLabcorp();
         const vendorResults = await labcorp.getLabResults(order.vendor_order_id);
 
         if (vendorResults.success && vendorResults.results) {

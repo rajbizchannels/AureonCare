@@ -11,8 +11,10 @@ const bcrypt = require('bcryptjs');
 const rateLimit = require('express-rate-limit');
 const { authenticate, authorize } = require('../middleware/auth');
 const { storeFor } = require('../middleware/rateLimitStore');
-const { validatePassword, BCRYPT_COST } = require('../utils/passwordPolicy');
-const { sendEmail, buildEmailHtml } = require('../services/notificationService');
+const { checkNewPassword, BCRYPT_COST } = require('../utils/passwordPolicy');
+const { sendEmail } = require('../services/notificationService');
+const { renderJoinRequestEmail, renderJoinDecisionEmail } = require('../services/emailTemplates');
+const { sendDbError } = require('../utils/dbErrors');
 const {
   domainOf, isClaimable, newToken, checkDnsToken, resolveDomainClaim, TXT_PREFIX,
 } = require('../services/domainJoin');
@@ -81,6 +83,8 @@ router.post('/domains', authenticate, authorize('admin'), requirePractice, async
       return res.status(409).json({ error: 'That domain has already been claimed.' });
     }
     console.error('[teamAccess] claim domain error:', err);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, err, 'Failed to claim domain')) return;
     res.status(500).json({ error: 'Failed to claim domain' });
   }
 });
@@ -113,6 +117,8 @@ router.post('/domains/:id/verify', authenticate, authorize('admin'), requirePrac
     res.json({ ...updated[0], foundAt: result.foundAt });
   } catch (err) {
     console.error('[teamAccess] verify domain error:', err);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, err, 'Failed to verify domain')) return;
     res.status(500).json({ error: 'Failed to verify domain' });
   }
 });
@@ -138,6 +144,8 @@ router.patch('/domains/:id', authenticate, authorize('admin'), requirePractice, 
     res.json(rows[0]);
   } catch (err) {
     console.error('[teamAccess] update domain error:', err);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, err, 'Failed to update domain')) return;
     res.status(500).json({ error: 'Failed to update domain' });
   }
 });
@@ -152,6 +160,8 @@ router.delete('/domains/:id', authenticate, authorize('admin'), requirePractice,
     res.json({ success: true });
   } catch (err) {
     console.error('[teamAccess] delete domain error:', err);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, err, 'Failed to remove domain')) return;
     res.status(500).json({ error: 'Failed to remove domain' });
   }
 });
@@ -162,10 +172,10 @@ router.get('/security-policy', authenticate, authorize('admin'), requirePractice
   try {
     const { rows } = await req.app.locals.pool.query(
       `SELECT session_idle_minutes, require_mfa,
-              (SELECT COUNT(*) FROM public.users
-                WHERE practice_id = $1 AND status = 'active' AND mfa_enabled = false) AS without_mfa,
-              (SELECT COUNT(*) FROM public.users
-                WHERE practice_id = $1 AND status = 'active') AS total_staff
+              (SELECT COUNT(*) FROM public.users u JOIN public.memberships m ON m.user_id = u.id
+                WHERE m.practice_id = $1 AND m.status = 'active' AND u.status = 'active' AND u.mfa_enabled = false) AS without_mfa,
+              (SELECT COUNT(*) FROM public.users u JOIN public.memberships m ON m.user_id = u.id
+                WHERE m.practice_id = $1 AND m.status = 'active' AND u.status = 'active') AS total_staff
          FROM public.practices WHERE id = $1`,
       [req.user.practiceId]
     );
@@ -206,8 +216,8 @@ router.patch('/security-policy', authenticate, authorize('admin'), requirePracti
     // missing one — this is the mistake most likely to need an operator to undo.
     if (requireMfa === true) {
       const { rows } = await req.app.locals.pool.query(
-        `SELECT email FROM public.users
-          WHERE practice_id = $1 AND role = 'admin' AND status = 'active' AND mfa_enabled = false`,
+        `SELECT u.email FROM public.users u JOIN public.memberships m ON m.user_id = u.id
+          WHERE m.practice_id = $1 AND m.role = 'admin' AND m.status = 'active' AND u.status = 'active' AND u.mfa_enabled = false`,
         [req.user.practiceId]
       );
       if (rows.length) {
@@ -234,6 +244,8 @@ router.patch('/security-policy', authenticate, authorize('admin'), requirePracti
     });
   } catch (err) {
     console.error('[teamAccess] update security policy error:', err);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, err, 'Failed to update the security policy')) return;
     res.status(500).json({ error: 'Failed to update the security policy' });
   }
 });
@@ -276,7 +288,7 @@ router.post('/join', joinLimiter, async (req, res) => {
   if (!domainOf(cleanEmail)) {
     return res.status(400).json({ error: 'A valid email address is required' });
   }
-  const pw = validatePassword(password);
+  const pw = await checkNewPassword(password);
   if (!pw.valid) return res.status(400).json({ error: pw.message });
 
   const client = await pool.connect();
@@ -338,6 +350,8 @@ router.post('/join', joinLimiter, async (req, res) => {
   } catch (err) {
     await client.query('ROLLBACK').catch(() => {});
     console.error('[teamAccess] join error:', err);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, err, 'Could not complete signup')) return;
     res.status(500).json({ error: 'Could not complete signup' });
   } finally {
     client.release();
@@ -347,25 +361,12 @@ router.post('/join', joinLimiter, async (req, res) => {
 /** Let the admins know somebody is waiting. Never allowed to fail the signup. */
 async function notifyAdminsOfRequest(pool, claim, user) {
   const { rows: admins } = await pool.query(
-    `SELECT email FROM public.users
-      WHERE practice_id = $1 AND role = 'admin' AND status = 'active'`,
+    `SELECT u.email FROM public.users u JOIN public.memberships m ON m.user_id = u.id
+      WHERE m.practice_id = $1 AND m.role = 'admin' AND m.status = 'active' AND u.status = 'active'`,
     [claim.practice_id]
   );
   if (!admins.length) return;
-  const html = buildEmailHtml(
-    'Someone has asked to join your practice',
-    '#2563eb',
-    'Hello,',
-    `<strong>${user.email}</strong> signed up using your verified domain `
-      + `<strong>${claim.domain}</strong> and is waiting for approval. They cannot sign in until `
-      + 'an administrator approves the request.',
-    [['Name', `${user.first_name} ${user.last_name}`.trim() || '—'],
-     ['Email', user.email],
-     ['Requested role', user.role]]
-      .map(([k, v]) => `<tr><td style="padding:8px 12px;font-weight:bold;color:#555">${k}</td>`
-        + `<td style="padding:8px 12px;color:#333">${v}</td></tr>`).join(''),
-    'Review it under Settings → Team access.'
-  );
+  const html = renderJoinRequestEmail({ claim, user });
   for (const a of admins) {
     await sendEmail(a.email, `Join request for ${claim.practice_name}`, html);
   }
@@ -432,22 +433,15 @@ router.post('/requests/:id/:decision', authenticate, authorize('admin'), require
     sendEmail(
       rows[0].email,
       decision === 'approve' ? 'Your access has been approved' : 'About your access request',
-      buildEmailHtml(
-        decision === 'approve' ? 'You can now sign in' : 'Your request was not approved',
-        decision === 'approve' ? '#16a34a' : '#6b7280',
-        'Hello,',
-        decision === 'approve'
-          ? 'An administrator approved your request. You can sign in with the password you chose.'
-          : 'An administrator reviewed your request and did not approve it. If you think this is '
-            + 'a mistake, contact them directly.',
-        null, null
-      )
+      renderJoinDecisionEmail({ approved: decision === 'approve' })
     ).catch(() => { /* the decision stands whether or not the mail lands */ });
 
     res.json({ success: true, decision });
   } catch (err) {
     await client.query('ROLLBACK').catch(() => {});
     console.error('[teamAccess] decide request error:', err);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, err, 'Failed to record the decision')) return;
     res.status(500).json({ error: 'Failed to record the decision' });
   } finally {
     client.release();

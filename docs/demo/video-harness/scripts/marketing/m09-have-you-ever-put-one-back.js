@@ -16,11 +16,22 @@
  * The backup file is written to disk and handed to the input the product
  * actually uses, so this is a real restore rather than a button that happens
  * to show a success dialog.
+ *
+ * Since 20 September the product asks before a restore overwrites anything,
+ * naming when the backup was taken and how many records it holds. This script
+ * predated that and stalled at the new dialog, so the file is now written in
+ * the shape a real AureonCare backup has — `timestamp`, `version`, and the
+ * demo dataset's actual rows — and the confirmation is a beat of its own. It
+ * is the better half of the story anyway: a destructive action that says
+ * exactly what it is about to replace, and waits.
  */
 
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+
+const F = require('../../fixtures');
+const W4 = require('../../fixtures-wave4');
 
 module.exports = {
   id: 'M9',
@@ -62,12 +73,18 @@ module.exports = {
     await d.say('Far fewer have ever put one back.', 2200);
 
     // A genuine file, written here and handed to the input the product uses.
+    // The same shape routes/backup.js writes. The confirmation reads
+    // `timestamp` and counts the rows in `data`, so a file with a different
+    // field name and empty tables made it announce a backup "taken on —"
+    // holding 0 records.
     const backup = {
-      generated_at: new Date().toISOString(),
-      version: 'AureonCare demo backup',
+      timestamp: new Date(Date.now() - 26 * 3600 * 1000).toISOString(),
+      version: '1.0',
       data: {
-        patients: [], appointments: [], claims: [], payments: [], prescriptions: [],
-        lab_orders: [], denials: [], preapprovals: [], audit_logs: [], users: [],
+        patients: F.patients, appointments: F.appointments, claims: F.claims,
+        payments: F.payments, prescriptions: F.prescriptions, lab_orders: F.labOrders,
+        denials: F.denials, preapprovals: F.preapprovals, audit_logs: W4.auditLogs,
+        users: F.users,
       },
     };
     const file = path.join(os.tmpdir(), 'aureoncare-demo-backup.json');
@@ -80,9 +97,16 @@ module.exports = {
     await page.locator('input[type="file"][accept=".json"]').first().setInputFiles(file);
     await d.say('Hand it a backup file.', 2000);
 
+    const ask = page.locator('div.fixed.inset-0').filter({ hasText: 'Restore from backup?' }).last();
+    await ask.waitFor({ timeout: 30000 });
+    await d.say('It says what it is about to replace, and asks first.', 2600);
+    await d.click(ask.getByRole('button', { name: /^Restore and overwrite$/ }), { pause: 1600 });
+
     const done = page.locator('div.fixed.inset-0').filter({ hasText: 'Restore Completed Successfully' }).last();
     await done.waitFor({ timeout: 30000 });
     await d.say('And it tells you what came back.', 2400);
+    // Cover: the restore result naming what came back, before OK dismisses it.
+    await d.cover();
 
     await d.click(done.getByRole('button', { name: /^OK$/ }), { pause: 1400 });
     await d.say('No ticket. No waiting on someone else.', 2400);

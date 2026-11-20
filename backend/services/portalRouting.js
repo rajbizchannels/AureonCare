@@ -85,10 +85,19 @@ async function candidateTenantsForEmail(pool, email) {
  */
 async function allActiveTenants(pool, limit = 100) {
   try {
+    // `limit = null` means every active tenant. The default cap is a sensible guard for
+    // callers that just want a sample, but it is NOT safe for a search that has to find a
+    // specific person: ordered oldest-first, a cap silently excludes the newest practices,
+    // and a patient at the 101st could not sign in socially at all.
     const { rows } = await pool.query(
-      `SELECT id, schema_name FROM control.tenants
-        WHERE status = 'active' AND schema_name IS NOT NULL
-        ORDER BY created_at ASC LIMIT $1`, [limit]
+      limit == null
+        ? `SELECT id, schema_name FROM control.tenants
+            WHERE status = 'active' AND schema_name IS NOT NULL
+            ORDER BY created_at ASC`
+        : `SELECT id, schema_name FROM control.tenants
+            WHERE status = 'active' AND schema_name IS NOT NULL
+            ORDER BY created_at ASC LIMIT $1`,
+      limit == null ? [] : [limit]
     );
     return rows.map((r) => ({ tenantId: r.id, schemaName: r.schema_name }));
   } catch (err) {
@@ -102,15 +111,54 @@ async function allActiveTenants(pool, limit = 100) {
  * the blind-index candidates first (one query, usually exactly right), then the default
  * tenant, then every other active tenant. Deduplicated, so a hit is never checked twice.
  */
-async function searchOrderForPatient(pool, email) {
+/**
+ * The tenant a given user belongs to, looked up directly.
+ *
+ * WHY THIS EXISTS. The social portal login used to find a patient's tenant by PROBING
+ * tenants in turn, and the final fallback in that order — allActiveTenants — is capped at
+ * 100, oldest first. On a deployment with more than a hundred practices, a patient at the
+ * 101st could not sign in socially at all: every probe missed, and the handler then read a
+ * field off the undefined patient and answered 500. Silent, and ordered by the age of the
+ * practice, so it would have looked like "social login is broken for some clinics".
+ *
+ * `users` is an identity-plane table in `public` carrying practice_id, and control.tenants
+ * is keyed by the same practice, so the answer is one join away. No enumeration, no cap,
+ * and it does not care how many practices exist.
+ */
+async function tenantForUser(pool, userId) {
+  if (!userId) return null;
+  try {
+    const { rows } = await pool.query(
+      `SELECT t.id, t.schema_name
+         FROM public.users u
+         JOIN control.tenants t ON t.practice_id = u.practice_id
+        WHERE u.id = $1 AND t.status = 'active' AND t.schema_name IS NOT NULL
+        LIMIT 1`, [userId]);
+    return rows[0] ? { tenantId: rows[0].id, schemaName: rows[0].schema_name } : null;
+  } catch (err) {
+    console.warn('[portalRouting] could not resolve tenant for user:', err.message);
+    return null;
+  }
+}
+
+async function searchOrderForPatient(pool, email, userId = null) {
   const seen = new Set();
   const out = [];
   const add = (t) => {
     if (t && t.tenantId && !seen.has(t.tenantId)) { seen.add(t.tenantId); out.push(t); }
   };
+  // The exact answer first, when the caller knows whose session this is. Everything
+  // below is a search, and the last step of that search is capped.
+  if (userId) add(await tenantForUser(pool, userId));
   if (email) (await candidateTenantsForEmail(pool, email)).forEach(add);
   add(await defaultTenant(pool));
-  (await allActiveTenants(pool)).forEach(add);
+  // EVERY active tenant, not the oldest hundred. This is the step that has to be
+  // exhaustive: the paths above are hints, and when they all miss — a patient whose user
+  // row carries no practice_id, or whose portal identity has not been registered yet,
+  // which is every patient's FIRST social login — this is the only thing standing between
+  // them and a refused sign-in. Each probe is a primary-key lookup and the loop stops at
+  // the first hit, so the cost is paid only by logins the hints could not place.
+  (await allActiveTenants(pool, null)).forEach(add);
   return out;
 }
 
@@ -145,5 +193,5 @@ async function registerIdentity(pool, email, tenantId) {
 
 module.exports = {
   tenantForSession, candidateTenantsForEmail, registerSession, forgetSession,
-  registerIdentity, defaultTenant, allActiveTenants, searchOrderForPatient,
+  registerIdentity, defaultTenant, allActiveTenants, searchOrderForPatient, tenantForUser,
 };

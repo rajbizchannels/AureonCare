@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const pool = require('../db');
 const { requireAdmin } = require('../middleware/auth');
+const { sendDbError } = require('../utils/dbErrors');
 
 // Middleware to ensure only admins can access archive rules endpoints
 router.use(requireAdmin);
@@ -215,7 +216,9 @@ router.post('/', async (req, res) => {
       });
     }
 
-    res.status(500).json({ error: 'Failed to create archive rule', details: error.message });
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to create archive rule')) return;
+    res.status(500).json({ error: 'Failed to create archive rule' });
   }
 });
 
@@ -311,7 +314,9 @@ router.put('/:id', async (req, res) => {
       });
     }
 
-    res.status(500).json({ error: 'Failed to update archive rule', details: error.message });
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to update archive rule')) return;
+    res.status(500).json({ error: 'Failed to update archive rule' });
   }
 });
 
@@ -337,7 +342,9 @@ router.delete('/:id', async (req, res) => {
     });
   } catch (error) {
     console.error('Error deleting archive rule:', error);
-    res.status(500).json({ error: 'Failed to delete archive rule', details: error.message });
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to delete archive rule')) return;
+    res.status(500).json({ error: 'Failed to delete archive rule' });
   }
 });
 
@@ -369,7 +376,9 @@ router.post('/:id/toggle', async (req, res) => {
     });
   } catch (error) {
     console.error('Error toggling archive rule:', error);
-    res.status(500).json({ error: 'Failed to toggle archive rule', details: error.message });
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to toggle archive rule')) return;
+    res.status(500).json({ error: 'Failed to toggle archive rule' });
   }
 });
 
@@ -432,10 +441,9 @@ router.post('/:id/trigger', async (req, res) => {
       ['failed', { error: error.message }, req.params.id]
     ).catch(err => console.error('Error updating failed status:', err));
 
-    res.status(500).json({
-      error: 'Failed to trigger archive rule',
-      details: error.message
-    });
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to trigger archive rule')) return;
+    res.status(500).json({ error: 'Failed to trigger archive rule' });
   }
 });
 

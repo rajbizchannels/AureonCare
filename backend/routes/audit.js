@@ -1,5 +1,6 @@
 const express = require('express');
 const { authenticate } = require('../middleware/auth');
+const { sendDbError } = require('../utils/dbErrors');
 const router = express.Router();
 router.use(authenticate);
 
@@ -214,6 +215,8 @@ router.post('/', checkAuditTableExists, async (req, res) => {
     res.status(201).json(result.rows[0]);
   } catch (error) {
     console.error('Error creating audit log:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to create audit log')) return;
     res.status(500).json({ error: 'Failed to create audit log' });
   }
 });
@@ -593,6 +596,8 @@ router.delete('/cleanup', async (req, res) => {
     });
   } catch (error) {
     console.error('Error cleaning up audit logs:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to cleanup audit logs')) return;
     res.status(500).json({ error: 'Failed to cleanup audit logs' });
   }
 });

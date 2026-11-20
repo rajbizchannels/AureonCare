@@ -15,7 +15,8 @@ export default function usePracticeSetup(user) {
   const [loaded, setLoaded] = useState(false);
 
   const reload = useCallback(async () => {
-    if (!user || !user.id) { setSetup(null); setLoaded(true); return; }
+    // A portal patient has no staff session: the setup state is staff-only (401).
+    if (!user || !user.id || user.role === 'patient') { setSetup(null); setLoaded(true); return; }
     try {
       setSetup(await api.getPracticeSetupState());
     } catch {

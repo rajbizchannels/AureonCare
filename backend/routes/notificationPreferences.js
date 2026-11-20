@@ -1,5 +1,6 @@
 const express = require('express');
 const { authenticate } = require('../middleware/auth');
+const { sendDbError } = require('../utils/dbErrors');
 const router = express.Router();
 router.use(authenticate);
 router.use(require('../middleware/planEnforcement').enforceActiveBilling); // SEC-05 S11: read-only when subscription past_due/canceled
@@ -63,6 +64,8 @@ router.post('/:patientId', async (req, res) => {
     res.json(result.rows[0]);
   } catch (error) {
     console.error('Error saving notification preference:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to save notification preference')) return;
     res.status(500).json({ error: 'Failed to save notification preference' });
   }
 });
@@ -85,6 +88,8 @@ router.delete('/:patientId/:channelType', async (req, res) => {
     res.json({ message: 'Notification preference deleted successfully' });
   } catch (error) {
     console.error('Error deleting notification preference:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to delete notification preference')) return;
     res.status(500).json({ error: 'Failed to delete notification preference' });
   }
 });

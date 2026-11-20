@@ -21,6 +21,11 @@ const CSRF_COOKIE = 'ac_csrf';
 // planes never share credentials: holding one grants nothing on the other.
 const PLATFORM_COOKIE = 'ac_platform';
 const PLATFORM_CSRF_COOKIE = 'ac_platform_csrf';
+// Patient portal session (opaque 256-bit token, stored hashed server-side). Separate from
+// ac_session because a portal session and a staff JWT are different credentials checked
+// by different guards. Scoped to /api: it is needed by /api/patient-portal and by
+// /api/messages, and nothing outside the API should ever see it.
+const PORTAL_COOKIE = 'ac_portal';
 
 // Cookie mode:
 //   default            SameSite=Lax + Secure — correct when the SPA and API share an
@@ -82,11 +87,42 @@ function issueAuthCookies(res, token, { maxAgeMs = 24 * 60 * 60 * 1000 } = {}) {
   return csrfToken;
 }
 
-/** Clear both cookies (logout). */
+/** Clear the session, portal and CSRF cookies (logout). */
 function clearAuthCookies(res) {
   const opts = { ...baseOptions(0), httpOnly: true };
   res.clearCookie(SESSION_COOKIE, opts);
+  res.clearCookie(PORTAL_COOKIE, { ...opts, path: '/api' });
   res.clearCookie(CSRF_COOKIE, { ...baseOptions(0), httpOnly: false });
+}
+
+/** The patient portal session token from its cookie, or null. */
+function getPortalCookie(req) {
+  return parseCookies(req)[PORTAL_COOKIE] || null;
+}
+
+/**
+ * SEC-15: deliver a portal session as an HttpOnly cookie, so the browser never has to keep
+ * it where page script can read it. Shares the CSRF cookie with the staff session: the
+ * double-submit check compares cookie to header and does not care which session issued
+ * it, so when both are issued in one response (a patient signing in through the staff
+ * login) the caller passes the token it already has rather than minting a second one
+ * that would overwrite the first.
+ * @returns {string} the CSRF token to echo in X-CSRF-Token
+ */
+function issuePortalCookies(res, token, { expiresAt, csrfToken } = {}) {
+  const maxAgeMs = expiresAt
+    ? Math.max(0, new Date(expiresAt).getTime() - Date.now())
+    : 24 * 60 * 60 * 1000;
+  res.cookie(PORTAL_COOKIE, token, { ...baseOptions(maxAgeMs), path: '/api', httpOnly: true });
+  if (csrfToken) return csrfToken;
+  const fresh = crypto.randomBytes(32).toString('hex');
+  res.cookie(CSRF_COOKIE, fresh, { ...baseOptions(maxAgeMs), httpOnly: false });
+  return fresh;
+}
+
+/** Clear only the portal cookie (portal logout leaves any staff session alone). */
+function clearPortalCookie(res) {
+  res.clearCookie(PORTAL_COOKIE, { ...baseOptions(0), path: '/api', httpOnly: true });
 }
 
 /** The platform operator JWT from its cookie, or null. */
@@ -128,8 +164,9 @@ function clearPlatformCookies(res) {
 }
 
 module.exports = {
-  SESSION_COOKIE, CSRF_COOKIE, PLATFORM_COOKIE, PLATFORM_CSRF_COOKIE,
+  SESSION_COOKIE, CSRF_COOKIE, PLATFORM_COOKIE, PLATFORM_CSRF_COOKIE, PORTAL_COOKIE,
   parseCookies, getSessionCookie, getCsrfCookie,
+  getPortalCookie, issuePortalCookies, clearPortalCookie,
   getPlatformCookie, getPlatformCsrfCookie,
   issueAuthCookies, clearAuthCookies,
   issuePlatformCookies, clearPlatformCookies,

@@ -1,0 +1,291 @@
+{
+  "code": "ent",
+  "version": 1,
+  "label": "ENT",
+  "description": "Starting configuration for an ear, nose and throat practice: clinic, endoscopy and audiology appointment types.",
+  "modules": {
+    "hide": [
+      "camps"
+    ]
+  },
+  "terminology": {
+    "provider": "ENT Surgeon",
+    "providers": "ENT Surgeons"
+  },
+  "appointmentTypes": [
+    {
+      "name": "New Patient Consultation",
+      "durationMinutes": 30,
+      "color": "#2563EB",
+      "displayOrder": 10
+    },
+    {
+      "name": "Follow-up Consultation",
+      "durationMinutes": 15,
+      "color": "#0EA5E9",
+      "displayOrder": 20
+    },
+    {
+      "name": "Nasal Endoscopy",
+      "durationMinutes": 30,
+      "color": "#14B8A6",
+      "displayOrder": 30
+    },
+    {
+      "name": "Microsuction",
+      "durationMinutes": 20,
+      "color": "#8B5CF6",
+      "displayOrder": 40
+    },
+    {
+      "name": "Hearing Assessment",
+      "durationMinutes": 40,
+      "color": "#F59E0B",
+      "displayOrder": 50
+    },
+    {
+      "name": "Day Surgery",
+      "durationMinutes": 90,
+      "color": "#64748B",
+      "displayOrder": 60
+    }
+  ],
+  "serviceCategories": [
+    {
+      "name": "Consultations",
+      "icon": "stethoscope",
+      "displayOrder": 10
+    },
+    {
+      "name": "Ear",
+      "icon": "ear",
+      "displayOrder": 20
+    },
+    {
+      "name": "Nose and Sinus",
+      "icon": "wind",
+      "displayOrder": 30
+    },
+    {
+      "name": "Throat",
+      "icon": "mic",
+      "displayOrder": 40
+    }
+  ],
+  "offerings": [
+    {
+      "name": "New Patient ENT Consultation",
+      "categoryName": "Consultations",
+      "durationMinutes": 30,
+      "cptCodes": [
+        "99204"
+      ]
+    },
+    {
+      "name": "Follow-up ENT Consultation",
+      "categoryName": "Consultations",
+      "durationMinutes": 15,
+      "cptCodes": [
+        "99213"
+      ]
+    },
+    {
+      "name": "Cerumen Removal",
+      "categoryName": "Ear",
+      "durationMinutes": 20,
+      "cptCodes": [
+        "69210"
+      ]
+    },
+    {
+      "name": "Microsuction of Ear",
+      "categoryName": "Ear",
+      "durationMinutes": 20
+    },
+    {
+      "name": "Comprehensive Audiometry",
+      "categoryName": "Ear",
+      "durationMinutes": 40,
+      "cptCodes": [
+        "92557"
+      ]
+    },
+    {
+      "name": "Tympanometry",
+      "categoryName": "Ear",
+      "durationMinutes": 20,
+      "cptCodes": [
+        "92567"
+      ]
+    },
+    {
+      "name": "Nasal Endoscopy",
+      "categoryName": "Nose and Sinus",
+      "durationMinutes": 30,
+      "cptCodes": [
+        "31231"
+      ],
+      "consentFormRequired": true
+    },
+    {
+      "name": "Sinusitis Review",
+      "categoryName": "Nose and Sinus",
+      "durationMinutes": 20
+    },
+    {
+      "name": "Epistaxis Management",
+      "categoryName": "Nose and Sinus",
+      "durationMinutes": 30
+    },
+    {
+      "name": "Tonsillitis Review",
+      "categoryName": "Throat",
+      "durationMinutes": 20
+    },
+    {
+      "name": "Hoarseness Assessment",
+      "categoryName": "Throat",
+      "durationMinutes": 30
+    },
+    {
+      "name": "Dizziness and Vertigo Assessment",
+      "categoryName": "Ear",
+      "durationMinutes": 40
+    }
+  ],
+  "formTemplates": [
+    {
+      "slug": "ent-intake",
+      "name": "ENT Intake",
+      "templateType": "onboarding",
+      "categorySlug": "onboarding",
+      "version": "1.0",
+      "languages": [
+        "en"
+      ],
+      "complianceTags": [
+        "HIPAA"
+      ],
+      "fields": [
+        {
+          "id": "main_problem",
+          "type": "checkboxes",
+          "label": "What brings you in?",
+          "options": [
+            "Hearing loss",
+            "Ear pain",
+            "Ringing in the ears",
+            "Dizziness",
+            "Blocked nose",
+            "Nosebleeds",
+            "Sore throat",
+            "Hoarseness",
+            "Lump in the neck",
+            "Snoring"
+          ],
+          "required": true
+        },
+        {
+          "id": "side",
+          "type": "radio",
+          "label": "Which side?",
+          "options": [
+            "Left",
+            "Right",
+            "Both",
+            "Not applicable"
+          ]
+        },
+        {
+          "id": "duration",
+          "type": "text",
+          "label": "How long has it been going on?"
+        },
+        {
+          "id": "noise_exposure",
+          "type": "checkbox",
+          "label": "Any history of loud noise exposure at work or otherwise"
+        },
+        {
+          "id": "hearing_aids",
+          "type": "radio",
+          "label": "Do you wear hearing aids?",
+          "options": [
+            "No",
+            "One",
+            "Both ears"
+          ]
+        },
+        {
+          "id": "allergies_nasal",
+          "type": "checkbox",
+          "label": "Do you have hay fever or nasal allergies?"
+        },
+        {
+          "id": "previous_ent_surgery",
+          "type": "textarea",
+          "label": "Previous ear, nose or throat surgery"
+        },
+        {
+          "id": "smoking",
+          "type": "radio",
+          "label": "Smoking",
+          "options": [
+            "Never",
+            "Ex-smoker",
+            "Current smoker"
+          ]
+        },
+        {
+          "id": "medications",
+          "type": "textarea",
+          "label": "Current medicines"
+        }
+      ]
+    }
+  ],
+  "inventoryCategories": [
+    {
+      "code": "ent_endoscopy",
+      "name": "Endoscopy Consumables"
+    },
+    {
+      "code": "ent_microsuction",
+      "name": "Microsuction Supplies"
+    },
+    {
+      "code": "ent_packs",
+      "name": "Nasal Packs and Cautery"
+    }
+  ],
+  "codeSets": {
+    "icd10": [
+      "H61.20",
+      "H90.3",
+      "H93.19",
+      "J32.9",
+      "J35.01",
+      "R49.0",
+      "H81.10",
+      "R22.1"
+    ],
+    "cpt": [
+      "99204",
+      "99213",
+      "69210",
+      "92557",
+      "92567",
+      "31231"
+    ]
+  },
+  "settings": {
+    "defaultAppointmentDuration": 20,
+    "slotIntervalMinutes": 10
+  },
+  "reports": {
+    "show": [
+      "clinical",
+      "operational"
+    ]
+  }
+}

@@ -1,6 +1,11 @@
 const nodemailer = require('nodemailer');
 const pool = require('../db');
 const WhatsAppService = require('./whatsappService');
+const {
+    renderAppointmentConfirmationEmail,
+    renderAppointmentReminderEmail,
+    renderAppointmentCancellationEmail,
+} = require('./emailTemplates');
 
 // Create nodemailer transporter
 const transporter = nodemailer.createTransporter({
@@ -63,149 +68,12 @@ async function sendConfirmationEmail(appointment, patient, provider) {
             month: 'long',
             day: 'numeric'
         });
-        const formattedTime = appointmentDate.toLocaleTimeString('en-US', {
-            hour: '2-digit',
-            minute: '2-digit'
-        });
 
         const mailOptions = {
             from: `"${process.env.AC_CLN || 'AureonCare'}" <${process.env.AC_SM_U}>`,
             to: patient.email,
             subject: `Appointment Confirmation - ${formattedDate}`,
-            html: `
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <style>
-                        body {
-                            font-family: Arial, sans-serif;
-                            line-height: 1.6;
-                            color: #333;
-                        }
-                        .container {
-                            max-width: 600px;
-                            margin: 0 auto;
-                            padding: 20px;
-                        }
-                        .header {
-                            background-color: #3B82F6;
-                            color: white;
-                            padding: 20px;
-                            text-align: center;
-                            border-radius: 5px 5px 0 0;
-                        }
-                        .content {
-                            background-color: #f9f9f9;
-                            padding: 30px;
-                            border-radius: 0 0 5px 5px;
-                        }
-                        .appointment-details {
-                            background-color: white;
-                            padding: 20px;
-                            border-radius: 5px;
-                            margin: 20px 0;
-                        }
-                        .detail-row {
-                            display: flex;
-                            justify-content: space-between;
-                            padding: 10px 0;
-                            border-bottom: 1px solid #eee;
-                        }
-                        .detail-row:last-child {
-                            border-bottom: none;
-                        }
-                        .label {
-                            font-weight: bold;
-                            color: #666;
-                        }
-                        .value {
-                            color: #333;
-                        }
-                        .footer {
-                            text-align: center;
-                            margin-top: 20px;
-                            padding-top: 20px;
-                            border-top: 1px solid #ddd;
-                            color: #666;
-                            font-size: 14px;
-                        }
-                        .button {
-                            display: inline-block;
-                            padding: 12px 24px;
-                            background-color: #3B82F6;
-                            color: white !important;
-                            text-decoration: none;
-                            border-radius: 5px;
-                            margin: 10px 5px;
-                        }
-                        .button-secondary {
-                            background-color: #6B7280;
-                        }
-                    </style>
-                </head>
-                <body>
-                    <div class="container">
-                        <div class="header">
-                            <h1>Appointment Confirmed</h1>
-                        </div>
-                        <div class="content">
-                            <p>Dear ${patient.first_name} ${patient.last_name},</p>
-                            <p>Your appointment has been confirmed. Here are the details:</p>
-
-                            <div class="appointment-details">
-                                <div class="detail-row">
-                                    <span class="label">Date:</span>
-                                    <span class="value">${formattedDate}</span>
-                                </div>
-                                <div class="detail-row">
-                                    <span class="label">Time:</span>
-                                    <span class="value">${formattedTime}</span>
-                                </div>
-                                <div class="detail-row">
-                                    <span class="label">Provider:</span>
-                                    <span class="value">Dr. ${provider.first_name} ${provider.last_name}</span>
-                                </div>
-                                <div class="detail-row">
-                                    <span class="label">Appointment Type:</span>
-                                    <span class="value">${appointment.appointment_type}</span>
-                                </div>
-                                <div class="detail-row">
-                                    <span class="label">Duration:</span>
-                                    <span class="value">${appointment.duration_minutes} minutes</span>
-                                </div>
-                                ${appointment.reason ? `
-                                <div class="detail-row">
-                                    <span class="label">Reason:</span>
-                                    <span class="value">${appointment.reason}</span>
-                                </div>
-                                ` : ''}
-                            </div>
-
-                            <div style="text-align: center; margin-top: 20px;">
-                                ${process.env.AC_FE_URL ? `
-                                <a href="${process.env.AC_FE_URL}/appointments/${appointment.id}" class="button">
-                                    View Appointment
-                                </a>
-                                <a href="${process.env.AC_FE_URL}/api/scheduling/cancel/${appointment.id}" class="button button-secondary">
-                                    Cancel Appointment
-                                </a>
-                                ` : ''}
-                            </div>
-
-                            <p style="margin-top: 30px;">
-                                If you need to cancel or reschedule, please do so at least 24 hours in advance.
-                            </p>
-
-                            <p>Thank you for choosing ${process.env.AC_CLN || 'AureonCare'}!</p>
-                        </div>
-                        <div class="footer">
-                            <p>This is an automated message. Please do not reply to this email.</p>
-                            <p>&copy; ${new Date().getFullYear()} ${process.env.AC_CLN || 'AureonCare'}. All rights reserved.</p>
-                        </div>
-                    </div>
-                </body>
-                </html>
-            `
+            html: renderAppointmentConfirmationEmail({ appointment, patient, provider })
         };
 
         const info = await transporter.sendMail(mailOptions);
@@ -265,153 +133,12 @@ async function sendReminderEmail(appointment, patient, provider) {
             month: 'long',
             day: 'numeric'
         });
-        const formattedTime = appointmentDate.toLocaleTimeString('en-US', {
-            hour: '2-digit',
-            minute: '2-digit'
-        });
-
-        const hoursUntil = Math.floor((appointmentDate - new Date()) / (1000 * 60 * 60));
 
         const mailOptions = {
             from: `"${process.env.AC_CLN || 'AureonCare'}" <${process.env.AC_SM_U}>`,
             to: patient.email,
             subject: `Appointment Reminder - ${formattedDate}`,
-            html: `
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <style>
-                        body {
-                            font-family: Arial, sans-serif;
-                            line-height: 1.6;
-                            color: #333;
-                        }
-                        .container {
-                            max-width: 600px;
-                            margin: 0 auto;
-                            padding: 20px;
-                        }
-                        .header {
-                            background-color: #F59E0B;
-                            color: white;
-                            padding: 20px;
-                            text-align: center;
-                            border-radius: 5px 5px 0 0;
-                        }
-                        .content {
-                            background-color: #f9f9f9;
-                            padding: 30px;
-                            border-radius: 0 0 5px 5px;
-                        }
-                        .reminder-badge {
-                            background-color: #FEF3C7;
-                            border-left: 4px solid #F59E0B;
-                            padding: 15px;
-                            margin: 20px 0;
-                            border-radius: 5px;
-                        }
-                        .appointment-details {
-                            background-color: white;
-                            padding: 20px;
-                            border-radius: 5px;
-                            margin: 20px 0;
-                        }
-                        .detail-row {
-                            display: flex;
-                            justify-content: space-between;
-                            padding: 10px 0;
-                            border-bottom: 1px solid #eee;
-                        }
-                        .detail-row:last-child {
-                            border-bottom: none;
-                        }
-                        .label {
-                            font-weight: bold;
-                            color: #666;
-                        }
-                        .value {
-                            color: #333;
-                        }
-                        .footer {
-                            text-align: center;
-                            margin-top: 20px;
-                            padding-top: 20px;
-                            border-top: 1px solid #ddd;
-                            color: #666;
-                            font-size: 14px;
-                        }
-                        .button {
-                            display: inline-block;
-                            padding: 12px 24px;
-                            background-color: #3B82F6;
-                            color: white !important;
-                            text-decoration: none;
-                            border-radius: 5px;
-                            margin: 10px 5px;
-                        }
-                    </style>
-                </head>
-                <body>
-                    <div class="container">
-                        <div class="header">
-                            <h1>⏰ Appointment Reminder</h1>
-                        </div>
-                        <div class="content">
-                            <p>Dear ${patient.first_name} ${patient.last_name},</p>
-
-                            <div class="reminder-badge">
-                                <strong>You have an upcoming appointment in approximately ${hoursUntil} hours!</strong>
-                            </div>
-
-                            <p>Here are your appointment details:</p>
-
-                            <div class="appointment-details">
-                                <div class="detail-row">
-                                    <span class="label">Date:</span>
-                                    <span class="value">${formattedDate}</span>
-                                </div>
-                                <div class="detail-row">
-                                    <span class="label">Time:</span>
-                                    <span class="value">${formattedTime}</span>
-                                </div>
-                                <div class="detail-row">
-                                    <span class="label">Provider:</span>
-                                    <span class="value">Dr. ${provider.first_name} ${provider.last_name}</span>
-                                </div>
-                                <div class="detail-row">
-                                    <span class="label">Appointment Type:</span>
-                                    <span class="value">${appointment.appointment_type}</span>
-                                </div>
-                                <div class="detail-row">
-                                    <span class="label">Duration:</span>
-                                    <span class="value">${appointment.duration_minutes} minutes</span>
-                                </div>
-                            </div>
-
-                            <div style="text-align: center; margin-top: 20px;">
-                                ${process.env.AC_FE_URL ? `
-                                <a href="${process.env.AC_FE_URL}/appointments/${appointment.id}" class="button">
-                                    View Details
-                                </a>
-                                ` : ''}
-                            </div>
-
-                            <p style="margin-top: 30px;">
-                                <strong>Please arrive 15 minutes early</strong> for check-in.
-                            </p>
-
-                            <p>If you need to cancel or reschedule, please contact us as soon as possible.</p>
-
-                            <p>We look forward to seeing you!</p>
-                        </div>
-                        <div class="footer">
-                            <p>This is an automated reminder. Please do not reply to this email.</p>
-                            <p>&copy; ${new Date().getFullYear()} ${process.env.AC_CLN || 'AureonCare'}. All rights reserved.</p>
-                        </div>
-                    </div>
-                </body>
-                </html>
-            `
+            html: renderAppointmentReminderEmail({ appointment, patient, provider })
         };
 
         const info = await transporter.sendMail(mailOptions);
@@ -469,136 +196,12 @@ async function sendCancellationEmail(appointment, patient, provider) {
             month: 'long',
             day: 'numeric'
         });
-        const formattedTime = appointmentDate.toLocaleTimeString('en-US', {
-            hour: '2-digit',
-            minute: '2-digit'
-        });
 
         const mailOptions = {
             from: `"${process.env.AC_CLN || 'AureonCare'}" <${process.env.AC_SM_U}>`,
             to: patient.email,
             subject: `Appointment Cancelled - ${formattedDate}`,
-            html: `
-                <!DOCTYPE html>
-                <html>
-                <head>
-                    <style>
-                        body {
-                            font-family: Arial, sans-serif;
-                            line-height: 1.6;
-                            color: #333;
-                        }
-                        .container {
-                            max-width: 600px;
-                            margin: 0 auto;
-                            padding: 20px;
-                        }
-                        .header {
-                            background-color: #EF4444;
-                            color: white;
-                            padding: 20px;
-                            text-align: center;
-                            border-radius: 5px 5px 0 0;
-                        }
-                        .content {
-                            background-color: #f9f9f9;
-                            padding: 30px;
-                            border-radius: 0 0 5px 5px;
-                        }
-                        .appointment-details {
-                            background-color: white;
-                            padding: 20px;
-                            border-radius: 5px;
-                            margin: 20px 0;
-                        }
-                        .detail-row {
-                            display: flex;
-                            justify-content: space-between;
-                            padding: 10px 0;
-                            border-bottom: 1px solid #eee;
-                        }
-                        .detail-row:last-child {
-                            border-bottom: none;
-                        }
-                        .label {
-                            font-weight: bold;
-                            color: #666;
-                        }
-                        .value {
-                            color: #333;
-                        }
-                        .footer {
-                            text-align: center;
-                            margin-top: 20px;
-                            padding-top: 20px;
-                            border-top: 1px solid #ddd;
-                            color: #666;
-                            font-size: 14px;
-                        }
-                        .button {
-                            display: inline-block;
-                            padding: 12px 24px;
-                            background-color: #3B82F6;
-                            color: white !important;
-                            text-decoration: none;
-                            border-radius: 5px;
-                            margin: 10px 5px;
-                        }
-                    </style>
-                </head>
-                <body>
-                    <div class="container">
-                        <div class="header">
-                            <h1>Appointment Cancelled</h1>
-                        </div>
-                        <div class="content">
-                            <p>Dear ${patient.first_name} ${patient.last_name},</p>
-
-                            <p>This is to confirm that your appointment has been cancelled.</p>
-
-                            <div class="appointment-details">
-                                <div class="detail-row">
-                                    <span class="label">Date:</span>
-                                    <span class="value">${formattedDate}</span>
-                                </div>
-                                <div class="detail-row">
-                                    <span class="label">Time:</span>
-                                    <span class="value">${formattedTime}</span>
-                                </div>
-                                <div class="detail-row">
-                                    <span class="label">Provider:</span>
-                                    <span class="value">Dr. ${provider.first_name} ${provider.last_name}</span>
-                                </div>
-                                ${appointment.cancellation_reason ? `
-                                <div class="detail-row">
-                                    <span class="label">Reason:</span>
-                                    <span class="value">${appointment.cancellation_reason}</span>
-                                </div>
-                                ` : ''}
-                            </div>
-
-                            <div style="text-align: center; margin-top: 20px;">
-                                ${process.env.AC_FE_URL ? `
-                                <a href="${process.env.AC_FE_URL}/book" class="button">
-                                    Book a New Appointment
-                                </a>
-                                ` : ''}
-                            </div>
-
-                            <p style="margin-top: 30px;">
-                                If you would like to schedule a new appointment, please visit our website or contact us.
-                            </p>
-
-                            <p>Thank you!</p>
-                        </div>
-                        <div class="footer">
-                            <p>This is an automated message. Please do not reply to this email.</p>
-                            <p>&copy; ${new Date().getFullYear()} ${process.env.AC_CLN || 'AureonCare'}. All rights reserved.</p>
-                        </div>
-                    </div>
-                </body>
-                </html>
-            `
+            html: renderAppointmentCancellationEmail({ appointment, patient, provider })
         };
 
         const info = await transporter.sendMail(mailOptions);

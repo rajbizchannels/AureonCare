@@ -1114,9 +1114,11 @@ router.get('/compliance/hipaa', async (req, res) => {
       LIMIT 200
     `, [startDate, endDate]);
 
-    const userStats = await pool.query(`
-      SELECT role, COUNT(*)::int AS count FROM users GROUP BY role ORDER BY count DESC
-    `);
+    // Scoped to this practice's members (this counted every account on the platform).
+    const userStats = await req.app.locals.pool.query(`
+      SELECT role, COUNT(*)::int AS count FROM public.memberships
+       WHERE practice_id = $1 AND status = 'active' GROUP BY role ORDER BY count DESC
+    `, [req.user.practiceId || null]);
 
     res.json({
       phiAccess: phiResult.rows,

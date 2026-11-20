@@ -4,13 +4,18 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const { signToken, authenticate } = require('../middleware/auth');
 const { validateSocialToken } = require('../utils/socialTokenValidator');
-const { sendEmail, buildEmailHtml } = require('../services/notificationService');
-const { BCRYPT_COST, validatePassword } = require('../utils/passwordPolicy');
-const { issueAuthCookies, clearAuthCookies } = require('../utils/authCookies');
-const { issuePortalSession } = require('../services/portalSession');
+const { sendEmail } = require('../services/notificationService');
+const { renderPasswordResetEmail } = require('../services/emailTemplates');
+const { shorten } = require('../services/shortLinks');
+const { BCRYPT_COST, checkNewPassword } = require('../utils/passwordPolicy');
+const { issueAuthCookies, clearAuthCookies, issuePortalCookies, getPortalCookie } = require('../utils/authCookies');
+const { tenantForSession, forgetSession } = require('../services/portalRouting');
+const { withTenant } = require('../db/tenantClient');
+const { issuePortalSession, revokePortalSessions } = require('../services/portalSession');
 const { exchangeAuthCode } = require('../utils/oauthExchange');
-const { findUsableInvite, claimInvite } = require('./invites');
+const { findUsableInvite, claimInvite, adoptUnboundAccount, addMembershipFromInvite } = require('./invites');
 const { resolveDomainClaim } = require('../services/domainJoin');
+const { sendDbError } = require('../utils/dbErrors');
 const {
   beginEnrolment, verifyTotp, verifySecondFactor, generateBackupCodes,
 } = require('../services/userMfa');
@@ -28,6 +33,54 @@ async function mfaRequiredFor(pool, user) {
     'SELECT require_mfa FROM public.practices WHERE id = $1', [user.practice_id]
   );
   return Boolean(rows[0] && rows[0].require_mfa);
+}
+
+
+// ── Phase 1: practices this person belongs to ───────────────────────────────────────
+/**
+ * Start a sign-in in a STAFF membership when the account's default is a patient one (or
+ * none). Mutates `user` (practice_id, role) for the token and moves the default there.
+ * Returns false when the person has no active staff membership anywhere.
+ */
+async function preferStaffMembership(pool, user) {
+  if (user.role !== 'patient' && user.practice_id) return true;
+  try {
+    const { rows: [m] } = await pool.query(
+      `SELECT practice_id, role FROM public.memberships
+        WHERE user_id = $1 AND status = 'active' AND role <> 'patient'
+        ORDER BY last_used_at DESC NULLS LAST, created_at ASC LIMIT 1`, [user.id]);
+    if (!m) return user.role !== 'patient';
+    user.practice_id = m.practice_id; user.role = m.role;
+    await pool.query('UPDATE users SET practice_id = $2, role = $3 WHERE id = $1', [user.id, m.practice_id, m.role]);
+    return true;
+  } catch (e) {
+    if (e.code === '42P01') return user.role !== 'patient';   // before migration 093
+    throw e;
+  }
+}
+
+
+/**
+ * Phase 1: when the default practice requires 2FA and the account has none, start the
+ * sign-in in another active staff membership whose practice does not require it. Mutates
+ * `user` and the account's default. Returns false when there is no such practice.
+ */
+async function startInPracticeWithoutMfaRule(pool, user) {
+  try {
+    const { rows: [m] } = await pool.query(
+      `SELECT m.practice_id, m.role FROM public.memberships m
+         JOIN public.practices p ON p.id = m.practice_id
+         JOIN control.tenants t ON t.practice_id = m.practice_id AND t.status = 'active'
+        WHERE m.user_id = $1 AND m.status = 'active' AND m.role <> 'patient' AND NOT COALESCE(p.require_mfa, false)
+        ORDER BY m.last_used_at DESC NULLS LAST, m.created_at ASC LIMIT 1`, [user.id]);
+    if (!m) return false;
+    user.practice_id = m.practice_id; user.role = m.role;
+    await pool.query('UPDATE users SET practice_id = $2, role = $3 WHERE id = $1', [user.id, m.practice_id, m.role]);
+    return true;
+  } catch (e) {
+    if (e.code === '42P01') return false;
+    throw e;
+  }
 }
 
 // SEC-17: a fixed dummy bcrypt hash (of a random string) used to run a real compare
@@ -91,6 +144,16 @@ router.post('/login', async (req, res) => {
     if (user.status === 'pending') {
       return res.status(403).json({ error: 'Your account is pending approval. Please wait for an administrator to approve your account.' });
     }
+    // Patients sign in to the patient portal, never here. A 'patient' row in users is a
+    // leftover of the old self-registration (no practice, no chart): a staff session for it
+    // reached nothing but 401/403 on every screen. Checked AFTER the password, so this
+    // answer does not reveal which emails belong to patient accounts.
+    if (!(await preferStaffMembership(pool, user))) {
+      return res.status(403).json({
+        error: 'This is a patient account. Please sign in through your practice\'s patient portal (Patient Login).',
+        patientAccount: true,
+      });
+    }
 
     // Second factor. Asked for only after the password is proven, so the prompt itself
     // never reveals that an address has an account.
@@ -110,9 +173,11 @@ router.post('/login', async (req, res) => {
           [user.id, check.usedBackupCode]
         );
       }
-    } else if (await mfaRequiredFor(pool, user)) {
+    } else if (await mfaRequiredFor(pool, user) && !(await startInPracticeWithoutMfaRule(pool, user))) {
       // The practice requires a second factor and this account has none. Refused rather
       // than waved through — but told plainly what to do, since the fix is self-service.
+      // (Phase 1: someone who also works at a practice WITHOUT that rule signs in there
+      // instead; switching into this one then asks for 2FA.)
       return res.status(403).json({
         mfaEnrolmentRequired: true,
         error: 'Your practice requires two-factor authentication. Sign in on a device where '
@@ -142,6 +207,9 @@ router.post('/login', async (req, res) => {
       userAgent: req.get('user-agent'),
     });
 
+    // SEC-15: the portal session travels in its own HttpOnly cookie, sharing this CSRF token.
+    if (portalSession) issuePortalCookies(res, portalSession.sessionToken, { expiresAt: portalSession.expiresAt, csrfToken });
+
     res.json({
       message: 'Login successful',
       token,
@@ -151,6 +219,8 @@ router.post('/login', async (req, res) => {
     });
   } catch (error) {
     console.error('Error during login:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to login')) return;
     res.status(500).json({ error: 'Failed to login' });
   }
 });
@@ -167,7 +237,7 @@ router.post('/change-password', authenticate, async (req, res) => {
     }
 
     // SEC-12: enforce the shared password policy (length + complexity)
-    const pwCheck = validatePassword(newPassword);
+    const pwCheck = await checkNewPassword(newPassword);
     if (!pwCheck.valid) {
       return res.status(400).json({ error: pwCheck.message });
     }
@@ -203,7 +273,7 @@ router.post('/change-password', authenticate, async (req, res) => {
     );
 
     // SEC-18: also revoke any active patient-portal sessions for this account.
-    await pool.query('DELETE FROM patient_portal_sessions WHERE patient_id = $1', [userId]);
+    await revokePortalSessions(pool, userId); // in the user's tenant schema, not public
 
     const token = signToken({
       id: userId,
@@ -216,12 +286,72 @@ router.post('/change-password', authenticate, async (req, res) => {
     res.json({ message: 'Password changed successfully', token, csrfToken });
   } catch (error) {
     console.error('Error changing password:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to change password')) return;
     res.status(500).json({ error: 'Failed to change password' });
   }
 });
 
 // SEC-15: current-user endpoint. The browser no longer persists the user object, so it
 // re-fetches identity here after a reload. Returns UI/identity fields only — never the
+
+/**
+ * GET /api/auth/memberships — the practices this person works at, and which one this
+ * session is in. POST /api/auth/switch-practice { practiceId } — continue in another one:
+ * a new session for that practice (its role, its data, its two-factor rule). The choice
+ * also becomes where the next sign-in starts.
+ */
+router.get('/memberships', authenticate, async (req, res) => {
+  try {
+    const { rows } = await req.app.locals.pool.query(
+      `SELECT m.practice_id, p.name AS practice_name, m.role, (u.practice_id = m.practice_id) AS is_default
+         FROM public.memberships m
+         JOIN public.practices p ON p.id = m.practice_id
+         JOIN public.users u ON u.id = m.user_id
+         JOIN control.tenants t ON t.practice_id = m.practice_id AND t.status = 'active'
+        WHERE m.user_id = $1 AND m.status = 'active' AND m.role <> 'patient'
+        ORDER BY p.name`, [req.user.id]);
+    res.json({
+      active: req.user.practiceId || null,
+      practices: rows.map((r) => ({ practiceId: r.practice_id, name: r.practice_name, role: r.role, isDefault: r.is_default,
+        active: String(r.practice_id) === String(req.user.practiceId) })),
+    });
+  } catch (err) {
+    console.error('[auth] memberships:', err.message);
+    res.status(500).json({ error: 'Could not load your practices' });
+  }
+});
+
+router.post('/switch-practice', authenticate, async (req, res) => {
+  const pool = req.app.locals.pool;
+  const practiceId = String((req.body || {}).practiceId || '');
+  try {
+    const { rows: [m] } = await pool.query(
+      `SELECT m.role FROM public.memberships m
+         JOIN control.tenants t ON t.practice_id = m.practice_id AND t.status = 'active'
+        WHERE m.user_id = $1 AND m.practice_id::text = $2 AND m.status = 'active' AND m.role <> 'patient'`,
+      [req.user.id, practiceId]);
+    if (!m) return res.status(404).json({ error: 'You are not a member of that practice.' });
+    const { rows: [user] } = await pool.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
+    if (await mfaRequiredFor(pool, { practice_id: practiceId }) && !user.mfa_enabled) {
+      return res.status(403).json({ mfaEnrolmentRequired: true,
+        error: 'That practice requires two-factor authentication. Set it up in My profile, then switch again.' });
+    }
+    await pool.query('UPDATE public.memberships SET last_used_at = now() WHERE user_id = $1 AND practice_id = $2', [user.id, practiceId]);
+    await pool.query('UPDATE users SET practice_id = $2, role = $3, last_activity_at = now() WHERE id = $1', [user.id, practiceId, m.role]);
+    try { require('../services/tenantCatalog').invalidateUserTenant(user.id); } catch (_) { /* cache only */ }
+    const next = { ...user, practice_id: practiceId, role: m.role };
+    const token = signToken(next);
+    const csrfToken = issueAuthCookies(res, token);
+    const { password_hash, reset_token, reset_token_expires, mfa_secret, mfa_backup_codes, ...userData } = next;
+    const { rows: [pr] } = await pool.query('SELECT name FROM public.practices WHERE id = $1', [practiceId]);
+    res.json({ user: { ...toCamelCase(userData), practiceName: pr ? pr.name : null }, token, csrfToken });
+  } catch (err) {
+    console.error('[auth] switch practice:', err.message);
+    res.status(500).json({ error: 'Could not switch practice' });
+  }
+});
+
 // clinical record, which the relevant view fetches on its own.
 router.get('/me', authenticate, async (req, res) => {
   try {
@@ -233,7 +363,11 @@ router.get('/me', authenticate, async (req, res) => {
       [req.user.id]
     );
     if (rows.length === 0) return res.status(404).json({ error: 'User not found' });
-    res.json(toCamelCase(rows[0]));
+    // Phase 1: the role and practice of THIS session (its active membership).
+    const me = toCamelCase(rows[0]);
+    me.role = req.user.role;
+    me.practiceId = req.user.practiceId || me.practiceId || null;
+    res.json(me);
   } catch (error) {
     console.error('Error fetching current user:', error);
     res.status(500).json({ error: 'Failed to fetch current user' });
@@ -257,16 +391,17 @@ router.get('/tenant-status', authenticate, async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     const { rows } = await pool.query(
-      `SELECT u.practice_id,
+      // Phase 1: the practice this SESSION works in (req.user.practiceId), not the default.
+      `SELECT p.id AS practice_id,
               p.name  AS practice_name,
               t.id    AS tenant_id,
               t.status AS tenant_status,
               t.schema_name
          FROM public.users u
-         LEFT JOIN public.practices  p ON p.id = u.practice_id
-         LEFT JOIN control.tenants   t ON t.practice_id = u.practice_id
+         LEFT JOIN public.practices  p ON p.id = COALESCE($2::uuid, u.practice_id)
+         LEFT JOIN control.tenants   t ON t.practice_id = p.id
         WHERE u.id = $1`,
-      [req.user.id]
+      [req.user.id, req.user.practiceId || null]
     );
     const r = rows[0] || {};
     const resolved = req.tenant && req.tenant.schemaName;
@@ -481,9 +616,9 @@ router.get('/mfa/status', authenticate, async (req, res) => {
               COALESCE(p.require_mfa, false) AS required,
               p.session_idle_minutes
          FROM public.users u
-         LEFT JOIN public.practices p ON p.id = u.practice_id
+         LEFT JOIN public.practices p ON p.id = COALESCE($2::uuid, u.practice_id)
         WHERE u.id = $1`,
-      [req.user.id]
+      [req.user.id, req.user.practiceId || null]
     );
     const r = rows[0] || {};
     res.json({
@@ -522,6 +657,8 @@ router.post('/mfa/enroll', authenticate, async (req, res) => {
     });
   } catch (err) {
     console.error('[mfa] enrol error:', err);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, err, 'Failed to start enrolment')) return;
     res.status(500).json({ error: 'Failed to start enrolment' });
   }
 });
@@ -553,6 +690,8 @@ router.post('/mfa/verify', authenticate, async (req, res) => {
     res.json({ enabled: true, backupCodes: codes });
   } catch (err) {
     console.error('[mfa] verify error:', err);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, err, 'Failed to enable two-factor authentication')) return;
     res.status(500).json({ error: 'Failed to enable two-factor authentication' });
   }
 });
@@ -597,6 +736,8 @@ router.post('/mfa/disable', authenticate, async (req, res) => {
     res.json({ enabled: false });
   } catch (err) {
     console.error('[mfa] disable error:', err);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, err, 'Failed to disable two-factor authentication')) return;
     res.status(500).json({ error: 'Failed to disable two-factor authentication' });
   }
 });
@@ -621,6 +762,8 @@ router.post('/mfa/backup-codes', authenticate, async (req, res) => {
     res.json({ backupCodes: codes });
   } catch (err) {
     console.error('[mfa] backup codes error:', err);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, err, 'Failed to regenerate recovery codes')) return;
     res.status(500).json({ error: 'Failed to regenerate recovery codes' });
   }
 });
@@ -629,6 +772,43 @@ router.post('/mfa/backup-codes', authenticate, async (req, res) => {
 // clinician JWT currently held for this account (this device and any other), and we
 // clear any portal sessions too. The client still discards its local token, but this
 // guarantees a stolen/old token cannot be replayed after logout.
+// End this browser's session (SEC-40). Called when the app opens in a NEW browser session
+// (a reopened browser or restored tab with no live AureonCare tab): per the session policy
+// a fresh browser session starts signed out, and that must be true on the server as well,
+// not just on screen.
+//
+// Unlike /logout this does NOT bump token_version, so the person's sessions on OTHER
+// devices are unaffected — it ends only the session this browser holds. The session
+// cookies are HttpOnly, so only the server can remove them. A portal session presented
+// here is revoked outright (it is stored server-side); a staff JWT is stateless, and with
+// its cookie gone this browser no longer holds it. No authentication is needed: it can
+// only ever remove the caller's own cookies.
+router.post('/session/end', async (req, res) => {
+  try {
+    const portalToken = getPortalCookie(req);
+    if (portalToken) {
+      const pool = req.app.locals.pool;
+      const tokenHash = require('crypto').createHash('sha256').update(portalToken).digest('hex');
+      try {
+        const routed = await tenantForSession(pool, tokenHash);
+        if (routed && routed.schemaName && routed.schemaName !== 'public') {
+          await withTenant(pool, routed.schemaName, (c) =>
+            c.query('DELETE FROM patient_portal_sessions WHERE session_token = $1', [tokenHash]));
+        }
+        await forgetSession(pool, tokenHash);
+      } catch (e) {
+        console.warn('[auth] could not revoke portal session on session end:', e.message);
+      }
+    }
+    clearAuthCookies(res);
+    res.json({ ended: true });
+  } catch (error) {
+    console.error('Error ending browser session:', error);
+    clearAuthCookies(res);
+    res.json({ ended: true });
+  }
+});
+
 router.post('/logout', authenticate, async (req, res) => {
   try {
     const pool = req.app.locals.pool;
@@ -638,7 +818,7 @@ router.post('/logout', authenticate, async (req, res) => {
       'UPDATE users SET token_version = token_version + 1, updated_at = NOW() WHERE id = $1',
       [userId]
     );
-    await pool.query('DELETE FROM patient_portal_sessions WHERE patient_id = $1', [userId]);
+    await revokePortalSessions(pool, userId); // in the user's tenant schema, not public
 
     // SEC-15: drop the browser's session + CSRF cookies as well as revoking server-side.
     clearAuthCookies(res);
@@ -646,6 +826,8 @@ router.post('/logout', authenticate, async (req, res) => {
     res.json({ message: 'Logged out successfully' });
   } catch (error) {
     console.error('Error during logout:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to logout')) return;
     res.status(500).json({ error: 'Failed to logout' });
   }
 });
@@ -689,20 +871,11 @@ router.post('/forgot-password', async (req, res) => {
     const user = userResult.rows[0];
     const firstName = user.first_name || 'there';
     const frontendBase = (process.env.FRONTEND_URL || '').split(',')[0].trim();
+    // Short link on our own domain; it dies with the reset token (1 hour).
     const resetLink = frontendBase
-      ? `${frontendBase}/reset-password?token=${resetToken}`
+      ? await shorten(`${frontendBase}/reset-password?token=${resetToken}`, { expiresAt: resetTokenExpires, kind: 'password-reset' })
       : null;
-    const html = buildEmailHtml(
-      'Password Reset Request',
-      '#2563eb',
-      `Hi ${firstName},`,
-      'We received a request to reset your AureonCare password. Use the reset code below — it expires in 1 hour. If you did not request this, you can safely ignore this email.',
-      `<tr><td style="padding:8px 12px;font-weight:bold;color:#555;width:35%">Reset code</td>
-        <td style="padding:8px 12px;color:#111;font-family:monospace;font-size:15px;word-break:break-all">${resetToken}</td></tr>`,
-      resetLink
-        ? `Or click here to reset your password: <a href="${resetLink}">${resetLink}</a>`
-        : 'Enter this code in the password reset screen to choose a new password.'
-    );
+    const html = renderPasswordResetEmail({ firstName, resetToken, resetLink });
     console.log(`[DEBUG sec04-email] sending reset email to ${email} (token ${resetToken.slice(0, 6)}…)`);
     await sendEmail(email, 'Reset your AureonCare password', html);
 
@@ -711,6 +884,8 @@ router.post('/forgot-password', async (req, res) => {
     });
   } catch (error) {
     console.error('Error requesting password reset:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to process password reset request')) return;
     res.status(500).json({ error: 'Failed to process password reset request' });
   }
 });
@@ -725,7 +900,7 @@ router.post('/reset-password', async (req, res) => {
     }
 
     // SEC-12: enforce the shared password policy (length + complexity)
-    const pwCheck = validatePassword(newPassword);
+    const pwCheck = await checkNewPassword(newPassword);
     if (!pwCheck.valid) {
       return res.status(400).json({ error: pwCheck.message });
     }
@@ -756,11 +931,13 @@ router.post('/reset-password', async (req, res) => {
       'UPDATE users SET password_hash = $1, reset_token = NULL, reset_token_expires = NULL, token_version = token_version + 1, updated_at = NOW() WHERE id = $2',
       [newPasswordHash, user.id]
     );
-    await pool.query('DELETE FROM patient_portal_sessions WHERE patient_id = $1', [user.id]);
+    await revokePortalSessions(pool, user.id); // in the user's tenant schema, not public
 
     res.json({ message: 'Password reset successfully' });
   } catch (error) {
     console.error('Error resetting password:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to reset password')) return;
     res.status(500).json({ error: 'Failed to reset password' });
   }
 });
@@ -885,7 +1062,7 @@ const socialLoginHandler = async (req, res) => {
       const userResult = await pool.query('SELECT * FROM users WHERE id = $1', [userId]);
 
       if (userResult.rows.length === 0) {
-        return res.status(404).json({ error: 'User not found. Please register a new account.' });
+        return res.status(404).json({ error: 'No account found. Ask your practice to send you an invitation.' });
       }
 
       user = userResult.rows[0];
@@ -903,18 +1080,27 @@ const socialLoginHandler = async (req, res) => {
       // An existing but unbound account (created by social signup before invites existed)
       // adopts the practice when it presents a matching invite. Only ever fills a NULL —
       // an invite can never move a user from one practice to another.
+      // Phase 1: an account that already works elsewhere joins this practice too.
+      if (invite && user.practice_id) {
+        const c = await pool.connect();
+        try {
+          await c.query('BEGIN');
+          const added = await addMembershipFromInvite(c, user.id, invite);
+          await c.query('COMMIT');
+          if (added) user = added;
+        } catch (e) {
+          await c.query('ROLLBACK').catch(() => {});
+          console.error('[auth] invite membership failed:', e.message);
+        } finally { c.release(); }
+      }
       if (invite && !user.practice_id) {
         const bindClient = await pool.connect();
         try {
           await bindClient.query('BEGIN');
-          if (await claimInvite(bindClient, invite.id, user.id)) {
-            const upd = await bindClient.query(
-              `UPDATE users SET practice_id = $2, role = $3, updated_at = NOW()
-                WHERE id = $1 AND practice_id IS NULL RETURNING *`,
-              [user.id, invite.practice_id, invite.role]
-            );
-            if (upd.rows[0]) user = upd.rows[0];
-          }
+          // Keeps only the identity signing in now; other links made before the email was
+          // proved are dropped and earlier sessions revoked (see adoptUnboundAccount).
+          const adopted = await adoptUnboundAccount(bindClient, user.id, invite, { keepSocialId: socialRows[0].id });
+          if (adopted) user = adopted;
           await bindClient.query('COMMIT');
         } catch (bindErr) {
           await bindClient.query('ROLLBACK').catch(() => {});
@@ -963,15 +1149,75 @@ const socialLoginHandler = async (req, res) => {
           return res.status(403).json({ error: 'Your account is pending approval. Please wait for an administrator to approve your account.' });
         }
 
+        // An unbound leftover account (no practice) presented with a matching invite is
+        // adopted by the invited person first, so they land in the practice instead of a
+        // dead-end account. This also clears any identity linked before the email was proved.
+        if (invite && user.practice_id) {
+          const c = await pool.connect();
+          try {
+            await c.query('BEGIN');
+            const added = await addMembershipFromInvite(c, user.id, invite);
+            await c.query('COMMIT');
+            if (added) user = added;
+          } catch (e) {
+            await c.query('ROLLBACK').catch(() => {});
+            console.error('[auth] invite membership failed:', e.message);
+          } finally { c.release(); }
+        }
+        if (invite && !user.practice_id) {
+          const adoptClient = await pool.connect();
+          try {
+            await adoptClient.query('BEGIN');
+            const adopted = await adoptUnboundAccount(adoptClient, user.id, invite);
+            if (adopted) user = adopted;
+            await adoptClient.query('COMMIT');
+          } catch (adoptErr) {
+            await adoptClient.query('ROLLBACK').catch(() => {});
+            console.error('[auth] invite adoption failed:', adoptErr.message);
+          } finally {
+            adoptClient.release();
+          }
+        }
+
+        // Do not attach a new identity to a leftover patient account it cannot use.
+        if (!(await preferStaffMembership(pool, user))) {
+          return res.status(403).json({
+            error: 'This is a patient account. Please sign in through your practice\'s patient portal (Patient Login).',
+            patientAccount: true,
+          });
+        }
+
         await pool.query(`
           INSERT INTO social_auth (user_id, patient_id, provider, provider_user_id, access_token, refresh_token, profile_data)
           VALUES ($1, $1, $2, $3, $4, $5, $6)
         `, [user.id, provider, canonicalProviderId, accessToken, refreshToken, JSON.stringify(profileData)]);
 
       } else {
+        // A NEW account is created only when something says which practice it belongs to:
+        //   * a staff invitation (matched to the provider-verified email above), or
+        //   * a provider-verified email at a domain a practice has claimed and verified.
+        // Both halves of the second are required: a claim without a provider-verified
+        // email would let anyone type a colleague's address, and a verified email at an
+        // unclaimed domain says nothing about where they belong.
+        //
+        // Anything else used to fall through to a patient "self-registration" with no
+        // practice — an account that could never reach a chart (SEC-39). Patients join
+        // through their practice's portal invitation (routes/portalInvites.js), so an
+        // unknown identity with neither is refused and nothing is written.
+        const domainClaim = (!invite && providerEmailVerified)
+          ? await resolveDomainClaim(pool, email)
+          : null;
+        if (!invite && !domainClaim) {
+          return res.status(404).json({
+            error: `No account found for ${email}. Ask your practice to send you an invitation.`,
+            noAccount: true,
+          });
+        }
+        const claimPending = Boolean(domainClaim) && domainClaim.join_policy === 'auto_request';
+
         isNewUser = true;
-        // Create new active patient user — use a transaction so that a failure in
-        // patient/role/social_auth creation does not leave an orphaned users row.
+        // Create the user in a transaction so a failure in role/social_auth creation does
+        // not leave an orphaned users row.
         const sl_client = await pool.connect();
         try {
           await sl_client.query('BEGIN');
@@ -979,22 +1225,8 @@ const socialLoginHandler = async (req, res) => {
           const sl_firstName = firstName || '';
           const sl_lastName = lastName || '';
 
-          // No invite, but the provider vouched for this address and its domain may be
-          // claimed by a practice. Both halves are required: a claim without a
-          // provider-verified email would let anyone type a colleague's address, and a
-          // verified email at an unclaimed domain says nothing about where they belong.
-          // `auto_request` creates the account in 'pending' — the login route already
-          // refuses that with a clear message — rather than letting an unbound account
-          // through to an empty workspace.
-          const domainClaim = (!invite && providerEmailVerified)
-            ? await resolveDomainClaim(pool, email)
-            : null;
-          const claimPending = Boolean(domainClaim) && domainClaim.join_policy === 'auto_request';
-
-          // An invite makes this a STAFF signup: the account is created with the inviting
-          // practice's id and role. Without one it stays a patient self-registration, as
-          // before. practice_id set here is what binds every later request to a tenant —
-          // an unbound user resolves to `public`, which holds no tenant tables.
+          // An invite or a domain claim makes this a STAFF account with that practice's id
+          // and role. practice_id set here is what binds every later request to a tenant.
           const newUserResult = await sl_client.query(`
             INSERT INTO users (id, email, first_name, last_name, role, status, avatar, practice_id, created_at, updated_at)
             VALUES (gen_random_uuid(), $1, $2, $3, $5, $7, $4, $6, NOW(), NOW())
@@ -1004,8 +1236,8 @@ const socialLoginHandler = async (req, res) => {
             sl_firstName,
             sl_lastName,
             `${(sl_firstName[0] || '')}${(sl_lastName[0] || '')}`.toUpperCase(),
-            invite ? invite.role : (domainClaim ? domainClaim.default_role : 'patient'),
-            invite ? invite.practice_id : (domainClaim ? domainClaim.practice_id : null),
+            invite ? invite.role : domainClaim.default_role,
+            invite ? invite.practice_id : domainClaim.practice_id,
             claimPending ? 'pending' : 'active'
           ]);
 
@@ -1026,65 +1258,6 @@ const socialLoginHandler = async (req, res) => {
             );
           }
 
-          // Staff do not get a patient chart. Skip straight past patient/role creation —
-          // the rest of this block is the patient self-registration path. A domain claim
-          // makes this a staff signup just as an invite does, so it skips it too;
-          // otherwise a new clinician would silently acquire a patient record.
-          if (!invite && !domainClaim) {
-          // SEC-05: `patients` and `roles` moved into the tenant schemas at the 068 cutover,
-          // and sl_client is a RAW pool connection whose search_path is the default — so
-          // these reads resolved against `public`, where the tables no longer exist, and
-          // every new social sign-up died with 42P01 reported as "Social login failed".
-          //
-          // A patient self-registering has no tenant context to pin: no invite, no domain
-          // claim, no session. There is genuinely no schema to write a chart into. Rather
-          // than fail the sign-in, create the account and skip the chart — which is the
-          // same unallocated state this path already produced, and which
-          // GET /api/auth/tenant-status explains. The savepoint keeps the skip from
-          // aborting the surrounding transaction.
-          await sl_client.query('SAVEPOINT patient_chart');
-          try {
-          // Create patient record — patients.id = users.id in current schema
-          const sl_patientCheck = await sl_client.query(
-            'SELECT id FROM patients WHERE id = $1 OR email = $2 LIMIT 1',
-            [user.id, user.email]
-          );
-          if (sl_patientCheck.rows.length === 0) {
-            const sl_mrnResult = await sl_client.query(
-              "SELECT MAX(CAST(SUBSTRING(mrn FROM 5) AS INTEGER)) as max_mrn FROM patients WHERE mrn LIKE 'MRN-%'"
-            );
-            const sl_mrn = `MRN-${(sl_mrnResult.rows[0].max_mrn || 1000) + 1}`;
-            await sl_client.query(
-              `INSERT INTO patients (id, first_name, last_name, mrn, date_of_birth, email, status, created_at, updated_at)
-               VALUES ($1, $2, $3, $4, '1990-01-01', $5, 'active', NOW(), NOW())`,
-              [user.id, sl_firstName, sl_lastName, sl_mrn, user.email]
-            );
-          }
-
-          // Assign patient role
-          const sl_roleResult = await sl_client.query(
-            "SELECT id FROM roles WHERE name = 'patient' AND is_active = true LIMIT 1"
-          );
-          if (sl_roleResult.rows.length > 0) {
-            await sl_client.query(
-              `INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
-              [user.id, sl_roleResult.rows[0].id]
-            );
-          }
-          await sl_client.query('RELEASE SAVEPOINT patient_chart');
-          } catch (chartErr) {
-            await sl_client.query('ROLLBACK TO SAVEPOINT patient_chart');
-            // Only a missing relation is tolerated. Anything else is a real fault and must
-            // still fail the sign-in rather than silently producing a half-made account.
-            if (chartErr.code !== '42P01') throw chartErr;
-            console.warn(
-              '[social-login] patients/roles are not reachable from the default search_path, '
-              + 'so ' + user.email + ' was created without a patient chart. A self-registration '
-              + 'has no tenant to write one into — see GET /api/auth/tenant-status.'
-            );
-          }
-          } // end patient self-registration path
-
           // Create social auth entry — set both user_id and patient_id to the same UUID
           // (patients.id = users.id in current schema, so both columns hold user.id)
           await sl_client.query(`
@@ -1100,6 +1273,15 @@ const socialLoginHandler = async (req, res) => {
           sl_client.release();
         }
       }
+    }
+
+    // Patients use the patient portal; a leftover 'patient' users row gets no staff session
+    // (it could reach nothing — every staff route refuses it). An invite adopts it above.
+    if (!(await preferStaffMembership(pool, user))) {
+      return res.status(403).json({
+        error: 'This is a patient account. Please sign in through your practice\'s patient portal (Patient Login).',
+        patientAccount: true,
+      });
     }
 
     // Update last login
@@ -1120,6 +1302,8 @@ const socialLoginHandler = async (req, res) => {
       ip: req.ip,
       userAgent: req.get('user-agent'),
     });
+
+    if (portalSession) issuePortalCookies(res, portalSession.sessionToken, { expiresAt: portalSession.expiresAt, csrfToken });
 
     res.json({
       message: 'Social login successful',
@@ -1193,6 +1377,8 @@ router.post('/oauth/microsoft/exchange', async (req, res) => {
       });
     }
     console.error('Error during microsoft code exchange:', err);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, err, 'Social login failed')) return;
     res.status(500).json({ error: 'Social login failed' });
   }
 });
@@ -1216,161 +1402,22 @@ router.post('/oauth/google/exchange', async (req, res) => {
       });
     }
     console.error('Error during google code exchange:', err);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, err, 'Social login failed')) return;
     res.status(500).json({ error: 'Social login failed' });
   }
 });
 
-// Social registration endpoint (Google, Microsoft)
-// Creates a new pending account linked to the social provider.
-// Unlike /social-login, this never rejects with 403 for pending status —
-// returning 201 + a message is the expected success path.
-router.post('/social-register', async (req, res) => {
-  try {
-    const pool = req.app.locals.pool;
-    const {
-      provider,
-      providerId,
-      accessToken,
-      email: clientEmail,
-      firstName: clientFirstName,
-      lastName: clientLastName,
-      profileData
-    } = req.body;
-
-    if (!provider || !providerId || !accessToken) {
-      return res.status(400).json({ error: 'Provider, provider ID, and access token are required' });
-    }
-
-    // Validate the access token server-side before creating any account
-    let verified;
-    try {
-      verified = await validateSocialToken(provider, accessToken);
-    } catch (validationErr) {
-      return res.status(401).json({ error: 'Social provider token validation failed. Please try again.' });
-    }
-
-    // canonicalProviderId comes from the provider API — never from the client.
-    // Microsoft personal accounts use a pairwise MSA id in homeAccountId that differs
-    // from Graph's id, so we skip the strict claimed/verified match check here.
-    // Token validation (above) is the security gate.
-    const email = verified.email || clientEmail;
-    const firstName = verified.firstName || clientFirstName || '';
-    const lastName = verified.lastName || clientLastName || '';
-    const canonicalProviderId = verified.providerId;
-    // SEC-07: true only when the PROVIDER itself vouches for the email. Used to
-    // decide whether this social identity may attach to a pre-existing account.
-    const providerEmailVerified = verified.emailVerified === true && Boolean(verified.email);
-
-    if (!email) {
-      return res.status(400).json({ error: 'Could not determine email from social provider' });
-    }
-
-    // SEC-19: match only on the provider-verified canonical id (plus the verified
-    // OID-prefix fallback for un-migrated Microsoft rows). Never the client id.
-    const existingSocial = await pool.query(
-      `SELECT id FROM social_auth
-       WHERE provider = $1
-         AND (provider_user_id = $2
-              OR ($1 = 'microsoft' AND provider_user_id LIKE $2 || '.%'))`,
-      [provider, canonicalProviderId]
-    );
-    if (existingSocial.rows.length > 0) {
-      return res.status(409).json({ error: 'An account already exists for this social profile. Please sign in instead.' });
-    }
-
-    // If the email is already registered, tell the user to sign in or link
-    const existingEmail = await pool.query(
-      'SELECT id FROM users WHERE email = $1',
-      [email]
-    );
-    if (existingEmail.rows.length > 0) {
-      return res.status(409).json({ error: 'This email is already registered. Please sign in or link your social account from your profile settings.' });
-    }
-
-    // Create user + patient + social_auth atomically so no orphaned rows on failure
-    const firstName_ = firstName || '';
-    const lastName_ = lastName || '';
-    const avatarInitials = `${(firstName_[0] || '')}${(lastName_[0] || '')}`.toUpperCase();
-
-    const regClient = await pool.connect();
-    let newUser;
-    try {
-      await regClient.query('BEGIN');
-
-      const newUserResult = await regClient.query(`
-        INSERT INTO users (id, email, first_name, last_name, role, status, avatar, created_at, updated_at)
-        VALUES (gen_random_uuid(), $1, $2, $3, 'patient', 'active', $4, NOW(), NOW())
-        RETURNING id, email, first_name, last_name, role, status
-      `, [email, firstName_, lastName_, avatarInitials]);
-      newUser = newUserResult.rows[0];
-
-      // Create patient record — patients.id = users.id in current schema
-      const patientCheck = await regClient.query(
-        'SELECT id FROM patients WHERE id = $1 OR email = $2 LIMIT 1',
-        [newUser.id, newUser.email]
-      );
-      if (patientCheck.rows.length === 0) {
-        const mrnResult = await regClient.query(
-          "SELECT MAX(CAST(SUBSTRING(mrn FROM 5) AS INTEGER)) as max_mrn FROM patients WHERE mrn LIKE 'MRN-%'"
-        );
-        const mrn = `MRN-${(mrnResult.rows[0].max_mrn || 1000) + 1}`;
-        await regClient.query(
-          `INSERT INTO patients (id, first_name, last_name, mrn, date_of_birth, email, status, created_at, updated_at)
-           VALUES ($1, $2, $3, $4, '1990-01-01', $5, 'active', NOW(), NOW())`,
-          [newUser.id, firstName_, lastName_, mrn, newUser.email]
-        );
-      }
-
-      // Assign patient role
-      const patientRoleResult = await regClient.query(
-        "SELECT id FROM roles WHERE name = 'patient' AND is_active = true LIMIT 1"
-      );
-      if (patientRoleResult.rows.length > 0) {
-        await regClient.query(
-          `INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
-          [newUser.id, patientRoleResult.rows[0].id]
-        );
-      }
-
-      // Link social auth — set both user_id and patient_id to the same UUID
-      await regClient.query(`
-        INSERT INTO social_auth (user_id, patient_id, provider, provider_user_id, access_token, profile_data)
-        VALUES ($1, $1, $2, $3, $4, $5)
-      `, [newUser.id, provider, canonicalProviderId, accessToken, JSON.stringify(profileData || {})]);
-
-      await regClient.query('COMMIT');
-    } catch (txErr) {
-      await regClient.query('ROLLBACK');
-      throw txErr;
-    } finally {
-      regClient.release();
-    }
-
-    const token = signToken(newUser);
-
-    res.status(201).json({
-      message: 'Registration successful! Your account is ready to use.',
-      token,
-      user: {
-        id: newUser.id,
-        email: newUser.email,
-        firstName: newUser.first_name,
-        lastName: newUser.last_name,
-        role: newUser.role,
-        status: newUser.status
-      }
-    });
-  } catch (error) {
-    console.error('Error during social registration:', error);
-    res.status(500).json({
-      error: 'Registration failed. Please try again.',
-      detail: error.message
-    });
-  }
-});
+// Social self-registration (POST /social-register and the code-exchange
+// POST /oauth/:provider/register) was removed with the public sign-up page it served
+// (SEC-39). A visitor who signs up has no practice to belong to, so it could never create a
+// working account; patients now join through a practice's portal invitation
+// (routes/portalInvites.js) and staff through staff invitations (routes/invites.js).
 
 // Link social account to existing user — requires a valid JWT; can only link to own account
-router.post('/link-social-account', authenticate, async (req, res) => {
+// SEC-20: takes a provider token posted by the browser; no screen calls it. Closed with the
+// other legacy social routes.
+router.post('/link-social-account', authenticate, legacySocialGuard, async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     // userId comes from the verified JWT, not the request body
@@ -1421,6 +1468,8 @@ router.post('/link-social-account', authenticate, async (req, res) => {
 
   } catch (error) {
     console.error('Error linking social account:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to link social account')) return;
     res.status(500).json({ error: 'Failed to link social account' });
   }
 });
@@ -1450,6 +1499,8 @@ router.post('/unlink-social-account', authenticate, async (req, res) => {
 
   } catch (error) {
     console.error('Error unlinking social account:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to unlink social account')) return;
     res.status(500).json({ error: 'Failed to unlink social account' });
   }
 });

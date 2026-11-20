@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Heart, Sun, Moon } from 'lucide-react';
+import { Sun, Moon } from 'lucide-react';
 import { useGoogleLogin } from '@react-oauth/google';
 import { getMicrosoftAuthCode } from '../../utils/msAuthCode';
 import { microsoftOAuthConfig } from '../../config/oauthConfig';
@@ -7,7 +7,7 @@ import { useAudit } from '../../hooks/useAudit';
 import PrivacyPolicyPage from './PrivacyPolicyPage';
 import TermsOfServicePage from './TermsOfServicePage';
 
-const PatientLoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, addNotification, setShowForgotPassword, setCurrentModule, setShowRegister }) => {
+const PatientLoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, addNotification, setShowForgotPassword, setCurrentModule }) => {
   const { logViewAccess, logError } = useAudit();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -38,7 +38,7 @@ const PatientLoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, a
       const response = await api.patientPortalLogin(email, password);
 
       // Patient portal login returns { patient, sessionToken, expiresAt }
-      sessionStorage.setItem('portalSessionToken', response.sessionToken);
+      api.storePortalSession(response.sessionToken);
       setUser(response.patient);
       setIsAuthenticated(true);
 
@@ -69,7 +69,7 @@ const PatientLoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, a
         const response = await api.exchangePortalOAuthCode('google', codeResponse.code, 'postmessage');
 
         // Patient portal login returns { patient, sessionToken, expiresAt }
-        sessionStorage.setItem('portalSessionToken', response.sessionToken);
+        api.storePortalSession(response.sessionToken);
         setUser(response.patient);
         setIsAuthenticated(true);
 
@@ -108,7 +108,7 @@ const PatientLoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, a
       const response = await api.exchangePortalOAuthCode('microsoft', code, redirectUri, codeVerifier);
 
       // Patient portal login returns { patient, sessionToken, expiresAt }
-      sessionStorage.setItem('portalSessionToken', response.sessionToken);
+      api.storePortalSession(response.sessionToken);
       setUser(response.patient);
       setIsAuthenticated(true);
 
@@ -250,14 +250,11 @@ const PatientLoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, a
         </div>
 
         <div className="mt-6 text-center space-y-3">
+          {/* Patients join through their practice's invitation (portal invites) — there
+              is no self-registration (SEC-39). */}
           <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-            New patient?{' '}
-            <button
-              onClick={() => setShowRegister(true)}
-              className="text-blue-500 hover:text-blue-400 font-medium transition-colors"
-            >
-              Register here
-            </button>
+            New to the portal? Your practice will email you an invitation to set it up —
+            ask them if you haven't received one.
           </p>
           <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
             Healthcare provider?{' '}

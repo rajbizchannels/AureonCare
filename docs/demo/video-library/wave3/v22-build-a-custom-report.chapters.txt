@@ -1,0 +1,5 @@
+0:00 Introduction
+0:12 When the standard reports run out
+0:27 Building it
+0:50 Running and keeping it
+1:19 Recap

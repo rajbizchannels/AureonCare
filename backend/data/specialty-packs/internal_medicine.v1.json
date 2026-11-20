@@ -1,0 +1,265 @@
+{
+  "code": "internal_medicine",
+  "version": 1,
+  "label": "Internal Medicine",
+  "description": "Starting configuration for an internal medicine practice: consultation and chronic-care appointment types, and a catalogue weighted towards complex adult medicine.",
+  "modules": {
+    "hide": [
+      "camps"
+    ]
+  },
+  "terminology": {
+    "provider": "Physician",
+    "providers": "Physicians"
+  },
+  "appointmentTypes": [
+    {
+      "name": "New Patient Consultation",
+      "durationMinutes": 45,
+      "color": "#2563EB",
+      "displayOrder": 10
+    },
+    {
+      "name": "Follow-up Consultation",
+      "durationMinutes": 20,
+      "color": "#0EA5E9",
+      "displayOrder": 20
+    },
+    {
+      "name": "Annual Review",
+      "durationMinutes": 40,
+      "color": "#14B8A6",
+      "displayOrder": 30
+    },
+    {
+      "name": "Chronic Disease Review",
+      "durationMinutes": 25,
+      "color": "#8B5CF6",
+      "displayOrder": 40
+    },
+    {
+      "name": "Pre-operative Assessment",
+      "durationMinutes": 30,
+      "color": "#F59E0B",
+      "displayOrder": 50
+    },
+    {
+      "name": "Results Review",
+      "durationMinutes": 15,
+      "color": "#64748B",
+      "displayOrder": 60
+    }
+  ],
+  "serviceCategories": [
+    {
+      "name": "Consultations",
+      "icon": "stethoscope",
+      "displayOrder": 10
+    },
+    {
+      "name": "Chronic Disease Management",
+      "icon": "activity",
+      "displayOrder": 20
+    },
+    {
+      "name": "Preventive Care",
+      "icon": "shield",
+      "displayOrder": 30
+    },
+    {
+      "name": "Diagnostics",
+      "icon": "search",
+      "displayOrder": 40
+    }
+  ],
+  "offerings": [
+    {
+      "name": "New Patient Consultation, Comprehensive",
+      "categoryName": "Consultations",
+      "durationMinutes": 45,
+      "cptCodes": [
+        "99205"
+      ]
+    },
+    {
+      "name": "Established Patient Visit, Standard",
+      "categoryName": "Consultations",
+      "durationMinutes": 20,
+      "cptCodes": [
+        "99213"
+      ]
+    },
+    {
+      "name": "Established Patient Visit, Complex",
+      "categoryName": "Consultations",
+      "durationMinutes": 30,
+      "cptCodes": [
+        "99215"
+      ]
+    },
+    {
+      "name": "Annual Wellness Visit",
+      "categoryName": "Preventive Care",
+      "durationMinutes": 40,
+      "cptCodes": [
+        "99386"
+      ]
+    },
+    {
+      "name": "Advance Care Planning",
+      "categoryName": "Preventive Care",
+      "durationMinutes": 30,
+      "cptCodes": [
+        "99497"
+      ]
+    },
+    {
+      "name": "Diabetes Management",
+      "categoryName": "Chronic Disease Management",
+      "durationMinutes": 25
+    },
+    {
+      "name": "Hypertension Management",
+      "categoryName": "Chronic Disease Management",
+      "durationMinutes": 20
+    },
+    {
+      "name": "Heart Failure Review",
+      "categoryName": "Chronic Disease Management",
+      "durationMinutes": 30
+    },
+    {
+      "name": "Anticoagulation Review",
+      "categoryName": "Chronic Disease Management",
+      "durationMinutes": 15
+    },
+    {
+      "name": "Polypharmacy Review",
+      "categoryName": "Chronic Disease Management",
+      "durationMinutes": 30
+    },
+    {
+      "name": "Electrocardiogram with Interpretation",
+      "categoryName": "Diagnostics",
+      "durationMinutes": 15,
+      "cptCodes": [
+        "93000"
+      ]
+    },
+    {
+      "name": "Pre-operative Medical Clearance",
+      "categoryName": "Diagnostics",
+      "durationMinutes": 30
+    }
+  ],
+  "formTemplates": [
+    {
+      "slug": "internal-medicine-intake",
+      "name": "Internal Medicine Intake",
+      "templateType": "onboarding",
+      "categorySlug": "onboarding",
+      "version": "1.0",
+      "languages": [
+        "en"
+      ],
+      "complianceTags": [
+        "HIPAA"
+      ],
+      "fields": [
+        {
+          "id": "referral_reason",
+          "type": "textarea",
+          "label": "Reason for referral or visit",
+          "required": true
+        },
+        {
+          "id": "referring_doctor",
+          "type": "text",
+          "label": "Referring doctor"
+        },
+        {
+          "id": "conditions",
+          "type": "textarea",
+          "label": "All current medical conditions",
+          "required": true
+        },
+        {
+          "id": "medications",
+          "type": "textarea",
+          "label": "Every medicine you take, with doses",
+          "required": true
+        },
+        {
+          "id": "allergies",
+          "type": "textarea",
+          "label": "Drug allergies and the reaction"
+        },
+        {
+          "id": "hospital_admissions",
+          "type": "textarea",
+          "label": "Hospital admissions in the last two years"
+        },
+        {
+          "id": "specialists",
+          "type": "textarea",
+          "label": "Other specialists involved in your care"
+        },
+        {
+          "id": "functional_status",
+          "type": "select",
+          "label": "How much do your symptoms limit daily activity?",
+          "options": [
+            "Not at all",
+            "A little",
+            "Moderately",
+            "Severely"
+          ]
+        }
+      ]
+    }
+  ],
+  "inventoryCategories": [
+    {
+      "code": "im_consumables",
+      "name": "Clinic Consumables"
+    },
+    {
+      "code": "im_diagnostics",
+      "name": "Diagnostic Supplies"
+    },
+    {
+      "code": "im_injectables",
+      "name": "Injectables"
+    }
+  ],
+  "codeSets": {
+    "icd10": [
+      "I10",
+      "E11.9",
+      "I50.9",
+      "N18.3",
+      "E78.5",
+      "D64.9",
+      "K21.9",
+      "M79.7"
+    ],
+    "cpt": [
+      "99205",
+      "99213",
+      "99215",
+      "99386",
+      "99497",
+      "93000"
+    ]
+  },
+  "settings": {
+    "defaultAppointmentDuration": 20,
+    "slotIntervalMinutes": 10
+  },
+  "reports": {
+    "show": [
+      "clinical",
+      "operational"
+    ]
+  }
+}

@@ -13,12 +13,53 @@
 const crypto = require('crypto');
 const { withTenant } = require('../db/tenantClient');
 const { resolveTenantForUser } = require('./tenantCatalog');
-const { registerSession, defaultTenant } = require('./portalRouting');
+const { registerSession, forgetSession, defaultTenant } = require('./portalRouting');
 
 // Matches the portal login's own TTL.
 const PORTAL_SESSION_TTL_MS = 24 * 60 * 60 * 1000;
 
 const hashToken = (token) => crypto.createHash('sha256').update(token).digest('hex');
+
+/**
+ * Mint a portal session for a patient in a KNOWN practice — for callers that already
+ * resolved it (accepting a portal invite knows the practice from the invite itself).
+ * Same rules as issuePortalSession: only for a portal-enabled patient; registers the
+ * token's route so the next request can find it. Returns null rather than throwing.
+ *
+ * @returns {Promise<{sessionToken: string, expiresAt: Date}|null>}
+ */
+const issuePortalSessionIn = async (pool, { tenantId, schemaName }, patientId, meta = {}) => {
+  if (!tenantId || !schemaName || schemaName === 'public' || !patientId) return null;
+  try {
+    const sessionToken = crypto.randomBytes(32).toString('hex');
+    const tokenHash = hashToken(sessionToken);
+    const expiresAt = new Date(Date.now() + PORTAL_SESSION_TTL_MS);
+
+    // portal_enabled is the switch that decides whether this patient may use the portal at
+    // all, and the portal login refuses to issue a session without it. Checking it here too
+    // keeps the main login from becoming a way around it. patients.id = users.id.
+    const inserted = await withTenant(pool, schemaName, async (client) => {
+      const { rows } = await client.query(
+        'SELECT id FROM patients WHERE id = $1 AND portal_enabled = true', [patientId]);
+      if (rows.length === 0) return false;
+      await client.query(
+        `INSERT INTO patient_portal_sessions (patient_id, session_token, ip_address, user_agent, expires_at)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [patientId, tokenHash, meta.ip || null, meta.userAgent || null, expiresAt]
+      );
+      return true;
+    });
+    if (!inserted) return null;
+
+    // The guard resolves a session's tenant from this shared table before any tenant
+    // context exists, so without the entry the token would be unroutable on the next request.
+    await registerSession(pool, tokenHash, tenantId, expiresAt);
+    return { sessionToken, expiresAt };
+  } catch (error) {
+    console.warn('[portalSession] could not issue portal session:', error.message);
+    return null;
+  }
+};
 
 /**
  * Mint a portal session for `user`, or return null when one is not warranted.
@@ -58,39 +99,44 @@ const issuePortalSession = async (pool, user, meta = {}) => {
     }
     if (!tenantId || !schemaName || schemaName === 'public') return null;
 
-    const sessionToken = crypto.randomBytes(32).toString('hex');
-    const tokenHash = hashToken(sessionToken);
-    const expiresAt = new Date(Date.now() + PORTAL_SESSION_TTL_MS);
-
-    // portal_enabled is the switch that decides whether this patient may use the portal at
-    // all, and the portal login refuses to issue a session without it. Checking it here too
-    // keeps the main login from becoming a way around it. patients.id = users.id.
-    const inserted = await withTenant(pool, schemaName, async (client) => {
-      const { rows } = await client.query(
-        'SELECT id FROM patients WHERE id = $1 AND portal_enabled = true',
-        [user.id]
-      );
-      if (rows.length === 0) return false;
-
-      await client.query(
-        `INSERT INTO patient_portal_sessions (patient_id, session_token, ip_address, user_agent, expires_at)
-         VALUES ($1, $2, $3, $4, $5)`,
-        [user.id, tokenHash, meta.ip || null, meta.userAgent || null, expiresAt]
-      );
-      return true;
-    });
-
-    if (!inserted) return null;
-
-    // The guard resolves a session's tenant from this shared table before any tenant
-    // context exists, so without the entry the token would be unroutable on the next request.
-    await registerSession(pool, tokenHash, tenantId, expiresAt);
-
-    return { sessionToken, expiresAt };
+    return await issuePortalSessionIn(pool, { tenantId, schemaName }, user.id, meta);
   } catch (error) {
     console.warn('[portalSession] could not issue portal session:', error.message);
     return null;
   }
 };
 
-module.exports = { issuePortalSession, PORTAL_SESSION_TTL_MS };
+/**
+ * Revoke every portal session a user holds (SEC-16/SEC-18: logout, password change and
+ * reset must end portal sessions too).
+ *
+ * patient_portal_sessions is a tenant table. These callers used to delete from it through
+ * the shared pool, whose search_path is `public`, where the table no longer exists since
+ * the SEC-05 cutover — so change-password, logout and reset-password all failed with
+ * 42P01 instead of revoking anything. This deletes in the user's own schema and drops the
+ * matching routing entries.
+ *
+ * Never throws: the credential change it follows has already been committed, and failing
+ * the response afterwards would tell the user it had not. A failure is logged as an error.
+ *
+ * @returns {Promise<number>} sessions revoked
+ */
+const revokePortalSessions = async (pool, userId) => {
+  try {
+    const tenant = await resolveTenantForUser(pool, userId);
+    const schemaName = tenant && tenant.schemaName;
+    if (!schemaName || schemaName === 'public') return 0;
+    const hashes = await withTenant(pool, schemaName, async (client) => {
+      const { rows } = await client.query(
+        'DELETE FROM patient_portal_sessions WHERE patient_id = $1 RETURNING session_token', [userId]);
+      return rows.map((r) => r.session_token);
+    });
+    for (const h of hashes) await forgetSession(pool, h);
+    return hashes.length;
+  } catch (error) {
+    console.error('[portalSession] could not revoke portal sessions for user', userId, '-', error.message);
+    return 0;
+  }
+};
+
+module.exports = { issuePortalSession, issuePortalSessionIn, revokePortalSessions, PORTAL_SESSION_TTL_MS };

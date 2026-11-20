@@ -41,4 +41,23 @@ const validatePassword = (password) => {
   return { valid: true };
 };
 
-module.exports = { BCRYPT_COST, MIN_LENGTH, MAX_LENGTH, validatePassword };
+const BREACHED_MESSAGE = 'This password has appeared in a known data breach, so it is easy for attackers '
+  + 'to guess. Please choose a different one.';
+
+/**
+ * The full check for a NEW password: the local policy, then the breached-password list
+ * (utils/breachedPassword.js). Use this wherever a password is set; validatePassword alone
+ * is kept for callers that cannot wait on the network.
+ * @returns {Promise<{ valid: boolean, message?: string, breached?: boolean }>}
+ */
+const checkNewPassword = async (password) => {
+  const local = validatePassword(password);
+  if (!local.valid) return local;
+  // Required lazily so tests can swap the fetcher on the same module instance.
+  const { breachCount } = require('./breachedPassword');
+  const count = await breachCount(password);
+  if (count && count > 0) return { valid: false, breached: true, message: BREACHED_MESSAGE };
+  return { valid: true };
+};
+
+module.exports = { BCRYPT_COST, MIN_LENGTH, MAX_LENGTH, validatePassword, checkNewPassword };

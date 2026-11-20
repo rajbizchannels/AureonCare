@@ -1,0 +1,281 @@
+{
+  "code": "oncology",
+  "version": 1,
+  "label": "Oncology",
+  "description": "Starting configuration for an oncology service: clinic and infusion appointment types, with a systemic-therapy and survivorship catalogue.",
+  "modules": {
+    "hide": [
+      "camps"
+    ]
+  },
+  "terminology": {
+    "provider": "Oncologist",
+    "providers": "Oncologists"
+  },
+  "appointmentTypes": [
+    {
+      "name": "New Patient Consultation",
+      "durationMinutes": 60,
+      "color": "#2563EB",
+      "displayOrder": 10
+    },
+    {
+      "name": "Follow-up Consultation",
+      "durationMinutes": 30,
+      "color": "#0EA5E9",
+      "displayOrder": 20
+    },
+    {
+      "name": "Chemotherapy Infusion",
+      "durationMinutes": 240,
+      "color": "#14B8A6",
+      "displayOrder": 30
+    },
+    {
+      "name": "Treatment Review",
+      "durationMinutes": 30,
+      "color": "#8B5CF6",
+      "displayOrder": 40
+    },
+    {
+      "name": "Survivorship Review",
+      "durationMinutes": 30,
+      "color": "#F59E0B",
+      "displayOrder": 50
+    },
+    {
+      "name": "Family Meeting",
+      "durationMinutes": 45,
+      "color": "#64748B",
+      "displayOrder": 60
+    }
+  ],
+  "serviceCategories": [
+    {
+      "name": "Consultations",
+      "icon": "stethoscope",
+      "displayOrder": 10
+    },
+    {
+      "name": "Systemic Therapy",
+      "icon": "droplet",
+      "displayOrder": 20
+    },
+    {
+      "name": "Supportive Care",
+      "icon": "heart",
+      "displayOrder": 30
+    },
+    {
+      "name": "Survivorship",
+      "icon": "trending-up",
+      "displayOrder": 40
+    }
+  ],
+  "offerings": [
+    {
+      "name": "New Patient Oncology Consultation",
+      "categoryName": "Consultations",
+      "durationMinutes": 60,
+      "cptCodes": [
+        "99205"
+      ]
+    },
+    {
+      "name": "Follow-up Oncology Consultation",
+      "categoryName": "Consultations",
+      "durationMinutes": 30,
+      "cptCodes": [
+        "99214"
+      ]
+    },
+    {
+      "name": "Chemotherapy Infusion, First Hour",
+      "categoryName": "Systemic Therapy",
+      "durationMinutes": 60,
+      "cptCodes": [
+        "96413"
+      ],
+      "consentFormRequired": true
+    },
+    {
+      "name": "Chemotherapy Infusion, Each Additional Hour",
+      "categoryName": "Systemic Therapy",
+      "durationMinutes": 60,
+      "cptCodes": [
+        "96415"
+      ]
+    },
+    {
+      "name": "Hydration Therapy",
+      "categoryName": "Supportive Care",
+      "durationMinutes": 60,
+      "cptCodes": [
+        "96360"
+      ]
+    },
+    {
+      "name": "Treatment Planning Consultation",
+      "categoryName": "Consultations",
+      "durationMinutes": 60
+    },
+    {
+      "name": "Pre-chemotherapy Assessment",
+      "categoryName": "Systemic Therapy",
+      "durationMinutes": 30
+    },
+    {
+      "name": "Antiemetic and Symptom Review",
+      "categoryName": "Supportive Care",
+      "durationMinutes": 20
+    },
+    {
+      "name": "Line Care and Flush",
+      "categoryName": "Supportive Care",
+      "durationMinutes": 30
+    },
+    {
+      "name": "Survivorship Care Plan",
+      "categoryName": "Survivorship",
+      "durationMinutes": 40
+    },
+    {
+      "name": "Surveillance Review",
+      "categoryName": "Survivorship",
+      "durationMinutes": 25
+    },
+    {
+      "name": "Palliative and Supportive Care Review",
+      "categoryName": "Supportive Care",
+      "durationMinutes": 45
+    }
+  ],
+  "formTemplates": [
+    {
+      "slug": "oncology-intake",
+      "name": "Oncology Intake",
+      "templateType": "onboarding",
+      "categorySlug": "onboarding",
+      "version": "1.0",
+      "languages": [
+        "en"
+      ],
+      "complianceTags": [
+        "HIPAA"
+      ],
+      "fields": [
+        {
+          "id": "diagnosis",
+          "type": "text",
+          "label": "Diagnosis, if you have been given one",
+          "required": true
+        },
+        {
+          "id": "date_diagnosed",
+          "type": "date",
+          "label": "When were you diagnosed?"
+        },
+        {
+          "id": "treatment_so_far",
+          "type": "textarea",
+          "label": "Treatment so far, including surgery, chemotherapy and radiotherapy"
+        },
+        {
+          "id": "current_symptoms",
+          "type": "checkboxes",
+          "label": "How are you feeling at the moment?",
+          "options": [
+            "Pain",
+            "Tiredness",
+            "Nausea",
+            "Poor appetite",
+            "Weight loss",
+            "Breathlessness",
+            "Low mood",
+            "Numbness or tingling"
+          ]
+        },
+        {
+          "id": "performance_status",
+          "type": "select",
+          "label": "How are you managing day to day?",
+          "options": [
+            "Fully active",
+            "Light activity only",
+            "Up and about more than half the day",
+            "In bed or a chair more than half the day",
+            "Completely dependent"
+          ]
+        },
+        {
+          "id": "medications",
+          "type": "textarea",
+          "label": "Current medicines, with doses",
+          "required": true
+        },
+        {
+          "id": "allergies",
+          "type": "textarea",
+          "label": "Allergies and reactions"
+        },
+        {
+          "id": "support",
+          "type": "textarea",
+          "label": "Who is supporting you at home?"
+        },
+        {
+          "id": "questions",
+          "type": "textarea",
+          "label": "Anything you want to be sure we cover today"
+        }
+      ]
+    }
+  ],
+  "inventoryCategories": [
+    {
+      "code": "onc_cytotoxics",
+      "name": "Cytotoxic Agents"
+    },
+    {
+      "code": "onc_supportive",
+      "name": "Supportive Care Drugs"
+    },
+    {
+      "code": "onc_infusion",
+      "name": "Infusion Consumables"
+    },
+    {
+      "code": "onc_ppe",
+      "name": "Cytotoxic Handling PPE"
+    }
+  ],
+  "codeSets": {
+    "icd10": [
+      "C50.919",
+      "C34.90",
+      "C18.9",
+      "C61",
+      "C78.00",
+      "D64.9",
+      "R53.0",
+      "Z51.11"
+    ],
+    "cpt": [
+      "99205",
+      "99214",
+      "96413",
+      "96415",
+      "96360"
+    ]
+  },
+  "settings": {
+    "defaultAppointmentDuration": 30,
+    "slotIntervalMinutes": 15
+  },
+  "reports": {
+    "show": [
+      "clinical",
+      "operational"
+    ]
+  }
+}
