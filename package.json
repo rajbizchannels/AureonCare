@@ -63,7 +63,9 @@
     "test:whatsapp-qr": "node backend/test/notifications/whatsapp-qr.test.js",
     "whatsapp:templates": "node backend/scripts/whatsapp-templates.js",
     "test:whatsapp-templates": "node backend/test/notifications/whatsapp-templates.test.js",
-    "test:practice-profile": "node backend/test/directory/profile.test.js"
+    "test:practice-profile": "node backend/test/directory/profile.test.js",
+    "test:directory-search": "node backend/test/directory/search.test.js",
+    "test:memberships": "node backend/test/identity/memberships.test.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.6.0",

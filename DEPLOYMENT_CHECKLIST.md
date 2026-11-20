@@ -762,3 +762,41 @@ refusal under the 24-hour rule is logged with the template to approve. Email is 
   choosing which details show; admins can hide but never list them. Consents carry a text version.
 - **Photos:** JPEG/PNG ≤ 2 MB, metadata (incl. GPS) stripped; provider photos need admin approval.
 - Every visibility, consent, hide and photo decision is in `public.directory_events` (append-only).
+
+## Directory search (Phase 3)
+
+- Public page **/find** (one search box: specialty, place, doctor). Results: only practices set
+  to **Searchable** (active practices), only consented and unhidden providers, neutral ranking
+  (specialty, place, name, then distance) — no paid placement.
+- **No search logs:** the query is sent in a POST body (never the URL), not logged, answered
+  `no-store`; "Use my location" is rounded to ~1 km in the browser and never stored.
+- Distance needs map coordinates on the practice's locations (Settings → Locations).
+- `/sitemap-practices.xml` and `/robots.txt` come from the backend (routed in `vercel.json` and
+  nginx); submit the sitemap in Google Search Console if you want profile pages indexed.
+- No migration needed. Ranking runs in memory from a 60-second cache; plan a database search
+  index when the directory passes ~10,000 practices.
+
+## People in several practices (Phase 1: memberships)
+
+**Order matters: apply the migration BEFORE deploying this code.**
+1. Paste `backend/migrations/093_memberships.sql` into the SQL editor. It creates
+   `public.memberships`, gives every existing account its membership, and adds a trigger that
+   keeps memberships in step with `users.practice_id` / `users.role`. Check:
+   `SELECT count(*) FROM public.users WHERE practice_id IS NOT NULL;` equals
+   `SELECT count(*) FROM public.memberships;`
+2. Deploy.
+
+What changes:
+- One account (login, password, 2FA, Google/Microsoft) can belong to several practices,
+  with a role at each. The top bar shows a practice switcher to people with more than one.
+- A session works in one practice at a time; sessions on different devices can be in
+  different practices. Removing someone from a practice ends their sessions there at once.
+- Inviting someone who already works at another practice adds this practice to their account
+  when they accept with their existing password or Google/Microsoft.
+- Admins manage a shared person's role in THEIR practice and can remove them from it; account
+  details (name, email, password, status) stay with the person.
+- Plan seats count memberships: a person at two practices takes a seat at each.
+- Sign-in starts in the most recently used practice; if that practice requires 2FA the person
+  lacks, it starts in one that does not (switching in then asks for 2FA).
+
+Not yet: a patient with charts at several practices still has one portal sign-in per practice.

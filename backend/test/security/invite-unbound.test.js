@@ -110,9 +110,11 @@ const report = (err) => {
   const elsewhere = `elsewhere_${RUN}@example.com`;
   await mkUser(elsewhere, 'doctor', other.practiceId);
   const oth = await call('POST', '/api/invites', admin, { email: elsewhere });
-  check(`an email in ANOTHER practice is refused (got ${oth.status})`,
-    oth.status === 409 && /another practice/i.test(oth.body.error || ''));
-  check('...and that account is untouched', (await usersWith(elsewhere))[0].practice_id === other.practiceId);
+  // Phase 1: someone who works at another practice CAN be invited — accepting (with their
+  // own password or Google/Microsoft) adds this practice to their account.
+  check(`an email in ANOTHER practice can be invited, flagged as an existing account (got ${oth.status})`,
+    oth.status === 201 && oth.body.existingAccount === true);
+  check('...and that account is untouched until they accept', (await usersWith(elsewhere))[0].practice_id === other.practiceId);
 
   // ── 3. Google acceptance adopts too, keeping only the identity signing in ────────
   const leftover2 = `leftover2_${RUN}@example.com`;

@@ -172,10 +172,10 @@ router.get('/security-policy', authenticate, authorize('admin'), requirePractice
   try {
     const { rows } = await req.app.locals.pool.query(
       `SELECT session_idle_minutes, require_mfa,
-              (SELECT COUNT(*) FROM public.users
-                WHERE practice_id = $1 AND status = 'active' AND mfa_enabled = false) AS without_mfa,
-              (SELECT COUNT(*) FROM public.users
-                WHERE practice_id = $1 AND status = 'active') AS total_staff
+              (SELECT COUNT(*) FROM public.users u JOIN public.memberships m ON m.user_id = u.id
+                WHERE m.practice_id = $1 AND m.status = 'active' AND u.status = 'active' AND u.mfa_enabled = false) AS without_mfa,
+              (SELECT COUNT(*) FROM public.users u JOIN public.memberships m ON m.user_id = u.id
+                WHERE m.practice_id = $1 AND m.status = 'active' AND u.status = 'active') AS total_staff
          FROM public.practices WHERE id = $1`,
       [req.user.practiceId]
     );
@@ -216,8 +216,8 @@ router.patch('/security-policy', authenticate, authorize('admin'), requirePracti
     // missing one — this is the mistake most likely to need an operator to undo.
     if (requireMfa === true) {
       const { rows } = await req.app.locals.pool.query(
-        `SELECT email FROM public.users
-          WHERE practice_id = $1 AND role = 'admin' AND status = 'active' AND mfa_enabled = false`,
+        `SELECT u.email FROM public.users u JOIN public.memberships m ON m.user_id = u.id
+          WHERE m.practice_id = $1 AND m.role = 'admin' AND m.status = 'active' AND u.status = 'active' AND u.mfa_enabled = false`,
         [req.user.practiceId]
       );
       if (rows.length) {
@@ -361,8 +361,8 @@ router.post('/join', joinLimiter, async (req, res) => {
 /** Let the admins know somebody is waiting. Never allowed to fail the signup. */
 async function notifyAdminsOfRequest(pool, claim, user) {
   const { rows: admins } = await pool.query(
-    `SELECT email FROM public.users
-      WHERE practice_id = $1 AND role = 'admin' AND status = 'active'`,
+    `SELECT u.email FROM public.users u JOIN public.memberships m ON m.user_id = u.id
+      WHERE m.practice_id = $1 AND m.role = 'admin' AND m.status = 'active' AND u.status = 'active'`,
     [claim.practice_id]
   );
   if (!admins.length) return;

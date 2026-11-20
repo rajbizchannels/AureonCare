@@ -13,7 +13,7 @@ const { tenantForSession, forgetSession } = require('../services/portalRouting')
 const { withTenant } = require('../db/tenantClient');
 const { issuePortalSession, revokePortalSessions } = require('../services/portalSession');
 const { exchangeAuthCode } = require('../utils/oauthExchange');
-const { findUsableInvite, claimInvite, adoptUnboundAccount } = require('./invites');
+const { findUsableInvite, claimInvite, adoptUnboundAccount, addMembershipFromInvite } = require('./invites');
 const { resolveDomainClaim } = require('../services/domainJoin');
 const { sendDbError } = require('../utils/dbErrors');
 const {
@@ -33,6 +33,54 @@ async function mfaRequiredFor(pool, user) {
     'SELECT require_mfa FROM public.practices WHERE id = $1', [user.practice_id]
   );
   return Boolean(rows[0] && rows[0].require_mfa);
+}
+
+
+// ── Phase 1: practices this person belongs to ───────────────────────────────────────
+/**
+ * Start a sign-in in a STAFF membership when the account's default is a patient one (or
+ * none). Mutates `user` (practice_id, role) for the token and moves the default there.
+ * Returns false when the person has no active staff membership anywhere.
+ */
+async function preferStaffMembership(pool, user) {
+  if (user.role !== 'patient' && user.practice_id) return true;
+  try {
+    const { rows: [m] } = await pool.query(
+      `SELECT practice_id, role FROM public.memberships
+        WHERE user_id = $1 AND status = 'active' AND role <> 'patient'
+        ORDER BY last_used_at DESC NULLS LAST, created_at ASC LIMIT 1`, [user.id]);
+    if (!m) return user.role !== 'patient';
+    user.practice_id = m.practice_id; user.role = m.role;
+    await pool.query('UPDATE users SET practice_id = $2, role = $3 WHERE id = $1', [user.id, m.practice_id, m.role]);
+    return true;
+  } catch (e) {
+    if (e.code === '42P01') return user.role !== 'patient';   // before migration 093
+    throw e;
+  }
+}
+
+
+/**
+ * Phase 1: when the default practice requires 2FA and the account has none, start the
+ * sign-in in another active staff membership whose practice does not require it. Mutates
+ * `user` and the account's default. Returns false when there is no such practice.
+ */
+async function startInPracticeWithoutMfaRule(pool, user) {
+  try {
+    const { rows: [m] } = await pool.query(
+      `SELECT m.practice_id, m.role FROM public.memberships m
+         JOIN public.practices p ON p.id = m.practice_id
+         JOIN control.tenants t ON t.practice_id = m.practice_id AND t.status = 'active'
+        WHERE m.user_id = $1 AND m.status = 'active' AND m.role <> 'patient' AND NOT COALESCE(p.require_mfa, false)
+        ORDER BY m.last_used_at DESC NULLS LAST, m.created_at ASC LIMIT 1`, [user.id]);
+    if (!m) return false;
+    user.practice_id = m.practice_id; user.role = m.role;
+    await pool.query('UPDATE users SET practice_id = $2, role = $3 WHERE id = $1', [user.id, m.practice_id, m.role]);
+    return true;
+  } catch (e) {
+    if (e.code === '42P01') return false;
+    throw e;
+  }
 }
 
 // SEC-17: a fixed dummy bcrypt hash (of a random string) used to run a real compare
@@ -100,7 +148,7 @@ router.post('/login', async (req, res) => {
     // leftover of the old self-registration (no practice, no chart): a staff session for it
     // reached nothing but 401/403 on every screen. Checked AFTER the password, so this
     // answer does not reveal which emails belong to patient accounts.
-    if (user.role === 'patient') {
+    if (!(await preferStaffMembership(pool, user))) {
       return res.status(403).json({
         error: 'This is a patient account. Please sign in through your practice\'s patient portal (Patient Login).',
         patientAccount: true,
@@ -125,9 +173,11 @@ router.post('/login', async (req, res) => {
           [user.id, check.usedBackupCode]
         );
       }
-    } else if (await mfaRequiredFor(pool, user)) {
+    } else if (await mfaRequiredFor(pool, user) && !(await startInPracticeWithoutMfaRule(pool, user))) {
       // The practice requires a second factor and this account has none. Refused rather
       // than waved through — but told plainly what to do, since the fix is self-service.
+      // (Phase 1: someone who also works at a practice WITHOUT that rule signs in there
+      // instead; switching into this one then asks for 2FA.)
       return res.status(403).json({
         mfaEnrolmentRequired: true,
         error: 'Your practice requires two-factor authentication. Sign in on a device where '
@@ -244,6 +294,64 @@ router.post('/change-password', authenticate, async (req, res) => {
 
 // SEC-15: current-user endpoint. The browser no longer persists the user object, so it
 // re-fetches identity here after a reload. Returns UI/identity fields only — never the
+
+/**
+ * GET /api/auth/memberships — the practices this person works at, and which one this
+ * session is in. POST /api/auth/switch-practice { practiceId } — continue in another one:
+ * a new session for that practice (its role, its data, its two-factor rule). The choice
+ * also becomes where the next sign-in starts.
+ */
+router.get('/memberships', authenticate, async (req, res) => {
+  try {
+    const { rows } = await req.app.locals.pool.query(
+      `SELECT m.practice_id, p.name AS practice_name, m.role, (u.practice_id = m.practice_id) AS is_default
+         FROM public.memberships m
+         JOIN public.practices p ON p.id = m.practice_id
+         JOIN public.users u ON u.id = m.user_id
+         JOIN control.tenants t ON t.practice_id = m.practice_id AND t.status = 'active'
+        WHERE m.user_id = $1 AND m.status = 'active' AND m.role <> 'patient'
+        ORDER BY p.name`, [req.user.id]);
+    res.json({
+      active: req.user.practiceId || null,
+      practices: rows.map((r) => ({ practiceId: r.practice_id, name: r.practice_name, role: r.role, isDefault: r.is_default,
+        active: String(r.practice_id) === String(req.user.practiceId) })),
+    });
+  } catch (err) {
+    console.error('[auth] memberships:', err.message);
+    res.status(500).json({ error: 'Could not load your practices' });
+  }
+});
+
+router.post('/switch-practice', authenticate, async (req, res) => {
+  const pool = req.app.locals.pool;
+  const practiceId = String((req.body || {}).practiceId || '');
+  try {
+    const { rows: [m] } = await pool.query(
+      `SELECT m.role FROM public.memberships m
+         JOIN control.tenants t ON t.practice_id = m.practice_id AND t.status = 'active'
+        WHERE m.user_id = $1 AND m.practice_id::text = $2 AND m.status = 'active' AND m.role <> 'patient'`,
+      [req.user.id, practiceId]);
+    if (!m) return res.status(404).json({ error: 'You are not a member of that practice.' });
+    const { rows: [user] } = await pool.query('SELECT * FROM users WHERE id = $1', [req.user.id]);
+    if (await mfaRequiredFor(pool, { practice_id: practiceId }) && !user.mfa_enabled) {
+      return res.status(403).json({ mfaEnrolmentRequired: true,
+        error: 'That practice requires two-factor authentication. Set it up in My profile, then switch again.' });
+    }
+    await pool.query('UPDATE public.memberships SET last_used_at = now() WHERE user_id = $1 AND practice_id = $2', [user.id, practiceId]);
+    await pool.query('UPDATE users SET practice_id = $2, role = $3, last_activity_at = now() WHERE id = $1', [user.id, practiceId, m.role]);
+    try { require('../services/tenantCatalog').invalidateUserTenant(user.id); } catch (_) { /* cache only */ }
+    const next = { ...user, practice_id: practiceId, role: m.role };
+    const token = signToken(next);
+    const csrfToken = issueAuthCookies(res, token);
+    const { password_hash, reset_token, reset_token_expires, mfa_secret, mfa_backup_codes, ...userData } = next;
+    const { rows: [pr] } = await pool.query('SELECT name FROM public.practices WHERE id = $1', [practiceId]);
+    res.json({ user: { ...toCamelCase(userData), practiceName: pr ? pr.name : null }, token, csrfToken });
+  } catch (err) {
+    console.error('[auth] switch practice:', err.message);
+    res.status(500).json({ error: 'Could not switch practice' });
+  }
+});
+
 // clinical record, which the relevant view fetches on its own.
 router.get('/me', authenticate, async (req, res) => {
   try {
@@ -255,7 +363,11 @@ router.get('/me', authenticate, async (req, res) => {
       [req.user.id]
     );
     if (rows.length === 0) return res.status(404).json({ error: 'User not found' });
-    res.json(toCamelCase(rows[0]));
+    // Phase 1: the role and practice of THIS session (its active membership).
+    const me = toCamelCase(rows[0]);
+    me.role = req.user.role;
+    me.practiceId = req.user.practiceId || me.practiceId || null;
+    res.json(me);
   } catch (error) {
     console.error('Error fetching current user:', error);
     res.status(500).json({ error: 'Failed to fetch current user' });
@@ -279,16 +391,17 @@ router.get('/tenant-status', authenticate, async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     const { rows } = await pool.query(
-      `SELECT u.practice_id,
+      // Phase 1: the practice this SESSION works in (req.user.practiceId), not the default.
+      `SELECT p.id AS practice_id,
               p.name  AS practice_name,
               t.id    AS tenant_id,
               t.status AS tenant_status,
               t.schema_name
          FROM public.users u
-         LEFT JOIN public.practices  p ON p.id = u.practice_id
-         LEFT JOIN control.tenants   t ON t.practice_id = u.practice_id
+         LEFT JOIN public.practices  p ON p.id = COALESCE($2::uuid, u.practice_id)
+         LEFT JOIN control.tenants   t ON t.practice_id = p.id
         WHERE u.id = $1`,
-      [req.user.id]
+      [req.user.id, req.user.practiceId || null]
     );
     const r = rows[0] || {};
     const resolved = req.tenant && req.tenant.schemaName;
@@ -503,9 +616,9 @@ router.get('/mfa/status', authenticate, async (req, res) => {
               COALESCE(p.require_mfa, false) AS required,
               p.session_idle_minutes
          FROM public.users u
-         LEFT JOIN public.practices p ON p.id = u.practice_id
+         LEFT JOIN public.practices p ON p.id = COALESCE($2::uuid, u.practice_id)
         WHERE u.id = $1`,
-      [req.user.id]
+      [req.user.id, req.user.practiceId || null]
     );
     const r = rows[0] || {};
     res.json({
@@ -967,6 +1080,19 @@ const socialLoginHandler = async (req, res) => {
       // An existing but unbound account (created by social signup before invites existed)
       // adopts the practice when it presents a matching invite. Only ever fills a NULL —
       // an invite can never move a user from one practice to another.
+      // Phase 1: an account that already works elsewhere joins this practice too.
+      if (invite && user.practice_id) {
+        const c = await pool.connect();
+        try {
+          await c.query('BEGIN');
+          const added = await addMembershipFromInvite(c, user.id, invite);
+          await c.query('COMMIT');
+          if (added) user = added;
+        } catch (e) {
+          await c.query('ROLLBACK').catch(() => {});
+          console.error('[auth] invite membership failed:', e.message);
+        } finally { c.release(); }
+      }
       if (invite && !user.practice_id) {
         const bindClient = await pool.connect();
         try {
@@ -1026,6 +1152,18 @@ const socialLoginHandler = async (req, res) => {
         // An unbound leftover account (no practice) presented with a matching invite is
         // adopted by the invited person first, so they land in the practice instead of a
         // dead-end account. This also clears any identity linked before the email was proved.
+        if (invite && user.practice_id) {
+          const c = await pool.connect();
+          try {
+            await c.query('BEGIN');
+            const added = await addMembershipFromInvite(c, user.id, invite);
+            await c.query('COMMIT');
+            if (added) user = added;
+          } catch (e) {
+            await c.query('ROLLBACK').catch(() => {});
+            console.error('[auth] invite membership failed:', e.message);
+          } finally { c.release(); }
+        }
         if (invite && !user.practice_id) {
           const adoptClient = await pool.connect();
           try {
@@ -1042,7 +1180,7 @@ const socialLoginHandler = async (req, res) => {
         }
 
         // Do not attach a new identity to a leftover patient account it cannot use.
-        if (user.role === 'patient') {
+        if (!(await preferStaffMembership(pool, user))) {
           return res.status(403).json({
             error: 'This is a patient account. Please sign in through your practice\'s patient portal (Patient Login).',
             patientAccount: true,
@@ -1139,7 +1277,7 @@ const socialLoginHandler = async (req, res) => {
 
     // Patients use the patient portal; a leftover 'patient' users row gets no staff session
     // (it could reach nothing — every staff route refuses it). An invite adopts it above.
-    if (user.role === 'patient') {
+    if (!(await preferStaffMembership(pool, user))) {
       return res.status(403).json({
         error: 'This is a patient account. Please sign in through your practice\'s patient portal (Patient Login).',
         patientAccount: true,

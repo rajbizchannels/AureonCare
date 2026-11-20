@@ -255,6 +255,12 @@ const AppProvider = ({ children }) => {
       if (isAuthenticated) broadcast({ type: 'pong', nonce: msg.nonce });
       return;
     }
+    // Phase 1: the session cookie is shared by every tab, so when one tab switches practice
+    // the others must reload into it rather than keep showing the previous practice's data.
+    if (msg.type === 'practice-switched') {
+      if (isAuthenticated) window.location.reload();
+      return;
+    }
     if (msg.type !== 'session' || !isAuthenticated || !user) return;
     if (msg.userId === null) {
       dropSession('You signed out in another tab.');

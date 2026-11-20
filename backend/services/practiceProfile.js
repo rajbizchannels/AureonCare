@@ -47,7 +47,7 @@ async function practiceProviders(pool, practiceId) {
        FROM public.providers p
        JOIN public.users u ON u.id = p.id
        LEFT JOIN public.provider_listing_consents c ON c.provider_id = p.id AND c.practice_id = $1
-      WHERE u.practice_id = $1 AND COALESCE(u.status, 'active') = 'active'
+      WHERE EXISTS (SELECT 1 FROM public.memberships mem WHERE mem.user_id = u.id AND mem.practice_id = $1 AND mem.status = 'active') AND COALESCE(u.status, 'active') = 'active'
       ORDER BY p.last_name, p.first_name`, [practiceId]);
   return rows;
 }

@@ -1154,7 +1154,7 @@ router.get('/:patientId/providers', async (req, res) => {
     const { rows } = await req.app.locals.pool.query(
       `SELECT p.id, p.first_name, p.last_name, p.specialization, p.specialization AS specialty
          FROM providers p JOIN public.users u ON u.id = p.id
-        WHERE u.practice_id = $1 AND COALESCE(u.status, 'active') = 'active'
+        WHERE EXISTS (SELECT 1 FROM public.memberships mem WHERE mem.user_id = u.id AND mem.practice_id = $1 AND mem.status = 'active') AND COALESCE(u.status, 'active') = 'active'
         ORDER BY p.last_name, p.first_name`, [req.tenant.practiceId]);
     res.json(rows);
   } catch (error) {
@@ -1209,7 +1209,7 @@ router.post('/:patientId/appointments', async (req, res) => {
     let providerId = provider_id || null;
     if (providerId) {
       const ok = await req.app.locals.pool.query(
-        'SELECT 1 FROM providers p JOIN public.users u ON u.id = p.id WHERE p.id::text = $1::text AND u.practice_id = $2',
+        `SELECT 1 FROM providers p JOIN public.users u ON u.id = p.id WHERE p.id::text = $1::text AND EXISTS (SELECT 1 FROM public.memberships mem WHERE mem.user_id = u.id AND mem.practice_id = $2 AND mem.status = 'active')`,
         [providerId, req.tenant.practiceId]);
       if (!ok.rows.length) return res.status(400).json({ error: 'That provider is not available at this practice.' });
       const busy = await db.query(

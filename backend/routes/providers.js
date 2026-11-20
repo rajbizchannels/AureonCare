@@ -57,7 +57,7 @@ router.get('/', authenticate, async (req, res) => {
         SELECT p.*, u.status, u.role
         FROM providers p
         JOIN users u ON p.id = u.id
-        WHERE u.practice_id = $1
+        WHERE EXISTS (SELECT 1 FROM public.memberships mem WHERE mem.user_id = u.id AND mem.practice_id = $1 AND mem.status = 'active')
         ORDER BY p.last_name, p.first_name ASC
       `, [practiceId]);
     } else if (userRole === 'doctor') {
@@ -116,7 +116,7 @@ router.get('/bookable', authenticate, async (req, res) => {
       SELECT p.id, p.first_name, p.last_name, p.specialization, u.role
         FROM providers p
         JOIN users u ON p.id = u.id
-       WHERE u.practice_id = $1
+       WHERE EXISTS (SELECT 1 FROM public.memberships mem WHERE mem.user_id = u.id AND mem.practice_id = $1 AND mem.status = 'active')
          AND u.status = 'active'
        ORDER BY p.last_name, p.first_name ASC
     `, [practiceId]);
@@ -144,7 +144,7 @@ router.get('/:id', authenticate, async (req, res) => {
        FROM providers p
        JOIN users u ON p.id = u.id
        WHERE p.id::text = $1::text
-         AND (p.id::text = $2::text OR u.practice_id = $3)`,
+         AND (p.id::text = $2::text OR EXISTS (SELECT 1 FROM public.memberships mem WHERE mem.user_id = u.id AND mem.practice_id = $3 AND mem.status = 'active'))`,
       [providerId, userId, req.user.practiceId ?? null]
     );
 
@@ -227,7 +227,7 @@ router.put('/:id', authenticate, async (req, res) => {
       `SELECT p.* FROM providers p
        JOIN users u ON p.id = u.id
        WHERE p.id::text = $1::text
-         AND (p.id::text = $2::text OR u.practice_id = $3)`,
+         AND (p.id::text = $2::text OR EXISTS (SELECT 1 FROM public.memberships mem WHERE mem.user_id = u.id AND mem.practice_id = $3 AND mem.status = 'active'))`,
       [providerId, userId, req.user.practiceId ?? null]
     );
 
@@ -299,7 +299,7 @@ router.delete('/:id', authenticate, authorize('admin'), async (req, res) => {
 
     const result = await pool.query(
       `DELETE FROM providers WHERE id::text = $1::text
-         AND id IN (SELECT id FROM users WHERE practice_id = $2) RETURNING *`,
+         AND id IN (SELECT user_id FROM public.memberships WHERE practice_id = $2 AND status = 'active') RETURNING *`,
       [req.params.id, practiceId]
     );
 

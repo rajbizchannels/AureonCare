@@ -70,6 +70,7 @@ import SignupCompletePage from './components/modals/SignupCompletePage';
 import AcceptInvitePage from './components/modals/AcceptInvitePage';
 import PortalActivatePage from './components/modals/PortalActivatePage';
 import JoinPracticePage from './components/modals/JoinPracticePage';
+import DirectorySearchPage from './components/directory/DirectorySearchPage';
 import ForgotPasswordModal from './components/modals/ForgotPasswordModal';
 import ViewEditModal from './components/modals/ViewEditModal';
 import UserProfileModal from './components/modals/UserProfileModal';
@@ -406,6 +407,8 @@ function App() {
       return { kind: 'acceptInvite', token: params.get('token') };
     }
     if (/^\/join\/?$/.test(path)) return { kind: 'join' };
+    // Public directory search (Phase 3).
+    if (/^\/find\/?$/.test(path)) return { kind: 'find' };
     // Patient portal invitation sent by the practice (Phase 1 onboarding).
     if (/^\/portal\/activate\/?$/.test(path) && params.get('token')) {
       return { kind: 'portalActivate', token: params.get('token') };
@@ -825,6 +828,9 @@ function App() {
   }
   if (publicRoute?.kind === 'signupComplete') {
     return <SignupCompletePage theme={theme} intentId={publicRoute.intentId} onSignIn={goToSignIn} />;
+  }
+  if (publicRoute?.kind === 'find') {
+    return <DirectorySearchPage theme={theme} />;
   }
   if (publicRoute?.kind === 'join') {
     return <JoinPracticePage theme={theme} api={api} onSignIn={goToSignIn} />;

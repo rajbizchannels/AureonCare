@@ -18,6 +18,8 @@ const { authenticate } = require('../middleware/auth');
 const { sendDbError } = require('../utils/dbErrors');
 const { sanitizeImage, ImageRejected } = require('../utils/imageSanitize');
 const P = require('../services/practiceProfile');
+// Profile and listing changes show up in search at once on this instance (others within a minute).
+const { invalidate: refreshSearch } = require('../services/directorySearch');
 
 const router = express.Router();
 router.use(authenticate);
@@ -38,7 +40,7 @@ const validUrl = (u) => !u || /^https?:\/\/[^\s]+$/i.test(u);
 async function isProvider(pool, userId, practiceId) {
   const { rows } = await pool.query(
     `SELECT 1 FROM public.providers p JOIN public.users u ON u.id = p.id
-      WHERE p.id = $1 AND u.practice_id = $2`, [userId, practiceId]);
+      WHERE p.id = $1 AND EXISTS (SELECT 1 FROM public.memberships mem WHERE mem.user_id = u.id AND mem.practice_id = $2 AND mem.status = 'active')`, [userId, practiceId]);
   return rows.length > 0;
 }
 
@@ -140,7 +142,7 @@ router.put('/', async (req, res) => {
     const changes = {};
     for (const k of ['visibility', 'slug', 'use_random_link']) if (String(current[k]) !== String(saved[k])) changes[k] = { from: current[k], to: saved[k] };
     if (b.regenerate_random_link) changes.random_link = 'regenerated';
-    await P.logEvent(pool, { practiceId, action: 'profile_saved', detail: changes, actorId: req.user.id });
+    refreshSearch(); await P.logEvent(pool, { practiceId, action: 'profile_saved', detail: changes, actorId: req.user.id });
     res.json({ profile: saved, publicUrl: P.publicUrlFor(saved) });
   } catch (err) {
     console.error('[practice-profile] save:', err.message);
@@ -183,7 +185,7 @@ router.post('/photos', async (req, res) => {
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id, kind, provider_id, mime, status, created_at`,
       [practiceId, kind, kind === 'provider' ? req.user.id : null, img.mime, img.bytes, status, req.user.id,
         status === 'approved' ? req.user.id : null]);
-    await P.logEvent(pool, { practiceId, providerId: photo.provider_id, action: 'photo_uploaded', detail: { id: photo.id, kind, status }, actorId: req.user.id });
+    refreshSearch(); await P.logEvent(pool, { practiceId, providerId: photo.provider_id, action: 'photo_uploaded', detail: { id: photo.id, kind, status }, actorId: req.user.id });
     res.status(201).json({ ...photo, width: img.width, height: img.height });
   } catch (err) {
     console.error('[practice-profile] photo upload:', err.message);
@@ -212,7 +214,7 @@ router.put('/photos/:id', async (req, res) => {
         WHERE id::text = $3 AND practice_id = $4 RETURNING id, kind, provider_id, status`,
       [status, req.user.id, req.params.id, practiceOf(req)]);
     if (!p) return res.status(404).json({ error: 'Photo not found' });
-    await P.logEvent(pool, { practiceId: practiceOf(req), providerId: p.provider_id, action: `photo_${status}`, detail: { id: p.id }, actorId: req.user.id });
+    refreshSearch(); await P.logEvent(pool, { practiceId: practiceOf(req), providerId: p.provider_id, action: `photo_${status}`, detail: { id: p.id }, actorId: req.user.id });
     res.json(p);
   } catch (err) {
     res.status(500).json({ error: 'Could not update the photo' });
@@ -230,7 +232,7 @@ router.delete('/photos/:id', async (req, res) => {
     await pool.query('DELETE FROM public.practice_profile_photos WHERE id = $1', [p.id]);
     await pool.query('UPDATE public.practice_profiles SET cover_photo_id = NULLIF(cover_photo_id, $1), logo_photo_id = NULLIF(logo_photo_id, $1) WHERE practice_id = $2', [p.id, practiceId]);
     await pool.query('UPDATE public.provider_listing_consents SET photo_id = NULL WHERE practice_id = $2 AND photo_id = $1', [p.id, practiceId]);
-    await P.logEvent(pool, { practiceId, providerId: p.provider_id, action: 'photo_deleted', detail: { id: p.id, kind: p.kind }, actorId: req.user.id });
+    refreshSearch(); await P.logEvent(pool, { practiceId, providerId: p.provider_id, action: 'photo_deleted', detail: { id: p.id, kind: p.kind }, actorId: req.user.id });
     res.json({ deleted: true });
   } catch (err) {
     res.status(500).json({ error: 'Could not delete the photo' });
@@ -250,7 +252,7 @@ router.put('/providers/:id/hidden', async (req, res) => {
        VALUES ($1,$2,$3, now())
        ON CONFLICT (practice_id, provider_id) DO UPDATE SET hidden_by_admin = EXCLUDED.hidden_by_admin, updated_at = now()`,
       [practiceId, req.params.id, hidden]);
-    await P.logEvent(pool, { practiceId, providerId: req.params.id, action: hidden ? 'provider_hidden' : 'provider_unhidden', actorId: req.user.id });
+    refreshSearch(); await P.logEvent(pool, { practiceId, providerId: req.params.id, action: hidden ? 'provider_hidden' : 'provider_unhidden', actorId: req.user.id });
     res.json({ hidden });
   } catch (err) {
     res.status(500).json({ error: 'Could not update the listing' });
@@ -321,7 +323,7 @@ router.put('/me', async (req, res) => {
         b.show_specialties === undefined ? true : Boolean(b.show_specialties), clip(b.bio, 1500), languages, specialtyCodes,
         photoId, P.CONSENT_VERSION]);
     const action = consented ? (before && before.consented ? 'consent_updated' : 'consent_given') : 'consent_withdrawn';
-    await P.logEvent(pool, {
+    refreshSearch(); await P.logEvent(pool, {
       practiceId, providerId: req.user.id, action, actorId: req.user.id,
       detail: { version: P.CONSENT_VERSION, fields: { photo: c.show_photo, bio: c.show_bio, languages: c.show_languages, specialties: c.show_specialties } },
     });

@@ -33,8 +33,8 @@ router.get('/modules', authorize('admin', 'billing_manager'), async (req, res) =
     const extraRoles = [];
     try {
       const { rows } = await req.app.locals.pool.query(
-        `SELECT DISTINCT role FROM public.users
-          WHERE practice_id = $1 AND status = 'active' AND role IS NOT NULL
+        `SELECT DISTINCT m.role FROM public.memberships m JOIN public.users u ON u.id = m.user_id
+          WHERE m.practice_id = $1 AND m.status = 'active' AND u.status = 'active' AND m.role IS NOT NULL
           UNION
          SELECT name FROM public.roles WHERE is_active = true`,
         [req.user.practiceId || null]);
@@ -137,8 +137,8 @@ router.put('/modules', authorize('admin'), async (req, res) => {
     let allowedRoles = registry.ROLES;
     try {
       const { rows } = await req.app.locals.pool.query(
-        `SELECT DISTINCT role AS name FROM public.users
-          WHERE practice_id = $1 AND status = 'active' AND role IS NOT NULL
+        `SELECT DISTINCT m.role AS name FROM public.memberships m JOIN public.users u ON u.id = m.user_id
+          WHERE m.practice_id = $1 AND m.status = 'active' AND u.status = 'active' AND m.role IS NOT NULL
           UNION
          SELECT name FROM public.roles WHERE is_active = true`,
         [req.user.practiceId || null]);
