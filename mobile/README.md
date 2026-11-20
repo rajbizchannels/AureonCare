@@ -98,6 +98,7 @@ the root, not under `/api` like everything else — and falls back to
 | `src/lib/url.ts` | Server-address rules (pure, unit tested) |
 | `src/lib/permissions.ts` | The role → capability matrix, ported from the web app (pure, unit tested) |
 | `src/lib/chart.ts` | Merges the clinical streams into one timeline (pure, unit tested) |
+| `src/lib/booking.ts` | Slot generation and clash rules for patient self-booking (pure, unit tested) |
 | `src/lib/camps.ts` | Camp rules — registration gates, station pressure, board summary (pure, unit tested) |
 | `src/lib/server.ts` | Server persistence and the reachability probe |
 | `src/lib/storage.ts` | Keychain/Keystore for credentials, AsyncStorage for preferences |
@@ -153,7 +154,7 @@ Two rules shape the tab bar:
 
 | Shell | Roles | Phone tabs | Promoted on a tablet |
 |---|---|---|---|
-| patient | `patient` | Home · Visits · Records · Messages · More | — |
+| patient | `patient` | Home · Visits · Book · Messages · More | — |
 | clinician | `doctor`, `nurse` | Today · Schedule · Messages · Patients · More | Chart, Orders |
 | frontdesk | `receptionist`, `staff`, `billing_manager`, `crm_manager` | Today · Schedule · Messages · Patients · More | Camps, Billing |
 | admin | `admin` | Today · Schedule · Messages · Patients · More | Chart, Billing, Practice |
@@ -161,6 +162,23 @@ Two rules shape the tab bar:
 The promotions are declared per shell rather than computed, because *what
 deserves a bigger screen* is a judgement about the job: a front desk wants the
 camp board and the day's takings, a clinician wants the chart.
+
+Records and forms sit under More for patients rather than holding a tab.
+Booking earns the slot: it is the thing people open a patient app to do, and
+the cap of five is the cap.
+
+### One person, several practices
+
+A person can work at more than one practice and hold a **different role in
+each** — a nurse at one, an admin at another. So switching is not a filter
+over one session: `POST /auth/switch-practice` issues a new token for the
+membership, the app adopts the account that comes back, and the shell
+re-derives. Verified live: the same account shows `Chart · Orders` as a doctor
+and `Chart · Billing · Practice` as an admin, on the same tablet, seconds
+apart.
+
+More → Switch practice lists them. A practice that requires two-factor refuses
+the switch until the account has it, and says so.
 
 **Today is composed, not branched.** The same screen asks four different
 questions depending on who opened it — the review queue only when the account
@@ -213,14 +231,35 @@ An idle sign-out arrives as `401 { sessionTimedOut: true }`. It is carried
 through to the sign-in screen and named there, rather than the app silently
 reappearing at the login.
 
+**A patient account is refused by the staff endpoint**, with
+`403 { patientAccount: true }`. The credentials are *correct* — it is the
+wrong door — so sign-in treats it as a cue to try the portal, alongside 401
+and 404. Reading it as an ordinary 403 told every patient their right password
+was wrong.
+
+**Signing out tells the server.** `/auth/logout` bumps `token_version`, which
+revokes the JWT on every device; the portal route deletes the session row.
+Clearing only the Keychain left a live token on a phone that had just been
+handed back. The call cannot block the local clear — a flat network must still
+get someone off the device.
+
 ## What is built, and what is not
 
 Every screen is routed to a real one — there are no placeholders left. All of
 these read live data from the API:
 
 **Patient** — Home (next appointment with a join button, unread nudge, recent
-visits), Visits (upcoming/past, join, status), Records (documents with
-provenance chips, plus the Forms the practice is waiting on), Messages, More.
+visits), Visits (upcoming/past, join, status), **Book** (self-booking and the
+waitlist), Messages, More → Records and forms (documents with provenance
+chips, plus the forms the practice is waiting on).
+
+Booking is honest about what it cannot know. The portal exposes no
+availability endpoint, only `POST /:patientId/appointments`, which refuses a
+clash with 409. So the times offered are the practice's usual hours, filtered
+against appointments this patient already has, and the screen says as much; a
+slot someone else took comes back refused and the person picks again. The
+waitlist is the answer when nothing suits. Inventing an availability model
+client-side would be a guess presented as a fact.
 
 **Clinician** — Today (review queue, today's list, open tasks, any camp
 running), Schedule (week strip and day agenda, start-visit), Patients (roster,

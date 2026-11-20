@@ -40,6 +40,13 @@ interface SessionValue {
   serverUrl: string;
   api: ApiClient;
   isPatient: boolean;
+  /**
+   * True when the credential is a portal session rather than a staff JWT.
+   * The portal's self-service routes authorise on that session, so a patient
+   * holding a staff-issued JWT cannot reach them — screens check this and say
+   * so rather than letting the call 401.
+   */
+  actorIsPortal: boolean;
   /** Set when the last session ended by itself, so sign-in can say why. */
   endedReason: UnauthorizedReason | null;
   can(module: Module, action?: Action): boolean;
@@ -54,6 +61,8 @@ interface SessionValue {
   changeServer(origin: string): Promise<void>;
   /** Re-read the account, so a role change lands without a sign-out. */
   refreshAccount(): Promise<void>;
+  /** Continue in another practice this account belongs to. */
+  switchPractice(practiceId: string): Promise<void>;
 }
 
 const SessionContext = createContext<SessionValue | null>(null);
@@ -148,7 +157,13 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
         if (error instanceof ApiError && error.mfaEnrolmentRequired) {
           return { kind: 'mfa-enrolment-required', message: error.message };
         }
-        const isAuthFailure = error instanceof ApiError && (error.status === 401 || error.status === 404);
+        // 403 `patientAccount` is not a refusal to act on — it is the staff
+        // endpoint saying "right password, wrong door". Without it in this
+        // list the error escaped and every patient was told their correct
+        // password was invalid.
+        const isAuthFailure =
+          error instanceof ApiError &&
+          (error.status === 401 || error.status === 404 || error.patientAccount);
         if (!isAuthFailure) throw error;
       }
 
@@ -185,7 +200,22 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setStatus('signed-out');
   }, []);
 
-  const signOut = useCallback(() => endSession(null), [endSession]);
+  /**
+   * Signing out tells the server first.
+   *
+   * `/auth/logout` bumps `token_version`, which revokes the JWT on every
+   * device; the portal route deletes the session row. Clearing only the
+   * Keychain left a live token on a phone someone had just handed back. The
+   * call cannot block the local clear — if the network is down, getting the
+   * person off this device still has to work.
+   *
+   * Not called for a session the server has already rejected: the credential
+   * is dead, and a revocation request with it would only 401.
+   */
+  const signOut = useCallback(async () => {
+    if (credential) await api.signOut();
+    await endSession(null);
+  }, [api, credential, endSession]);
 
   /**
    * A rejected credential ends the session rather than leaving the app in a
@@ -216,6 +246,26 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
   }, [api, credential]);
 
   /**
+   * Continue in another practice.
+   *
+   * One person can work at several, and hold a *different role* in each — a
+   * nurse at one, an admin at another. So this is not a filter over the same
+   * session: the server issues a new token for the new membership, and the
+   * app adopts the account that comes back with it. The shell re-derives,
+   * because `shellFor(role)` reads the account that just changed.
+   *
+   * `establish` replaces the stored credential, so the old practice's token
+   * is gone from the Keychain rather than lingering beside the new one.
+   */
+  const switchPractice = useCallback(
+    async (practiceId: string) => {
+      const { token, user } = await api.switchPractice(practiceId);
+      await establish({ kind: 'staff', token }, user);
+    },
+    [api, establish]
+  );
+
+  /**
    * Changing the server invalidates the session by definition — the token was
    * issued by a different deployment — so this signs out rather than leaving a
    * credential that will start 401ing on the next request.
@@ -240,6 +290,7 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
       serverUrl,
       api,
       isPatient: role === 'patient',
+      actorIsPortal: credential?.kind === 'portal',
       endedReason,
       can: (module, action = 'view') => canDo(role, module, action),
       canAdmin: (key) => canDoAdmin(role, key),
@@ -248,10 +299,12 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
       signOut,
       changeServer,
       refreshAccount,
+      switchPractice,
     }),
     [
-      status, account, role, serverUrl, api, endedReason,
+      status, account, role, serverUrl, api, endedReason, credential,
       signInWithPassword, signInWithProvider, signOut, changeServer, refreshAccount,
+      switchPractice,
     ]
   );
 

@@ -60,6 +60,19 @@ export class ApiError extends Error {
   get sessionTimedOut(): boolean {
     return this.flag('sessionTimedOut');
   }
+
+  /**
+   * The password was right, but this account belongs in the patient portal.
+   *
+   * `/auth/login` refuses a `patient` row with no staff membership, so the
+   * credentials are correct and the caller should try the portal instead.
+   * It arrives as a 403, which is why it has to be named: a 403 otherwise
+   * means "stop", and treating it that way told patients their correct
+   * password was wrong.
+   */
+  get patientAccount(): boolean {
+    return this.flag('patientAccount');
+  }
 }
 
 // ── Shapes returned by the backend ──────────────────────────────────────────
@@ -373,6 +386,50 @@ export interface Notification {
   message: string;
   read: boolean;
   created_at: string;
+}
+
+/**
+ * One practice this account works at.
+ *
+ * Since the memberships migration a person can belong to several, with a
+ * *different role in each* — a nurse at one practice and an admin at another.
+ * That is why switching practices is not a filter: it re-issues the session
+ * and can change which shell the app renders.
+ */
+export interface Membership {
+  practiceId: string;
+  name: string;
+  role: Role;
+  isDefault: boolean;
+  active: boolean;
+}
+
+export interface PortalProvider {
+  id: string;
+  first_name: string | null;
+  last_name: string | null;
+  specialty: string | null;
+}
+
+export interface AppointmentType {
+  id: string;
+  name: string;
+  durationMinutes: number | null;
+  description: string | null;
+  isActive: boolean;
+}
+
+export interface WaitlistEntry {
+  id: string;
+  providerId: string | null;
+  preferredDate: string;
+  preferredTimeStart: string | null;
+  preferredTimeEnd: string | null;
+  appointmentType: string | null;
+  reason: string | null;
+  status: string;
+  providerFirstName?: string | null;
+  providerLastName?: string | null;
 }
 
 export interface MfaStatus {
@@ -689,6 +746,38 @@ export class ApiClient {
     return this.request('/auth/tenant-status');
   }
 
+  /** Every practice this account works at, and which one this session is in. */
+  listMemberships(): Promise<{ active: string | null; practices: Membership[] }> {
+    return this.request('/auth/memberships');
+  }
+
+  /**
+   * Continue in another practice.
+   *
+   * Returns a fresh token and the account as it stands *there* — including a
+   * role that may differ from the one held a moment ago. The caller has to
+   * adopt both, which is why this returns them rather than mutating in place.
+   */
+  switchPractice(practiceId: string): Promise<{ token: string; user: Account }> {
+    return this.request('/auth/switch-practice', {
+      method: 'POST',
+      body: JSON.stringify({ practiceId }),
+    });
+  }
+
+  /**
+   * End the session at the server, not just on the device.
+   *
+   * Staff sign-out bumps `token_version`, which revokes the JWT everywhere —
+   * dropping it locally left a working token on a lost phone. The portal route
+   * deletes the session row. Neither is allowed to block signing out: a
+   * network failure must still get the person off this device.
+   */
+  async signOut(): Promise<void> {
+    const path = this.credential?.kind === 'portal' ? '/patient-portal/logout' : '/auth/logout';
+    await this.request(path, { method: 'POST' }).catch(() => undefined);
+  }
+
   mfaStatus(): Promise<MfaStatus> {
     return this.request('/auth/mfa/status');
   }
@@ -822,6 +911,72 @@ export class ApiClient {
     return this.credential?.kind === 'portal'
       ? this.requestBlob(`/patient-portal/${patientId}/form-requests/${submissionId}/document`)
       : this.requestBlob(`/form-management/submissions/${submissionId}/document`);
+  }
+
+  // ── Patient self-service ──────────────────────────────────────────────────
+  //
+  // All portal-only: these endpoints authorise on the portal session's own
+  // patient, so there is no staff equivalent to branch to. A patient signed in
+  // with a staff-issued JWT (the dual-credential case) cannot reach them, and
+  // the screens gate on `actorIsPortal` rather than letting the call 401.
+
+  listBookableProviders(patientId: string): Promise<PortalProvider[]> {
+    return this.request(`/patient-portal/${patientId}/providers`);
+  }
+
+  listAppointmentTypes(patientId: string): Promise<AppointmentType[]> {
+    return this.request(`/patient-portal/${patientId}/appointment-types`);
+  }
+
+  /**
+   * Book a slot. The server refuses an overlap with the provider's diary or
+   * with the patient's own (409), and mints a telehealth link when the type
+   * calls for one — so neither is the client's job.
+   */
+  bookAppointment(
+    patientId: string,
+    input: {
+      provider_id?: string | null;
+      start_time: string;
+      end_time: string;
+      duration_minutes?: number;
+      appointment_type?: string;
+      reason?: string;
+    }
+  ): Promise<Appointment> {
+    return this.request(`/patient-portal/${patientId}/appointments`, {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
+  }
+
+  cancelAppointment(patientId: string, appointmentId: string): Promise<unknown> {
+    return this.request(`/patient-portal/${patientId}/appointments/${appointmentId}`, {
+      method: 'DELETE',
+    });
+  }
+
+  listWaitlist(patientId: string): Promise<WaitlistEntry[]> {
+    return this.request(`/patient-portal/${patientId}/waitlist`);
+  }
+
+  joinWaitlist(
+    patientId: string,
+    input: { providerId?: string | null; preferredDate: string; appointmentType?: string; reason?: string }
+  ): Promise<{ waitlistEntry: WaitlistEntry }> {
+    return this.request(`/patient-portal/${patientId}/waitlist`, {
+      method: 'POST',
+      body: JSON.stringify(input),
+    });
+  }
+
+  leaveWaitlist(patientId: string, entryId: string): Promise<unknown> {
+    return this.request(`/patient-portal/${patientId}/waitlist/${entryId}`, { method: 'DELETE' });
+  }
+
+  /** What the patient is currently taking, from their own portal session. */
+  listActivePrescriptions(patientId: string): Promise<Prescription[]> {
+    return this.request(`/patient-portal/${patientId}/prescriptions/active`);
   }
 
   // ── Tasks and notifications ───────────────────────────────────────────────
