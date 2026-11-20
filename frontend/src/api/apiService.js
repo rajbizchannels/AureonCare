@@ -4192,6 +4192,39 @@ const api = {
   },
   // From the Invite dialog (role "Patient"): the server finds the chart with this email, or
   // creates one from the name and date of birth, then sends the portal invitation.
+  // ── Practice profile (directory Phase 2; routes/practiceProfile.js) ──────────────
+  _profileCall: async (path, { method = 'GET', body, fail = 'Request failed' } = {}) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/practice-profile${path}`, {
+      method, body: body === undefined ? undefined : JSON.stringify(body),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || data.message || fail);
+    return data;
+  },
+  getPracticeProfile: () => api._profileCall('', { fail: 'Could not load the practice profile' }),
+  savePracticeProfile: (data) => api._profileCall('', { method: 'PUT', body: data, fail: 'Could not save the profile' }),
+  uploadProfilePhoto: async (kind, file) => {
+    const data = await new Promise((resolve, reject) => {
+      const fr = new FileReader();
+      fr.onload = () => resolve(String(fr.result));
+      fr.onerror = () => reject(new Error('Could not read the file'));
+      fr.readAsDataURL(file);
+    });
+    return api._profileCall('/photos', { method: 'POST', body: { kind, data }, fail: 'Could not upload the photo' });
+  },
+  reviewProfilePhoto: (id, status) => api._profileCall(`/photos/${id}`, { method: 'PUT', body: { status }, fail: 'Could not update the photo' }),
+  deleteProfilePhoto: (id) => api._profileCall(`/photos/${id}`, { method: 'DELETE', fail: 'Could not delete the photo' }),
+  // Staff preview of any photo of the practice (incl. pending) as an object URL.
+  profilePhotoObjectUrl: async (id) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/practice-profile/photos/${id}`);
+    if (!r.ok) throw new Error('Photo not available');
+    return URL.createObjectURL(await r.blob());
+  },
+  setProviderListingHidden: (providerId, hidden) =>
+    api._profileCall(`/providers/${providerId}/hidden`, { method: 'PUT', body: { hidden }, fail: 'Could not update the listing' }),
+  getMyListing: () => api._profileCall('/me', { fail: 'Could not load your listing' }),
+  saveMyListing: (data) => api._profileCall('/me', { method: 'PUT', body: data, fail: 'Could not save your listing' }),
+
   // Short link (/s/<code>) for something staff share: { kind: 'booking', slug } or
   // { kind: 'meeting', appointmentId }. Callers fall back to the full link on failure.
   createShortLink: async (payload) => {

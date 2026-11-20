@@ -30,6 +30,7 @@ import { useAudit } from '../hooks/useAudit';
 import AuditLogsTab from '../components/admin/AuditLogsTab';
 import ArchiveManagementTab from '../components/admin/ArchiveManagementTab';
 import LocationsTab from '../components/admin/LocationsTab';
+import PracticeProfileTab from '../components/admin/PracticeProfileTab';
 import ModulePermissionsTab from '../components/admin/ModulePermissionsTab';
 import BusyButton from '../components/common/BusyButton';
 import { useClinicSettings } from '../hooks/useClinicSettings';
@@ -426,6 +427,7 @@ const AdminPanelView = ({
   const tabs = useMemo(
     () => [
       { id: ADMIN_TABS.CLINIC, label: t.clinicSettings || 'Clinic Settings', icon: Building2 },
+      { id: ADMIN_TABS.PROFILE, label: t.practiceProfile || 'Practice Profile', icon: Globe },
       { id: ADMIN_TABS.LOCATIONS, label: t.locations || 'Locations', icon: MapPin },
       { id: ADMIN_TABS.USERS, label: t.userManagement || 'User Management', icon: Users },
       { id: ADMIN_TABS.ROLES, label: t.rolesPermissions || 'Roles & Permissions', icon: Shield },
@@ -3871,6 +3873,9 @@ const AdminPanelView = ({
           {activeTab === ADMIN_TABS.CLINIC && renderClinicSettingsTab()}
           {activeTab === ADMIN_TABS.LOCATIONS && (
             <LocationsTab theme={theme} t={t} api={api} addNotification={addNotification} />
+          )}
+          {activeTab === ADMIN_TABS.PROFILE && (
+            <PracticeProfileTab theme={theme} api={api} addNotification={addNotification} />
           )}
           {activeTab === ADMIN_TABS.USERS && renderUserManagementTab()}
           {activeTab === ADMIN_TABS.ROLES && renderRolesPermissionsTab()}
