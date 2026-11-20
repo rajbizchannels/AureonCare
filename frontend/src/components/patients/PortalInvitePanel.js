@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Send, CheckCircle2, Clock, AlertCircle, Copy, XCircle } from 'lucide-react';
 import BusyButton from '../common/BusyButton';
+import QrCodeButton from '../common/QrCodeButton';
 import { formatDate } from '../../utils/formatters';
 
 /**
@@ -109,6 +110,8 @@ const PortalInvitePanel = ({ patientId, theme = 'light', api, addNotification })
           <p className="mb-2">The email could not be sent. Give the patient this link (it works once, for 14 days):</p>
           <div className="flex items-center gap-2">
             <code className="flex-1 break-all select-all">{manualLink}</code>
+            <QrCodeButton getUrl={manualLink} theme={theme} title="Patient portal invitation"
+                          description="Let the patient scan this to set up their portal. It works once." />
             <button type="button" onClick={copy} className={`${btn} ${dark ? 'bg-slate-700' : 'bg-white border border-gray-300'}`}>
               <Copy size={14} /> Copy
             </button>

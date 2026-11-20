@@ -35,6 +35,33 @@ ${app ? `<a href="${esc(app)}" style="color:#5EEAD4">Go to AureonCare</a>` : ''}
 </div></body></html>`;
 }
 
+// The QR code for a short link (used by emails, and anyone who wants a printable code).
+// It draws the short URL itself and never resolves the code, so it reveals nothing about
+// where the link leads or whether it still works — no enumeration oracle — and opening
+// it does not count as a use. A well-formed code is all it needs.
+const qrLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, max: 300, standardHeaders: true, legacyHeaders: false,
+  store: storeFor('short-link-qr'),
+});
+router.get('/:code/qr.png', qrLimiter, async (req, res) => {
+  const { shortBase } = require('../services/shortLinks');
+  const base = shortBase();
+  if (!CODE_RE.test(req.params.code) || !base) return res.status(404).end();
+  try {
+    const png = await require('qrcode').toBuffer(`${base}/s/${req.params.code}`, {
+      type: 'png', width: 264, margin: 2, errorCorrectionLevel: 'M',
+      color: { dark: '#0F172AFF', light: '#FFFFFFFF' },
+    });
+    res.set('Cache-Control', 'private, max-age=86400');
+    res.set('Referrer-Policy', 'no-referrer');
+    res.set('X-Robots-Tag', 'noindex');
+    res.type('png').send(png);
+  } catch (e) {
+    console.error('[short-links] qr failed:', e.message);
+    res.status(500).end();
+  }
+});
+
 router.get('/:code', limiter, async (req, res) => {
   res.set('Cache-Control', 'no-store');
   res.set('Referrer-Policy', 'no-referrer');

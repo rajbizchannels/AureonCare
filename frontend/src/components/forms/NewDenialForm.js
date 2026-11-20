@@ -142,7 +142,7 @@ const NewDenialForm = ({ theme, api, patients, claims, insurancePayers, onClose,
 
     // Validation
     if (!formData.patientId || !formData.claimId || !formData.denial_amount || !formData.denial_date) {
-      addNotification('Please fill in all required fields', 'error');
+      addNotification('error', 'Please fill in all required fields');
       return;
     }
 
@@ -213,7 +213,7 @@ const NewDenialForm = ({ theme, api, patients, claims, insurancePayers, onClose,
         metadata: { formData: denialData },
       });
 
-      addNotification(error.message || 'Failed to create denial', 'error');
+      addNotification('error', error.message || 'Failed to create denial');
     } finally {
       setProcessing(false);
     }

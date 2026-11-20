@@ -56,7 +56,7 @@ const SubscriptionPlansPanel = ({ theme, api, addNotification }) => {
     setBusy(true);
     try {
       const res = await api.changePlan(pending.plan.id, pending.preview.prorationDate);
-      addNotification?.(res.message || 'Plan changed.', 'success');
+      addNotification?.('success', res.message || 'Plan changed.');
       setPending(null);
       load();
     } catch (e) {

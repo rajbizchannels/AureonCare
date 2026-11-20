@@ -6,7 +6,7 @@
 // layout in notificationService.buildEmailHtml; every user-supplied value is escaped here.
 
 const {
-  buildEmailHtml, detailRow, emailButton, emailParagraph, emailCallout, escapeHtml, BRAND,
+  buildEmailHtml, detailRow, emailButton, emailParagraph, emailCallout, emailQr, escapeHtml, BRAND,
 } = require('./notificationService');
 
 const product = () => process.env.AC_CLN || 'AureonCare';
@@ -29,6 +29,7 @@ function renderStaffInviteEmail({ practiceName, inviterName, role, inviteUrl, ex
       ['Link expires', expiresAt ? new Date(expiresAt).toUTCString() : '—'],
     ],
     emailButton(inviteUrl, 'Accept the invitation') +
+      emailQr(inviteUrl) +
       emailParagraph(`If the button does not work, paste this into your browser:<br>${link(inviteUrl)}`,
         { muted: true, margin: '16px 0 10px' }) +
       emailParagraph('If you were not expecting this, ignore this email — the invitation expires on its own ' +
@@ -48,6 +49,7 @@ function renderPortalInviteEmail({ firstName, practice, url, expiresAt }) {
       'your Google or Microsoft account.',
     [['Link expires', new Date(expiresAt).toUTCString()]],
     emailButton(url, 'Set up my portal') +
+      emailQr(url, { caption: 'On your phone? Scan to set up your portal there.' }) +
       emailParagraph(`If the button does not work, paste this into your browser:<br>${link(url)}`,
         { muted: true, margin: '16px 0 10px' }) +
       emailParagraph('If you were not expecting this, you can ignore it — the link works once and expires on its own.',
@@ -96,7 +98,7 @@ function renderPasswordResetEmail({ firstName, resetToken, resetLink }) {
     'We received a request to reset your AureonCare password. Use the reset code below — it expires in 1 hour. If you did not request this, you can safely ignore this email.',
     detailRow('Reset code', resetToken, { mono: true }),
     resetLink
-      ? `Or click here to reset your password: ${link(resetLink)}`
+      ? `Or click here to reset your password: ${link(resetLink)}` + emailQr(resetLink)
       : 'Enter this code in the password reset screen to choose a new password.'
   );
 }
