@@ -1,4 +1,11 @@
 const axios = require('axios');
+const templates = require('./whatsappTemplates');
+
+// Meta Graph API version for the WhatsApp Cloud API. v18.0 (the old hard-coded value) is
+// past Meta's ~2-year support window; v26.0 was released 2026-07-29. Override with
+// AC_WA_GRAPH_VERSION when Meta retires it (developers.facebook.com/docs/graph-api/changelog/versions).
+const DEFAULT_GRAPH_VERSION = 'v26.0';
+const SECRET_KEYS = ['auth_token', 'account_sid', 'access_token', 'api_key', 'token', 'secret'];
 
 /**
  * WhatsApp Notification Service
@@ -12,30 +19,66 @@ class WhatsAppService {
   }
 
   /**
-   * Get WhatsApp configuration from organization settings
+   * The WhatsApp configuration, or null when WhatsApp is not set up.
+   *
+   * Credentials come ONLY from the environment (platform-level, like Stripe — SEC-38):
+   *   AC_WA_PROVIDER        'twilio' | 'whatsapp_business'
+   *   Twilio:               AC_WA_TWILIO_SID, AC_WA_TWILIO_TOKEN, AC_WA_TWILIO_FROM (+E.164)
+   *   Meta Cloud API:       AC_WA_META_TOKEN (system-user token), AC_WA_META_PHONE_ID
+   *   optional              AC_WA_GRAPH_VERSION (default DEFAULT_GRAPH_VERSION)
+   *
+   * They used to live in plain text in organization_settings.settings.whatsapp — one row
+   * shared by every practice, readable by anyone with database access and copied into every
+   * backup. Credentials found there are now IGNORED (with a warning). That row keeps one
+   * job: `"enabled": false` switches WhatsApp off without touching the environment.
    */
   static async getConfig(pool) {
+    const env = WhatsAppService.envConfig();
+    let dbSettings = null;
     try {
-      const result = await pool.query(
-        'SELECT settings FROM organization_settings WHERE id = 1'
-      );
-
-      if (result.rows.length === 0) {
-        return null;
-      }
-
-      const settings = result.rows[0].settings;
-      return settings?.whatsapp || null;
+      const result = await pool.query('SELECT settings FROM organization_settings WHERE id = 1');
+      dbSettings = (result.rows[0] && result.rows[0].settings && result.rows[0].settings.whatsapp) || null;
     } catch (error) {
-      console.error('Error getting WhatsApp config:', error);
-      return null;
+      console.warn('[whatsapp] could not read the on/off switch from organization_settings:', error.message);
     }
+    if (dbSettings && SECRET_KEYS.some((k) => dbSettings[k])) {
+      console.warn('[whatsapp] credentials in organization_settings.settings.whatsapp are ignored — '
+        + 'set AC_WA_* environment variables and remove them from the database (see DEPLOYMENT_CHECKLIST.md).');
+    }
+    if (!env) return null;
+    if (dbSettings && dbSettings.enabled === false) return null;
+    return env;
+  }
+
+  /** Configuration from AC_WA_* environment variables, or null when incomplete. */
+  static envConfig(e = process.env) {
+    const provider = String(e.AC_WA_PROVIDER || '').trim().toLowerCase();
+    if (provider === 'twilio') {
+      if (!e.AC_WA_TWILIO_SID || !e.AC_WA_TWILIO_TOKEN || !e.AC_WA_TWILIO_FROM) return null;
+      return {
+        enabled: true, provider,
+        account_sid: e.AC_WA_TWILIO_SID.trim(),
+        auth_token: e.AC_WA_TWILIO_TOKEN.trim(),
+        phone_number: e.AC_WA_TWILIO_FROM.trim().replace(/^whatsapp:/i, ''),
+      };
+    }
+    if (provider === 'whatsapp_business' || provider === 'meta') {
+      if (!e.AC_WA_META_TOKEN || !e.AC_WA_META_PHONE_ID) return null;
+      const v = String(e.AC_WA_GRAPH_VERSION || '').trim();
+      return {
+        enabled: true, provider: 'whatsapp_business',
+        access_token: e.AC_WA_META_TOKEN.trim(),
+        phone_number_id: e.AC_WA_META_PHONE_ID.trim(),
+        graph_version: /^v\d+\.\d+$/.test(v) ? v : DEFAULT_GRAPH_VERSION,
+      };
+    }
+    return null;
   }
 
   /**
    * Send WhatsApp message via Twilio
    */
-  async sendViaTwilio(to, message, { mediaUrl } = {}) {
+  async sendViaTwilio(to, message, { mediaUrl, contentSid, contentVariables } = {}) {
     if (!this.config.account_sid || !this.config.auth_token || !this.config.phone_number) {
       throw new Error('Twilio configuration is incomplete');
     }
@@ -45,13 +88,21 @@ class WhatsAppService {
 
       const response = await axios.post(
         `https://api.twilio.com/2010-04-01/Accounts/${this.config.account_sid}/Messages.json`,
-        new URLSearchParams({
-          From: `whatsapp:${this.config.phone_number}`,
-          To: `whatsapp:${to}`,
-          Body: message,
-          // Twilio fetches the image from this public URL and sends it with the text.
-          ...(mediaUrl ? { MediaUrl: mediaUrl } : {})
-        }),
+        new URLSearchParams(contentSid
+          // An approved template (Twilio Content API): the SID and its {{n}} values.
+          ? {
+              From: `whatsapp:${this.config.phone_number}`,
+              To: `whatsapp:${to}`,
+              ContentSid: contentSid,
+              ContentVariables: JSON.stringify(contentVariables || {})
+            }
+          : {
+              From: `whatsapp:${this.config.phone_number}`,
+              To: `whatsapp:${to}`,
+              Body: message,
+              // Twilio fetches the image from this public URL and sends it with the text.
+              ...(mediaUrl ? { MediaUrl: mediaUrl } : {})
+            }),
         {
           headers: {
             'Authorization': `Basic ${auth}`,
@@ -67,7 +118,9 @@ class WhatsAppService {
       };
     } catch (error) {
       console.error('Error sending WhatsApp via Twilio:', error.response?.data || error.message);
-      throw new Error('Failed to send WhatsApp message via Twilio');
+      const e = new Error('Failed to send WhatsApp message via Twilio');
+      e.providerCode = error.response?.data?.code;
+      throw e;
     }
   }
 
@@ -87,7 +140,8 @@ class WhatsAppService {
             type: 'template',
             template: {
               name: template.name,
-              language: { code: template.language || 'en' },
+              language: template.language && typeof template.language === 'object'
+                ? template.language : { code: template.language || 'en' },
               components: template.components || []
             }
           }
@@ -108,7 +162,7 @@ class WhatsAppService {
             };
 
       const response = await axios.post(
-        `https://graph.facebook.com/v18.0/${this.config.phone_number_id}/messages`,
+        `https://graph.facebook.com/${this.config.graph_version || DEFAULT_GRAPH_VERSION}/${encodeURIComponent(this.config.phone_number_id)}/messages`,
         messageData,
         {
           headers: {
@@ -125,7 +179,9 @@ class WhatsAppService {
       };
     } catch (error) {
       console.error('Error sending WhatsApp via Business API:', error.response?.data || error.message);
-      throw new Error('Failed to send WhatsApp message via Business API');
+      const e = new Error('Failed to send WhatsApp message via Business API');
+      e.providerCode = error.response?.data?.error?.code;
+      throw e;
     }
   }
 
@@ -149,6 +205,64 @@ class WhatsAppService {
       console.warn('[whatsapp] sending with the QR code failed, sending text only:', e.message);
       return await send({});
     }
+  }
+
+  /**
+   * Send a notification: through its approved TEMPLATE when one is set up (required outside
+   * WhatsApp's 24-hour window), else as free-form text (works inside the window).
+   *
+   * @param {string} to
+   * @param {string} text the free-form message (fallback, and what is sent without templates)
+   * @param {{ key: string, vars: string[] }|null} tpl a key from services/whatsappTemplates.js
+   */
+  async notify(to, text, tpl = null) {
+    const cfg = templates.templateConfig();
+    if (tpl && templates.isReady(cfg, tpl.key)) {
+      try {
+        return await this.sendTemplate(to, cfg, tpl);
+      } catch (e) {
+        console.warn(`[whatsapp] template "${tpl.key}" failed (${e.providerCode || e.message}); sending free-form text instead`);
+      }
+    }
+    try {
+      return await this.sendMessage(to, text);
+    } catch (e) {
+      if (WhatsAppService.isOutsideWindow(e)) {
+        console.warn(`[whatsapp] refused by the 24-hour rule${tpl ? ` — set up and approve the "${tpl.key}" template` : ''} `
+          + '(npm run whatsapp:templates). The email notification is unaffected.');
+      }
+      throw e;
+    }
+  }
+
+  /** Send one catalogue template (see services/whatsappTemplates.js). */
+  async sendTemplate(to, cfg, { key, vars }) {
+    const def = templates.CATALOGUE[key];
+    if (!def) throw new Error(`Unknown WhatsApp template "${key}"`);
+    const need = templates.varCount(key);
+    const values = Array.from({ length: need }, (_, i) => vars[i]);
+    let qrUrl = null; let shortCode = null;
+    if (def.header === 'IMAGE') {
+      // The header is the QR code of the link in the message; no link, no template.
+      qrUrl = values.map((v) => WhatsAppService.qrImageFor(String(v || ''))).find(Boolean) || null;
+      if (!qrUrl) throw new Error(`template "${key}" needs a short link for its QR code`);
+      shortCode = (/\/s\/([A-Za-z0-9]{12})\/qr\.png$/.exec(qrUrl) || [])[1];
+    }
+    if (this.provider === 'twilio') {
+      return this.sendViaTwilio(to, null, {
+        contentSid: cfg.sids[key],
+        contentVariables: templates.twilioVariables(key, values, { shortCode }),
+      });
+    }
+    if (this.provider === 'whatsapp_business') {
+      return this.sendViaWhatsAppAPI(to, null, templates.metaTemplatePayload(cfg, key, values, { headerImageUrl: qrUrl }));
+    }
+    throw new Error(`Unknown WhatsApp provider: ${this.provider}`);
+  }
+
+  /** Meta 131047 / Twilio 63016: free-form message outside the 24-hour window. */
+  static isOutsideWindow(e) {
+    return Number(e && e.providerCode) === 131047 || Number(e && e.providerCode) === 63016;
   }
 
   /**
@@ -205,7 +319,7 @@ If you need to cancel or reschedule, please contact us at least 24 hours in adva
 Thank you for choosing ${process.env.AC_CLN || 'AureonCare'}!
       `.trim();
 
-      return await this.sendMessage(patient.phone, message);
+      return await this.notify(patient.phone, message, { key: 'appointment_scheduled', vars: [patient.first_name, `Dr. ${provider.first_name} ${provider.last_name}`, formattedDate, formattedTime] });
     } catch (error) {
       console.error('Error sending appointment confirmation:', error);
       throw error;
@@ -250,7 +364,7 @@ Please arrive 15 minutes early for check-in.
 See you soon!
       `.trim();
 
-      return await this.sendMessage(patient.phone, message);
+      return await this.notify(patient.phone, message, { key: 'appointment_reminder', vars: [patient.first_name, `Dr. ${provider.first_name} ${provider.last_name}`, formattedDate, formattedTime] });
     } catch (error) {
       console.error('Error sending appointment reminder:', error);
       throw error;
@@ -294,7 +408,7 @@ Please join a few minutes early to test your audio and video.
 See you online!
       `.trim();
 
-      return await this.sendMessage(patient.phone, message);
+      return await this.notify(patient.phone, message, { key: 'telehealth_session', vars: [patient.first_name, `Dr. ${provider.first_name} ${provider.last_name}`, appointmentDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }), formattedTime, meetingUrl] });
     } catch (error) {
       console.error('Error sending telehealth link:', error);
       throw error;
@@ -349,7 +463,7 @@ Thank you,
 ${process.env.AC_CLN || 'AureonCare'}
       `.trim();
 
-      return await this.sendMessage(patient.phone, message);
+      return await this.notify(patient.phone, message, { key: 'prescription_new', vars: [patient.first_name, `Dr. ${provider.first_name} ${provider.last_name}`, prescription.medication_name, prescription.dosage] });
     } catch (error) {
       console.error('Error sending prescription notification:', error);
       throw error;
@@ -411,7 +525,10 @@ ${updateType === 'cancelled' || updateType === 'canceled'
 ${process.env.AC_CLN || 'AureonCare'}
       `.trim();
 
-      return await this.sendMessage(patient.phone, message);
+      return await this.notify(patient.phone, message, {
+        key: (updateType === 'cancelled' || updateType === 'canceled') ? 'appointment_cancelled' : 'appointment_updated',
+        vars: [patient.first_name, `Dr. ${provider.first_name} ${provider.last_name}`, formattedDate, formattedTime],
+      });
     } catch (error) {
       console.error('Error sending schedule update notification:', error);
       throw error;
@@ -446,3 +563,4 @@ ${process.env.AC_CLN || 'AureonCare'}
 }
 
 module.exports = WhatsAppService;
+module.exports.DEFAULT_GRAPH_VERSION = DEFAULT_GRAPH_VERSION;
