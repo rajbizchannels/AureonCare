@@ -658,14 +658,19 @@ const AdminPanelView = ({
    */
   const handleDeleteUser = useCallback(
     (userId) => {
+      // Phase 1: someone who also works at another practice is only REMOVED from this one.
+      const target = (users || []).find((u) => u.id === userId);
+      const shared = Boolean(target && target.otherPractices > 0);
       setConfirmModalConfig({
-        title: t.deleteUser || 'Delete User',
-        message: t.confirmDeleteUser || 'Are you sure you want to delete this user? This action cannot be undone.',
+        title: shared ? 'Remove from this practice' : (t.deleteUser || 'Delete User'),
+        message: shared
+          ? 'This person also works at another practice. They will lose access to this practice only; their account and their other practices are not affected.'
+          : (t.confirmDeleteUser || 'Are you sure you want to delete this user? This action cannot be undone.'),
         onConfirm: async () => {
           try {
             await api.deleteUser(userId);
             setUsers((prevUsers) => prevUsers.filter((u) => u.id !== userId));
-            await addNotification('success', t.userDeletedSuccessfully || 'User deleted successfully');
+            await addNotification('success', shared ? 'Removed from this practice' : (t.userDeletedSuccessfully || 'User deleted successfully'));
           } catch (error) {
             console.error('Error deleting user:', error);
             await addNotification('alert', t.failedToDeleteUser || 'Failed to delete user');
@@ -674,7 +679,7 @@ const AdminPanelView = ({
       });
       setShowConfirmModal(true);
     },
-    [api, setUsers, addNotification, t]
+    [api, users, setUsers, addNotification, t]
   );
 
   /**
@@ -2663,7 +2668,7 @@ const AdminPanelView = ({
                     {user.name || (user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.firstName || user.lastName || user.email)}
                   </h4>
                   <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                    {user.email} • {user.role}
+                    {user.email} • {user.role}{user.otherPractices > 0 ? ` • also at ${user.otherPractices} other practice${user.otherPractices > 1 ? 's' : ''}` : ''}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -2723,7 +2728,7 @@ const AdminPanelView = ({
                     {user.name || (user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.firstName || user.lastName || user.email)}
                   </h4>
                   <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                    {user.email} • {user.role}
+                    {user.email} • {user.role}{user.otherPractices > 0 ? ` • also at ${user.otherPractices} other practice${user.otherPractices > 1 ? 's' : ''}` : ''}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -2769,7 +2774,7 @@ const AdminPanelView = ({
                     {user.name || (user.firstName && user.lastName ? `${user.firstName} ${user.lastName}` : user.firstName || user.lastName || user.email)}
                   </h4>
                   <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-                    {user.email} • {user.role}
+                    {user.email} • {user.role}{user.otherPractices > 0 ? ` • also at ${user.otherPractices} other practice${user.otherPractices > 1 ? 's' : ''}` : ''}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">

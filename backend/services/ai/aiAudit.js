@@ -79,7 +79,7 @@ async function notifyRoles(req, roles, type, message, { excludeUserId = null } =
     let where = '(u.role = ANY($1) OR u.active_role = ANY($1))';
     if (practiceId) {
       params.push(practiceId);
-      where += ` AND u.practice_id = $${params.length}`;
+      where += ` AND EXISTS (SELECT 1 FROM public.memberships mem WHERE mem.user_id = u.id AND mem.practice_id = $${params.length} AND mem.status = 'active')`;
     }
     if (excludeUserId) {
       params.push(excludeUserId);

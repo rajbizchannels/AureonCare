@@ -1,6 +1,7 @@
 import React from 'react';
 import { Bell, HelpCircle, LogOut, Menu, MessageSquare, Moon, Search, Sun } from 'lucide-react';
 import BrandLogo from '../common/BrandLogo';
+import PracticeSwitcher from './PracticeSwitcher';
 
 /**
  * The app-shell top bar. Spans all three panes and owns the global actions
@@ -113,6 +114,8 @@ const TopBar = ({
         >
           {dark ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
         </button>
+
+        {!isPatient && <div className="hidden sm:block"><PracticeSwitcher theme={theme} /></div>}
 
         <div className={`hidden sm:block w-px h-6 mx-1 ${dark ? 'bg-slate-800' : 'bg-gray-200'}`} />
 

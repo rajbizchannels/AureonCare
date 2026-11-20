@@ -367,7 +367,9 @@ router.post('/:id/staff', canPlan, async (req, res) => {
     // The account has to belong to this practice; users is a shared table, so without this
     // a stray uuid would roster someone from another tenant.
     const { rows: who } = await db.query(
-      'SELECT id, first_name, last_name FROM users WHERE id = $1 AND practice_id = $2',
+      `SELECT u.id, u.first_name, u.last_name FROM users u
+        JOIN public.memberships m ON m.user_id = u.id AND m.practice_id = $2 AND m.status = 'active'
+       WHERE u.id = $1`,
       [userId, req.tenant && req.tenant.practiceId]
     );
     if (!who.length) {

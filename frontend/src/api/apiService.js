@@ -4192,6 +4192,21 @@ const api = {
   },
   // From the Invite dialog (role "Patient"): the server finds the chart with this email, or
   // creates one from the name and date of birth, then sends the portal invitation.
+  // ── Phase 1: the practices this person works at ──────────────────────────────────
+  getMyPractices: async () => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/auth/memberships`);
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || 'Could not load your practices');
+    return data;
+  },
+  switchPractice: async (practiceId) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/auth/switch-practice`, { method: 'POST', body: JSON.stringify({ practiceId }) });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || 'Could not switch practice');
+    if (data.token) api.storeToken(data.token);
+    return data;
+  },
+
   // ── Practice profile (directory Phase 2; routes/practiceProfile.js) ──────────────
   _profileCall: async (path, { method = 'GET', body, fail = 'Request failed' } = {}) => {
     const r = await authenticatedFetch(`${API_BASE_URL}/practice-profile${path}`, {

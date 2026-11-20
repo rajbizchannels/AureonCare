@@ -40,7 +40,7 @@ const validUrl = (u) => !u || /^https?:\/\/[^\s]+$/i.test(u);
 async function isProvider(pool, userId, practiceId) {
   const { rows } = await pool.query(
     `SELECT 1 FROM public.providers p JOIN public.users u ON u.id = p.id
-      WHERE p.id = $1 AND u.practice_id = $2`, [userId, practiceId]);
+      WHERE p.id = $1 AND EXISTS (SELECT 1 FROM public.memberships mem WHERE mem.user_id = u.id AND mem.practice_id = $2 AND mem.status = 'active')`, [userId, practiceId]);
   return rows.length > 0;
 }
 

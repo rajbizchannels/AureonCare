@@ -44,12 +44,16 @@ const AcceptInvitePage = ({ theme = 'light', token, api, addNotification, onAcce
   const acceptWithPassword = async (e) => {
     e.preventDefault();
     setError('');
-    if (form.password !== form.confirmPassword) return setError('Passwords do not match.');
-    if (form.password.length < 12) return setError('Password must be at least 12 characters.');
+    // An existing account (another practice) confirms with its CURRENT password.
+    const existing = Boolean(invite && invite.existingAccount);
+    if (!existing && form.password !== form.confirmPassword) return setError('Passwords do not match.');
+    if (!existing && form.password.length < 12) return setError('Password must be at least 12 characters.');
     setBusy('password');
     try {
-      await api.acceptInvite({ token, password: form.password, firstName: form.firstName, lastName: form.lastName });
-      addNotification?.('success', 'Account created. Please sign in.');
+      const r = await api.acceptInvite({ token, password: form.password, firstName: form.firstName, lastName: form.lastName });
+      addNotification?.('success', r && r.addedToPractice
+        ? `${invite.practiceName} was added to your account. Sign in to start working there.`
+        : 'Account created. Please sign in.');
       onAccepted?.();
     } catch (err) {
       setError(err.message || 'Could not accept the invite.');
@@ -182,6 +186,25 @@ const AcceptInvitePage = ({ theme = 'light', token, api, addNotification, onAcce
           </div>
         )}
 
+        {invite.existingAccount ? (
+        <form onSubmit={acceptWithPassword} className="mt-5 space-y-3">
+          <p className={`text-sm ${muted}`}>
+            You already have an AureonCare account. Confirm it to add <strong>{invite.practiceName}</strong> to it —
+            you keep one sign-in and switch between your practices from the top bar.
+          </p>
+          {invite.hasPassword && (
+            <>
+              <input className={input} type="password" placeholder="Your current AureonCare password" required
+                     autoComplete="current-password" aria-label="Your current AureonCare password" value={form.password} onChange={set('password')} />
+              <button type="submit" disabled={!!busy}
+                      className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-blue-600 text-white font-medium disabled:opacity-60">
+                {busy === 'password' ? <Loader2 className="animate-spin" size={16} /> : null}
+                Add {invite.practiceName}
+              </button>
+            </>
+          )}
+        </form>
+        ) : (
         <form onSubmit={acceptWithPassword} className="mt-5 space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <input className={input} placeholder="First name" value={form.firstName} onChange={set('firstName')} />
@@ -197,6 +220,7 @@ const AcceptInvitePage = ({ theme = 'light', token, api, addNotification, onAcce
             Create account
           </button>
         </form>
+        )}
 
         <div className={`my-4 text-center text-sm ${muted}`}>or</div>
 

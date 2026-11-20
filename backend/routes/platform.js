@@ -194,7 +194,7 @@ router.post('/mfa/verify', async (req, res) => {
 router.get('/tenants', async (req, res) => {
   const pool = req.app.locals.pool;
   const { rows } = await pool.query(
-    `SELECT t.*, (SELECT count(*) FROM public.users u WHERE u.practice_id = t.practice_id) AS user_count
+    `SELECT t.*, (SELECT count(*) FROM public.memberships m WHERE m.practice_id = t.practice_id AND m.status = 'active') AS user_count
        FROM control.tenants t ORDER BY t.created_at ASC`);
   res.json(rows);
 });
