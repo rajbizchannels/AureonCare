@@ -2014,6 +2014,10 @@ export const translations = {
     acctNewARRecordTitle: 'New Accounts Receivable Record',
     acctNewAPRecordTitle: 'New Accounts Payable Record',
     acctNoReference: 'None',
+    // Navigation: integrations and practice profile
+    integrationsNavDescription: 'Vendor connections and AI',
+    practiceProfile: 'Practice Profile',
+    practiceProfileNavDescription: 'Public page: Off, link only or searchable',
   },
   es: {
     // AI integrations (Integrations page)
@@ -4030,6 +4034,10 @@ export const translations = {
     acctNewARRecordTitle: 'Nuevo registro de cuentas por cobrar',
     acctNewAPRecordTitle: 'Nuevo registro de cuentas por pagar',
     acctNoReference: 'Ninguna',
+    // Navigation: integrations and practice profile
+    integrationsNavDescription: 'Conexiones con proveedores e IA',
+    practiceProfile: 'Perfil de la consulta',
+    practiceProfileNavDescription: 'Página pública: desactivada, solo con enlace o visible en búsquedas',
   },
   fr: {
     // AI integrations (Integrations page)
@@ -6046,6 +6054,10 @@ export const translations = {
     acctNewARRecordTitle: 'Nouvel enregistrement de créances clients',
     acctNewAPRecordTitle: 'Nouvel enregistrement de dettes fournisseurs',
     acctNoReference: 'Aucune',
+    // Navigation: integrations and practice profile
+    integrationsNavDescription: 'Connexions fournisseurs et IA',
+    practiceProfile: 'Profil du cabinet',
+    practiceProfileNavDescription: 'Page publique : désactivée, par lien uniquement ou visible dans la recherche',
   },
   de: {
     // AI integrations (Integrations page)
@@ -8062,6 +8074,10 @@ export const translations = {
     acctNewARRecordTitle: 'Neue Forderung aus Lieferungen und Leistungen',
     acctNewAPRecordTitle: 'Neue Verbindlichkeit aus Lieferungen und Leistungen',
     acctNoReference: 'Keine',
+    // Navigation: integrations and practice profile
+    integrationsNavDescription: 'Anbieterverbindungen und KI',
+    practiceProfile: 'Praxisprofil',
+    practiceProfileNavDescription: 'Öffentliche Seite: aus, nur per Link oder durchsuchbar',
   },
   ar: {
     // AI integrations (Integrations page)
@@ -10078,6 +10094,10 @@ export const translations = {
     acctNewARRecordTitle: 'سجل ذمم مدينة جديد',
     acctNewAPRecordTitle: 'سجل ذمم دائنة جديد',
     acctNoReference: 'لا يوجد',
+    // Navigation: integrations and practice profile
+    integrationsNavDescription: 'اتصالات الموردين والذكاء الاصطناعي',
+    practiceProfile: 'ملف العيادة',
+    practiceProfileNavDescription: 'الصفحة العامة: متوقفة أو عبر الرابط فقط أو قابلة للبحث',
   }
 };
 
