@@ -1,5 +1,9 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Check, Loader2, RotateCcw, AlertCircle, Search, ShieldCheck } from 'lucide-react';
+import { getTranslations } from '../../config/translations';
+import { useOptionalApp } from '../../context/AppContext';
+
+const useT = () => getTranslations(useOptionalApp()?.language || 'en');
 
 /**
  * Fine-grained permissions for every module.
@@ -28,6 +32,7 @@ import { Check, Loader2, RotateCcw, AlertCircle, Search, ShieldCheck } from 'luc
 const CELL_SIZE = 'w-6 h-6';
 
 const ModulePermissionsTab = ({ theme, api, addNotification, canManage }) => {
+  const t = useT();
   const dark = theme === 'dark';
   const [registry, setRegistry] = useState(null);
   const [grants, setGrants] = useState([]);
@@ -46,11 +51,11 @@ const ModulePermissionsTab = ({ theme, api, addNotification, canManage }) => {
       setGrants(data.permissions || []);
       setOpenModule((prev) => prev || (data.modules[0] && data.modules[0].key) || null);
     } catch (e) {
-      setError(e.message || 'Could not load permissions.');
+      setError(e.message || t.modPermLoadFailed || 'Could not load permissions.');
     } finally {
       setLoading(false);
     }
-  }, [api]);
+  }, [api, t]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -88,8 +93,8 @@ const ModulePermissionsTab = ({ theme, api, addNotification, canManage }) => {
     } catch (e) {
       // Reported rather than swallowed: a rejected save used to look exactly like a
       // successful one, so the grid showed access that the server had refused to change.
-      addNotification?.('error', e.message || 'Could not save that permission.');
-      setError(e.message || 'Could not save that permission.');
+      addNotification?.('error', e.message || t.modPermSaveFailed || 'Could not save that permission.');
+      setError(e.message || t.modPermSaveFailed || 'Could not save that permission.');
     } finally {
       setBusy((b) => { const n = { ...b }; delete n[id]; return n; });
     }
@@ -102,7 +107,7 @@ const ModulePermissionsTab = ({ theme, api, addNotification, canManage }) => {
     try {
       replaceGrant(await api.resetModulePermission({ module, roleName: role, resource }));
     } catch (e) {
-      addNotification?.('error', e.message || 'Could not reset that row.');
+      addNotification?.('error', e.message || t.modPermResetFailed || 'Could not reset that row.');
     } finally {
       setBusy((b) => { const n = { ...b }; delete n[id]; return n; });
     }
@@ -121,11 +126,31 @@ const ModulePermissionsTab = ({ theme, api, addNotification, canManage }) => {
   const text = dark ? 'text-white' : 'text-gray-900';
   const muted = dark ? 'text-slate-400' : 'text-gray-500';
 
+  // Actions and roles arrive from the server as enum values; only the label is translated.
+  // Anything not listed (e.g. a custom role) falls back to the raw value, as before.
+  const ACTION_LABELS = {
+    view: t.view || 'View',
+    create: t.create || 'Create',
+    edit: t.edit || 'Edit',
+    delete: t.delete || 'Delete',
+    approve: t.invApprove || 'Approve',
+    export: t.export || 'Export',
+  };
+  const ROLE_LABELS = {
+    admin: t.admin || 'Admin',
+    doctor: t.doctor || 'Doctor',
+    nurse: t.aiRole_nurse || 'Nurse',
+    receptionist: t.aiRole_receptionist || 'Receptionist',
+    billing_manager: t.aiRole_billing_manager || 'Billing manager',
+    crm_manager: t.modPermRoleCrmManager || 'Crm manager',
+    staff: t.staff || 'Staff',
+  };
+
   if (loading) {
     return (
       <div className={`rounded-xl border p-6 ${panel}`}>
         <p className={`flex items-center gap-2 text-sm ${muted}`}>
-          <Loader2 className="w-4 h-4 animate-spin" /> Loading module permissions…
+          <Loader2 className="w-4 h-4 animate-spin" /> {t.modPermLoading || 'Loading module permissions…'}
         </p>
       </div>
     );
@@ -135,7 +160,7 @@ const ModulePermissionsTab = ({ theme, api, addNotification, canManage }) => {
     return (
       <div className={`rounded-xl border p-6 ${panel}`}>
         <p className="flex items-start gap-2 text-sm text-red-500">
-          <AlertCircle size={16} className="mt-0.5 shrink-0" />{error || 'Permissions are unavailable.'}
+          <AlertCircle size={16} className="mt-0.5 shrink-0" />{error || t.modPermUnavailable || 'Permissions are unavailable.'}
         </p>
       </div>
     );
@@ -147,12 +172,12 @@ const ModulePermissionsTab = ({ theme, api, addNotification, canManage }) => {
         <div>
           <h3 className={`text-base font-semibold flex items-center gap-2 ${text}`}>
             <ShieldCheck className="w-4 h-4 text-orange-500" />
-            Module Permissions
+            {t.modPermTitle || 'Module Permissions'}
           </h3>
           <p className={`text-xs mt-0.5 ${muted}`}>
-            What each role may do, per module and per resource. A row marked
-            <strong className={text}> default</strong> has not been edited and follows the role&apos;s
-            built-in access; saving a row pins it.
+            {t.modPermIntroBefore || 'What each role may do, per module and per resource. A row marked'}
+            <strong className={text}> {t.modPermDefault || 'default'}</strong>
+            {' '}{t.modPermIntroAfter || "has not been edited and follows the role's built-in access; saving a row pins it."}
           </p>
         </div>
         <label className="relative">
@@ -161,7 +186,7 @@ const ModulePermissionsTab = ({ theme, api, addNotification, canManage }) => {
             type="text"
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
-            placeholder="Filter modules…"
+            placeholder={t.modPermFilterPlaceholder || 'Filter modules…'}
             className={`pl-9 pr-3 py-2 text-sm rounded-lg border outline-none focus:border-orange-500 ${
               dark ? 'bg-slate-900 border-slate-700 text-white placeholder-slate-500'
                 : 'bg-white border-gray-300 text-gray-900 placeholder-gray-400'}`}
@@ -175,7 +200,7 @@ const ModulePermissionsTab = ({ theme, api, addNotification, canManage }) => {
         </p>
       )}
       {!canManage && (
-        <p className={`text-xs mb-4 ${muted}`}>You can view these settings but not change them.</p>
+        <p className={`text-xs mb-4 ${muted}`}>{t.modPermReadOnly || 'You can view these settings but not change them.'}</p>
       )}
 
       <div className="space-y-3">
@@ -191,7 +216,10 @@ const ModulePermissionsTab = ({ theme, api, addNotification, canManage }) => {
               >
                 <span className={`text-sm font-medium ${text}`}>{mod.label}</span>
                 <span className={`text-xs ${muted}`}>
-                  {mod.resources.length} resource{mod.resources.length === 1 ? '' : 's'} · {open ? 'hide' : 'show'}
+                  {(mod.resources.length === 1
+                    ? (t.modPermResourceCountOne || '{count} resource')
+                    : (t.modPermResourceCountOther || '{count} resources')
+                  ).replace('{count}', mod.resources.length)} · {open ? (t.modPermHide || 'hide') : (t.modPermShow || 'show')}
                 </span>
               </button>
 
@@ -200,12 +228,12 @@ const ModulePermissionsTab = ({ theme, api, addNotification, canManage }) => {
                   <table className="w-full text-xs">
                     <thead className={dark ? 'bg-slate-900 text-slate-400' : 'bg-gray-50 text-gray-500'}>
                       <tr>
-                        <th className="px-4 py-2.5 text-left font-medium">Role</th>
-                        <th className="px-4 py-2.5 text-left font-medium">Resource</th>
+                        <th className="px-4 py-2.5 text-left font-medium">{t.role || 'Role'}</th>
+                        <th className="px-4 py-2.5 text-left font-medium">{t.auditResource || 'Resource'}</th>
                         {registry.actions.map((a) => (
-                          <th key={a} className="px-3 py-2.5 text-center font-medium capitalize">{a}</th>
+                          <th key={a} className="px-3 py-2.5 text-center font-medium capitalize">{ACTION_LABELS[a] || a}</th>
                         ))}
-                        <th className="px-3 py-2.5 text-center font-medium">Source</th>
+                        <th className="px-3 py-2.5 text-center font-medium">{t.modPermSource || 'Source'}</th>
                       </tr>
                     </thead>
                     <tbody className={`divide-y ${dark ? 'divide-slate-700' : 'divide-gray-100'}`}>
@@ -219,9 +247,9 @@ const ModulePermissionsTab = ({ theme, api, addNotification, canManage }) => {
                             {ri === 0 && (
                               <td rowSpan={mod.resources.length}
                                   className={`px-4 py-2 font-medium capitalize align-top ${dark ? 'text-slate-200' : 'text-gray-800'}`}>
-                                {role.replace(/_/g, ' ')}
+                                {ROLE_LABELS[role] || role.replace(/_/g, ' ')}
                                 {g.editable === false && (
-                                  <span className={`block text-[10px] font-normal ${muted}`}>always full access</span>
+                                  <span className={`block text-[10px] font-normal ${muted}`}>{t.modPermAlwaysFullAccess || 'always full access'}</span>
                                 )}
                               </td>
                             )}
@@ -232,7 +260,8 @@ const ModulePermissionsTab = ({ theme, api, addNotification, canManage }) => {
                                 <td key={action} className="px-3 py-2 text-center">
                                   <button
                                     type="button"
-                                    aria-label={`${action} ${resource} as ${role}`}
+                                    aria-label={(t.modPermCellAria || '{action} {resource} as {role}')
+                                      .replace('{action}', action).replace('{resource}', resource).replace('{role}', role)}
                                     aria-pressed={on}
                                     disabled={locked || Boolean(working)}
                                     onClick={() => toggle(mod.key, role, resource, action)}
@@ -258,7 +287,7 @@ const ModulePermissionsTab = ({ theme, api, addNotification, canManage }) => {
                                   type="button"
                                   disabled={locked || Boolean(working)}
                                   onClick={() => reset(mod.key, role, resource)}
-                                  title="Reset to the role default"
+                                  title={t.modPermResetTitle || 'Reset to the role default'}
                                   className={`inline-flex items-center gap-1 text-[11px] ${
                                     locked ? 'opacity-50 cursor-not-allowed' : 'hover:underline cursor-pointer'
                                   } ${dark ? 'text-slate-300' : 'text-gray-600'}`}
@@ -266,10 +295,10 @@ const ModulePermissionsTab = ({ theme, api, addNotification, canManage }) => {
                                   {working === 'reset'
                                     ? <Loader2 className="w-3 h-3 animate-spin" />
                                     : <RotateCcw className="w-3 h-3" />}
-                                  saved
+                                  {t.aiSavedLower || 'saved'}
                                 </button>
                               ) : (
-                                <span className={`text-[11px] ${muted}`}>default</span>
+                                <span className={`text-[11px] ${muted}`}>{t.modPermDefault || 'default'}</span>
                               )}
                             </td>
                           </tr>
@@ -283,7 +312,7 @@ const ModulePermissionsTab = ({ theme, api, addNotification, canManage }) => {
           );
         })}
         {modules.length === 0 && (
-          <p className={`text-sm text-center py-6 ${muted}`}>No module matches “{filter}”.</p>
+          <p className={`text-sm text-center py-6 ${muted}`}>{(t.modPermNoMatch || 'No module matches “{filter}”.').replace('{filter}', filter)}</p>
         )}
       </div>
     </div>
