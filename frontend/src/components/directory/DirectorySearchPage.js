@@ -1,6 +1,10 @@
 import React, { useCallback, useRef, useState } from 'react';
 import { Search, MapPin, LocateFixed, X, Loader2, Stethoscope } from 'lucide-react';
 import BrandLogo from '../common/BrandLogo';
+import { getTranslations } from '../../config/translations';
+import { useOptionalApp } from '../../context/AppContext';
+
+const useT = () => getTranslations(useOptionalApp()?.language || 'en');
 
 /**
  * /find — the AureonCare directory: one search box over practices that chose to be
@@ -16,6 +20,7 @@ import BrandLogo from '../common/BrandLogo';
 const PAGE = 20;
 
 const DirectorySearchPage = ({ theme = 'light' }) => {
+  const t = useT();
   const dark = theme === 'dark';
   const [q, setQ] = useState('');
   const [where, setWhere] = useState(null);       // { lat, lng } rounded, or null
@@ -34,7 +39,7 @@ const DirectorySearchPage = ({ theme = 'light' }) => {
         body: JSON.stringify({ q, ...(coords || {}), limit: PAGE, offset }),
       });
       const data = await r.json().catch(() => ({}));
-      if (!r.ok) throw new Error(data.error || 'Search is not available right now.');
+      if (!r.ok) throw new Error(data.error || t.directorySearchUnavailable || 'Search is not available right now.');
       lastQuery.current = q;
       setState((s) => ({
         status: 'done', total: data.total, understood: data.understood, error: '',
@@ -43,10 +48,10 @@ const DirectorySearchPage = ({ theme = 'light' }) => {
     } catch (e) {
       setState((s) => ({ ...s, status: 'error', error: e.message }));
     }
-  }, [q, where, state.results.length]);
+  }, [q, where, state.results.length, t]);
 
   const useMyLocation = () => {
-    if (!navigator.geolocation) { setState((s) => ({ ...s, error: 'Your browser cannot share a location. Type a city or postcode instead.' })); return; }
+    if (!navigator.geolocation) { setState((s) => ({ ...s, error: t.directoryNoGeolocation || 'Your browser cannot share a location. Type a city or postcode instead.' })); return; }
     setLocating(true);
     navigator.geolocation.getCurrentPosition(
       (pos) => {
@@ -54,7 +59,7 @@ const DirectorySearchPage = ({ theme = 'light' }) => {
         setWhere(coords); setLocating(false);
         run({ coords });
       },
-      () => { setLocating(false); setState((s) => ({ ...s, error: 'Location was not shared. You can type a city or postcode instead.' })); },
+      () => { setLocating(false); setState((s) => ({ ...s, error: t.directoryLocationDenied || 'Location was not shared. You can type a city or postcode instead.' })); },
       { enableHighAccuracy: false, maximumAge: 600000, timeout: 10000 }
     );
   };
@@ -63,60 +68,61 @@ const DirectorySearchPage = ({ theme = 'light' }) => {
   const card = dark ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200';
   const muted = dark ? 'text-slate-400' : 'text-slate-500';
   const u = state.understood;
-  const understoodText = u && [u.specialties.length ? u.specialties.join(', ') : null, u.place ? `in ${u.place}` : null,
-    u.name ? `named “${u.name}”` : null, u.nearby ? 'near you' : null].filter(Boolean).join(' · ');
+  const understoodText = u && [u.specialties.length ? u.specialties.join(', ') : null, u.place ? (t.directoryInPlace || 'in {place}').replace('{place}', u.place) : null,
+    u.name ? (t.directoryNamed || 'named “{name}”').replace('{name}', u.name) : null, u.nearby ? (t.directoryNearYou || 'near you') : null].filter(Boolean).join(' · ');
+  const showingFor = (t.directoryShowingResultsFor || 'showing results for {query}').split('{query}');
 
   return (
     <div className={`min-h-screen ${bg}`}>
       <header className="bg-slate-900 px-4 py-3">
         <div className="max-w-4xl mx-auto flex items-center justify-between">
-          <a href="/" aria-label="AureonCare home"><BrandLogo size={32} theme="dark" /></a>
-          <a href="/" className="text-sm text-slate-300 hover:text-white">Sign in</a>
+          <a href="/" aria-label={t.directoryHomeLink || 'AureonCare home'}><BrandLogo size={32} theme="dark" /></a>
+          <a href="/" className="text-sm text-slate-300 hover:text-white">{t.directorySignIn || 'Sign in'}</a>
         </div>
       </header>
 
       <main className="max-w-4xl mx-auto px-4 py-8">
-        <h1 className="text-2xl sm:text-3xl font-bold">Find a practice</h1>
-        <p className={`mt-1 ${muted}`}>Search by specialty, place or doctor — for example “dermatologist near Springfield” or “Dr Patel”.</p>
+        <h1 className="text-2xl sm:text-3xl font-bold">{t.directoryTitle || 'Find a practice'}</h1>
+        <p className={`mt-1 ${muted}`}>{t.directoryIntro || 'Search by specialty, place or doctor — for example “dermatologist near Springfield” or “Dr Patel”.'}</p>
 
         <form role="search" className="mt-6" onSubmit={(e) => { e.preventDefault(); run(); }}>
-          <label htmlFor="directory-q" className="sr-only">Search practices</label>
+          <label htmlFor="directory-q" className="sr-only">{t.directorySearchLabel || 'Search practices'}</label>
           <div className={`flex items-center gap-2 rounded-xl border px-3 py-2 ${card} focus-within:ring-2 focus-within:ring-teal-500`}>
             <Search className={`w-5 h-5 shrink-0 ${muted}`} aria-hidden="true" />
             <input id="directory-q" type="search" value={q} onChange={(e) => setQ(e.target.value)} maxLength={200} autoComplete="off"
-                   placeholder="Specialty, place or doctor" className="flex-1 min-w-0 bg-transparent outline-none py-1.5 text-base" />
-            <button type="submit" className="shrink-0 px-4 py-2 rounded-lg bg-teal-700 hover:bg-teal-800 text-white font-medium">Search</button>
+                   placeholder={t.directorySearchPlaceholder || 'Specialty, place or doctor'} className="flex-1 min-w-0 bg-transparent outline-none py-1.5 text-base" />
+            <button type="submit" className="shrink-0 px-4 py-2 rounded-lg bg-teal-700 hover:bg-teal-800 text-white font-medium">{t.search || 'Search'}</button>
           </div>
           <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
             {where ? (
               <span className="inline-flex items-center gap-1 text-teal-600 dark:text-teal-400">
-                <MapPin className="w-4 h-4" aria-hidden="true" /> Using your approximate location
+                <MapPin className="w-4 h-4" aria-hidden="true" /> {t.directoryUsingLocation || 'Using your approximate location'}
                 <button type="button" onClick={() => { setWhere(null); if (lastQuery.current !== null) run({ coords: null }); }}
-                        className={`ml-1 inline-flex items-center gap-0.5 underline ${muted}`}><X className="w-3.5 h-3.5" aria-hidden="true" />Clear</button>
+                        className={`ml-1 inline-flex items-center gap-0.5 underline ${muted}`}><X className="w-3.5 h-3.5" aria-hidden="true" />{t.directoryClearLocation || 'Clear'}</button>
               </span>
             ) : (
               <button type="button" onClick={useMyLocation} disabled={locating}
                       className={`inline-flex items-center gap-1 underline underline-offset-2 ${muted} hover:text-teal-600 disabled:opacity-60`}>
                 {locating ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" /> : <LocateFixed className="w-4 h-4" aria-hidden="true" />}
-                Use my location
+                {t.directoryUseMyLocation || 'Use my location'}
               </button>
             )}
-            <span className={muted}>We don’t keep your searches or your location.</span>
+            <span className={muted}>{t.directoryPrivacyNote || 'We don’t keep your searches or your location.'}</span>
           </div>
         </form>
 
         <section aria-live="polite" aria-busy={state.status === 'loading'} className="mt-8">
           {state.error && <p role="alert" className="text-red-500 mb-4">{state.error}</p>}
-          {state.status === 'loading' && <p className={`flex items-center gap-2 ${muted}`}><Loader2 className="w-4 h-4 animate-spin" /> Searching…</p>}
+          {state.status === 'loading' && <p className={`flex items-center gap-2 ${muted}`}><Loader2 className="w-4 h-4 animate-spin" /> {t.directorySearching || 'Searching…'}</p>}
           {state.status !== 'loading' && u && (
             <p className={`mb-4 text-sm ${muted}`}>
-              {state.total} {state.total === 1 ? 'practice' : 'practices'}{understoodText ? <> · showing results for <strong className={dark ? 'text-slate-200' : 'text-slate-700'}>{understoodText}</strong></> : null}
+              {(state.total === 1 ? (t.directoryPracticeCountOne || '{count} practice') : (t.directoryPracticeCountMany || '{count} practices')).replace('{count}', state.total)}{understoodText ? <> · {showingFor[0]}<strong className={dark ? 'text-slate-200' : 'text-slate-700'}>{understoodText}</strong>{showingFor[1]}</> : null}
             </p>
           )}
           {state.status === 'done' && state.total === 0 && (
             <div className={`rounded-xl border p-6 ${card}`}>
-              <p className="font-medium">No practices found.</p>
-              <p className={`text-sm mt-1 ${muted}`}>Try a broader search — a specialty on its own, a nearby city, or check the spelling of a name.</p>
+              <p className="font-medium">{t.directoryNoResults || 'No practices found.'}</p>
+              <p className={`text-sm mt-1 ${muted}`}>{t.directoryNoResultsHint || 'Try a broader search — a specialty on its own, a nearby city, or check the spelling of a name.'}</p>
             </div>
           )}
           <ul className="space-y-3">
@@ -133,13 +139,13 @@ const DirectorySearchPage = ({ theme = 'light' }) => {
                       {(r.place || r.distanceKm != null) && (
                         <p className={`text-sm ${muted} flex items-center gap-1`}>
                           <MapPin className="w-3.5 h-3.5" aria-hidden="true" />
-                          {[r.place, r.distanceKm != null ? `${r.distanceKm} km away` : null, r.locations > 1 ? `${r.locations} locations` : null].filter(Boolean).join(' · ')}
+                          {[r.place, r.distanceKm != null ? (t.directoryKmAway || '{distance} km away').replace('{distance}', r.distanceKm) : null, r.locations > 1 ? (t.directoryLocationCount || '{count} locations').replace('{count}', r.locations) : null].filter(Boolean).join(' · ')}
                         </p>
                       )}
                       {r.providers.length > 0 && (
                         <p className={`text-sm mt-1 ${dark ? 'text-slate-300' : 'text-slate-700'}`}>
                           {r.providers.map((p) => (p.specialization ? `${p.name} (${p.specialization})` : p.name)).join(', ')}
-                          {r.moreProviders > 0 ? ` and ${r.moreProviders} more` : ''}
+                          {r.moreProviders > 0 ? ` ${(t.directoryAndMore || 'and {count} more').replace('{count}', r.moreProviders)}` : ''}
                         </p>
                       )}
                     </div>
@@ -152,14 +158,14 @@ const DirectorySearchPage = ({ theme = 'light' }) => {
             <div className="mt-6 text-center">
               <button type="button" onClick={() => run({ append: true })} disabled={state.status === 'more'}
                       className={`px-4 py-2 rounded-lg border ${card} disabled:opacity-60`}>
-                {state.status === 'more' ? 'Loading…' : 'Show more'}
+                {state.status === 'more' ? (t.directoryLoadingMore || 'Loading…') : (t.directoryShowMore || 'Show more')}
               </button>
             </div>
           )}
         </section>
       </main>
       <footer className={`max-w-4xl mx-auto px-4 pb-10 text-xs ${muted}`}>
-        Practices appear here only if they choose to, and doctors only with their consent. Results are not paid placements.
+        {t.directoryFooter || 'Practices appear here only if they choose to, and doctors only with their consent. Results are not paid placements.'}
       </footer>
     </div>
   );
