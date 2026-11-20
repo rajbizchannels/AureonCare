@@ -727,8 +727,26 @@ Credentials are environment variables only (platform-wide sender). Values left i
   `UPDATE public.organization_settings SET settings = jsonb_set(settings, '{whatsapp}', '{"enabled": false}') WHERE id = 1;`
 - Patients receive WhatsApp only after enabling it in their portal notification settings;
   staff and admins when their profile has a phone number.
-- WhatsApp's 24-hour rule: free-form messages reach only people who messaged the number in
-  the last 24 hours. Reliable proactive notifications need approved message templates
-  (not implemented yet). Email notifications are unaffected.
+### Message templates (WhatsApp's 24-hour rule)
+
+Free-form messages reach only people who messaged your number in the last 24 hours.
+Everything else must be an approved template. AureonCare has 9 (`npm run whatsapp:templates`
+prints them): appointment scheduled / changed / cancelled / status / reminder, telehealth
+session (with the QR code as its image), new prescription, new lab order, and a general
+update for staff notices.
+
+1. With the AC_WA_* variables available (e.g. `vercel env pull .env.vercel`, then prefix the
+   commands with `npx dotenv-cli -e .env.vercel --`):
+   - **Meta:** also set `AC_WA_META_WABA_ID` (WhatsApp Business Account ID) and
+     `AC_WA_META_APP_ID` (to upload the example image Meta requires for the QR header).
+   - `npm run whatsapp:templates -- --register` — submits them for approval.
+2. `npm run whatsapp:templates -- --status` — once approved, it prints the value to set:
+   - **Meta:** `AC_WA_TEMPLATES=all` (or a comma list of the approved ones)
+   - **Twilio:** `AC_WA_TWILIO_CONTENT_SIDS={"appointment_scheduled":"HX…",…}`
+3. Set it in the backend environment and redeploy.
+
+Optional: `AC_WA_TEMPLATE_PREFIX` (default `aureoncare_`), `AC_WA_TEMPLATE_LANG` (default `en`).
+A message whose template is not set up yet, or fails, is still sent as free-form text. A
+refusal under the 24-hour rule is logged with the template to approve. Email is unaffected.
 - When Meta retires the Graph API version, set `AC_WA_GRAPH_VERSION` to a current one
   (https://developers.facebook.com/docs/graph-api/changelog/versions/).

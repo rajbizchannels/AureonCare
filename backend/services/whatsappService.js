@@ -1,4 +1,5 @@
 const axios = require('axios');
+const templates = require('./whatsappTemplates');
 
 // Meta Graph API version for the WhatsApp Cloud API. v18.0 (the old hard-coded value) is
 // past Meta's ~2-year support window; v26.0 was released 2026-07-29. Override with
@@ -77,7 +78,7 @@ class WhatsAppService {
   /**
    * Send WhatsApp message via Twilio
    */
-  async sendViaTwilio(to, message, { mediaUrl } = {}) {
+  async sendViaTwilio(to, message, { mediaUrl, contentSid, contentVariables } = {}) {
     if (!this.config.account_sid || !this.config.auth_token || !this.config.phone_number) {
       throw new Error('Twilio configuration is incomplete');
     }
@@ -87,13 +88,21 @@ class WhatsAppService {
 
       const response = await axios.post(
         `https://api.twilio.com/2010-04-01/Accounts/${this.config.account_sid}/Messages.json`,
-        new URLSearchParams({
-          From: `whatsapp:${this.config.phone_number}`,
-          To: `whatsapp:${to}`,
-          Body: message,
-          // Twilio fetches the image from this public URL and sends it with the text.
-          ...(mediaUrl ? { MediaUrl: mediaUrl } : {})
-        }),
+        new URLSearchParams(contentSid
+          // An approved template (Twilio Content API): the SID and its {{n}} values.
+          ? {
+              From: `whatsapp:${this.config.phone_number}`,
+              To: `whatsapp:${to}`,
+              ContentSid: contentSid,
+              ContentVariables: JSON.stringify(contentVariables || {})
+            }
+          : {
+              From: `whatsapp:${this.config.phone_number}`,
+              To: `whatsapp:${to}`,
+              Body: message,
+              // Twilio fetches the image from this public URL and sends it with the text.
+              ...(mediaUrl ? { MediaUrl: mediaUrl } : {})
+            }),
         {
           headers: {
             'Authorization': `Basic ${auth}`,
@@ -109,7 +118,9 @@ class WhatsAppService {
       };
     } catch (error) {
       console.error('Error sending WhatsApp via Twilio:', error.response?.data || error.message);
-      throw new Error('Failed to send WhatsApp message via Twilio');
+      const e = new Error('Failed to send WhatsApp message via Twilio');
+      e.providerCode = error.response?.data?.code;
+      throw e;
     }
   }
 
@@ -129,7 +140,8 @@ class WhatsAppService {
             type: 'template',
             template: {
               name: template.name,
-              language: { code: template.language || 'en' },
+              language: template.language && typeof template.language === 'object'
+                ? template.language : { code: template.language || 'en' },
               components: template.components || []
             }
           }
@@ -167,7 +179,9 @@ class WhatsAppService {
       };
     } catch (error) {
       console.error('Error sending WhatsApp via Business API:', error.response?.data || error.message);
-      throw new Error('Failed to send WhatsApp message via Business API');
+      const e = new Error('Failed to send WhatsApp message via Business API');
+      e.providerCode = error.response?.data?.error?.code;
+      throw e;
     }
   }
 
@@ -191,6 +205,64 @@ class WhatsAppService {
       console.warn('[whatsapp] sending with the QR code failed, sending text only:', e.message);
       return await send({});
     }
+  }
+
+  /**
+   * Send a notification: through its approved TEMPLATE when one is set up (required outside
+   * WhatsApp's 24-hour window), else as free-form text (works inside the window).
+   *
+   * @param {string} to
+   * @param {string} text the free-form message (fallback, and what is sent without templates)
+   * @param {{ key: string, vars: string[] }|null} tpl a key from services/whatsappTemplates.js
+   */
+  async notify(to, text, tpl = null) {
+    const cfg = templates.templateConfig();
+    if (tpl && templates.isReady(cfg, tpl.key)) {
+      try {
+        return await this.sendTemplate(to, cfg, tpl);
+      } catch (e) {
+        console.warn(`[whatsapp] template "${tpl.key}" failed (${e.providerCode || e.message}); sending free-form text instead`);
+      }
+    }
+    try {
+      return await this.sendMessage(to, text);
+    } catch (e) {
+      if (WhatsAppService.isOutsideWindow(e)) {
+        console.warn(`[whatsapp] refused by the 24-hour rule${tpl ? ` — set up and approve the "${tpl.key}" template` : ''} `
+          + '(npm run whatsapp:templates). The email notification is unaffected.');
+      }
+      throw e;
+    }
+  }
+
+  /** Send one catalogue template (see services/whatsappTemplates.js). */
+  async sendTemplate(to, cfg, { key, vars }) {
+    const def = templates.CATALOGUE[key];
+    if (!def) throw new Error(`Unknown WhatsApp template "${key}"`);
+    const need = templates.varCount(key);
+    const values = Array.from({ length: need }, (_, i) => vars[i]);
+    let qrUrl = null; let shortCode = null;
+    if (def.header === 'IMAGE') {
+      // The header is the QR code of the link in the message; no link, no template.
+      qrUrl = values.map((v) => WhatsAppService.qrImageFor(String(v || ''))).find(Boolean) || null;
+      if (!qrUrl) throw new Error(`template "${key}" needs a short link for its QR code`);
+      shortCode = (/\/s\/([A-Za-z0-9]{12})\/qr\.png$/.exec(qrUrl) || [])[1];
+    }
+    if (this.provider === 'twilio') {
+      return this.sendViaTwilio(to, null, {
+        contentSid: cfg.sids[key],
+        contentVariables: templates.twilioVariables(key, values, { shortCode }),
+      });
+    }
+    if (this.provider === 'whatsapp_business') {
+      return this.sendViaWhatsAppAPI(to, null, templates.metaTemplatePayload(cfg, key, values, { headerImageUrl: qrUrl }));
+    }
+    throw new Error(`Unknown WhatsApp provider: ${this.provider}`);
+  }
+
+  /** Meta 131047 / Twilio 63016: free-form message outside the 24-hour window. */
+  static isOutsideWindow(e) {
+    return Number(e && e.providerCode) === 131047 || Number(e && e.providerCode) === 63016;
   }
 
   /**
@@ -247,7 +319,7 @@ If you need to cancel or reschedule, please contact us at least 24 hours in adva
 Thank you for choosing ${process.env.AC_CLN || 'AureonCare'}!
       `.trim();
 
-      return await this.sendMessage(patient.phone, message);
+      return await this.notify(patient.phone, message, { key: 'appointment_scheduled', vars: [patient.first_name, `Dr. ${provider.first_name} ${provider.last_name}`, formattedDate, formattedTime] });
     } catch (error) {
       console.error('Error sending appointment confirmation:', error);
       throw error;
@@ -292,7 +364,7 @@ Please arrive 15 minutes early for check-in.
 See you soon!
       `.trim();
 
-      return await this.sendMessage(patient.phone, message);
+      return await this.notify(patient.phone, message, { key: 'appointment_reminder', vars: [patient.first_name, `Dr. ${provider.first_name} ${provider.last_name}`, formattedDate, formattedTime] });
     } catch (error) {
       console.error('Error sending appointment reminder:', error);
       throw error;
@@ -336,7 +408,7 @@ Please join a few minutes early to test your audio and video.
 See you online!
       `.trim();
 
-      return await this.sendMessage(patient.phone, message);
+      return await this.notify(patient.phone, message, { key: 'telehealth_session', vars: [patient.first_name, `Dr. ${provider.first_name} ${provider.last_name}`, appointmentDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }), formattedTime, meetingUrl] });
     } catch (error) {
       console.error('Error sending telehealth link:', error);
       throw error;
@@ -391,7 +463,7 @@ Thank you,
 ${process.env.AC_CLN || 'AureonCare'}
       `.trim();
 
-      return await this.sendMessage(patient.phone, message);
+      return await this.notify(patient.phone, message, { key: 'prescription_new', vars: [patient.first_name, `Dr. ${provider.first_name} ${provider.last_name}`, prescription.medication_name, prescription.dosage] });
     } catch (error) {
       console.error('Error sending prescription notification:', error);
       throw error;
@@ -453,7 +525,10 @@ ${updateType === 'cancelled' || updateType === 'canceled'
 ${process.env.AC_CLN || 'AureonCare'}
       `.trim();
 
-      return await this.sendMessage(patient.phone, message);
+      return await this.notify(patient.phone, message, {
+        key: (updateType === 'cancelled' || updateType === 'canceled') ? 'appointment_cancelled' : 'appointment_updated',
+        vars: [patient.first_name, `Dr. ${provider.first_name} ${provider.last_name}`, formattedDate, formattedTime],
+      });
     } catch (error) {
       console.error('Error sending schedule update notification:', error);
       throw error;

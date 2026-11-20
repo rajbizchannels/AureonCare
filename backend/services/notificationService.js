@@ -321,7 +321,27 @@ async function sendEmail(to, subject, html) {
   }
 }
 
-async function sendWhatsApp(phone, message) {
+// WhatsApp template for an event (services/whatsappTemplates.js). Patients and doctors get
+// the specific template; admins, and events with no patient-facing template, get the
+// general "update" one with a one-line summary.
+const drName = (p) => (p ? `Dr. ${p.first_name || ''} ${p.last_name || ''}`.trim() : 'your doctor');
+const ptName = (p) => (p ? `${p.first_name || ''} ${p.last_name || ''}`.trim() : 'a patient');
+function apptTemplate(key, role, person, { patient, provider }, appointment, statusText) {
+  const name = person.first_name || 'there';
+  const date = formatDate(appointment.start_time);
+  const time = formatTime(appointment.start_time);
+  if (role === 'admin') {
+    const what = { appointment_scheduled: 'new appointment', appointment_updated: 'appointment changed',
+      appointment_cancelled: 'appointment cancelled', appointment_status: `appointment now ${statusText}` }[key] || 'appointment update';
+    return { key: 'general_update', vars: [name, `${what} for ${ptName(patient)} with ${drName(provider)} on ${date} at ${time}`] };
+  }
+  const other = role === 'doctor' ? ptName(patient) : drName(provider);
+  if (key === 'appointment_status') return { key, vars: [name, other, date, statusText] };
+  return { key, vars: [name, other, date, time] };
+}
+const updateTemplate = (person, summary) => ({ key: 'general_update', vars: [person.first_name || 'there', summary] });
+
+async function sendWhatsApp(phone, message, template = null) {
   if (!whatsappService || !phone) return;
   // SEC-24: same per-recipient cap, which also bounds spend at the messaging provider.
   const quota = await consumeSendQuota('whatsapp', phone);
@@ -330,7 +350,7 @@ async function sendWhatsApp(phone, message) {
     return;
   }
   try {
-    await whatsappService.sendMessage(phone, message);
+    await whatsappService.notify(phone, message, template);
   } catch (e) {
     console.error(`NotificationService: WhatsApp to ${phone} failed:`, e.message);
   }
@@ -443,7 +463,7 @@ async function notifyAll(pool, { patient_id, provider_id }, buildMsg) {
     }
 
     if (waPhone && msg.whatsapp) {
-      await sendWhatsApp(waPhone, msg.whatsapp);
+      await sendWhatsApp(waPhone, msg.whatsapp, msg.whatsappTemplate || null);
     }
   }
 }
@@ -475,7 +495,7 @@ const EVENTS = {
       ].join('');
       const html = buildEmailHtml('Appointment Scheduled', '#3B82F6', escapeHtml(greeting), escapeHtml(intro), rows, null);
       const waText = `*Appointment Scheduled*\n\n${greeting}\n\n${intro}\n\nPatient: ${patient?.first_name} ${patient?.last_name}\nDoctor: Dr. ${provider?.first_name} ${provider?.last_name}\nDate: ${formatDate(appointment.start_time)}\nTime: ${formatTime(appointment.start_time)}${appointment.appointment_type ? `\nType: ${appointment.appointment_type}` : ''}${appointment.reason ? `\nReason: ${appointment.reason}` : ''}`;
-      return { subject: `Appointment Scheduled – ${formatDate(appointment.start_time)}`, html, whatsapp: waText };
+      return { subject: `Appointment Scheduled – ${formatDate(appointment.start_time)}`, html, whatsapp: waText, whatsappTemplate: apptTemplate('appointment_scheduled', role, person, { patient, provider }, appointment) };
     });
   },
 
@@ -497,7 +517,7 @@ const EVENTS = {
       ].join('');
       const html = buildEmailHtml('Appointment Updated', '#F59E0B', escapeHtml(greeting), escapeHtml(intro), rows, null);
       const waText = `*Appointment Updated*\n\n${greeting}\n\n${intro}\n\nPatient: ${patient?.first_name} ${patient?.last_name}\nDoctor: Dr. ${provider?.first_name} ${provider?.last_name}\nNew Date: ${formatDate(appointment.start_time)}\nNew Time: ${formatTime(appointment.start_time)}${appointment.status ? `\nStatus: ${appointment.status}` : ''}`;
-      return { subject: `Appointment Updated – ${formatDate(appointment.start_time)}`, html, whatsapp: waText };
+      return { subject: `Appointment Updated – ${formatDate(appointment.start_time)}`, html, whatsapp: waText, whatsappTemplate: apptTemplate('appointment_updated', role, person, { patient, provider }, appointment) };
     });
   },
 
@@ -518,7 +538,7 @@ const EVENTS = {
       ].join('');
       const html = buildEmailHtml('Appointment Cancelled', '#EF4444', escapeHtml(greeting), escapeHtml(intro), rows, null);
       const waText = `*Appointment Cancelled*\n\n${greeting}\n\n${intro}\n\nPatient: ${patient?.first_name} ${patient?.last_name}\nDoctor: Dr. ${provider?.first_name} ${provider?.last_name}\nDate: ${formatDate(appointment.start_time)}\nTime: ${formatTime(appointment.start_time)}`;
-      return { subject: `Appointment Cancelled – ${formatDate(appointment.start_time)}`, html, whatsapp: waText };
+      return { subject: `Appointment Cancelled – ${formatDate(appointment.start_time)}`, html, whatsapp: waText, whatsappTemplate: apptTemplate('appointment_cancelled', role, person, { patient, provider }, appointment) };
     });
   },
 
@@ -538,7 +558,7 @@ const EVENTS = {
       ].join('');
       const html = buildEmailHtml('Appointment Status Changed', '#8B5CF6', escapeHtml(greeting), intro, rows, null);
       const waText = `*Appointment Status Changed*\n\n${greeting}\n\nAppointment status changed from ${old_status} to ${appointment.status}.\n\nPatient: ${patient?.first_name} ${patient?.last_name}\nDoctor: Dr. ${provider?.first_name} ${provider?.last_name}\nDate: ${formatDate(appointment.start_time)}`;
-      return { subject: `Appointment Status: ${appointment.status}`, html, whatsapp: waText };
+      return { subject: `Appointment Status: ${appointment.status}`, html, whatsapp: waText, whatsappTemplate: apptTemplate('appointment_status', role, person, { patient, provider }, appointment, appointment.status) };
     });
   },
 
@@ -562,7 +582,9 @@ const EVENTS = {
       ].join('');
       const html = buildEmailHtml('New Prescription', '#10B981', escapeHtml(greeting), escapeHtml(intro), rows, null);
       const waText = `*New Prescription*\n\n${greeting}\n\n${intro.replace(/<[^>]+>/g, '')}\n\nMedication: ${prescription.medication_name}\nDosage: ${prescription.dosage}${prescription.instructions ? `\nInstructions: ${prescription.instructions}` : ''}${prescription.refills != null ? `\nRefills: ${prescription.refills}` : ''}`;
-      return { subject: `New Prescription – ${prescription.medication_name}`, html, whatsapp: waText };
+      return { subject: `New Prescription – ${prescription.medication_name}`, html, whatsapp: waText, whatsappTemplate: role === 'patient'
+        ? { key: 'prescription_new', vars: [person.first_name, drName(provider), prescription.medication_name, prescription.dosage] }
+        : updateTemplate(person, `prescription of ${prescription.medication_name} for ${ptName(patient)}`) };
     });
   },
 
@@ -586,7 +608,9 @@ const EVENTS = {
       ].join('');
       const html = buildEmailHtml('Lab Order Created', '#0EA5E9', escapeHtml(greeting), escapeHtml(intro), rows, null);
       const waText = `*Lab Order Created*\n\n${greeting}\n\n${intro}\n\nTest: ${order.test_name || order.order_name || 'N/A'}\nLab: ${order.lab_name || 'N/A'}${order.priority ? `\nPriority: ${order.priority}` : ''}`;
-      return { subject: `Lab Order – ${order.test_name || order.order_name || 'Lab Test'}`, html, whatsapp: waText };
+      return { subject: `Lab Order – ${order.test_name || order.order_name || 'Lab Test'}`, html, whatsapp: waText, whatsappTemplate: role === 'patient'
+        ? { key: 'lab_order_new', vars: [person.first_name, order.test_name || order.order_name || 'lab test', order.lab_name || 'the laboratory'] }
+        : updateTemplate(person, `lab order ${order.test_name || order.order_name || ''} for ${ptName(patient)}`.replace(/  +/g, ' ')) };
     });
   },
 
@@ -603,7 +627,7 @@ const EVENTS = {
       ].join('');
       const html = buildEmailHtml('Lab Order Updated', '#0EA5E9', escapeHtml(greeting), intro, rows, null);
       const waText = `*Lab Order Updated*\n\n${greeting}\n\nLab order status changed from ${old_status} to ${order.status}.\n\nTest: ${order.test_name || order.order_name || 'N/A'}\nPatient: ${patient?.first_name} ${patient?.last_name}`;
-      return { subject: `Lab Order Status: ${order.status}`, html, whatsapp: waText };
+      return { subject: `Lab Order Status: ${order.status}`, html, whatsapp: waText, whatsappTemplate: updateTemplate(person, `lab order ${order.test_name || order.order_name || ''} is now ${order.status}`.replace(/  +/g, ' ')) };
     });
   },
 
@@ -627,7 +651,7 @@ const EVENTS = {
       const waText = `*Insurance Claim Submitted*\n\n${greeting}\n\n${intro}\n\nClaim #: ${claim.claim_number || 'N/A'}\nPayer: ${claim.payer || 'N/A'}\nAmount: ${claim.amount != null ? `$${claim.amount}` : 'N/A'}\nStatus: ${claim.status || 'N/A'}`;
       if (person.email) await sendEmail(person.email, `Claim Submitted – ${claim.claim_number || ''}`, html);
       let waPhone = role === 'patient' ? await isWhatsAppEnabledForPatient(pool, patient_id) : person.phone;
-      if (waPhone) await sendWhatsApp(waPhone, waText);
+      if (waPhone) await sendWhatsApp(waPhone, waText, updateTemplate(person, `claim ${claim.claim_number || ''} submitted${claim.amount != null ? ` for $${claim.amount}` : ''}`.replace(/  +/g, ' ')));
     }
   },
 
@@ -650,7 +674,7 @@ const EVENTS = {
       const waText = `*Claim Status Updated*\n\n${greeting}\n\nClaim #${claim.claim_number || 'N/A'} status changed from ${old_status} to ${claim.status}.`;
       if (person.email) await sendEmail(person.email, `Claim Status: ${claim.status} – ${claim.claim_number || ''}`, html);
       let waPhone = role === 'patient' ? await isWhatsAppEnabledForPatient(pool, patient_id) : person.phone;
-      if (waPhone) await sendWhatsApp(waPhone, waText);
+      if (waPhone) await sendWhatsApp(waPhone, waText, updateTemplate(person, `claim ${claim.claim_number || ''} is now ${claim.status}`.replace(/  +/g, ' ')));
     }
   },
 
@@ -674,7 +698,7 @@ const EVENTS = {
       const waText = `*Payment Received*\n\n${greeting}\n\n${intro}\n\nAmount: ${payment.amount != null ? `$${payment.amount}` : 'N/A'}\nMethod: ${payment.payment_method || 'N/A'}\nStatus: ${payment.payment_status || 'N/A'}`;
       if (person.email) await sendEmail(person.email, `Payment Received – $${payment.amount || ''}`, html);
       let waPhone = role === 'patient' ? await isWhatsAppEnabledForPatient(pool, patient_id) : person.phone;
-      if (waPhone) await sendWhatsApp(waPhone, waText);
+      if (waPhone) await sendWhatsApp(waPhone, waText, updateTemplate(person, `payment of ${payment.amount != null ? `$${payment.amount}` : 'an amount'} received`));
     }
   },
 
@@ -693,7 +717,8 @@ const EVENTS = {
     const html = buildEmailHtml('New Task Created', '#F59E0B', `Dear Admin,`, intro, rows, null);
     await sendEmail(admin.email, `New Task: ${task.title}`, html);
     if (admin.phone) {
-      await sendWhatsApp(admin.phone, `*New Task Created*\n\nTitle: ${task.title}\nPriority: ${task.priority || 'N/A'}\nDue: ${task.due_date ? formatDate(task.due_date) : 'N/A'}\nStatus: ${task.status || 'N/A'}`);
+      await sendWhatsApp(admin.phone, `*New Task Created*\n\nTitle: ${task.title}\nPriority: ${task.priority || 'N/A'}\nDue: ${task.due_date ? formatDate(task.due_date) : 'N/A'}\nStatus: ${task.status || 'N/A'}`,
+        updateTemplate(admin, `new task "${task.title}"`));
     }
   },
 
@@ -710,7 +735,8 @@ const EVENTS = {
     const html = buildEmailHtml('Task Completed', '#10B981', `Dear Admin,`, intro, rows, null);
     await sendEmail(admin.email, `Task Completed: ${task.title}`, html);
     if (admin.phone) {
-      await sendWhatsApp(admin.phone, `*Task Completed*\n\nTitle: ${task.title}\nPriority: ${task.priority || 'N/A'}`);
+      await sendWhatsApp(admin.phone, `*Task Completed*\n\nTitle: ${task.title}\nPriority: ${task.priority || 'N/A'}`,
+        updateTemplate(admin, `task "${task.title}" completed`));
     }
   },
 
@@ -745,7 +771,10 @@ const EVENTS = {
         : null;
       const html = buildEmailHtml('Telehealth Session Scheduled', '#8B5CF6', escapeHtml(greeting), escapeHtml(intro), rows, extra);
       const waText = `*Telehealth Session Scheduled*\n\n${greeting}\n\n${intro}\n\nDate: ${formatDate(session.start_time)}\nTime: ${formatTime(session.start_time)}${session.meeting_url ? `\n\nJoin: ${session.meeting_url}` : ''}`;
-      return { subject: `Telehealth Session – ${formatDate(session.start_time)}`, html, whatsapp: waText };
+      return { subject: `Telehealth Session – ${formatDate(session.start_time)}`, html, whatsapp: waText, whatsappTemplate: session.meeting_url
+        ? { key: 'telehealth_session', vars: [person.first_name, role === 'doctor' ? ptName(patient) : drName(provider),
+            formatDate(session.start_time), formatTime(session.start_time), session.meeting_url] }
+        : updateTemplate(person, `video appointment on ${formatDate(session.start_time)} at ${formatTime(session.start_time)}`) };
     });
   },
 };
