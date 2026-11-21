@@ -78,7 +78,12 @@ router.post('/login', loginLimiter, async (req, res) => {
       if (!valid) return res.status(401).json({ error: 'Valid MFA code required' });
     }
 
-    await pool.query('UPDATE control.operators SET last_login = now() WHERE id = $1', [op.id]);
+    // Bookkeeping only: a failure here (e.g. grant missing, see migration 097) must not block sign-in.
+    try {
+      await pool.query('UPDATE control.operators SET last_login = now() WHERE id = $1', [op.id]);
+    } catch (e) {
+      console.error('Operator last_login update failed (login continues):', e.message);
+    }
     const token = signPlatformToken(op);
     await logPlatformAction(pool, { operatorId: op.id, action: 'operator.login', targetType: 'operator', targetId: op.id, ip: clientIp(req) });
     // Deliver the session as an HttpOnly cookie scoped to /api/platform so the console
