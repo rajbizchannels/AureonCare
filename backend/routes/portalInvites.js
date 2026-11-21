@@ -15,6 +15,7 @@
 // Only the SHA-256 of the token is stored; the raw token exists in the email alone.
 
 const express = require('express');
+const lockout = require('../services/loginLockout');
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const rateLimit = require('express-rate-limit');
@@ -250,11 +251,40 @@ router.get('/patient/:patientId', authenticate, staffOnly, async (req, res) => {
       invite = { id: inv.id, email: inv.email, status, sentAt: inv.created_at, expiresAt: inv.expires_at,
         acceptedAt: inv.used_at, emailed: inv.emailed };
     }
-    res.json({ portalEnabled: Boolean(patient.portal_enabled), hasEmail: Boolean(patient.email), invite });
+    const emails = await portalEmails(req, patient);
+    const locked = (await lockout.lockedAmong(req.app.locals.pool, 'portal', emails)).size > 0;
+    res.json({ portalEnabled: Boolean(patient.portal_enabled), hasEmail: Boolean(patient.email), invite, locked });
   } catch (err) {
     console.error('[portal-invites] status error:', err);
     if (sendDbError(res, err, 'Could not load portal status')) return;
     res.status(500).json({ error: 'Could not load portal status' });
+  }
+});
+
+// The addresses a patient can sign in to the portal with: the chart's, and the linked account's.
+async function portalEmails(req, patient) {
+  const out = [patient.email];
+  try {
+    const { rows: [u] } = await req.app.locals.pool.query('SELECT email FROM public.users WHERE id = $1', [patient.id]);
+    if (u) out.push(u.email);
+  } catch (_) { /* the chart's address is enough */ }
+  return out.filter(Boolean);
+}
+
+// ── staff: unlock a portal sign-in locked by repeated wrong passwords ────────────────
+router.post('/patient/:patientId/unlock', authenticate, staffOnly, async (req, res) => {
+  const db = req.db;
+  if (!db) return res.status(409).json({ error: 'Your account is not linked to a practice.' });
+  try {
+    const { rows: [patient] } = await db.query('SELECT id, email FROM patients WHERE id = $1', [req.params.patientId]);
+    if (!patient) return res.status(404).json({ error: 'Patient not found' });
+    let wasLocked = false;
+    for (const e of await portalEmails(req, patient)) wasLocked = (await lockout.clear(req.app.locals.pool, 'portal', e)) || wasLocked;
+    console.log(`[lockout] portal sign-in unlocked by ${req.user.id} for patient ${patient.id}`);
+    res.json({ unlocked: true, wasLocked });
+  } catch (err) {
+    console.error('[portal-invites] unlock error:', err);
+    res.status(500).json({ error: 'Could not unlock the portal sign-in' });
   }
 });
 
@@ -356,6 +386,8 @@ router.post('/accept', publicLimiter, async (req, res) => {
     const inv = await usableInvite(req.app.locals.pool, token);
     if (!inv) return res.status(410).json(INVALID);
     const hash = await bcrypt.hash(password, BCRYPT_COST);
+    // Setting a new password from the practice's invitation unlocks the portal sign-in.
+    await require('../services/loginLockout').clear(req.app.locals.pool, 'portal', inv.email);
     await redeem(req, res, inv, (c, patientId) =>
       c.query('UPDATE patients SET portal_password_hash = $2 WHERE id = $1', [patientId, hash]));
   } catch (err) {

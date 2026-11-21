@@ -823,3 +823,45 @@ What changes:
   in Settings → User Management → Team access. Approving sends a normal staff invitation;
   nothing is granted until it is accepted. Answers never reveal whether someone already works
   there. No new environment variables.
+
+## Sign-in rate limit fix + lockout after 4 wrong passwords
+
+1. Paste `backend/migrations/095_login_lockouts.sql` into the SQL editor (safe to re-run).
+   Until it is applied, sign-in works but WITHOUT lockout (it fails open; the logs say
+   "[lockout] disabled … apply migration 095").
+2. Deploy.
+
+What changes:
+- **Fixes "existing passwords don't work".** The strict sign-in limit (10 per 15 min per IP)
+  counted EVERY `/api/auth` request — `/me` on each page load, the practice switcher's
+  `/memberships`, session end — so an office behind one IP used it up and real sign-ins got
+  "Too many attempts". It now counts only credential attempts (sign-in, password reset,
+  Google/Microsoft, second factor, change password), up to 30 per IP per 15 min.
+- **Lockout:** the 4th wrong password (or 2FA code) within 15 minutes locks that address for
+  15 minutes — staff sign-in and the patient portal alike. The 3rd wrong try warns "1 attempt
+  left". Unknown addresses lock the same way, so it reveals nothing about who has an account.
+  Override with `AC_LOCKOUT_MAX` / `AC_LOCKOUT_MIN` if ever needed.
+- **Unlocking:** admins see "Sign-in locked" with an **Unlock** button in Settings → User
+  Management; staff see the same on a patient's portal panel. A password reset (or portal
+  set-up link), or a successful sign-in, also clears it.
+
+## Sick notes
+
+1. Paste `backend/migrations/096_sick_notes.sql` into the SQL editor as the database owner
+   (safe to re-run). It registers the table for new practices and creates it in `template`
+   and every existing practice. The notice says how many schemas it created it in.
+2. Deploy.
+
+What changes:
+- Patient chart (Patients → Patient History → a patient) has a **Sick Notes** tab. Doctors and
+  nurses — or an admin who is also a provider — issue a note: for work / school / normal
+  activities, not fit or may be fit with adjustments (phased return, altered hours, amended
+  duties, workplace adaptations), the period (max 92 days per note), the condition as it
+  should appear (blank prints "A medical condition"), comments and whether a review is needed.
+  "Issue and print" prints an A4 certificate with the practice's name, address and phone,
+  the clinician's registration number and a reference (SN-YYYY-XXXXXX) to verify it by.
+- Notes can be printed again or emailed to the patient; they are never edited or deleted. A
+  wrong one is **voided** with a reason (by the issuer or an admin) and prints marked VOID.
+- Patients see and print their notes in the portal (Sick Notes tab).
+- Permission: Clinical Records → `sick_notes` (doctors all, nurses read/write, reception none
+  by default; change in Settings → Permissions).

@@ -685,6 +685,18 @@ const AdminPanelView = ({
   /**
    * Toggle user status (block/unblock)
    */
+  // Clear a lock left by repeated wrong passwords. No confirmation: it only lets the person
+  // try their password again, and it unlocks itself after 15 minutes anyway.
+  const handleUnlockUser = useCallback(async (user) => {
+    try {
+      const r = await api.unlockUser(user.id);
+      setUsers((prev) => prev.map((u) => (u.id === user.id ? { ...u, locked: false } : u)));
+      await addNotification('success', r.message || 'Account unlocked');
+    } catch (error) {
+      await addNotification('alert', error.message || 'Could not unlock the account');
+    }
+  }, [api, addNotification, setUsers]);
+
   const handleToggleUserStatus = useCallback(
     (userId, currentStatus) => {
       const newStatus = currentStatus === USER_STATUS.BLOCKED ? USER_STATUS.ACTIVE : USER_STATUS.BLOCKED;
@@ -2670,8 +2682,22 @@ const AdminPanelView = ({
                   <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
                     {user.email} • {user.role}{user.otherPractices > 0 ? ` • also at ${user.otherPractices} other practice${user.otherPractices > 1 ? 's' : ''}` : ''}
                   </p>
+                  {user.locked && (
+                    <p className="mt-1 text-xs font-medium text-red-600 flex items-center gap-1">
+                      <Lock className="w-3.5 h-3.5" /> Sign-in locked after 4 wrong passwords (unlocks itself after 15 minutes)
+                    </p>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
+                  {user.locked && (
+                    <button
+                      onClick={() => handleUnlockUser(user)}
+                      className="px-3 py-1.5 rounded-lg text-sm font-medium bg-red-600 hover:bg-red-700 text-white flex items-center gap-1.5"
+                      title="Let this person sign in again now"
+                    >
+                      <Unlock className="w-4 h-4" /> Unlock
+                    </button>
+                  )}
                   <button
                     onClick={() => {
                       setEditingUser(user);

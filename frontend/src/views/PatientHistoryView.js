@@ -17,6 +17,7 @@ import { useAudit } from '../hooks/useAudit';
 import ThemedSelect from '../components/forms/ThemedSelect';
 import AIAssistButton from '../components/integrations/AIAssistButton';
 import PortalInvitePanel from '../components/patients/PortalInvitePanel';
+import SickNotesPanel from '../components/patients/SickNotesPanel';
 
 // Compact one-line summaries of chart rows, used as the context an AI assist button
 // OFFERS to send (the user sees and can edit it before anything is sent).
@@ -1541,7 +1542,9 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, initia
               { id: 'prescriptions', label: 'Prescriptions', icon: Pill, count: prescriptions.length },
               { id: 'labOrders', label: 'Lab Orders', icon: Microscope, count: labOrders.length },
               { id: 'appointments', label: 'Appointments', icon: Calendar, count: appointments.length },
-              { id: 'records', label: 'Records', icon: FileText, count: medicalRecords.length }
+              { id: 'records', label: 'Records', icon: FileText, count: medicalRecords.length },
+              // Staff only: the patient sees their own notes in the portal.
+              ...(user?.role !== 'patient' ? [{ id: 'sickNotes', label: 'Sick Notes', icon: FileText, count: null }] : [])
             ].map(tab => {
               const Icon = tab.icon;
               return (
@@ -1727,6 +1730,9 @@ const PatientHistoryView = ({ theme, api, addNotification, user, patient, initia
         {activeTab === 'labOrders' && renderLabOrders()}
         {activeTab === 'appointments' && renderAppointments()}
         {activeTab === 'records' && renderRecords()}
+        {activeTab === 'sickNotes' && user?.role !== 'patient' && (patientData?.id || patient?.id) && (
+          <SickNotesPanel patientId={patientData?.id || patient?.id} theme={theme} api={api} addNotification={addNotification} />
+        )}
       </div>
 
       {/* Modals */}

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { printHtml } from '../utils/printHtml';
 import { Calendar, FileText, User, Edit, Check, X, Lock, Trash2, XCircle, Upload, Printer, MessageCircle, Activity, Pill, Plus, Heart, Star, Clock, ClipboardList, AlertCircle, ChevronRight, Search, Stethoscope, ToggleLeft, ToggleRight } from 'lucide-react';
 import DynamicFormRenderer from '../components/forms/DynamicFormRenderer';
 import { FORM_TEMPLATES } from '../data/formTemplates';
@@ -40,6 +41,7 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
   const [appointments, setAppointments] = useState([]);
   const [medicalRecords, setMedicalRecords] = useState([]);
   const [diagnoses, setDiagnoses] = useState([]);
+  const [sickNotes, setSickNotes] = useState([]);
   const [prescriptions, setPrescriptions] = useState([]);
   const [providers, setProviders] = useState([]);
   const [loadingProviders, setLoadingProviders] = useState(false);
@@ -381,6 +383,7 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
       setMedicalRecords(records);
       setDiagnoses(diags);
       setPrescriptions(presc);
+      api.portalGetSickNotes(patientId).then(setSickNotes).catch(() => setSickNotes([]));
 
       // Update profileData with the full profile from database
       if (profile) {
@@ -1364,6 +1367,45 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
               </div>
             ))}
           </div>
+        </div>
+      )}
+    </div>
+  );
+
+  // Sick notes the practice issued — view and print. A voided one prints marked VOID.
+  const printSickNote = async (noteId) => {
+    try {
+      const d = await api.portalGetSickNoteDocument(user.id, noteId);
+      printHtml(d.html, `Sick note ${d.reference}`);
+    } catch (e) {
+      addNotification('alert', e.message);
+    }
+  };
+  const renderSickNotes = () => (
+    <div className="space-y-6">
+      <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.sickNotes || 'Sick Notes'}</h2>
+      {sickNotes.length === 0 ? (
+        <div className={`text-center py-12 rounded-xl border ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
+          <FileText className={`w-12 h-12 mx-auto mb-4 ${theme === 'dark' ? 'text-slate-600' : 'text-gray-400'}`} />
+          <p className={theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}>No sick notes.</p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {sickNotes.map((n) => (
+            <div key={n.id} className={`p-4 rounded-xl border flex flex-wrap justify-between gap-3 ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-gray-100/50 border-gray-300'} ${n.status === 'voided' ? 'opacity-70' : ''}`}>
+              <div className="min-w-0">
+                <div className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                  {n.fitness === 'not_fit' ? 'Not fit' : 'May be fit'} · {formatDate(n.startDate)} – {formatDate(n.endDate)} ({n.days} day{n.days === 1 ? '' : 's'})
+                  {n.status === 'voided' && <span className="ml-2 text-xs font-semibold text-red-600">VOID</span>}
+                </div>
+                <div className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{n.reference} · {n.issuerName}</div>
+              </div>
+              <button type="button" onClick={() => printSickNote(n.id)}
+                      className="self-start inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-teal-700 hover:bg-teal-800 text-white">
+                <FileText className="w-4 h-4" /> View / print
+              </button>
+            </div>
+          ))}
         </div>
       )}
     </div>
@@ -3366,6 +3408,7 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
           { id: 'diagnoses', label: t.diagnosesTab || 'Diagnoses', icon: Activity, count: diagnoses.length },
           { id: 'prescriptions', label: t.prescriptionsTab || 'Prescriptions', icon: Pill, count: prescriptions.length },
           { id: 'records', label: t.recordsTab || 'Records', icon: FileText, count: medicalRecords.length },
+          { id: 'sickNotes', label: t.sickNotes || 'Sick Notes', icon: FileText, count: sickNotes.length || null },
           { id: 'forms', label: 'Forms Requested', icon: ClipboardList, count: pendingForms.filter(f => f.status === 'draft').length || null, highlight: pendingForms.filter(f => f.status === 'draft').length > 0 },
           { id: 'messages', label: t.messages || 'Messages', icon: MessageCircle, count: unreadMessages || null, highlight: unreadMessages > 0 }
         ].map((tab) => (
@@ -3403,6 +3446,7 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
       {currentView === 'diagnoses' && renderDiagnoses()}
       {currentView === 'prescriptions' && renderPrescriptions()}
       {currentView === 'records' && renderMedicalRecords()}
+      {currentView === 'sickNotes' && renderSickNotes()}
       {currentView === 'forms' && renderForms()}
       {currentView === 'messages' && (
         <SecureMessaging

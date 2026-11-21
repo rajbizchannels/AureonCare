@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
+const lockout = require('../services/loginLockout');
 const { signToken, authenticate } = require('../middleware/auth');
 const { validateSocialToken } = require('../utils/socialTokenValidator');
 const { sendEmail } = require('../services/notificationService');
@@ -119,6 +120,11 @@ router.post('/login', async (req, res) => {
     }
 
     const pool = req.app.locals.pool;
+    // Locked after repeated wrong passwords: refused before the password is looked at.
+    // Unknown addresses lock exactly the same way, so this reveals nothing.
+    const lock = await lockout.status(pool, 'staff', email);
+    if (lock.locked) return res.status(423).json({ error: lock.message, locked: true });
+
     const result = await pool.query(
       'SELECT * FROM users WHERE email = $1',
       [email]
@@ -133,7 +139,8 @@ router.post('/login', async (req, res) => {
     const isMatch = await bcrypt.compare(password, hashToCompare);
 
     if (!user || !user.password_hash || !isMatch) {
-      return res.status(401).json({ error: 'Invalid email or password' });
+      const f = await lockout.recordFailure(pool, 'staff', email, 'Invalid email or password.');
+      return res.status(f.locked ? 423 : 401).json({ error: f.message, locked: f.locked || undefined });
     }
 
     // Only after the credentials are proven correct do we reveal account-state
@@ -163,7 +170,9 @@ router.post('/login', async (req, res) => {
       }
       const check = verifySecondFactor(user, mfaCode);
       if (!check.ok) {
-        return res.status(401).json({ mfaRequired: true, error: 'That code is not valid.' });
+        // Wrong codes count toward the same lock as wrong passwords.
+        const f = await lockout.recordFailure(pool, 'staff', email, 'That code is not valid.');
+        return res.status(f.locked ? 423 : 401).json({ mfaRequired: !f.locked, error: f.message, locked: f.locked || undefined });
       }
       if (check.usedBackupCode) {
         // Single use. Struck immediately, before the session is issued, so a replayed
@@ -198,6 +207,7 @@ router.post('/login', async (req, res) => {
     // has to keep it in JS-readable storage. `token` stays in the body for existing
     // clients; the frontend migrates to the cookie and stops storing it.
     const csrfToken = issueAuthCookies(res, token);
+    await lockout.clear(pool, 'staff', email);   // a successful sign-in wipes earlier wrong tries
 
     // A patient signing in here lands in the portal, whose routes accept only a portal
     // session token — the JWT above is not one. Null for every non-patient, and for a
@@ -932,6 +942,8 @@ router.post('/reset-password', async (req, res) => {
       [newPasswordHash, user.id]
     );
     await revokePortalSessions(pool, user.id); // in the user's tenant schema, not public
+    // Proving control of the mailbox unlocks the account.
+    await lockout.clear(pool, 'staff', user.email);
 
     res.json({ message: 'Password reset successfully' });
   } catch (error) {

@@ -1179,6 +1179,8 @@ const api = {
     }
     return response.json();
   },
+  portalGetSickNotes: (patientId) => api._portalCall(patientId, '/sick-notes', { fail: 'Failed to load sick notes' }),
+  portalGetSickNoteDocument: (patientId, noteId) => api._portalCall(patientId, `/sick-notes/${encodeURIComponent(noteId)}/document`, { fail: 'Failed to load the sick note' }),
   portalGetDiagnoses: (patientId) => api._portalCall(patientId, '/diagnoses', { fail: 'Failed to load diagnoses' }),
   portalGetActivePrescriptions: (patientId) => api._portalCall(patientId, '/prescriptions/active', { fail: 'Failed to load prescriptions' }),
   portalGetPharmacies: (patientId) => api._portalCall(patientId, '/pharmacies', { fail: 'Failed to load pharmacies' }),
@@ -4280,6 +4282,50 @@ const api = {
     const r = await authenticatedFetch(`${API_BASE_URL}/portal-invites/patient/${encodeURIComponent(patientId)}`);
     const data = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(data.error || 'Could not load portal status');
+    return data;
+  },
+  // ── Sick notes (/api/sick-notes) ──
+  getSickNotes: async (patientId) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/sick-notes?patientId=${encodeURIComponent(patientId)}`);
+    const data = await r.json().catch(() => ({}));
+    if (r.status === 403) throw new Error('You do not have access to sick notes.');
+    if (!r.ok) throw new Error(data.error || 'Could not load sick notes');
+    return data;
+  },
+  issueSickNote: async (body) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/sick-notes`, { method: 'POST', body: JSON.stringify(body) });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || 'Could not issue the sick note');
+    return data;
+  },
+  getSickNoteDocument: async (id) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/sick-notes/${encodeURIComponent(id)}/document`);
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || 'Could not prepare the sick note');
+    return data;
+  },
+  emailSickNote: async (id) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/sick-notes/${encodeURIComponent(id)}/email`, { method: 'POST', body: JSON.stringify({}) });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || 'Could not email the sick note');
+    return data;
+  },
+  voidSickNote: async (id, reason) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/sick-notes/${encodeURIComponent(id)}/void`, { method: 'POST', body: JSON.stringify({ reason }) });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || 'Could not void the sick note');
+    return data;
+  },
+  unlockPortalSignIn: async (patientId) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/portal-invites/patient/${encodeURIComponent(patientId)}/unlock`, { method: 'POST', body: JSON.stringify({}) });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || 'Could not unlock the portal sign-in');
+    return data;
+  },
+  unlockUser: async (userId) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/users/${encodeURIComponent(userId)}/unlock`, { method: 'POST', body: JSON.stringify({}) });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || 'Could not unlock the account');
     return data;
   },
   revokePortalInvite: async (patientId) => {

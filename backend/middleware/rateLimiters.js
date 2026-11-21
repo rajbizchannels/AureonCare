@@ -32,11 +32,18 @@ const testBypass = () =>
 // Strict limiter for authentication-sensitive endpoints (login, password
 // reset, social login). Low ceiling per IP to blunt credential brute-force
 // and password-reset abuse.
+// Mounted on all of /api/auth, but it counts ONLY the requests that try a credential.
+// It used to count every /api/auth request — including /me on each page load, the
+// practice-switcher's /memberships and /session/end — so ordinary use by an office behind
+// one IP used up the allowance and the next real sign-in was refused with "Too many
+// attempts". Per-ACCOUNT protection is the lockout after 4 wrong passwords
+// (services/loginLockout.js); this is the per-IP backstop against spraying many accounts.
+const CREDENTIAL_PATHS = /^\/(login|forgot-password|reset-password|social-login|link-social-account|change-password|mfa\/(verify|disable)|oauth\/[a-z]+\/exchange)\/?$/;
 const authLimiter = rateLimit({
   store: storeFor('auth'),
   windowMs: WINDOW_MS,
-  max: 10,
-  skip: testBypass,
+  max: 30,
+  skip: (req) => testBypass() || !CREDENTIAL_PATHS.test(req.path),
   standardHeaders: true,
   legacyHeaders: false,
   handler: (req, res) => {
@@ -60,4 +67,4 @@ const apiLimiter = rateLimit({
   },
 });
 
-module.exports = { authLimiter, apiLimiter };
+module.exports = { authLimiter, apiLimiter, CREDENTIAL_PATHS };

@@ -225,6 +225,7 @@ app.use('/api/short-links', require('./routes/shortLinks').api);   // staff: sha
 app.use('/api/practice-profile', require('./routes/practiceProfile'));    // directory Phase 2
 app.use('/api/directory', require('./routes/directory').router);       // directory search (Phase 3)
 app.use('/api/booking-requests', require('./routes/bookingRequests'));   // guest bookings staff confirm
+app.use('/api/sick-notes', require('./routes/sickNotes'));               // medical certificates
 app.use('/api/team-access', require('./routes/teamAccess').router);
 app.use('/api/search', require('./routes/search'));
 app.use('/api/appointments', require('./routes/appointments'));
