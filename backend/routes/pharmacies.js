@@ -1,5 +1,6 @@
 const express = require('express');
 const { authenticate } = require('../middleware/auth');
+const { sendDbError } = require('../utils/dbErrors');
 const router = express.Router();
 router.use(authenticate);
 router.use(require('../middleware/planEnforcement').enforceActiveBilling); // SEC-05 S11: read-only when subscription past_due/canceled
@@ -165,6 +166,8 @@ router.post('/patient/:patientId/preferred', async (req, res) => {
   } catch (error) {
     await client.query('ROLLBACK');
     console.error('Error adding patient pharmacy:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to add patient pharmacy')) return;
     res.status(500).json({ error: 'Failed to add patient pharmacy' });
   } finally {
     client.release();
@@ -187,6 +190,8 @@ router.delete('/patient/:patientId/preferred/:pharmacyId', async (req, res) => {
     res.json({ message: 'Pharmacy removed from patient list' });
   } catch (error) {
     console.error('Error removing patient pharmacy:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to remove patient pharmacy')) return;
     res.status(500).json({ error: 'Failed to remove patient pharmacy' });
   }
 });
@@ -224,6 +229,8 @@ router.post('/', async (req, res) => {
     if (error.code === '23505') { // Unique violation
       res.status(400).json({ error: 'Pharmacy with this NCPDP ID already exists' });
     } else {
+      // A constraint the request broke is the caller's to fix, not a server fault.
+      if (sendDbError(res, error, 'Failed to create pharmacy')) return;
       res.status(500).json({ error: 'Failed to create pharmacy' });
     }
   }
@@ -279,6 +286,8 @@ router.put('/:id', async (req, res) => {
     res.json(toCamelCase(result.rows[0]));
   } catch (error) {
     console.error('Error updating pharmacy:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to update pharmacy')) return;
     res.status(500).json({ error: 'Failed to update pharmacy' });
   }
 });
@@ -299,6 +308,8 @@ router.delete('/:id', async (req, res) => {
     res.json({ message: 'Pharmacy deactivated successfully' });
   } catch (error) {
     console.error('Error deleting pharmacy:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to delete pharmacy')) return;
     res.status(500).json({ error: 'Failed to delete pharmacy' });
   }
 });

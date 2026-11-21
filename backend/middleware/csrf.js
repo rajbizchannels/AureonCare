@@ -16,7 +16,7 @@
 // This keeps the existing token-based frontend working unchanged during the migration.
 
 const crypto = require('crypto');
-const { getCsrfCookie, getSessionCookie, getPlatformCookie, getPlatformCsrfCookie } = require('../utils/authCookies');
+const { getCsrfCookie, getSessionCookie, getPlatformCookie, getPlatformCsrfCookie, getPortalCookie } = require('../utils/authCookies');
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
@@ -57,6 +57,12 @@ const SESSION_INDEPENDENT = new Set([
   'POST /api/signup',
   'POST /api/invites/accept',
   'POST /api/team-access/join',
+  // Only ever removes the caller's own session cookies (SEC-40). A forged call can at
+  // worst sign the victim out of this browser — never act as them — and it must work when
+  // the readable CSRF cookie has already expired alongside the session.
+  'POST /api/auth/session/end',
+  // Read-only search over what practices published; ignores the session entirely.
+  'POST /api/directory/search',
 ]);
 
 /** True when this exact request is one of the session-independent endpoints. */
@@ -79,7 +85,8 @@ function verifyCsrf(req, res, next) {
 
   // Not cookie-authenticated either (e.g. an unauthenticated public endpoint) — nothing
   // for CSRF to protect here; the route's own auth decides.
-  if (!isPlatform && !getSessionCookie(req)) return next();
+  // The portal session cookie (ac_portal) counts too: it authenticates portal writes.
+  if (!isPlatform && !getSessionCookie(req) && !getPortalCookie(req)) return next();
 
   // A session cookie is present, but this endpoint does not act as that user. See
   // SESSION_INDEPENDENT above for why these three and not the login routes.

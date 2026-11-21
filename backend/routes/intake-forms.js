@@ -1,6 +1,13 @@
 const express = require('express');
 const { authenticate } = require('../middleware/auth');
+const { sendDbError } = require('../utils/dbErrors');
 const router = express.Router();
+
+// `/:id` only matches a UUID. Unconstrained, it was declared before the literal routes
+// below and swallowed them: GET /flows and /consents were handled as "fetch intake form
+// 'flows'", failed to parse as a UUID and answered 500, so those screens never
+// loaded. Constraining the parameter makes route order irrelevant.
+const ID = ':id([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})';
 router.use(authenticate);
 router.use(require('../middleware/planEnforcement').enforceActiveBilling); // SEC-05 S11: read-only when subscription past_due/canceled
 
@@ -55,7 +62,7 @@ router.get('/', async (req, res) => {
 });
 
 // Get single intake form
-router.get('/:id', async (req, res) => {
+router.get(`/${ID}`, async (req, res) => {
   try {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(
@@ -116,12 +123,14 @@ router.post('/', async (req, res) => {
     res.status(201).json(result.rows[0]);
   } catch (error) {
     console.error('Error creating intake form:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to create intake form')) return;
     res.status(500).json({ error: 'Failed to create intake form' });
   }
 });
 
 // Update intake form
-router.put('/:id', async (req, res) => {
+router.put(`/${ID}`, async (req, res) => {
   const {
     form_type,
     form_name,
@@ -200,12 +209,14 @@ router.put('/:id', async (req, res) => {
     res.json(result.rows[0]);
   } catch (error) {
     console.error('Error updating intake form:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to update intake form')) return;
     res.status(500).json({ error: 'Failed to update intake form' });
   }
 });
 
 // Delete intake form
-router.delete('/:id', async (req, res) => {
+router.delete(`/${ID}`, async (req, res) => {
   try {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const result = await pool.query(
@@ -220,6 +231,8 @@ router.delete('/:id', async (req, res) => {
     res.json({ message: 'Intake form deleted successfully' });
   } catch (error) {
     console.error('Error deleting intake form:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to delete intake form')) return;
     res.status(500).json({ error: 'Failed to delete intake form' });
   }
 });
@@ -334,6 +347,8 @@ router.post('/flows', async (req, res) => {
     res.status(201).json(result.rows[0]);
   } catch (error) {
     console.error('Error creating intake flow:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to create intake flow')) return;
     res.status(500).json({ error: 'Failed to create intake flow' });
   }
 });
@@ -402,6 +417,8 @@ router.put('/flows/:id', async (req, res) => {
     res.json(result.rows[0]);
   } catch (error) {
     console.error('Error updating intake flow:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to update intake flow')) return;
     res.status(500).json({ error: 'Failed to update intake flow' });
   }
 });
@@ -422,6 +439,8 @@ router.delete('/flows/:id', async (req, res) => {
     res.json({ message: 'Intake flow deleted successfully' });
   } catch (error) {
     console.error('Error deleting intake flow:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to delete intake flow')) return;
     res.status(500).json({ error: 'Failed to delete intake flow' });
   }
 });
@@ -541,6 +560,8 @@ router.post('/consents', async (req, res) => {
     res.status(201).json(result.rows[0]);
   } catch (error) {
     console.error('Error creating consent form:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to create consent form')) return;
     res.status(500).json({ error: 'Failed to create consent form' });
   }
 });
@@ -635,6 +656,8 @@ router.put('/consents/:id', async (req, res) => {
     res.json(result.rows[0]);
   } catch (error) {
     console.error('Error updating consent form:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to update consent form')) return;
     res.status(500).json({ error: 'Failed to update consent form' });
   }
 });
@@ -655,6 +678,8 @@ router.delete('/consents/:id', async (req, res) => {
     res.json({ message: 'Consent form deleted successfully' });
   } catch (error) {
     console.error('Error deleting consent form:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to delete consent form')) return;
     res.status(500).json({ error: 'Failed to delete consent form' });
   }
 });

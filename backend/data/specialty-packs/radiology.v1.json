@@ -1,0 +1,308 @@
+{
+  "code": "radiology",
+  "version": 1,
+  "label": "Radiology and Imaging",
+  "description": "Starting configuration for an imaging service: modality-based appointment types, with a plain film, ultrasound, CT and MRI catalogue and the preparation each needs.",
+  "modules": {
+    "hide": [
+      "camps",
+      "patientPortal"
+    ]
+  },
+  "terminology": {
+    "provider": "Radiologist",
+    "providers": "Radiologists",
+    "appointment": "Scan",
+    "appointments": "Scans"
+  },
+  "appointmentTypes": [
+    {
+      "name": "Plain Radiograph",
+      "durationMinutes": 15,
+      "color": "#2563EB",
+      "displayOrder": 10
+    },
+    {
+      "name": "Ultrasound",
+      "durationMinutes": 30,
+      "color": "#0EA5E9",
+      "displayOrder": 20
+    },
+    {
+      "name": "CT Scan",
+      "durationMinutes": 30,
+      "color": "#14B8A6",
+      "displayOrder": 30
+    },
+    {
+      "name": "MRI Scan",
+      "durationMinutes": 45,
+      "color": "#8B5CF6",
+      "displayOrder": 40
+    },
+    {
+      "name": "Mammography",
+      "durationMinutes": 30,
+      "color": "#F59E0B",
+      "displayOrder": 50
+    },
+    {
+      "name": "Image-guided Procedure",
+      "durationMinutes": 60,
+      "color": "#64748B",
+      "displayOrder": 60
+    },
+    {
+      "name": "Results Consultation",
+      "durationMinutes": 20,
+      "color": "#DC2626",
+      "displayOrder": 70
+    }
+  ],
+  "serviceCategories": [
+    {
+      "name": "Plain Radiography",
+      "icon": "image",
+      "displayOrder": 10
+    },
+    {
+      "name": "Ultrasound",
+      "icon": "radio",
+      "displayOrder": 20
+    },
+    {
+      "name": "Cross-sectional Imaging",
+      "icon": "layers",
+      "displayOrder": 30
+    },
+    {
+      "name": "Breast Imaging",
+      "icon": "search",
+      "displayOrder": 40
+    }
+  ],
+  "offerings": [
+    {
+      "name": "Chest Radiograph, Two Views",
+      "categoryName": "Plain Radiography",
+      "durationMinutes": 15,
+      "cptCodes": [
+        "71046"
+      ]
+    },
+    {
+      "name": "Limb Radiograph",
+      "categoryName": "Plain Radiography",
+      "durationMinutes": 15
+    },
+    {
+      "name": "Spine Radiograph",
+      "categoryName": "Plain Radiography",
+      "durationMinutes": 20
+    },
+    {
+      "name": "Abdominal Ultrasound, Complete",
+      "categoryName": "Ultrasound",
+      "durationMinutes": 30,
+      "cptCodes": [
+        "76700"
+      ],
+      "requiresPreparation": true,
+      "preparationInstructions": "Nothing to eat for six hours beforehand. You may drink water. This keeps the gallbladder visible."
+    },
+    {
+      "name": "Pelvic Ultrasound",
+      "categoryName": "Ultrasound",
+      "durationMinutes": 30,
+      "requiresPreparation": true,
+      "preparationInstructions": "Arrive with a full bladder. Drink about a pint of water an hour before and do not empty your bladder."
+    },
+    {
+      "name": "Soft Tissue Ultrasound",
+      "categoryName": "Ultrasound",
+      "durationMinutes": 25
+    },
+    {
+      "name": "CT Head without Contrast",
+      "categoryName": "Cross-sectional Imaging",
+      "durationMinutes": 20,
+      "cptCodes": [
+        "70450"
+      ]
+    },
+    {
+      "name": "CT Abdomen and Pelvis",
+      "categoryName": "Cross-sectional Imaging",
+      "durationMinutes": 30,
+      "requiresPreparation": true,
+      "preparationInstructions": "Nothing to eat for four hours beforehand. Tell us if you have ever reacted to contrast dye, or if you have kidney problems."
+    },
+    {
+      "name": "MRI Lumbar Spine without Contrast",
+      "categoryName": "Cross-sectional Imaging",
+      "durationMinutes": 45,
+      "cptCodes": [
+        "72148"
+      ],
+      "requiresPreparation": true,
+      "preparationInstructions": "Leave all metal at home or in the locker. Tell us beforehand about any pacemaker, implant, surgical clip or metal fragment in the eye."
+    },
+    {
+      "name": "MRI Brain",
+      "categoryName": "Cross-sectional Imaging",
+      "durationMinutes": 45,
+      "requiresPreparation": true,
+      "preparationInstructions": "Leave all metal at home or in the locker. Tell us beforehand about any pacemaker, implant or surgical clip."
+    },
+    {
+      "name": "Screening Mammography, Bilateral",
+      "categoryName": "Breast Imaging",
+      "durationMinutes": 30,
+      "cptCodes": [
+        "77067"
+      ],
+      "requiresPreparation": true,
+      "preparationInstructions": "Do not use deodorant, talc or body lotion on the day. Wear a two-piece outfit so you only need to undress to the waist."
+    },
+    {
+      "name": "Ultrasound-guided Biopsy",
+      "categoryName": "Ultrasound",
+      "durationMinutes": 60,
+      "consentFormRequired": true
+    }
+  ],
+  "formTemplates": [
+    {
+      "slug": "imaging-safety-questionnaire",
+      "name": "Imaging Safety Questionnaire",
+      "templateType": "clinical",
+      "categorySlug": "clinical",
+      "version": "1.0",
+      "languages": [
+        "en"
+      ],
+      "complianceTags": [
+        "HIPAA"
+      ],
+      "requireSignature": true,
+      "fields": [
+        {
+          "id": "examination",
+          "type": "text",
+          "label": "Examination requested",
+          "required": true
+        },
+        {
+          "id": "clinical_question",
+          "type": "textarea",
+          "label": "What is the scan looking for?"
+        },
+        {
+          "id": "pregnant",
+          "type": "radio",
+          "label": "Is there any chance you are pregnant?",
+          "options": [
+            "No",
+            "Yes",
+            "Not applicable"
+          ],
+          "required": true
+        },
+        {
+          "id": "metal_implants",
+          "type": "checkboxes",
+          "label": "Do you have any of these?",
+          "options": [
+            "Pacemaker or defibrillator",
+            "Cochlear implant",
+            "Aneurysm clip",
+            "Joint replacement",
+            "Metal fragment in the eye",
+            "Surgical staples or clips",
+            "None of these"
+          ],
+          "required": true
+        },
+        {
+          "id": "metal_work_history",
+          "type": "checkbox",
+          "label": "Have you ever worked with metal, or had a metal injury to the eye?"
+        },
+        {
+          "id": "contrast_reaction",
+          "type": "radio",
+          "label": "Have you ever reacted to contrast dye?",
+          "options": [
+            "No",
+            "Yes",
+            "Not sure"
+          ],
+          "required": true
+        },
+        {
+          "id": "kidney_problems",
+          "type": "checkbox",
+          "label": "Do you have kidney problems?"
+        },
+        {
+          "id": "claustrophobia",
+          "type": "checkbox",
+          "label": "Do you get claustrophobic?"
+        },
+        {
+          "id": "weight",
+          "type": "text",
+          "label": "Weight, which we need for scanner limits and contrast dosing"
+        },
+        {
+          "id": "confirmed",
+          "type": "checkbox",
+          "label": "I confirm the answers above are correct to the best of my knowledge",
+          "required": true
+        }
+      ]
+    }
+  ],
+  "inventoryCategories": [
+    {
+      "code": "rad_contrast",
+      "name": "Contrast Media"
+    },
+    {
+      "code": "rad_consumables",
+      "name": "Imaging Consumables"
+    },
+    {
+      "code": "rad_biopsy",
+      "name": "Biopsy Needles and Kits"
+    }
+  ],
+  "codeSets": {
+    "icd10": [
+      "R07.9",
+      "M54.5",
+      "R10.9",
+      "R91.8",
+      "Z12.31",
+      "S52.501A",
+      "R51.9"
+    ],
+    "cpt": [
+      "71046",
+      "70450",
+      "72148",
+      "76700",
+      "77067"
+    ]
+  },
+  "settings": {
+    "defaultAppointmentDuration": 20,
+    "slotIntervalMinutes": 10
+  },
+  "reports": {
+    "show": [
+      "clinical",
+      "operational"
+    ]
+  }
+}

@@ -1,0 +1,300 @@
+{
+  "code": "general_surgery",
+  "version": 1,
+  "label": "General Surgery",
+  "description": "Starting configuration for a general surgical practice: clinic, pre-operative and theatre appointment types, with a hernia, gallbladder and soft-tissue catalogue.",
+  "modules": {
+    "hide": [
+      "camps"
+    ]
+  },
+  "terminology": {
+    "provider": "Surgeon",
+    "providers": "Surgeons"
+  },
+  "appointmentTypes": [
+    {
+      "name": "New Patient Consultation",
+      "durationMinutes": 30,
+      "color": "#2563EB",
+      "displayOrder": 10
+    },
+    {
+      "name": "Follow-up Consultation",
+      "durationMinutes": 15,
+      "color": "#0EA5E9",
+      "displayOrder": 20
+    },
+    {
+      "name": "Pre-operative Assessment",
+      "durationMinutes": 45,
+      "color": "#14B8A6",
+      "displayOrder": 30
+    },
+    {
+      "name": "Day Surgery",
+      "durationMinutes": 120,
+      "color": "#8B5CF6",
+      "displayOrder": 40
+    },
+    {
+      "name": "Minor Procedure",
+      "durationMinutes": 45,
+      "color": "#F59E0B",
+      "displayOrder": 50
+    },
+    {
+      "name": "Post-operative Review",
+      "durationMinutes": 15,
+      "color": "#64748B",
+      "displayOrder": 60
+    },
+    {
+      "name": "Wound Review",
+      "durationMinutes": 20,
+      "color": "#DC2626",
+      "displayOrder": 70
+    }
+  ],
+  "serviceCategories": [
+    {
+      "name": "Consultations",
+      "icon": "stethoscope",
+      "displayOrder": 10
+    },
+    {
+      "name": "Hernia",
+      "icon": "shield",
+      "displayOrder": 20
+    },
+    {
+      "name": "Upper GI and Gallbladder",
+      "icon": "droplet",
+      "displayOrder": 30
+    },
+    {
+      "name": "Soft Tissue",
+      "icon": "scissors",
+      "displayOrder": 40
+    }
+  ],
+  "offerings": [
+    {
+      "name": "New Patient Surgical Consultation",
+      "categoryName": "Consultations",
+      "durationMinutes": 30,
+      "cptCodes": [
+        "99204"
+      ]
+    },
+    {
+      "name": "Follow-up Surgical Consultation",
+      "categoryName": "Consultations",
+      "durationMinutes": 15,
+      "cptCodes": [
+        "99213"
+      ]
+    },
+    {
+      "name": "Pre-operative Assessment",
+      "categoryName": "Consultations",
+      "durationMinutes": 45
+    },
+    {
+      "name": "Inguinal Hernia Repair",
+      "categoryName": "Hernia",
+      "durationMinutes": 90,
+      "consentFormRequired": true,
+      "requiresPreparation": true,
+      "preparationInstructions": "Nothing to eat for six hours and nothing to drink for two hours beforehand. Arrange for someone to take you home and stay with you overnight."
+    },
+    {
+      "name": "Umbilical Hernia Repair",
+      "categoryName": "Hernia",
+      "durationMinutes": 75,
+      "consentFormRequired": true
+    },
+    {
+      "name": "Incisional Hernia Repair",
+      "categoryName": "Hernia",
+      "durationMinutes": 120,
+      "consentFormRequired": true
+    },
+    {
+      "name": "Laparoscopic Cholecystectomy",
+      "categoryName": "Upper GI and Gallbladder",
+      "durationMinutes": 120,
+      "cptCodes": [
+        "47562"
+      ],
+      "consentFormRequired": true,
+      "requiresPreparation": true,
+      "preparationInstructions": "Nothing to eat for six hours and nothing to drink for two hours beforehand. Arrange for someone to take you home."
+    },
+    {
+      "name": "Appendicectomy",
+      "categoryName": "Upper GI and Gallbladder",
+      "durationMinutes": 90,
+      "consentFormRequired": true
+    },
+    {
+      "name": "Excision of Skin or Soft Tissue Lesion",
+      "categoryName": "Soft Tissue",
+      "durationMinutes": 45,
+      "consentFormRequired": true
+    },
+    {
+      "name": "Incision and Drainage of Abscess",
+      "categoryName": "Soft Tissue",
+      "durationMinutes": 30,
+      "consentFormRequired": true
+    },
+    {
+      "name": "Ingrown Toenail Procedure",
+      "categoryName": "Soft Tissue",
+      "durationMinutes": 30,
+      "consentFormRequired": true
+    },
+    {
+      "name": "Post-operative Wound Review",
+      "categoryName": "Consultations",
+      "durationMinutes": 20
+    }
+  ],
+  "formTemplates": [
+    {
+      "slug": "surgical-pre-operative-assessment",
+      "name": "Pre-operative Assessment",
+      "templateType": "clinical",
+      "categorySlug": "clinical",
+      "version": "1.0",
+      "languages": [
+        "en"
+      ],
+      "complianceTags": [
+        "HIPAA"
+      ],
+      "fields": [
+        {
+          "id": "planned_procedure",
+          "type": "text",
+          "label": "Planned procedure",
+          "required": true
+        },
+        {
+          "id": "side",
+          "type": "radio",
+          "label": "Side, where it applies",
+          "options": [
+            "Not applicable",
+            "Left",
+            "Right",
+            "Both"
+          ]
+        },
+        {
+          "id": "conditions",
+          "type": "textarea",
+          "label": "Medical conditions",
+          "required": true
+        },
+        {
+          "id": "previous_anaesthetic",
+          "type": "textarea",
+          "label": "Previous anaesthetics, and any problems with them"
+        },
+        {
+          "id": "anaesthetic_family",
+          "type": "checkbox",
+          "label": "Has anyone in your family had a serious reaction to an anaesthetic?"
+        },
+        {
+          "id": "medications",
+          "type": "textarea",
+          "label": "Current medicines, with doses",
+          "required": true
+        },
+        {
+          "id": "anticoagulants",
+          "type": "radio",
+          "label": "Do you take a blood thinner?",
+          "options": [
+            "No",
+            "Yes"
+          ],
+          "required": true
+        },
+        {
+          "id": "allergies",
+          "type": "textarea",
+          "label": "Allergies, including latex and plasters"
+        },
+        {
+          "id": "smoking",
+          "type": "radio",
+          "label": "Smoking",
+          "options": [
+            "Never",
+            "Ex-smoker",
+            "Current smoker"
+          ]
+        },
+        {
+          "id": "loose_teeth",
+          "type": "checkbox",
+          "label": "Any loose teeth, caps or crowns"
+        },
+        {
+          "id": "escort",
+          "type": "checkbox",
+          "label": "I have arranged for someone to take me home and stay with me",
+          "required": true
+        }
+      ]
+    }
+  ],
+  "inventoryCategories": [
+    {
+      "code": "surg_theatre",
+      "name": "Theatre Consumables"
+    },
+    {
+      "code": "surg_sutures",
+      "name": "Sutures and Staplers"
+    },
+    {
+      "code": "surg_mesh",
+      "name": "Hernia Mesh"
+    },
+    {
+      "code": "surg_dressings",
+      "name": "Post-operative Dressings"
+    }
+  ],
+  "codeSets": {
+    "icd10": [
+      "K40.90",
+      "K42.9",
+      "K80.20",
+      "K35.80",
+      "L02.91",
+      "D17.9",
+      "K43.9"
+    ],
+    "cpt": [
+      "99204",
+      "99213",
+      "47562"
+    ]
+  },
+  "settings": {
+    "defaultAppointmentDuration": 20,
+    "slotIntervalMinutes": 10
+  },
+  "reports": {
+    "show": [
+      "clinical",
+      "operational"
+    ]
+  }
+}

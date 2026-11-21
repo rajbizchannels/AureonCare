@@ -1,7 +1,16 @@
 const express = require('express');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, authorize } = require('../middleware/auth');
+const { sendDbError } = require('../utils/dbErrors');
 const router = express.Router();
 router.use(authenticate);
+
+// Reading the role list stays open to any signed-in user: it is a list of names, and the
+// user-assignment dropdowns need it. CHANGING the list does not — and until now nothing
+// guarded it at all, so any authenticated account, a nurse or a receptionist included,
+// could create, rename and delete roles. With a name-only create form these three routes
+// are the whole of role management, so they are the only thing standing between a
+// non-admin and the shape of the practice's access control.
+const requireAdmin = authorize('admin');
 
 // Get all roles
 // Query params:
@@ -85,7 +94,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // Create new role
-router.post('/', async (req, res) => {
+router.post('/', requireAdmin, async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     const { name, display_name, description, permissions } = req.body;
@@ -121,13 +130,15 @@ router.post('/', async (req, res) => {
     if (error.code === '23505') { // Unique violation
       res.status(400).json({ error: 'Role name already exists' });
     } else {
+      // A constraint the request broke is the caller's to fix, not a server fault.
+      if (sendDbError(res, error, 'Failed to create role')) return;
       res.status(500).json({ error: 'Failed to create role' });
     }
   }
 });
 
 // Update role
-router.put('/:id', async (req, res) => {
+router.put('/:id', requireAdmin, async (req, res) => {
   try {
     const pool = req.app.locals.pool;
     const { display_name, description, permissions, is_active } = req.body;
@@ -171,12 +182,14 @@ router.put('/:id', async (req, res) => {
     res.json(result.rows[0]);
   } catch (error) {
     console.error('Error updating role:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to update role')) return;
     res.status(500).json({ error: 'Failed to update role' });
   }
 });
 
 // Delete role (only custom roles)
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', requireAdmin, async (req, res) => {
   try {
     const pool = req.app.locals.pool;
 
@@ -194,10 +207,17 @@ router.delete('/:id', async (req, res) => {
       return res.status(403).json({ error: 'Cannot delete system roles' });
     }
 
-    // Check if role is assigned to any users
+    // Who holds this role. Checked against users.role, which is where this application
+    // actually keeps it — everything else reads it from there (req.user.role, the
+    // permission registry, the enforcement middleware). The check used to count rows in
+    // `user_roles`, a join table nothing in this codebase writes, so it always came back
+    // zero and a role could be deleted out from under the people holding it.
+    //
+    // Deliberately NOT scoped to the caller's practice: `roles` is a global table, so a
+    // name in use anywhere is a name that must not disappear.
     const userCheck = await pool.query(
-      'SELECT COUNT(*) as count FROM user_roles WHERE role_id = $1',
-      [req.params.id]
+      "SELECT COUNT(*) as count FROM users WHERE role = $1 AND status = 'active'",
+      [roleCheck.rows[0].name]
     );
 
     if (parseInt(userCheck.rows[0].count) > 0) {
@@ -212,6 +232,8 @@ router.delete('/:id', async (req, res) => {
     res.json({ message: 'Role deleted successfully' });
   } catch (error) {
     console.error('Error deleting role:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to delete role')) return;
     res.status(500).json({ error: 'Failed to delete role' });
   }
 });

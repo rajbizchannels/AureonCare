@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Mail, Copy, Check, X, Loader2, UserPlus } from 'lucide-react';
+import QrCodeButton from './common/QrCodeButton';
 
 /**
  * Invite colleagues into this practice — the self-service half of onboarding.
@@ -14,6 +15,10 @@ const InviteStaffPanel = ({ theme, api, addNotification }) => {
   const [invites, setInvites] = useState([]);
   const [email, setEmail] = useState('');
   const [role, setRole] = useState('staff');
+  // Role "Patient" sends a patient-portal invitation instead of a staff account: patients
+  // join through their chart, so the dialog collects what is needed to find or start it.
+  const [patient, setPatient] = useState({ firstName: '', lastName: '', dateOfBirth: '' });
+  const isPatient = role === 'patient';
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -37,13 +42,25 @@ const InviteStaffPanel = ({ theme, api, addNotification }) => {
     e.preventDefault();
     setError(''); setFreshLink(null); setDelivery(null); setBusy(true);
     try {
+      if (isPatient) {
+        const inv = await api.sendPortalInviteByEmail({ email: email.trim(), ...patient });
+        setFreshLink(inv.inviteUrl || null);
+        setDelivery({ emailed: inv.emailed, reason: inv.emailError, to: inv.email, patient: true });
+        setEmail(''); setPatient({ firstName: '', lastName: '', dateOfBirth: '' });
+        // addNotification is (type, message) — the arguments were the wrong way round.
+        addNotification?.(
+          inv.emailed ? 'success' : 'warning',
+          inv.emailed ? `Portal invitation emailed to ${inv.email}` : `Portal invitation created for ${inv.email} — send the link yourself`
+        );
+        return;
+      }
       const inv = await api.createInvite({ email: email.trim(), role });
       setFreshLink(inv.inviteUrl);
       setDelivery({ emailed: inv.emailed, reason: inv.emailError, detail: inv.emailErrorDetail, to: inv.email });
       setEmail('');
       addNotification?.(
-        inv.emailed ? `Invite emailed to ${inv.email}` : `Invite created for ${inv.email} — send the link yourself`,
-        inv.emailed ? 'success' : 'warning'
+        inv.emailed ? 'success' : 'warning',
+        inv.emailed ? `Invite emailed to ${inv.email}` : `Invite created for ${inv.email} — send the link yourself`
       );
       load();
     } catch (err) {
@@ -58,7 +75,7 @@ const InviteStaffPanel = ({ theme, api, addNotification }) => {
       await api.revokeInvite(id);
       load();
     } catch (err) {
-      addNotification?.(err.message || 'Could not revoke the invite.', 'error');
+      addNotification?.('error', err.message || 'Could not revoke the invite.');
     }
   };
 
@@ -93,7 +110,7 @@ const InviteStaffPanel = ({ theme, api, addNotification }) => {
         Invite team members
       </h3>
       <p className={`text-sm mb-4 ${muted}`}>
-        They can join with a password or with Google — either way the invite links them to
+        They can join with a password or with Google or Microsoft — either way the invite links them to
         this practice.
       </p>
 
@@ -108,15 +125,43 @@ const InviteStaffPanel = ({ theme, api, addNotification }) => {
           <option value="nurse">Nurse</option>
           <option value="doctor">Doctor</option>
           <option value="admin">Admin</option>
+          <option value="patient">Patient</option>
         </select>
         <button type="submit" disabled={busy}
                 className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium disabled:opacity-60 flex items-center gap-2">
           {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Mail className="w-4 h-4" />}
           Create invite
         </button>
+        {isPatient && (
+          <div className="w-full grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <input className={input} placeholder="First name" aria-label="Patient first name"
+                   value={patient.firstName} onChange={(e) => setPatient((p) => ({ ...p, firstName: e.target.value }))} />
+            <input className={input} placeholder="Last name" aria-label="Patient last name"
+                   value={patient.lastName} onChange={(e) => setPatient((p) => ({ ...p, lastName: e.target.value }))} />
+            <input className={input} type="date" aria-label="Patient date of birth"
+                   value={patient.dateOfBirth} onChange={(e) => setPatient((p) => ({ ...p, dateOfBirth: e.target.value }))} />
+            <p className={`sm:col-span-3 text-xs ${muted}`}>
+              Patients get a patient-portal invitation, not a staff account. If a patient with this
+              email already exists, the invitation goes to their record; otherwise the name and date
+              of birth create one.
+            </p>
+          </div>
+        )}
       </form>
 
       {error && <div className="mt-3 text-sm text-red-600">{error}</div>}
+
+      {/* A patient invitation that was emailed returns no link — it exists only in the
+          patient's inbox — so confirm the send on its own. */}
+      {!freshLink && delivery?.patient && delivery.emailed && (
+        <div role="status" className={`mt-4 p-3 rounded-lg border flex items-start gap-2 text-sm ${dark ? 'border-emerald-700 bg-emerald-900/30 text-emerald-200' : 'border-emerald-200 bg-emerald-50 text-emerald-800'}`}>
+          <Check className="w-4 h-4 mt-0.5 shrink-0" />
+          <span>
+            Patient-portal invitation emailed to <strong>{delivery.to}</strong>. The link works once and
+            expires in 14 days; you can re-send it from the patient&apos;s chart.
+          </span>
+        </div>
+      )}
 
       {freshLink && (
         <div className={`mt-4 p-3 rounded-lg border ${dark ? 'border-slate-600 bg-slate-900' : 'border-blue-200 bg-blue-50'}`}>
@@ -140,13 +185,16 @@ const InviteStaffPanel = ({ theme, api, addNotification }) => {
                     <br />
                   </>
                 )}
-                Send this link to your colleague yourself. It is shown only once — if you lose
+                Send this link to {isPatient ? 'the patient' : 'your colleague'} yourself. It is shown only once — if you lose
                 it, create a new invite.
               </>
             )}
           </div>
           <div className="flex gap-2">
             <code className={`flex-1 text-xs break-all ${text}`}>{freshLink}</code>
+            <QrCodeButton getUrl={freshLink} theme={theme}
+                          title={isPatient ? 'Patient portal invitation' : 'Team invitation'}
+                          description="Scan to open the invitation. It works once." />
             <button onClick={copy} className={`shrink-0 px-2 py-1 rounded border text-xs ${dark ? 'border-slate-600 text-slate-200' : 'border-gray-300 text-gray-700'}`}>
               {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
             </button>

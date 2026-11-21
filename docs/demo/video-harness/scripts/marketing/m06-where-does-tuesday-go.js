@@ -18,9 +18,14 @@ module.exports = {
   silent: true,
   pace: 0.45,
   title: 'Where does Tuesday keep going?',
-  // Matches the figures the report actually shows. An invented hook number
-  // that the footage contradicts is the one thing a viewer will notice.
-  thumbHeadline: '135 booked. 10 no-shows.',
+  // No figures, though the instinct behind the old one was right: a hook
+  // number the footage contradicts is the one thing a viewer will notice. It
+  // read "135 booked. 10 no-shows." — the seven-day fixture's totals — and
+  // stayed burned into the reel after the demo API began honouring the range,
+  // above a clip showing 380 and 27 at thirty days and 1240 and 96 at ninety.
+  // The totals follow the range selector and the calendar, so any number here
+  // goes stale.
+  thumbHeadline: 'The slots nobody turned up for.',
   thumbSub: 'The no-show report, ninety days at a time.',
   reelKicker: 'No-show report',
   moduleLabel: 'Insights ▸ Reports',
@@ -50,7 +55,12 @@ module.exports = {
     d.chapter('The gap');
     await d.step('The gap');
     await d.nav('Insights', 'Reports');
-    await d.say('Where did the other ten go?', 2000);
+    // Deliberately no figure here. This line used to be "where did the other
+    // ten go?", which worked only because the fixture happened to total ten
+    // no-shows over its seven days — the demo API now honours the range
+    // selector, so that total moves with whatever window is chosen and a
+    // hook naming a number would contradict the card behind it.
+    await d.say('The appointments nobody turned up for. Where do they go?', 2400);
 
     await d.click(page.getByRole('button', { name: 'No-Show Report' }).first(), { pause: 2000 });
     await d.say('Scheduled, no-shows, and the rate between them.', 2400);
@@ -62,6 +72,9 @@ module.exports = {
       await d.select(range, '90').catch(() => {});
       await d.say('Ninety days, because one bad week proves nothing.', 2400);
     }
+
+    // Cover: the ninety-day figures, before the page scrolls away from them.
+    await d.cover();
 
     await d.scrollBy(340);
     await d.say('Late cancellations count too. The slot is gone either way.', 2600);

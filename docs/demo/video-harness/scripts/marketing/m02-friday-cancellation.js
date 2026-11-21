@@ -22,7 +22,9 @@ module.exports = {
   audience: 'Front desk, practice manager',
   intro: 'A late cancellation becomes a booking instead of an empty hour.',
   journey: 'Cancel → waitlist notifies the next patient → intake goes out',
-  youtubeTitle: 'Friday 4:07pm, your 3:30 cancels — AureonCare front desk in 60 seconds',
+  // No running time in the title — "in 60 seconds" for a cut that runs 1:02,
+  // and the length moves every time the film is re-recorded.
+  youtubeTitle: 'Friday 4:07pm, your 3:30 cancels | AureonCare front desk',
   description:
     'A late Friday cancellation, handled from the front desk: the appointment is cancelled, the '
     + 'waitlist notifies the next patient who wanted that slot, and their intake paperwork goes '

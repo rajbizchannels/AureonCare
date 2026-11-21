@@ -7,6 +7,7 @@
 const express = require('express');
 const router = express.Router();
 const { authenticate, authorize } = require('../middleware/auth');
+const { requireModuleAccess } = require('../middleware/modulePermissions');
 const { enforceActiveBilling, enforceFeature } = require('../middleware/planEnforcement');
 const { assertUsableLocation } = require('../utils/locations');
 const camps = require('../services/camps');
@@ -14,6 +15,10 @@ const camps = require('../services/camps');
 router.use(authenticate);
 router.use(enforceActiveBilling); // SEC-05 S11: read-only when subscription past_due/canceled
 router.use(enforceFeature('camps')); // Clinical Pro and above (migration 084)
+// Fine-grained permissions, enforced: the method decides the action. An administrator
+// edits this under Admin Panel -> Roles & Permissions; an absent grant falls back to the
+// role defaults in utils/permissionRegistry.js.
+router.use(requireModuleAccess('camps', 'camps'));
 
 // Planning is operational work, not just an admin chore — receptionists and clinicians
 // organise camps. Deleting one stays admin-only.
@@ -362,7 +367,9 @@ router.post('/:id/staff', canPlan, async (req, res) => {
     // The account has to belong to this practice; users is a shared table, so without this
     // a stray uuid would roster someone from another tenant.
     const { rows: who } = await db.query(
-      'SELECT id, first_name, last_name FROM users WHERE id = $1 AND practice_id = $2',
+      `SELECT u.id, u.first_name, u.last_name FROM users u
+        JOIN public.memberships m ON m.user_id = u.id AND m.practice_id = $2 AND m.status = 'active'
+       WHERE u.id = $1`,
       [userId, req.tenant && req.tenant.practiceId]
     );
     if (!who.length) {

@@ -17,7 +17,7 @@ const AppointmentTypesManagementView = ({
   const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
   const [showFormLocal, setShowFormLocal] = useState(false);
-  const [editingAppointmentTypeLocal, setEditingAppointmentTypeLocal] = useState(null);
+  const [, setEditingAppointmentTypeLocal] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
 
   const { logViewAccess } = useAudit();

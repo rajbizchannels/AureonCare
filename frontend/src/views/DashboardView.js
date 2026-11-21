@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Bot, Shield, Users, Video, ChevronRight, Calendar, Clock, DollarSign, Check, FileText, Activity, ChevronDown, Zap, FileWarning, Download, X, Loader2 } from 'lucide-react';
+import { Bot, Shield, Users, ChevronRight, Calendar, Clock, DollarSign, Check, FileText, Activity, ChevronDown, Zap, FileWarning, Download, X, Loader2 } from 'lucide-react';
 import StatCard from '../components/cards/StatCard';
 import ModuleCard from '../components/cards/ModuleCard';
-import { formatTime, formatDate, formatCurrency, getCurrencySymbol, toLocalDateString } from '../utils/formatters';
+import { formatTime, formatDate, getCurrencySymbol, toLocalDateString } from '../utils/formatters';
 import { hasPermission } from '../utils/rolePermissions';
 import NewAppointmentForm from '../components/forms/NewAppointmentForm';
 import NewPatientForm from '../components/forms/NewPatientForm';
@@ -44,7 +44,7 @@ const DashboardView = ({
   const [showQuickActions, setShowQuickActions] = useState(false);
   const [showEPrescribeModal, setShowEPrescribeModal] = useState(false);
   const [prescribePatient, setPrescribePatient] = useState(null);
-  const [prescribeDiagnosis, setPrescribeDiagnosis] = useState(null);
+  const [, setPrescribeDiagnosis] = useState(null);
   // Documents patients sent through secure messages that nobody has verified.
   const [pendingDocuments, setPendingDocuments] = useState([]);
   const [reviewingId, setReviewingId] = useState(null);
@@ -386,11 +386,14 @@ const DashboardView = ({
       {/* Forms - Quick actions are now in header dropdown */}
       {showForm === 'appointment' && (
         <div className={`mb-6 rounded-xl border overflow-hidden ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
+          {/* `user` is passed so a doctor booking from their dashboard is defaulted into
+              the provider field instead of whichever provider happens to come first. */}
           <NewAppointmentForm
             theme={theme}
             api={api}
             patients={patients}
             users={users}
+            user={user}
             onClose={() => setShowForm(null)}
             onSuccess={(newAppointment) => {
               setAppointments([...appointments, newAppointment]);

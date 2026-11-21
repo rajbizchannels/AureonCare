@@ -193,6 +193,7 @@ export const SUBSCRIPTION_PLANS = [
 export const ADMIN_TABS = {
   CLINIC: 'clinic',
   LOCATIONS: 'locations',
+  PROFILE: 'practiceProfile',
   USERS: 'users',
   ROLES: 'roles',
   PLANS: 'plans',

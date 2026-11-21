@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const { resolveTenantForUser } = require('../services/tenantCatalog');
+const { resolveTenantForUser, resolveTenantForPractice } = require('../services/tenantCatalog');
 const { makeTenantDb } = require('../db/requestTenantDb');
 const { getSessionCookie } = require('../utils/authCookies');
 
@@ -65,10 +65,14 @@ const signToken = (user) =>
  * req.user.practiceId and req.tenant = { practiceId, tenantId, schemaName }.
  * No route consumes req.tenant yet, so this is currently transparent.
  */
-const attachTenantContext = async (pool, req, userId) => {
+const attachTenantContext = async (pool, req, userId, activePracticeId = null) => {
   let schemaName = 'public';
   try {
-    const t = await resolveTenantForUser(pool, userId);
+    // Phase 1: a session's ACTIVE practice (checked against memberships by the caller)
+    // decides the tenant; without one, the account's default practice does.
+    const t = activePracticeId
+      ? await resolveTenantForPractice(pool, activePracticeId)
+      : await resolveTenantForUser(pool, userId);
     if (t) {
       if (req.user) req.user.practiceId = t.practiceId;
       schemaName = t.schemaName || 'public';
@@ -102,6 +106,35 @@ const attachTenantContext = async (pool, req, userId) => {
   }
 };
 
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Phase 1: the practice a session works in, and the role it has there.
+ *
+ * The token names the ACTIVE practice (pid); it is honoured only while the person has an
+ * active membership there — checked on every request, so removing someone from a practice
+ * ends their sessions in it at once. Returns:
+ *   { practiceId, role }  the active membership
+ *   null                  no practice in the token (older token / unbound account):
+ *                         fall back to the account's default practice and role
+ *   false                 the token names a practice the person no longer belongs to
+ * Before migration 093 is applied the table does not exist: behave as before (null).
+ */
+async function activeMembership(pool, userId, pid) {
+  if (!pid || !UUID_RE.test(String(pid))) return null;
+  try {
+    const { rows } = await pool.query(
+      `SELECT role, status FROM public.memberships WHERE user_id = $1 AND practice_id = $2`, [userId, pid]);
+    if (!rows[0] || rows[0].status !== 'active') return false;
+    return { practiceId: String(pid), role: rows[0].role };
+  } catch (e) {
+    if (e.code === '42P01') return null;
+    throw e;
+  }
+}
+const MEMBERSHIP_GONE = { error: 'You no longer have access to that practice. Please sign in again.', membershipRevoked: true };
+
 /**
  * Verify a Bearer JWT and confirm the user is still active in the DB.
  * Sets req.user = { id, email, role, firstName, lastName }.
@@ -126,13 +159,14 @@ const authenticate = async (req, res, next) => {
 
     // Confirm user is still active — catches deactivated accounts after token issue
     const pool = req.app.locals.pool;
+    const activePid = payload.pid && UUID_RE.test(String(payload.pid)) ? String(payload.pid) : null;
     const result = await pool.query(
       `SELECT u.id, u.email, u.role, u.first_name, u.last_name, u.token_version,
               u.last_activity_at, p.session_idle_minutes
          FROM users u
-         LEFT JOIN public.practices p ON p.id = u.practice_id
+         LEFT JOIN public.practices p ON p.id = COALESCE($3::uuid, u.practice_id)
         WHERE u.id = $1 AND u.status = $2`,
-      [payload.sub, 'active']
+      [payload.sub, 'active', activePid]
     );
 
     if (result.rows.length === 0) {
@@ -168,16 +202,20 @@ const authenticate = async (req, res, next) => {
         .catch((err) => console.error('[auth] could not record activity:', err.message));
     }
 
+    // Phase 1: role and practice come from the session's active membership.
+    const membership = await activeMembership(pool, user.id, activePid);
+    if (membership === false) return res.status(401).json(MEMBERSHIP_GONE);
+
     req.user = {
       id: user.id,
       email: user.email,
-      role: user.role,
+      role: membership ? membership.role : user.role,
       firstName: user.first_name,
       lastName: user.last_name
     };
 
     // SEC-05 (S3): attach tenant context (defensive; transparent until routes adopt it).
-    await attachTenantContext(pool, req, user.id);
+    await attachTenantContext(pool, req, user.id, membership ? membership.practiceId : null);
 
     next();
   } catch (error) {
@@ -226,15 +264,18 @@ const optionalAuth = async (req, res, next) => {
         // SEC-09: only attach the user when the token has not been revoked.
         if (result.rows.length > 0 && (result.rows[0].token_version ?? 0) === (payload.tv ?? 0)) {
           const user = result.rows[0];
-          req.user = {
-            id: user.id,
-            email: user.email,
-            role: user.role,
-            firstName: user.first_name,
-            lastName: user.last_name
-          };
-          // SEC-05 (S3): attach tenant context for the authenticated caller.
-          await attachTenantContext(pool, req, user.id);
+          const membership = await activeMembership(pool, user.id, payload.pid);
+          if (membership !== false) {
+            req.user = {
+              id: user.id,
+              email: user.email,
+              role: membership ? membership.role : user.role,
+              firstName: user.first_name,
+              lastName: user.last_name
+            };
+            // SEC-05 (S3): attach tenant context for the authenticated caller.
+            await attachTenantContext(pool, req, user.id, membership ? membership.practiceId : null);
+          }
         }
       } catch (_) {
         // Invalid/expired token in optionalAuth — continue as unauthenticated
@@ -290,9 +331,11 @@ const requireAdmin = async (req, res, next) => {
         return res.status(401).json({ error: 'Session expired, please log in again' });
       }
 
-      req.user = { id: u.id, email: u.email, role: u.role };
+      const membership = await activeMembership(pool, u.id, payload.pid);
+      if (membership === false) return res.status(401).json(MEMBERSHIP_GONE);
+      req.user = { id: u.id, email: u.email, role: membership ? membership.role : u.role };
       // SEC-05 (S3): attach tenant context on the standalone path.
-      await attachTenantContext(req.app.locals.pool, req, u.id);
+      await attachTenantContext(req.app.locals.pool, req, u.id, membership ? membership.practiceId : null);
     }
 
     if (req.user.role !== 'admin') {
@@ -306,4 +349,4 @@ const requireAdmin = async (req, res, next) => {
   }
 };
 
-module.exports = { signToken, authenticate, authorize, optionalAuth, requireAdmin };
+module.exports = { signToken, authenticate, authorize, optionalAuth, requireAdmin, activeMembership, attachTenantContext };

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, FileText, Calendar, Phone, Mail, Edit, User, Search, Video } from 'lucide-react';
+import { Plus, Phone, Edit, User, Search, Video } from 'lucide-react';
 import { formatDate } from '../utils/formatters';
 import NewPatientForm from '../components/forms/NewPatientForm';
 import ViewEditModal from '../components/modals/ViewEditModal';

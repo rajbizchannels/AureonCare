@@ -123,9 +123,10 @@ async function enforceUserQuota(req, res, next) {
     // SEC-05: staff count is per-practice (users lives in the shared public schema).
     const practiceId = req.tenant && req.tenant.practiceId;
     const { rows } = await pool.query(
-      `SELECT COUNT(*) AS cnt FROM users
-        WHERE status = 'active' AND role <> 'patient'
-          AND ($1::uuid IS NULL OR practice_id = $1)`,
+      // Phase 1: seats are memberships — a person who works at two practices takes one at each.
+      `SELECT COUNT(*) AS cnt FROM public.memberships m JOIN users u ON u.id = m.user_id
+        WHERE u.status = 'active' AND m.status = 'active' AND m.role <> 'patient'
+          AND ($1::uuid IS NULL OR m.practice_id = $1)`,
       [practiceId || null]
     );
     const current = parseInt(rows[0].cnt, 10);
@@ -191,8 +192,9 @@ async function enforceProviderQuota(req, res, next) {
     // SEC-05: provider (doctor) count is per-practice.
     const practiceId = req.tenant && req.tenant.practiceId;
     const { rows } = await pool.query(
-      `SELECT COUNT(*) AS cnt FROM users WHERE role = 'doctor' AND status = 'active'
-         AND ($1::uuid IS NULL OR practice_id = $1)`,
+      `SELECT COUNT(*) AS cnt FROM public.memberships m JOIN users u ON u.id = m.user_id
+        WHERE m.role = 'doctor' AND u.status = 'active' AND m.status = 'active'
+          AND ($1::uuid IS NULL OR m.practice_id = $1)`,
       [practiceId || null]
     );
     const current = parseInt(rows[0].cnt, 10);

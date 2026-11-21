@@ -1,8 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import ThemedSelect from './ThemedSelect';
 import {
-  Plus, Trash2, GripVertical, ChevronDown, ChevronUp, Copy, Eye, EyeOff,
-  Type, AlignLeft, List, CheckSquare, Calendar, Hash, Mail, Phone, PenLine, Heading, FileText
+  Plus, Trash2, GripVertical, ChevronDown, ChevronUp, Copy, Eye, Type, AlignLeft, List, CheckSquare, Calendar, Hash, Mail, Phone, PenLine, Heading, FileText
 } from 'lucide-react';
 
 const FIELD_TYPES = [
@@ -106,7 +105,6 @@ const DynamicFormBuilder = ({
     setDragOver(null);
   };
 
-  const editingField = fields.find(f => f.id === editingFieldId);
 
   const inputCls = `w-full rounded-lg border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500 transition-colors ${
     dark ? 'bg-slate-700 border-slate-600 text-slate-100 placeholder-slate-400' : 'bg-white border-gray-300 text-gray-900'

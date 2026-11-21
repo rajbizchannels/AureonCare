@@ -1,10 +1,19 @@
 const express = require('express');
 const { authenticate } = require('../middleware/auth');
+const { requireModuleAccess } = require('../middleware/modulePermissions');
 const router = express.Router();
 router.use(authenticate);
+// Fine-grained permissions, enforced. The method decides the action (GET=view,
+// POST=create, PUT/PATCH=edit, DELETE=delete); an administrator edits this under
+// Admin Panel -> Roles & Permissions. Absent grants fall back to the role defaults in
+// utils/permissionRegistry.js, so this changes nothing until somebody edits something.
+router.use(requireModuleAccess('rcm', 'claims'));
 router.use(require('../middleware/planEnforcement').enforceActiveBilling); // SEC-05 S11: read-only when subscription past_due/canceled
-const vendorIntegrationManager = require('../services/vendorIntegrations');
+// SEC-37: vendor clients are per practice — resolved from this request's tenant.
+const { vendorsFor } = require('../services/vendorIntegrations');
 const notificationService = require('../services/notificationService');
+const { insertNumbered } = require('../utils/recordNumbers');
+const { sendDbError } = require('../utils/dbErrors');
 
 // Get all claims
 router.get('/', async (req, res) => {
@@ -63,20 +72,25 @@ router.post('/', async (req, res) => {
   try {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
 
-    const result = await pool.query(
+    const insertClaim = (q, number) => q.query(
       `INSERT INTO claims
        (claim_number, patient_id, payer, amount, status,
         service_date, diagnosis_codes, procedure_codes, notes, preapproval_id, created_at, updated_at)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())
        RETURNING *`,
-      [claim_number, patient_id, payer, amount, status || 'pending',
+      [number, patient_id, payer, amount, status || 'pending',
        service_date, diagnosis_codes, procedure_codes, notes, preapproval_id || null]
     );
+    // The server numbers new claims (utils/recordNumbers.js explains why the browser no
+    // longer does). An explicit number is still honoured, for imports and integrations.
+    const result = claim_number
+      ? await insertClaim(pool, claim_number)
+      : await insertNumbered(pool, { table: 'claims', column: 'claim_number', prefix: 'CLM' }, insertClaim);
 
     const claim = result.rows[0];
 
     // Submit to Optum clearinghouse if enabled and submit_to_clearinghouse is requested
-    if (req.body.submitToClearinghouse && vendorIntegrationManager.isVendorEnabled('optum')) {
+    if (req.body.submitToClearinghouse && (await vendorsFor(req)).isVendorEnabled('optum')) {
       try {
         // Get patient, provider, and payer details
         const patientResult = await pool.query(
@@ -100,7 +114,7 @@ router.post('/', async (req, res) => {
           ? JSON.parse(procedure_codes)
           : (procedure_codes || []);
 
-        const optum = vendorIntegrationManager.getOptum();
+        const optum = (await vendorsFor(req)).getOptum();
 
         const claimData = {
           ...claim,
@@ -152,7 +166,7 @@ router.post('/', async (req, res) => {
           claim.status = 'submitted';
 
           // Log transaction
-          await vendorIntegrationManager.logTransaction('optum', 'claim_submit', {
+          await (await vendorsFor(req)).logTransaction('optum', 'claim_submit', {
             request: claimData,
             response: vendorResponse.response,
             status: 'success',
@@ -162,7 +176,7 @@ router.post('/', async (req, res) => {
           });
         } else {
           // Log failed transaction
-          await vendorIntegrationManager.logTransaction('optum', 'claim_submit', {
+          await (await vendorsFor(req)).logTransaction('optum', 'claim_submit', {
             request: claimData,
             response: vendorResponse.response,
             status: 'failed',
@@ -186,6 +200,8 @@ router.post('/', async (req, res) => {
     notificationService.dispatch(pool, 'claim.created', { claim, patient_id }).catch(() => {});
   } catch (error) {
     console.error('Error creating claim:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to create claim')) return;
     res.status(500).json({ error: 'Failed to create claim' });
   }
 });
@@ -233,6 +249,8 @@ router.put('/:id', async (req, res) => {
     }
   } catch (error) {
     console.error('Error updating claim:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to update claim')) return;
     res.status(500).json({ error: 'Failed to update claim' });
   }
 });
@@ -251,6 +269,8 @@ router.delete('/:id', async (req, res) => {
     res.json({ message: 'Claim deleted successfully' });
   } catch (error) {
     console.error('Error deleting claim:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to delete claim')) return;
     res.status(500).json({ error: 'Failed to delete claim' });
   }
 });

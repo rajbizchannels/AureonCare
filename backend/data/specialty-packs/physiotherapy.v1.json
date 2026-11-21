@@ -1,0 +1,302 @@
+{
+  "code": "physiotherapy",
+  "version": 1,
+  "label": "Physiotherapy and Rehabilitation",
+  "description": "Starting configuration for a physiotherapy service: assessment and treatment appointment types, with a musculoskeletal and rehabilitation catalogue.",
+  "modules": {
+    "hide": [
+      "camps",
+      "rcm",
+      "clinicalServices"
+    ]
+  },
+  "terminology": {
+    "provider": "Physiotherapist",
+    "providers": "Physiotherapists",
+    "appointment": "Session",
+    "appointments": "Sessions"
+  },
+  "appointmentTypes": [
+    {
+      "name": "Initial Assessment",
+      "durationMinutes": 45,
+      "color": "#2563EB",
+      "displayOrder": 10
+    },
+    {
+      "name": "Follow-up Treatment",
+      "durationMinutes": 30,
+      "color": "#0EA5E9",
+      "displayOrder": 20
+    },
+    {
+      "name": "Extended Treatment",
+      "durationMinutes": 45,
+      "color": "#14B8A6",
+      "displayOrder": 30
+    },
+    {
+      "name": "Group Exercise Class",
+      "durationMinutes": 60,
+      "color": "#8B5CF6",
+      "displayOrder": 40
+    },
+    {
+      "name": "Post-operative Rehabilitation",
+      "durationMinutes": 45,
+      "color": "#F59E0B",
+      "displayOrder": 50
+    },
+    {
+      "name": "Home Exercise Review",
+      "durationMinutes": 20,
+      "color": "#64748B",
+      "displayOrder": 60
+    }
+  ],
+  "serviceCategories": [
+    {
+      "name": "Assessment",
+      "icon": "clipboard-list",
+      "displayOrder": 10
+    },
+    {
+      "name": "Musculoskeletal",
+      "icon": "activity",
+      "displayOrder": 20
+    },
+    {
+      "name": "Rehabilitation",
+      "icon": "trending-up",
+      "displayOrder": 30
+    },
+    {
+      "name": "Group Programmes",
+      "icon": "users",
+      "displayOrder": 40
+    }
+  ],
+  "offerings": [
+    {
+      "name": "Physiotherapy Evaluation, Low Complexity",
+      "categoryName": "Assessment",
+      "durationMinutes": 30,
+      "cptCodes": [
+        "97161"
+      ]
+    },
+    {
+      "name": "Physiotherapy Evaluation, Moderate Complexity",
+      "categoryName": "Assessment",
+      "durationMinutes": 45,
+      "cptCodes": [
+        "97162"
+      ]
+    },
+    {
+      "name": "Physiotherapy Evaluation, High Complexity",
+      "categoryName": "Assessment",
+      "durationMinutes": 60,
+      "cptCodes": [
+        "97163"
+      ]
+    },
+    {
+      "name": "Therapeutic Exercise",
+      "categoryName": "Musculoskeletal",
+      "durationMinutes": 30,
+      "cptCodes": [
+        "97110"
+      ]
+    },
+    {
+      "name": "Manual Therapy",
+      "categoryName": "Musculoskeletal",
+      "durationMinutes": 30,
+      "cptCodes": [
+        "97140"
+      ]
+    },
+    {
+      "name": "Neuromuscular Re-education",
+      "categoryName": "Rehabilitation",
+      "durationMinutes": 30,
+      "cptCodes": [
+        "97112"
+      ]
+    },
+    {
+      "name": "Therapeutic Activities",
+      "categoryName": "Rehabilitation",
+      "durationMinutes": 30,
+      "cptCodes": [
+        "97530"
+      ]
+    },
+    {
+      "name": "Gait Training",
+      "categoryName": "Rehabilitation",
+      "durationMinutes": 30,
+      "cptCodes": [
+        "97116"
+      ]
+    },
+    {
+      "name": "Post-operative Knee Rehabilitation",
+      "categoryName": "Rehabilitation",
+      "durationMinutes": 45
+    },
+    {
+      "name": "Back Pain Programme",
+      "categoryName": "Musculoskeletal",
+      "durationMinutes": 45
+    },
+    {
+      "name": "Vestibular Rehabilitation",
+      "categoryName": "Rehabilitation",
+      "durationMinutes": 45
+    },
+    {
+      "name": "Group Exercise Class",
+      "categoryName": "Group Programmes",
+      "durationMinutes": 60
+    }
+  ],
+  "formTemplates": [
+    {
+      "slug": "physiotherapy-assessment",
+      "name": "Physiotherapy Assessment",
+      "templateType": "onboarding",
+      "categorySlug": "onboarding",
+      "version": "1.0",
+      "languages": [
+        "en"
+      ],
+      "complianceTags": [
+        "HIPAA"
+      ],
+      "fields": [
+        {
+          "id": "problem_area",
+          "type": "select",
+          "label": "Main area of difficulty",
+          "options": [
+            "Neck",
+            "Shoulder",
+            "Elbow",
+            "Wrist or hand",
+            "Back",
+            "Hip",
+            "Knee",
+            "Ankle or foot",
+            "Balance",
+            "General weakness"
+          ],
+          "required": true
+        },
+        {
+          "id": "how_started",
+          "type": "textarea",
+          "label": "How did it start?",
+          "required": true
+        },
+        {
+          "id": "duration",
+          "type": "text",
+          "label": "How long have you had it?"
+        },
+        {
+          "id": "pain_now",
+          "type": "scale",
+          "label": "Pain right now, out of 10"
+        },
+        {
+          "id": "pain_worst",
+          "type": "scale",
+          "label": "Pain at its worst, out of 10"
+        },
+        {
+          "id": "aggravating",
+          "type": "textarea",
+          "label": "What makes it worse?"
+        },
+        {
+          "id": "easing",
+          "type": "textarea",
+          "label": "What makes it better?"
+        },
+        {
+          "id": "function_limits",
+          "type": "checkboxes",
+          "label": "What is it stopping you doing?",
+          "options": [
+            "Work",
+            "Sleep",
+            "Driving",
+            "Sport",
+            "Housework",
+            "Walking",
+            "Lifting",
+            "Nothing in particular"
+          ]
+        },
+        {
+          "id": "previous_physio",
+          "type": "textarea",
+          "label": "Previous physiotherapy for this, and whether it helped"
+        },
+        {
+          "id": "goals",
+          "type": "textarea",
+          "label": "What do you want to be able to do again?",
+          "required": true
+        }
+      ]
+    }
+  ],
+  "inventoryCategories": [
+    {
+      "code": "physio_consumables",
+      "name": "Treatment Consumables"
+    },
+    {
+      "code": "physio_tape",
+      "name": "Taping and Strapping"
+    },
+    {
+      "code": "physio_equipment",
+      "name": "Exercise Equipment"
+    }
+  ],
+  "codeSets": {
+    "icd10": [
+      "M54.5",
+      "M25.561",
+      "M75.100",
+      "M54.2",
+      "M62.81",
+      "R26.81",
+      "M79.7"
+    ],
+    "cpt": [
+      "97161",
+      "97162",
+      "97163",
+      "97110",
+      "97112",
+      "97116",
+      "97140",
+      "97530"
+    ]
+  },
+  "settings": {
+    "defaultAppointmentDuration": 30,
+    "slotIntervalMinutes": 15
+  },
+  "reports": {
+    "show": [
+      "clinical",
+      "operational"
+    ]
+  }
+}

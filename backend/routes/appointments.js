@@ -1,11 +1,18 @@
 const express = require('express');
 const { authenticate } = require('../middleware/auth');
+const { requireModuleAccess } = require('../middleware/modulePermissions');
 const router = express.Router();
 router.use(authenticate);
+// Fine-grained permissions, enforced. The method decides the action (GET=view,
+// POST=create, PUT/PATCH=edit, DELETE=delete); an administrator edits this under
+// Admin Panel -> Roles & Permissions. Absent grants fall back to the role defaults in
+// utils/permissionRegistry.js, so this changes nothing until somebody edits something.
+router.use(requireModuleAccess('appointments', 'appointments'));
 router.use(require('../middleware/planEnforcement').enforceActiveBilling); // SEC-05 S11: read-only when subscription past_due/canceled
 const WhatsAppService = require('../services/whatsappService');
 const TelehealthProviderManager = require('../services/telehealthProviders/index');
 const notificationService = require('../services/notificationService');
+const { sendDbError } = require('../utils/dbErrors');
 
 // Get all appointments
 router.get('/', async (req, res) => {
@@ -63,7 +70,11 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
   let {
     patient_id, user_id, provider_id, practice_id, appointment_type,
-    start_time, end_time, duration_minutes, reason, notes, status
+    start_time, end_time, duration_minutes, reason, notes, status,
+    // The booking form has offered a Service field all along, and this route dropped it
+    // on the floor: the column was simply absent from the INSERT, so every appointment
+    // was stored with no service however carefully one was chosen.
+    offering_id
   } = req.body;
 
   try {
@@ -262,11 +273,11 @@ router.post('/', async (req, res) => {
     const result = await pool.query(
       `INSERT INTO appointments
        (patient_id, provider_id, practice_id, appointment_type, start_time, end_time,
-        duration_minutes, reason, notes, status, created_at, updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW())
+        duration_minutes, reason, notes, status, offering_id, created_at, updated_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), NOW())
        RETURNING *`,
       [patient_id, provider_id, practice_id, appointment_type, start_time, end_time,
-       duration_minutes, reason, notes, status || 'scheduled']
+       duration_minutes, reason, notes, status || 'scheduled', offering_id || null]
     );
 
     const newAppointment = result.rows[0];
@@ -348,15 +359,14 @@ router.post('/', async (req, res) => {
       console.error('This usually means the database schema needs to be updated.');
       console.error('Please run: npm run migrate');
 
-      return res.status(500).json({
-        error: 'Database schema issue detected',
-        details: 'The appointments table has an outdated foreign key constraint. Please run database migrations to fix this issue. Contact your system administrator.',
-        technicalDetails: 'Foreign key constraint "appointments_provider_id_fkey" is pointing to the wrong table. Run: npm run migrate',
-        code: 'FK_CONSTRAINT_ERROR'
-      });
+      return // A constraint the request broke is the caller's to fix, not a server fault.
+ if (sendDbError(res, error, 'Database schema issue detected')) return;
+ res.status(500).json({ error: 'Database schema issue detected' });
     }
 
-    res.status(500).json({ error: 'Failed to create appointment', details: error.message });
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to create appointment')) return;
+    res.status(500).json({ error: 'Failed to create appointment' });
   }
 });
 
@@ -408,7 +418,9 @@ router.patch('/:id/status', async (req, res) => {
     }).catch(() => {});
   } catch (error) {
     console.error('Error updating appointment status:', error);
-    res.status(500).json({ error: 'Failed to update appointment status', details: error.message });
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to update appointment status')) return;
+    res.status(500).json({ error: 'Failed to update appointment status' });
   }
 });
 
@@ -416,8 +428,13 @@ router.patch('/:id/status', async (req, res) => {
 router.put('/:id', async (req, res) => {
   const {
     patient_id, provider_id, practice_id, appointment_type,
-    start_time, end_time, duration_minutes, reason, notes, status
+    start_time, end_time, duration_minutes, reason, notes, status, offering_id
   } = req.body;
+
+  // Whether the caller SENT offering_id, which is not the same as its value: null means
+  // "clear the service", absent means "leave it alone". Without the distinction, adding
+  // this column to the update would wipe the service on any caller that does not send it.
+  const setsOffering = Object.prototype.hasOwnProperty.call(req.body || {}, 'offering_id');
 
   try {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
@@ -493,11 +510,14 @@ router.put('/:id', async (req, res) => {
       `UPDATE appointments
        SET patient_id = $1, provider_id = $2, practice_id = $3, appointment_type = $4,
            start_time = $5, end_time = $6, duration_minutes = $7, reason = $8,
-           notes = $9, status = $10, updated_at = NOW()
+           notes = $9, status = $10,
+           offering_id = CASE WHEN $12 THEN $13::uuid ELSE offering_id END,
+           updated_at = NOW()
        WHERE id::text = $11::text
        RETURNING *`,
       [patient_id, provider_id, practice_id, appointment_type, start_time, end_time,
-       duration_minutes, reason, notes, status, req.params.id]
+       duration_minutes, reason, notes, status, req.params.id,
+       setsOffering, offering_id || null]
     );
 
     // Re-query with JOINs to include patient and doctor names (matches GET response format)
@@ -581,6 +601,8 @@ router.put('/:id', async (req, res) => {
     }).catch(() => {});
   } catch (error) {
     console.error('Error updating appointment:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to update appointment')) return;
     res.status(500).json({ error: 'Failed to update appointment' });
   }
 });
@@ -652,6 +674,8 @@ router.delete('/:id', async (req, res) => {
     notificationService.dispatch(pool, 'appointment.cancelled', { appointment: deletedAppointment }).catch(() => {});
   } catch (error) {
     console.error('Error deleting appointment:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to delete appointment')) return;
     res.status(500).json({ error: 'Failed to delete appointment' });
   }
 });

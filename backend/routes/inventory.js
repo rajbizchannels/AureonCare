@@ -2,10 +2,23 @@ const express = require('express');
 const router = express.Router();
 const cloudStorage = require('../services/cloudBackupStorage');
 const { authenticate, authorize } = require('../middleware/auth');
+const { requireModuleAccessByPath } = require('../middleware/modulePermissions');
+const { sendDbError } = require('../utils/dbErrors');
 
 // All inventory routes require authentication
 router.use(authenticate);
 router.use(require('../middleware/planEnforcement').enforceActiveBilling); // SEC-05 S11: read-only when subscription past_due/canceled
+// Fine-grained permissions, now ENFORCED. This module has had a permissions grid in the
+// admin panel for a long time, and nothing read it: the rows were written, dumped by the
+// backup, and consulted by no route, so unticking Delete for a role changed a checkbox
+// and nothing else. Mapped per path because one router serves several resources.
+router.use(requireModuleAccessByPath('inventory', {
+  items: 'items',
+  categories: 'categories',
+  suppliers: 'suppliers',
+  movements: 'stock_movements',
+  orders: 'purchase_orders',
+}));
 
 const toCamelCase = (obj) => {
   if (!obj || typeof obj !== 'object') return obj;
@@ -64,6 +77,8 @@ router.post('/categories', authorize('admin', 'billing_manager'), async (req, re
     console.error('Error creating category:', err);
     if (err.code === '23505') return res.status(409).json({ error: 'Category code already exists' });
     if (err.code === '23514') return res.status(400).json({ error: 'Validation failed: ' + err.detail });
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, err, 'Failed to create category')) return;
     res.status(500).json({ error: 'Failed to create category' });
   }
 });
@@ -99,6 +114,8 @@ router.put('/categories/:id', authorize('admin', 'billing_manager'), async (req,
     console.error('Error updating category:', err);
     if (err.code === '23505') return res.status(409).json({ error: 'Category code already exists' });
     if (err.code === '23514') return res.status(400).json({ error: 'Validation failed: ' + err.detail });
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, err, 'Failed to update category')) return;
     res.status(500).json({ error: 'Failed to update category' });
   }
 });
@@ -123,6 +140,8 @@ router.delete('/categories/:id', authorize('admin'), async (req, res) => {
     res.json({ message: 'Category deleted successfully' });
   } catch (err) {
     console.error('Error deleting category:', err);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, err, 'Failed to delete category')) return;
     res.status(500).json({ error: 'Failed to delete category' });
   }
 });
@@ -183,6 +202,8 @@ router.post('/suppliers', authorize('admin', 'billing_manager'), async (req, res
   } catch (err) {
     console.error('Error creating supplier:', err);
     if (err.code === '23514') return res.status(400).json({ error: 'Validation failed: ' + err.detail });
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, err, 'Failed to create supplier')) return;
     res.status(500).json({ error: 'Failed to create supplier' });
   }
 });
@@ -225,6 +246,8 @@ router.put('/suppliers/:id', authorize('admin', 'billing_manager'), async (req, 
   } catch (err) {
     console.error('Error updating supplier:', err);
     if (err.code === '23514') return res.status(400).json({ error: 'Validation failed: ' + err.detail });
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, err, 'Failed to update supplier')) return;
     res.status(500).json({ error: 'Failed to update supplier' });
   }
 });
@@ -253,6 +276,8 @@ router.delete('/suppliers/:id', authorize('admin'), async (req, res) => {
     res.json({ message: 'Supplier deactivated successfully' });
   } catch (err) {
     console.error('Error deleting supplier:', err);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, err, 'Failed to delete supplier')) return;
     res.status(500).json({ error: 'Failed to delete supplier' });
   }
 });
@@ -385,6 +410,8 @@ router.post('/items', authorize('admin', 'billing_manager'), async (req, res) =>
     console.error('Error creating item:', err);
     if (err.code === '23505') return res.status(409).json({ error: 'Item number or SKU already exists' });
     if (err.code === '23514') return res.status(400).json({ error: 'Validation failed: ' + err.detail });
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, err, 'Failed to create item')) return;
     res.status(500).json({ error: 'Failed to create item' });
   }
 });
@@ -457,6 +484,8 @@ router.put('/items/:id', authorize('admin', 'billing_manager'), async (req, res)
   } catch (err) {
     console.error('Error updating item:', err);
     if (err.code === '23514') return res.status(400).json({ error: 'Validation failed: ' + err.detail });
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, err, 'Failed to update item')) return;
     res.status(500).json({ error: 'Failed to update item' });
   }
 });
@@ -474,6 +503,8 @@ router.delete('/items/:id', authorize('admin'), async (req, res) => {
     res.json({ message: 'Item deactivated successfully' });
   } catch (err) {
     console.error('Error deleting item:', err);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, err, 'Failed to delete item')) return;
     res.status(500).json({ error: 'Failed to delete item' });
   }
 });
@@ -585,6 +616,8 @@ router.post('/movements', authorize('admin', 'billing_manager', 'nurse'), async 
     await client.query('ROLLBACK');
     console.error('Error creating stock movement:', err);
     if (err.code === '23514') return res.status(400).json({ error: 'Validation failed: ' + err.detail });
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, err, 'Failed to create stock movement')) return;
     res.status(500).json({ error: 'Failed to create stock movement' });
   } finally {
     client.release();
@@ -726,6 +759,8 @@ router.post('/orders', authorize('admin', 'billing_manager'), async (req, res) =
     await client.query('ROLLBACK');
     console.error('Error creating purchase order:', err);
     if (err.code === '23514') return res.status(400).json({ error: 'Validation failed: ' + err.detail });
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, err, 'Failed to create purchase order')) return;
     res.status(500).json({ error: 'Failed to create purchase order' });
   } finally {
     client.release();
@@ -778,6 +813,8 @@ router.put('/orders/:id', authorize('admin', 'billing_manager'), async (req, res
     res.json(toCamelCase(result.rows[0]));
   } catch (err) {
     console.error('Error updating purchase order:', err);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, err, 'Failed to update purchase order')) return;
     res.status(500).json({ error: 'Failed to update purchase order' });
   }
 });
@@ -885,6 +922,8 @@ router.post('/orders/:id/receive', authorize('admin', 'billing_manager'), async 
   } catch (err) {
     await client.query('ROLLBACK');
     console.error('Error receiving purchase order:', err);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, err, 'Failed to receive purchase order')) return;
     res.status(500).json({ error: 'Failed to receive purchase order' });
   } finally {
     client.release();
@@ -904,6 +943,8 @@ router.delete('/orders/:id', authorize('admin'), async (req, res) => {
     res.json({ message: 'Purchase order deleted successfully' });
   } catch (err) {
     console.error('Error deleting purchase order:', err);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, err, 'Failed to delete purchase order')) return;
     res.status(500).json({ error: 'Failed to delete purchase order' });
   }
 });
@@ -1155,6 +1196,8 @@ router.put('/rbac/permissions', authorize('admin'), async (req, res) => {
   } catch (err) {
     console.error('Error updating RBAC permission:', err);
     if (err.code === '23514') return res.status(400).json({ error: 'Validation failed: ' + err.detail });
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, err, 'Failed to update permission')) return;
     res.status(500).json({ error: 'Failed to update permission' });
   }
 });
@@ -1267,6 +1310,8 @@ router.post('/backup', authorize('admin'), async (req, res) => {
   } catch (err) {
     await client.query('ROLLBACK');
     console.error('Error creating backup:', err);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, err, 'Failed to create backup')) return;
     res.status(500).json({ error: 'Failed to create backup' });
   } finally {
     client.release();

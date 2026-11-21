@@ -3,11 +3,15 @@ FROM node:18-alpine AS builder
 
 WORKDIR /app
 
-# Copy dependency manifests first for layer caching
-COPY backend/package*.json ./
+# Copy dependency manifests first for layer caching. The backend has no package.json of
+# its own — its dependencies are declared in the repository-root manifest — so these come
+# from the root. (This used to copy backend/package*.json, which does not exist, and
+# `npm ci` failed with no manifest to install from.)
+COPY package.json package-lock.json ./
 
-# Install all dependencies (including devDependencies needed for any build steps)
-RUN npm ci --ignore-scripts
+# Production dependencies only: the runtime stage copies this node_modules as-is, and the
+# backend has no build step that needs the devDependencies (nodemon).
+RUN npm ci --omit=dev --ignore-scripts
 
 # ─── Stage 2: Runtime ─────────────────────────────────────────────────────────
 FROM node:18-alpine AS runtime

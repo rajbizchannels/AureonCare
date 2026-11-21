@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Calendar, FileText, User, Edit, Check, X, Lock, Trash2, XCircle, Upload, Printer, MessageCircle, Activity, Pill, Home, Plus, Heart, Star, Clock, ClipboardList, AlertCircle, ChevronRight, Search, Stethoscope } from 'lucide-react';
+import { Calendar, FileText, User, Edit, Check, X, Lock, Trash2, XCircle, Upload, Printer, MessageCircle, Activity, Pill, Plus, Heart, Star, Clock, ClipboardList, AlertCircle, ChevronRight, Search, Stethoscope, ToggleLeft, ToggleRight } from 'lucide-react';
 import DynamicFormRenderer from '../components/forms/DynamicFormRenderer';
 import { FORM_TEMPLATES } from '../data/formTemplates';
 import { formatDate, formatTime, toLocalDateString } from '../utils/formatters';
@@ -25,7 +25,7 @@ const providerNameOf = (provider) =>
   `${provider.firstName || provider.first_name || ''} ${provider.lastName || provider.last_name || ''}`.trim();
 
 const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shellTab, onTabChange, requestedTab = null }) => {
-  const { language, setLanguage, setTheme } = useApp();
+  const { language, setLanguage } = useApp();
   const t = getTranslations(language);
   // profile (overview), appointments, diagnoses, prescriptions, records,
   // forms, bookAppointment — listed in the shell's secondary pane when the
@@ -45,9 +45,9 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
   const [loadingProviders, setLoadingProviders] = useState(false);
   const [providersError, setProvidersError] = useState(null);
   const [appointmentTypes, setAppointmentTypes] = useState([]);
-  const [loadingAppointmentTypes, setLoadingAppointmentTypes] = useState(false);
+  const [, setLoadingAppointmentTypes] = useState(false);
   const [waitlistEntries, setWaitlistEntries] = useState([]);
-  const [loadingWaitlist, setLoadingWaitlist] = useState(false);
+  const [, setLoadingWaitlist] = useState(false);
   // Drives the badge on the Messages tab. Polled rather than pushed — the
   // deployment has no websocket server wired up yet.
   const [unreadMessages, setUnreadMessages] = useState(0);
@@ -202,8 +202,15 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
   const loadWhatsAppPreference = async () => {
     if (user && user.id) {
       try {
-        const preferences = await api.getNotificationPreferences(user.id);
+        const preferences = await api.portalGetNotificationPreferences(user.id);
         const whatsappPref = preferences.find(p => p.channel_type === 'whatsapp');
+        // Email and SMS switches live in the same preferences table.
+        const byChannel = (c) => preferences.find(p => p.channel_type === c);
+        setProfileData(prev => ({
+          ...prev,
+          ...(byChannel('email') ? { email_notifications: byChannel('email').is_enabled } : {}),
+          ...(byChannel('sms') ? { sms_notifications: byChannel('sms').is_enabled } : {}),
+        }));
         if (whatsappPref) {
           setWhatsappEnabled(whatsappPref.is_enabled);
           setWhatsappPhoneNumber(whatsappPref.contact_info || user.phone || '');
@@ -233,7 +240,7 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
         throw new Error('User not authenticated');
       }
 
-      const providersList = await api.getProviders();
+      const providersList = await api.portalGetProviders(user.id);
       console.log('Providers loaded:', providersList?.length || 0);
       setProviders(providersList || []);
       if (!providersList || providersList.length === 0) {
@@ -252,7 +259,7 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
   const fetchAppointmentTypes = async () => {
     setLoadingAppointmentTypes(true);
     try {
-      const types = await api.getAppointmentTypes();
+      const types = await api.portalGetAppointmentTypes(user.id);
       setAppointmentTypes(types || []);
       // Set default type if types are loaded and current type is default
       if (types && types.length > 0 && bookingData.type === 'General Consultation') {
@@ -276,7 +283,7 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
   const fetchWaitlist = async () => {
     setLoadingWaitlist(true);
     try {
-      const entries = await api.getMyWaitlist();
+      const entries = await api.portalGetWaitlist(user.id);
       setWaitlistEntries(entries || []);
     } catch (error) {
       console.error('Error fetching waitlist:', error);
@@ -288,7 +295,7 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
   const fetchInsurancePayers = async () => {
     setLoadingPayers(true);
     try {
-      const payers = await api.getInsurancePayers(true); // true = only active payers
+      const payers = await api.portalGetInsurancePayers(user.id); // active payers only
       setInsurancePayers(payers || []);
     } catch (error) {
       console.error('Error fetching insurance payers:', error);
@@ -301,12 +308,12 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
   const fetchPharmacyData = async () => {
     try {
       // Fetch all pharmacies for selection
-      const allPharmacies = await api.getPharmacies();
+      const allPharmacies = await api.portalGetPharmacies(user.id);
       setPharmacies(allPharmacies || []);
 
       // Fetch patient's preferred pharmacies
       if (user?.id) {
-        const patientPreferred = await api.getPatientPreferredPharmacies(user.id);
+        const patientPreferred = await api.portalGetPreferredPharmacies(user.id);
         setPreferredPharmacies(patientPreferred || []);
 
         // Set the primary preferred pharmacy as selected
@@ -344,7 +351,7 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
   const loadFeaturedOfferings = async () => {
     try {
       setLoadingOfferings(true);
-      const offerings = await api.getOfferings({ featured: true, active: true });
+      const offerings = await api.portalGetOfferings(user.id, { featured: true });
       setFeaturedOfferings(offerings || []);
     } catch (error) {
       console.error('Error loading featured offerings:', error);
@@ -362,19 +369,12 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
 
       // Fetch appointments, medical records, diagnoses, prescriptions, and full profile for the patient
       const [appts, records, diags, presc, profile] = await Promise.all([
-        api.getAppointments().then(all => {
-          // SEC-14: do not log patient appointment records to the console.
-          // Filter appointments by patient_id
-          const filtered = all.filter(a => {
-            const appointmentPatientId = a.patient_id?.toString();
-            const userPatientId = patientId?.toString();
-            return appointmentPatientId === userPatientId;
-          });
-          return filtered;
-        }),
-        api.getMedicalRecords ? api.getMedicalRecords(patientId) : Promise.resolve([]),
-        api.getDiagnoses ? api.getDiagnoses(patientId) : Promise.resolve([]),
-        api.getPatientActivePrescriptions(patientId).catch(() => []),
+        // Portal endpoints only: each returns this patient's own rows (the old staff
+        // calls fetched every appointment in the practice and filtered here).
+        api.getPatientAppointments(patientId),
+        api.getPatientMedicalRecords(patientId),
+        api.portalGetDiagnoses(patientId).catch(() => []),
+        api.portalGetActivePrescriptions(patientId).catch(() => []),
         api.getPatientProfile(patientId).catch(() => null)
       ]);
       setAppointments(appts);
@@ -461,6 +461,9 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
     loadWhatsAppPreference();
     // Load featured offerings hide preference
     loadFeaturedOfferingsPreference();
+    // Deliberate trigger: load everything when the signed-in user changes. The fetchers are
+    // new functions on every render; listing them would refetch the whole portal per render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const handleDismissFeaturedOfferings = () => {
@@ -493,7 +496,7 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
     }
 
     try {
-      const result = await api.addToWaitlist({
+      const result = await api.portalAddToWaitlist(user.id, {
         providerId: bookingData.providerId,
         preferredDate: bookingData.date,
         appointmentType: bookingData.type,
@@ -524,7 +527,7 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
 
   const handleRemoveFromWaitlist = async (id) => {
     try {
-      const result = await api.removeFromWaitlist(id);
+      const result = await api.portalRemoveFromWaitlist(user.id, id);
       addNotification('success', result.message || 'Removed from waitlist');
       fetchWaitlist();
     } catch (error) {
@@ -607,7 +610,7 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
 
     try {
       // Save the new preferred pharmacy (backend will delete old ones and insert new one)
-      await api.addPreferredPharmacy(user.id, selectedPharmacyId, true);
+      await api.portalAddPreferredPharmacy(user.id, selectedPharmacyId, true);
 
       // Clear current preferred pharmacies immediately to prevent showing stale data
       setPreferredPharmacies([]);
@@ -629,7 +632,7 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
   const fetchMedicalRecords = async () => {
     try {
       const patientId = user.id;
-      const records = await (api.getMedicalRecords ? api.getMedicalRecords(patientId) : Promise.resolve([]));
+      const records = await api.getPatientMedicalRecords(patientId);
       setMedicalRecords(records);
     } catch (error) {
       console.error('Error fetching medical records:', error);
@@ -666,7 +669,7 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
       };
 
       // SEC-14: no PHI (appointment/user objects) to the console.
-      const result = await api.createAppointment(appointmentData);
+      await api.portalBookAppointment(user.id, appointmentData);
 
       addNotification('success', t.appointmentBookedSuccessfully);
 
@@ -885,7 +888,7 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
     e.preventDefault();
     try {
       // Update patient profile
-      const updated = await api.updatePatient(user.id, {
+      const updated = await api.updatePatientProfile(user.id, {
         first_name: profileData.first_name,
         last_name: profileData.last_name,
         phone: profileData.phone,
@@ -901,15 +904,13 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
         current_medications: profileData.current_medications,
         language: profileData.language,
         country: profileData.country,
-        insurance_payer_id: profileData.insurance_payer_id || null,
-        email_notifications: profileData.email_notifications || false,
-        sms_notifications: profileData.sms_notifications || false
+        insurance_payer_id: profileData.insurance_payer_id || null
       });
 
       // Update preferred pharmacy if one is selected
       if (selectedPharmacyId && user?.id) {
         try {
-          await api.addPreferredPharmacy(user.id, selectedPharmacyId, true);
+          await api.portalAddPreferredPharmacy(user.id, selectedPharmacyId, true);
           // Clear and refresh pharmacy data
           setPreferredPharmacies([]);
           await fetchPharmacyData();
@@ -985,7 +986,7 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
     }
 
     try {
-      await api.changePassword(passwordData.currentPassword, passwordData.newPassword);
+      await api.portalChangePassword(user.id, passwordData.currentPassword, passwordData.newPassword);
 
       addNotification('success', t.passwordChangedSuccessfully || 'Password changed successfully');
       setShowChangePassword(false);
@@ -1010,10 +1011,9 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
         [notificationType]: updatedValue
       });
 
-      // Save to backend
-      await api.updatePatient(user.id, {
-        [notificationType]: updatedValue
-      });
+      // Save to backend — the portal's notification preferences, one row per channel.
+      await api.portalSetNotificationPreference(user.id,
+        notificationType === 'email_notifications' ? 'email' : 'sms', updatedValue);
 
       addNotification('success', `${notificationType === 'email_notifications' ? 'Email' : 'SMS'} notifications ${updatedValue ? 'enabled' : 'disabled'}`);
     } catch (error) {
@@ -1032,7 +1032,7 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
     setWhatsappEnabled(newValue);
 
     try {
-      await api.updateNotificationPreference(user.id, 'whatsapp', newValue, whatsappPhoneNumber);
+      await api.portalSetNotificationPreference(user.id, 'whatsapp', newValue, whatsappPhoneNumber);
       addNotification('success', `WhatsApp notifications ${newValue ? 'enabled' : 'disabled'}`);
     } catch (error) {
       console.error('Error updating WhatsApp preference:', error);
@@ -1043,7 +1043,7 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
 
   const handleWhatsAppPhoneUpdate = async () => {
     try {
-      await api.updateNotificationPreference(user.id, 'whatsapp', whatsappEnabled, whatsappPhoneNumber);
+      await api.portalSetNotificationPreference(user.id, 'whatsapp', whatsappEnabled, whatsappPhoneNumber);
       addNotification('success', 'WhatsApp phone number updated');
     } catch (error) {
       console.error('Error updating WhatsApp phone:', error);
@@ -1926,19 +1926,12 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
                   {t.emailNotifications || 'Email Notifications'}
                 </label>
                 <button
+                  role="switch" aria-checked={!!(profileData.email_notifications)}
                   type="button"
                   onClick={() => handleNotificationToggle('email_notifications')}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
-                    profileData.email_notifications
-                      ? 'bg-cyan-500'
-                      : theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'
-                  }`}
+                  className="inline-flex shrink-0 items-center transition-opacity hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:opacity-50"
                 >
-                  <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      profileData.email_notifications ? 'translate-x-6' : 'translate-x-1'
-                    }`}
-                  />
+                  {(profileData.email_notifications) ? <ToggleRight className="w-6 h-6 text-green-400" /> : <ToggleLeft className="w-6 h-6 text-gray-400" />}
                 </button>
               </div>
 
@@ -1948,19 +1941,12 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
                   {t.smsAlerts || 'SMS Alerts'}
                 </label>
                 <button
+                  role="switch" aria-checked={!!(profileData.sms_notifications)}
                   type="button"
                   onClick={() => handleNotificationToggle('sms_notifications')}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
-                    profileData.sms_notifications
-                      ? 'bg-cyan-500'
-                      : theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'
-                  }`}
+                  className="inline-flex shrink-0 items-center transition-opacity hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:opacity-50"
                 >
-                  <span
-                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      profileData.sms_notifications ? 'translate-x-6' : 'translate-x-1'
-                    }`}
-                  />
+                  {(profileData.sms_notifications) ? <ToggleRight className="w-6 h-6 text-green-400" /> : <ToggleLeft className="w-6 h-6 text-gray-400" />}
                 </button>
               </div>
 
@@ -1974,20 +1960,13 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
                     </label>
                   </div>
                   <button
+                    role="switch" aria-checked={!!(whatsappEnabled)}
                     type="button"
                     disabled={loadingWhatsApp}
                     onClick={handleWhatsAppToggle}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
-                      whatsappEnabled
-                        ? 'bg-green-500'
-                        : theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'
-                    } ${loadingWhatsApp ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    className="inline-flex shrink-0 items-center transition-opacity hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:opacity-50"
                   >
-                    <span
-                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                        whatsappEnabled ? 'translate-x-6' : 'translate-x-1'
-                      }`}
-                    />
+                    {(whatsappEnabled) ? <ToggleRight className="w-6 h-6 text-green-400" /> : <ToggleLeft className="w-6 h-6 text-gray-400" />}
                   </button>
                 </div>
 
@@ -2943,10 +2922,7 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
     if (!activePendingForm) return;
     setSubmittingForm(true);
     try {
-      await api.updateFormSubmission(activePendingForm.submission.id, {
-        form_data: activeFormData,
-        status: 'submitted'
-      });
+      await api.portalSubmitForm(user.id, activePendingForm.submission.id, activeFormData);
       setPendingForms(prev => prev.map(f =>
         f.id === activePendingForm.submission.id ? { ...f, status: 'submitted', form_data: activeFormData } : f
       ));

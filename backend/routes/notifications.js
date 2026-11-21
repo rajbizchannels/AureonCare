@@ -1,5 +1,6 @@
 const express = require('express');
 const { authenticate } = require('../middleware/auth');
+const { sendDbError } = require('../utils/dbErrors');
 const router = express.Router();
 router.use(authenticate);
 router.use(require('../middleware/planEnforcement').enforceActiveBilling); // SEC-05 S11: read-only when subscription past_due/canceled
@@ -48,6 +49,8 @@ router.post('/', async (req, res) => {
     res.status(201).json(result.rows[0]);
   } catch (error) {
     console.error('Error creating notification:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to create notification')) return;
     res.status(500).json({ error: 'Failed to create notification' });
   }
 });
@@ -66,6 +69,8 @@ router.put('/:id/read', async (req, res) => {
     res.json(result.rows[0]);
   } catch (error) {
     console.error('Error updating notification:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to update notification')) return;
     res.status(500).json({ error: 'Failed to update notification' });
   }
 });
@@ -84,6 +89,8 @@ router.delete('/:id', async (req, res) => {
     res.json({ message: 'Notification deleted successfully' });
   } catch (error) {
     console.error('Error deleting notification:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to delete notification')) return;
     res.status(500).json({ error: 'Failed to delete notification' });
   }
 });
@@ -107,6 +114,8 @@ router.delete('/', async (req, res) => {
     res.json({ message: 'Notifications cleared successfully' });
   } catch (error) {
     console.error('Error clearing notifications:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to clear notifications')) return;
     res.status(500).json({ error: 'Failed to clear notifications' });
   }
 });

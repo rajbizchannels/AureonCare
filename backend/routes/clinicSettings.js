@@ -1,5 +1,10 @@
 const express = require('express');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, authorize } = require('../middleware/auth');
+
+// SEC-36: the practice's name, working hours and appointment rules could be changed by ANY signed-in
+// user, a patient included. The Settings screens that edit them are admin-only; so are the writes.
+const adminOnly = authorize('admin');
+const { sendDbError } = require('../utils/dbErrors');
 const router = express.Router();
 router.use(authenticate);
 router.use(require('../middleware/planEnforcement').enforceActiveBilling); // SEC-05 S11: read-only when subscription past_due/canceled
@@ -122,7 +127,7 @@ router.get('/', async (req, res) => {
  * Save clinic settings
  * POST /api/clinic-settings
  */
-router.post('/', async (req, res) => {
+router.post('/', adminOnly, async (req, res) => {
   try {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { name, address, phone, email, website, taxId, npi, currency } = req.body;
@@ -214,6 +219,8 @@ router.post('/', async (req, res) => {
     }
   } catch (error) {
     console.error('Error saving clinic settings:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to save clinic settings')) return;
     res.status(500).json({ error: 'Failed to save clinic settings' });
   }
 });
@@ -266,7 +273,7 @@ router.get('/working-hours', async (req, res) => {
  * Save working hours
  * POST /api/clinic-settings/working-hours
  */
-router.post('/working-hours', async (req, res) => {
+router.post('/working-hours', adminOnly, async (req, res) => {
   try {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const workingHours = req.body;
@@ -291,6 +298,8 @@ router.post('/working-hours', async (req, res) => {
     res.json({ success: true, message: 'Working hours saved successfully' });
   } catch (error) {
     console.error('Error saving working hours:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to save working hours')) return;
     res.status(500).json({ error: 'Failed to save working hours' });
   }
 });
@@ -335,7 +344,7 @@ router.get('/appointment-settings', async (req, res) => {
  * Save appointment settings
  * POST /api/clinic-settings/appointment-settings
  */
-router.post('/appointment-settings', async (req, res) => {
+router.post('/appointment-settings', adminOnly, async (req, res) => {
   try {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { defaultDuration, slotInterval, maxAdvanceBooking, cancellationDeadline } = req.body;
@@ -369,6 +378,8 @@ router.post('/appointment-settings', async (req, res) => {
     res.json({ success: true, message: 'Appointment settings saved successfully' });
   } catch (error) {
     console.error('Error saving appointment settings:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to save appointment settings')) return;
     res.status(500).json({ error: 'Failed to save appointment settings' });
   }
 });

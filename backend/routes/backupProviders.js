@@ -1,5 +1,12 @@
 const express = require('express');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, authorize } = require('../middleware/auth');
+
+// SEC-36: these settings decide which cloud account receives the practice's PHI backups. Writes were
+// open to any signed-in user and reads returned the stored client secret. Writes are
+// admin-only and no response carries the secret.
+const adminOnly = authorize('admin');
+const { redactRow, redactRows } = require('../utils/redactSecrets');
+const { sendDbError } = require('../utils/dbErrors');
 const router = express.Router();
 router.use(authenticate);
 router.use(require('../middleware/planEnforcement').enforceActiveBilling); // SEC-05 S11: read-only when subscription past_due/canceled
@@ -20,7 +27,7 @@ router.get('/', async (req, res) => {
         SELECT * FROM backup_provider_settings
         ORDER BY provider_type
       `);
-      res.json(result.rows);
+      res.json(redactRows(result.rows));
     } catch (tableError) {
       if (tableError.code === '42P01') {
         // Table doesn't exist, create it
@@ -53,7 +60,7 @@ router.get('/:providerType', async (req, res) => {
       return res.status(404).json({ error: 'Provider settings not found' });
     }
 
-    res.json(result.rows[0]);
+    res.json(redactRow(result.rows[0]));
   } catch (error) {
     console.error('Error fetching provider settings:', error);
     res.status(500).json({ error: 'Failed to fetch provider settings' });
@@ -61,7 +68,7 @@ router.get('/:providerType', async (req, res) => {
 });
 
 // Create or update provider settings
-router.post('/:providerType', async (req, res) => {
+router.post('/:providerType', adminOnly, async (req, res) => {
   try {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { providerType } = req.params;
@@ -86,7 +93,7 @@ router.post('/:providerType', async (req, res) => {
         SET
           is_enabled = COALESCE($1, is_enabled),
           client_id = COALESCE($2, client_id),
-          client_secret = COALESCE($3, client_secret),
+          client_secret = COALESCE(NULLIF($3, ''), client_secret),
           settings = COALESCE($4, settings),
           updated_at = CURRENT_TIMESTAMP
         WHERE provider_type = $5
@@ -109,15 +116,17 @@ router.post('/:providerType', async (req, res) => {
           JSON.stringify(settings || {})]);
     }
 
-    res.json(result.rows[0]);
+    res.json(redactRow(result.rows[0]));
   } catch (error) {
     console.error('Error saving provider settings:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to save provider settings')) return;
     res.status(500).json({ error: 'Failed to save provider settings' });
   }
 });
 
 // Delete provider settings
-router.delete('/:providerType', async (req, res) => {
+router.delete('/:providerType', adminOnly, async (req, res) => {
   try {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { providerType } = req.params;
@@ -134,6 +143,8 @@ router.delete('/:providerType', async (req, res) => {
     res.json({ message: 'Provider settings deleted successfully' });
   } catch (error) {
     console.error('Error deleting provider settings:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to delete provider settings')) return;
     res.status(500).json({ error: 'Failed to delete provider settings' });
   }
 });

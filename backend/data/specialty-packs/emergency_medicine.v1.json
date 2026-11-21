@@ -1,0 +1,270 @@
+{
+  "code": "emergency_medicine",
+  "version": 1,
+  "label": "Urgent and Emergency Care",
+  "description": "Starting configuration for an urgent care or emergency department: triage-driven appointment types and a catalogue of the presentations and procedures seen most.",
+  "modules": {
+    "hide": [
+      "camps",
+      "crm"
+    ]
+  },
+  "terminology": {
+    "appointment": "Attendance",
+    "appointments": "Attendances"
+  },
+  "appointmentTypes": [
+    {
+      "name": "Triage",
+      "durationMinutes": 10,
+      "color": "#2563EB",
+      "displayOrder": 10
+    },
+    {
+      "name": "Minor Injury",
+      "durationMinutes": 20,
+      "color": "#0EA5E9",
+      "displayOrder": 20
+    },
+    {
+      "name": "Minor Illness",
+      "durationMinutes": 15,
+      "color": "#14B8A6",
+      "displayOrder": 30
+    },
+    {
+      "name": "Urgent Assessment",
+      "durationMinutes": 30,
+      "color": "#8B5CF6",
+      "displayOrder": 40
+    },
+    {
+      "name": "Wound Care",
+      "durationMinutes": 20,
+      "color": "#F59E0B",
+      "displayOrder": 50
+    },
+    {
+      "name": "Observation Review",
+      "durationMinutes": 15,
+      "color": "#64748B",
+      "displayOrder": 60
+    }
+  ],
+  "serviceCategories": [
+    {
+      "name": "Assessment",
+      "icon": "activity",
+      "displayOrder": 10
+    },
+    {
+      "name": "Minor Injuries",
+      "icon": "bandage",
+      "displayOrder": 20
+    },
+    {
+      "name": "Minor Illness",
+      "icon": "thermometer",
+      "displayOrder": 30
+    },
+    {
+      "name": "Procedures",
+      "icon": "scissors",
+      "displayOrder": 40
+    }
+  ],
+  "offerings": [
+    {
+      "name": "Emergency Department Visit, Low Complexity",
+      "categoryName": "Assessment",
+      "durationMinutes": 20,
+      "cptCodes": [
+        "99282"
+      ]
+    },
+    {
+      "name": "Emergency Department Visit, Moderate Complexity",
+      "categoryName": "Assessment",
+      "durationMinutes": 30,
+      "cptCodes": [
+        "99283"
+      ]
+    },
+    {
+      "name": "Emergency Department Visit, High Complexity",
+      "categoryName": "Assessment",
+      "durationMinutes": 45,
+      "cptCodes": [
+        "99284"
+      ]
+    },
+    {
+      "name": "Wound Closure, Simple",
+      "categoryName": "Procedures",
+      "durationMinutes": 30,
+      "consentFormRequired": true
+    },
+    {
+      "name": "Wound Dressing",
+      "categoryName": "Procedures",
+      "durationMinutes": 20
+    },
+    {
+      "name": "Splint Application",
+      "categoryName": "Minor Injuries",
+      "durationMinutes": 25
+    },
+    {
+      "name": "Sprain and Strain Assessment",
+      "categoryName": "Minor Injuries",
+      "durationMinutes": 20
+    },
+    {
+      "name": "Foreign Body Removal",
+      "categoryName": "Procedures",
+      "durationMinutes": 30,
+      "consentFormRequired": true
+    },
+    {
+      "name": "Minor Illness Assessment",
+      "categoryName": "Minor Illness",
+      "durationMinutes": 15
+    },
+    {
+      "name": "Nebulisation",
+      "categoryName": "Minor Illness",
+      "durationMinutes": 30,
+      "cptCodes": [
+        "94640"
+      ]
+    }
+  ],
+  "formTemplates": [
+    {
+      "slug": "urgent-care-triage",
+      "name": "Urgent Care Triage",
+      "templateType": "clinical",
+      "categorySlug": "clinical",
+      "version": "1.0",
+      "languages": [
+        "en"
+      ],
+      "complianceTags": [
+        "HIPAA"
+      ],
+      "fields": [
+        {
+          "id": "presenting_complaint",
+          "type": "textarea",
+          "label": "Presenting complaint",
+          "required": true
+        },
+        {
+          "id": "onset",
+          "type": "text",
+          "label": "When did it start?",
+          "required": true
+        },
+        {
+          "id": "pain_score",
+          "type": "scale",
+          "label": "Pain score out of 10"
+        },
+        {
+          "id": "injury_mechanism",
+          "type": "textarea",
+          "label": "If an injury, how did it happen?"
+        },
+        {
+          "id": "allergies",
+          "type": "textarea",
+          "label": "Allergies"
+        },
+        {
+          "id": "medications",
+          "type": "textarea",
+          "label": "Current medicines"
+        },
+        {
+          "id": "tetanus",
+          "type": "radio",
+          "label": "Tetanus cover up to date?",
+          "options": [
+            "Yes",
+            "No",
+            "Not sure"
+          ]
+        },
+        {
+          "id": "pregnant",
+          "type": "radio",
+          "label": "Is there any chance of pregnancy?",
+          "options": [
+            "No",
+            "Yes",
+            "Not applicable"
+          ]
+        },
+        {
+          "id": "arrived_by",
+          "type": "select",
+          "label": "Arrived by",
+          "options": [
+            "Walk-in",
+            "Ambulance",
+            "Referred by GP",
+            "Transfer"
+          ]
+        }
+      ]
+    }
+  ],
+  "inventoryCategories": [
+    {
+      "code": "ec_wound",
+      "name": "Wound Closure and Dressings"
+    },
+    {
+      "code": "ec_splints",
+      "name": "Splints and Immobilisation"
+    },
+    {
+      "code": "ec_resus",
+      "name": "Resuscitation Consumables"
+    },
+    {
+      "code": "ec_drugs",
+      "name": "Emergency Drugs"
+    }
+  ],
+  "codeSets": {
+    "icd10": [
+      "S61.409A",
+      "S93.401A",
+      "R07.9",
+      "R10.9",
+      "J06.9",
+      "S52.501A",
+      "T14.90XA",
+      "R51.9"
+    ],
+    "cpt": [
+      "99281",
+      "99282",
+      "99283",
+      "99284",
+      "99285",
+      "94640"
+    ]
+  },
+  "settings": {
+    "defaultAppointmentDuration": 15,
+    "slotIntervalMinutes": 5
+  },
+  "reports": {
+    "show": [
+      "clinical",
+      "operational"
+    ]
+  }
+}

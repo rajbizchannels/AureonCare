@@ -14,8 +14,11 @@ const bcrypt = require('bcryptjs');
 const rateLimit = require('express-rate-limit');
 const { authenticate, authorize } = require('../middleware/auth');
 const { storeFor } = require('../middleware/rateLimitStore');
-const { validatePassword, BCRYPT_COST } = require('../utils/passwordPolicy');
-const { sendEmail, buildEmailHtml } = require('../services/notificationService');
+const { checkNewPassword, BCRYPT_COST } = require('../utils/passwordPolicy');
+const { sendEmail } = require('../services/notificationService');
+const { renderStaffInviteEmail } = require('../services/emailTemplates');
+const { sendDbError } = require('../utils/dbErrors');
+const { shorten } = require('../services/shortLinks');
 
 const router = express.Router();
 
@@ -29,28 +32,7 @@ const router = express.Router();
  */
 async function sendInviteEmail({ to, practiceName, inviterName, role, inviteUrl, expiresAt }) {
   const product = process.env.AC_CLN || 'AureonCare';
-  const html = buildEmailHtml(
-    `You have been invited to ${practiceName}`,
-    '#2563eb',
-    'Hello,',
-    `${inviterName || 'An administrator'} has invited you to join <strong>${practiceName}</strong> on ${product}. ` +
-      'Use the button below to set up your account — you can finish with a password or with your Google account.',
-    [
-      ['Practice', practiceName],
-      ['Your role', role],
-      ['Invited by', inviterName || '—'],
-      ['Link expires', expiresAt ? new Date(expiresAt).toUTCString() : '—'],
-    ]
-      .map(([label, value]) =>
-        `<tr><td style="padding:8px 12px;font-weight:bold;color:#555;white-space:nowrap;width:35%">${label}</td>` +
-        `<td style="padding:8px 12px;color:#333">${value}</td></tr>`)
-      .join(''),
-    `<a href="${inviteUrl}" style="display:inline-block;background:#2563eb;color:#fff;padding:12px 24px;` +
-      `border-radius:6px;text-decoration:none;font-weight:bold">Accept the invitation</a>` +
-      `<br><br><span style="color:#666;font-size:13px">If the button does not work, paste this into your browser:<br>` +
-      `${inviteUrl}</span><br><br><span style="color:#666;font-size:13px">If you were not expecting this, ignore ` +
-      `this email — the invitation expires on its own and no account is created until it is used.</span>`
-  );
+  const html = renderStaffInviteEmail({ practiceName, inviterName, role, inviteUrl, expiresAt });
   return sendEmail(to, `You have been invited to join ${practiceName} on ${product}`, html);
 }
 
@@ -93,6 +75,68 @@ async function claimInvite(client, inviteId, userId) {
   return rowCount === 1;
 }
 
+/**
+ * Adopt an UNBOUND account (practice_id NULL) for an invite.
+ *
+ * Such accounts were made by the old self-registration page and the old social sign-in
+ * (SEC-39) and can reach nothing: no practice, no chart, and they never appear in User
+ * Management, so no admin can remove them. Without this, the email they hold could never
+ * be invited ("A user with that email already exists").
+ *
+ * The person redeeming the invite has proved they control the address (they hold the
+ * emailed token, or a provider-verified email matching it). Anything attached to the old
+ * account BEFORE that proof is not trusted: a pre-registered account could carry someone
+ * else's Google/Microsoft identity (account pre-hijacking). So every social link is
+ * removed (except `keepSocialId`, the identity redeeming right now) and token_version is
+ * bumped so no earlier session survives.
+ *
+ * Only ever fills a NULL practice — an invite never moves a user between practices.
+ * Returns the updated user row, or null if the account is not (or no longer) unbound or
+ * the invite was already used. Run inside the caller's transaction.
+ */
+async function adoptUnboundAccount(client, userId, invite, { passwordHash, firstName, lastName, keepSocialId } = {}) {
+  const { rows } = await client.query(
+    `UPDATE public.users
+        SET practice_id   = $2,
+            role          = $3,
+            status        = 'active',
+            password_hash = COALESCE($4, password_hash),
+            first_name    = COALESCE(NULLIF($5, ''), first_name),
+            last_name     = COALESCE(NULLIF($6, ''), last_name),
+            token_version = COALESCE(token_version, 0) + 1,
+            updated_at    = NOW()
+      WHERE id = $1 AND practice_id IS NULL
+      RETURNING *`,
+    [userId, invite.practice_id, invite.role, passwordHash || null, firstName || '', lastName || '']
+  );
+  if (!rows[0]) return null;
+  await client.query(
+    `DELETE FROM public.social_auth
+      WHERE (user_id = $1 OR patient_id = $1) AND ($2::uuid IS NULL OR id <> $2::uuid)`,
+    [userId, keepSocialId || null]
+  );
+  if (!(await claimInvite(client, invite.id, userId))) return null;
+  return rows[0];
+}
+
+/**
+ * Phase 1: add the inviting practice to an EXISTING account (someone who already works at
+ * another practice). The caller has proved the person controls the account — its
+ * password, or a provider-verified email matching the invite. The new practice becomes
+ * where they start next. Returns the updated user row, or null if the invite was used.
+ */
+async function addMembershipFromInvite(client, userId, invite) {
+  if (!(await claimInvite(client, invite.id, userId))) return null;
+  await client.query(
+    `INSERT INTO public.memberships (user_id, practice_id, role, last_used_at) VALUES ($1, $2, $3, now())
+     ON CONFLICT (user_id, practice_id) DO UPDATE SET role = EXCLUDED.role, status = 'active', updated_at = now(), last_used_at = now()`,
+    [userId, invite.practice_id, invite.role]);
+  const { rows: [u] } = await client.query(
+    `UPDATE public.users SET practice_id = $2, role = $3, updated_at = NOW() WHERE id = $1 RETURNING *`,
+    [userId, invite.practice_id, invite.role]);
+  return u;
+}
+
 // ── Admin: create and manage invites ─────────────────────────────────────────
 
 router.post('/', authenticate, authorize('admin'), async (req, res) => {
@@ -111,10 +155,19 @@ router.post('/', authenticate, authorize('admin'), async (req, res) => {
   const inviteRole = ['admin', 'doctor', 'staff', 'nurse'].includes(role) ? role : 'staff';
 
   try {
-    const dup = await pool.query('SELECT 1 FROM public.users WHERE LOWER(email) = $1', [cleanEmail]);
-    if (dup.rows.length) {
-      return res.status(409).json({ error: 'A user with that email already exists.' });
+    // An existing account blocks the invite only when it belongs to a practice. An unbound
+    // one (practice_id NULL, left by the old self-registration) is adopted on acceptance —
+    // see adoptUnboundAccount — so it no longer locks the address out for good.
+    // Phase 1: someone who already works at ANOTHER practice can be invited too — accepting
+    // adds this practice to their account. Only a membership HERE blocks the invite.
+    const dup = await pool.query(
+      `SELECT u.id, u.practice_id,
+              EXISTS (SELECT 1 FROM public.memberships m WHERE m.user_id = u.id AND m.practice_id = $2 AND m.status = 'active') AS member_here
+         FROM public.users u WHERE LOWER(u.email) = $1`, [cleanEmail, req.user.practiceId]);
+    if (dup.rows.length && dup.rows[0].member_here) {
+      return res.status(409).json({ error: 'That person already has an account in your practice. Find them in User Management.' });
     }
+    const existingAccount = Boolean(dup.rows.length && dup.rows[0].practice_id);
 
     // Supersede any outstanding invite for the same address at this practice.
     await pool.query(
@@ -132,7 +185,9 @@ router.post('/', authenticate, authorize('admin'), async (req, res) => {
     );
 
     const base = (process.env.FRONTEND_URL || 'http://localhost:3000').split(',')[0].trim().replace(/\/$/, '');
-    const inviteUrl = `${base}/accept-invite?token=${token}`;
+    // Short link on our own domain; it stops working when the invite expires.
+    const inviteUrl = await shorten(`${base}/accept-invite?token=${token}`,
+      { expiresAt: rows[0].expires_at, kind: 'staff-invite' });
 
     const practice = await pool.query('SELECT name FROM public.practices WHERE id = $1', [req.user.practiceId]);
     const delivery = await sendInviteEmail({
@@ -149,6 +204,7 @@ router.post('/', authenticate, authorize('admin'), async (req, res) => {
     // mail went out, so an admin can hand it over directly if the invitee never sees it.
     res.status(201).json({
       ...rows[0],
+      existingAccount,
       inviteUrl,
       emailed: delivery.sent,
       emailError: delivery.sent ? undefined : delivery.reason,
@@ -159,6 +215,8 @@ router.post('/', authenticate, authorize('admin'), async (req, res) => {
     });
   } catch (err) {
     console.error('[invites] create error:', err);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, err, 'Failed to create invite')) return;
     res.status(500).json({ error: 'Failed to create invite' });
   }
 });
@@ -191,6 +249,8 @@ router.delete('/:id', authenticate, authorize('admin'), async (req, res) => {
     res.json({ success: true });
   } catch (err) {
     console.error('[invites] revoke error:', err);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, err, 'Failed to revoke invite')) return;
     res.status(500).json({ error: 'Failed to revoke invite' });
   }
 });
@@ -202,7 +262,13 @@ router.get('/lookup/:token', acceptLimiter, async (req, res) => {
   try {
     const invite = await findUsableInvite(req.app.locals.pool, req.params.token);
     if (!invite) return res.status(404).json({ error: 'This invite is no longer valid.' });
-    res.json({ email: invite.email, role: invite.role, practiceName: invite.practice_name });
+    // existingAccount: the address already has an AureonCare account at another practice —
+    // accepting adds this practice to it (with its own password, or Google/Microsoft).
+    const { rows } = await req.app.locals.pool.query(
+      'SELECT practice_id, (password_hash IS NOT NULL) AS has_password FROM public.users WHERE LOWER(email) = $1', [invite.email]);
+    const existing = rows[0] && rows[0].practice_id ? rows[0] : null;
+    res.json({ email: invite.email, role: invite.role, practiceName: invite.practice_name,
+      existingAccount: Boolean(existing), hasPassword: Boolean(existing && existing.has_password) });
   } catch (err) {
     console.error('[invites] lookup error:', err);
     res.status(500).json({ error: 'Failed to check invite' });
@@ -216,7 +282,36 @@ router.get('/lookup/:token', acceptLimiter, async (req, res) => {
 router.post('/accept', acceptLimiter, async (req, res) => {
   const pool = req.app.locals.pool;
   const { token, password, firstName, lastName } = req.body || {};
-  const pw = validatePassword(password);
+  // Phase 1: an existing account (another practice) accepts with its CURRENT password,
+  // which is checked, not replaced — so the new-password rules do not apply to it.
+  {
+    const inv = await findUsableInvite(pool, token);
+    if (inv) {
+      const { rows: [acct] } = await pool.query(
+        'SELECT id, practice_id, password_hash FROM public.users WHERE LOWER(email) = $1', [inv.email]);
+      if (acct && acct.practice_id) {
+        if (!acct.password_hash) {
+          return res.status(409).json({ error: 'This account signs in with Google or Microsoft. Use that button to accept the invitation.' });
+        }
+        if (!password || !(await bcrypt.compare(String(password), acct.password_hash))) {
+          return res.status(401).json({ error: 'That is not the password for your existing AureonCare account.' });
+        }
+        const c = await pool.connect();
+        try {
+          await c.query('BEGIN');
+          const u = await addMembershipFromInvite(c, acct.id, inv);
+          if (!u) { await c.query('ROLLBACK'); return res.status(409).json({ error: 'This invite has already been used.' }); }
+          await c.query('COMMIT');
+          return res.status(201).json({ success: true, addedToPractice: true,
+            user: { id: u.id, email: u.email, first_name: u.first_name, last_name: u.last_name, role: u.role } });
+        } catch (e) {
+          await c.query('ROLLBACK').catch(() => {});
+          throw e;
+        } finally { c.release(); }
+      }
+    }
+  }
+  const pw = await checkNewPassword(password);
   if (!pw.valid) return res.status(400).json({ error: pw.message });
 
   const client = await pool.connect();
@@ -225,13 +320,23 @@ router.post('/accept', acceptLimiter, async (req, res) => {
     if (!invite) return res.status(404).json({ error: 'This invite is no longer valid.' });
 
     await client.query('BEGIN');
-    const dup = await client.query('SELECT 1 FROM public.users WHERE LOWER(email) = $1', [invite.email]);
+    const hash = await bcrypt.hash(password, BCRYPT_COST);
+    const dup = await client.query(
+      'SELECT id, practice_id FROM public.users WHERE LOWER(email) = $1 FOR UPDATE', [invite.email]);
     if (dup.rows.length) {
-      await client.query('ROLLBACK');
-      return res.status(409).json({ error: 'An account with that email already exists. Please sign in.' });
+      // An unbound leftover account is taken over by the person who holds the invite.
+      const adopted = !dup.rows[0].practice_id
+        ? await adoptUnboundAccount(client, dup.rows[0].id, invite, { passwordHash: hash, firstName, lastName })
+        : null;
+      if (!adopted) {
+        await client.query('ROLLBACK');
+        return res.status(409).json({ error: 'An account with that email already exists. Please sign in.' });
+      }
+      await client.query('COMMIT');
+      const { id, email, first_name, last_name, role } = adopted;
+      return res.status(201).json({ success: true, user: { id, email, first_name, last_name, role } });
     }
 
-    const hash = await bcrypt.hash(password, BCRYPT_COST);
     const { rows } = await client.query(
       `INSERT INTO public.users
          (id, email, first_name, last_name, role, status, password_hash, practice_id, created_at)
@@ -250,10 +355,12 @@ router.post('/accept', acceptLimiter, async (req, res) => {
   } catch (err) {
     await client.query('ROLLBACK').catch(() => {});
     console.error('[invites] accept error:', err);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, err, 'Failed to accept invite')) return;
     res.status(500).json({ error: 'Failed to accept invite' });
   } finally {
     client.release();
   }
 });
 
-module.exports = { router, findUsableInvite, claimInvite, hashToken };
+module.exports = { router, findUsableInvite, claimInvite, adoptUnboundAccount, addMembershipFromInvite, hashToken };

@@ -647,6 +647,7 @@ When logging in for the first time:
 ### 2.2.1 Getting an Account
 
 ⚠️ **CHANGED IN V1.6:** The public self-registration page has been removed. Nobody creates their own AureonCare account from a sign-up form any more — staff and patients join **by invitation**. The only thing you can still start yourself is a brand-new practice with its own subscription.
+There are three ways for staff to get an AureonCare account (patients: see **4** below). There is no open self-registration page — every account starts from an invitation, a verified work-email domain, or a new practice subscription:
 
 **1. Staff — invitation from your practice**
 - An administrator adds you under **Settings → Users** and sends an invitation
@@ -659,10 +660,16 @@ When logging in for the first time:
 - You receive an email with a one-time link
 - Open it, choose a password or continue with Google or Microsoft
 - You land in the portal already signed in, attached to your existing chart
+**3. Signing up with your work email** (🆕 NEW IN V1.4)
+- If your practice has claimed and verified its email domain, you can sign yourself up with your work address
+- Open the join page (`/join`) and register with that address
+- Your account is created in a **pending** state and appears in your practice's approval queue
+- An administrator approves it before you can sign in
+- Self-serve joiners are never given administrator rights
 
 ✅ **Note:** Only the patient ever chooses their own portal password. Staff cannot set it for them, and the invitation ties the login to the chart already on file, so no duplicate patient record is created.
 
-**3. Starting a new practice**
+**4. Starting a new practice**
 - Go to `/signup`
 - Choose a subscription plan
 - Enter your practice details and apply a coupon code if you have one
@@ -676,15 +683,38 @@ When logging in for the first time:
 Accounts left behind by the old self-registration page were never attached to a practice, so they never appeared in User Management and could not be cleaned up. 🆕 **V1.6:** An invitation sent to that email address now **adopts** the orphaned account instead of failing. An invitation is only refused when the address already belongs to someone in a practice.
 
 ### 2.3 Social Login (OAuth)
+**4. Patients: an invitation from the practice** (🆕 NEW)
+- Staff open the patient's record (the edit form in Electronic Health Records, or the chart) and click **Invite to portal** under *Patient portal*. The patient needs an email address on file.
+- The patient receives an email with a one-time link (valid for 14 days) and chooses a password, or continues with Google or Microsoft. They land in their portal, signed in.
+- Staff see the status — *Not invited yet*, *Invited … link expires …*, or *Portal active* — and can **Re-send** (the old link stops working) or **Withdraw** a pending invitation.
+- If the email cannot be sent, the panel shows the link once so it can be passed on another way.
+- Staff never see or set a patient's password.
 
-AureonCare supports social login options:
+### 2.3 Social Login (OAuth)
 
-1. On the login screen, click one of the social login buttons:
-   - **Sign in with Google**
-   - **Sign in with Microsoft**
-   - **Sign in with Facebook**
-2. Authorize AureonCare to access your account
-3. Complete your profile setup if this is your first login
+AureonCare supports signing in with Google or Microsoft:
+
+1. On the login screen, click **Sign in with Google** or **Sign in with Microsoft**
+2. Authorize AureonCare with the provider
+
+Social sign-in signs you in to an account you **already have**, or creates one when you
+arrive with an invitation (or with a verified work email at a domain your practice has
+claimed — see 2.2.1). It does not create an account for an address AureonCare does not
+know: you will see *"No account found … Ask your practice to send you an invitation."*
+
+### 2.3.1 How sessions behave (🆕 NEW)
+
+- **Reloading the page keeps you signed in.** The app checks with the server who the
+  session belongs to and reloads everything fresh — nothing is restored from the browser.
+- **Closing the browser signs you out.** When the browser is reopened (or a tab restored
+  with no AureonCare tab open), you start at the sign-in page and the old session is
+  ended on the server too.
+- **A new tab** opened while another AureonCare tab is signed in shows the sign-in page;
+  the other tab is not affected.
+- **Tabs stay in step.** If you sign in as a different person in one tab, or sign out in
+  one tab, the other AureonCare tabs return to the sign-in page with a short note — a tab
+  never keeps showing one person while acting as another.
+- **Log out** ends the session on the server, not just on the screen.
 
 ### 2.4 Understanding the Interface
 

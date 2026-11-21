@@ -81,7 +81,9 @@ const NewCampaignForm = ({ theme, api, onClose, onSuccess, addNotification, t, e
 
   const handleActualSubmit = async () => {
     setLoading(true);
-    setShowConfirmation(false);
+    // NOT closed here: ConfirmationModal awaits this handler and closes itself
+    // afterwards, showing a spinner meanwhile. Closing it first took that away and
+    // left the user on a screen with no sign that anything was happening.
 
     const campaignData = {
       name: formData.name.trim(),

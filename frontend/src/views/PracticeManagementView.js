@@ -102,6 +102,9 @@ const PracticeManagementView = ({
     if (appointmentViewType === 'waitlist') {
       loadWaitlist();
     }
+    // Deliberate triggers: the view and the status filter. loadWaitlist is a new function on
+    // every render; listing it would refetch after every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appointmentViewType, waitlistStatusFilter]);
 
   const handleConfirmAppointment = (entry) => {
@@ -591,11 +594,14 @@ const PracticeManagementView = ({
       {/* Appointment Form */}
       {showForm === 'appointment' && (
         <div className={`mb-6 p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/30 border-slate-700' : 'bg-white border-gray-300'}`}>
+          {/* `user` is passed so a doctor scheduling from the practice calendar is
+              defaulted into the provider field rather than the first provider listed. */}
           <NewAppointmentForm
             theme={theme}
             api={api}
             patients={patients}
             users={users}
+            user={user}
             onClose={() => setShowForm(null)}
             onSuccess={(newAppointment) => {
               setAppointments([...appointments, newAppointment]);

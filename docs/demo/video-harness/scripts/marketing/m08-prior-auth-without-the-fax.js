@@ -66,5 +66,7 @@ module.exports = {
     await d.click(page.getByRole('button', { name: /^Submit Pre-Authorization Request$/ }), { pause: 2000 });
     await d.say('Sent to the clearinghouse. Not to a fax tray.', 2600);
     await d.say('And it sits on a queue with a status until they answer.', 2600);
+    // Cover: the new request on the queue, with its status.
+    await d.cover();
   },
 };

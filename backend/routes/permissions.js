@@ -1,7 +1,234 @@
 const express = require('express');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, authorize } = require('../middleware/auth');
+const registry = require('../utils/permissionRegistry');
+const { sendDbError } = require('../utils/dbErrors');
 const router = express.Router();
 router.use(authenticate);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Fine-grained module permissions
+//
+// ONE pair of endpoints for every module, where the pattern they generalise had a pair per
+// module (/api/inventory/rbac/permissions, /api/accounts/rbac/permissions) and would have
+// needed nine more. The registry decides which modules and resources exist, so the screen,
+// the validator here and the enforcement middleware cannot disagree about them.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * The registry plus every stored grant: everything the admin screen needs to draw itself.
+ *
+ * `effective` is the answer that is actually enforced — a stored row where one exists, the
+ * role default where none does. The screen shows that, rather than an empty grid that
+ * implies nobody can do anything, which is what a raw dump of the table would suggest for
+ * a practice that has never edited its permissions.
+ */
+router.get('/modules', authorize('admin', 'billing_manager'), async (req, res) => {
+  try {
+    const db = req.db || req.app.locals.pool;
+
+    // Roles this practice actually uses, so a custom role is grantable rather than
+    // invisible. Read from the practice's own users (users is an identity-plane table in
+    // `public`, scoped by practice_id) and from public.roles, which is empty on every
+    // installation checked but costs nothing to consult.
+    const extraRoles = [];
+    try {
+      const { rows } = await req.app.locals.pool.query(
+        `SELECT DISTINCT m.role FROM public.memberships m JOIN public.users u ON u.id = m.user_id
+          WHERE m.practice_id = $1 AND m.status = 'active' AND u.status = 'active' AND m.role IS NOT NULL
+          UNION
+         SELECT name FROM public.roles WHERE is_active = true`,
+        [req.user.practiceId || null]);
+      extraRoles.push(...rows.map((r) => r.role).filter(Boolean));
+    } catch (err) {
+      console.error('[permissions] could not list practice roles:', err.message);
+    }
+
+    const described = registry.describe(extraRoles);
+
+    let stored = [];
+    try {
+      const { rows } = await db.query(
+        `SELECT mp.module, mp.role_name, mp.resource, mp.can_view, mp.can_create, mp.can_edit,
+                mp.can_delete, mp.can_approve, mp.can_export, mp.updated_at,
+                u.first_name || ' ' || u.last_name AS updated_by_name
+           FROM module_permissions mp
+           LEFT JOIN users u ON u.id = mp.updated_by
+          ORDER BY mp.module, mp.role_name, mp.resource`);
+      stored = rows;
+    } catch (err) {
+      // The tenant may not have had tenant/011 applied yet. Say so in the payload rather
+      // than failing the screen: the defaults are still the truth until a row is written.
+      if (err.code !== '42P01') throw err;
+      console.error('[permissions] module_permissions is missing for this tenant; run npm run migrate:tenants');
+    }
+
+    // Rows from the two modules that predate this table, so their existing settings are
+    // shown and honoured rather than silently replaced by defaults.
+    for (const [key, mod] of Object.entries(registry.MODULES)) {
+      if (!mod.legacyTable) continue;
+      try {
+        const { rows } = await db.query(
+          `SELECT $1::text AS module, role_name, resource, can_view, can_create, can_edit,
+                  can_delete, can_approve, can_export, updated_at
+             FROM ${mod.legacyTable}`, [key]);
+        for (const row of rows) {
+          // A row in the new table wins: that is where an edit made today lands.
+          const already = stored.some((s) => s.module === key
+            && s.role_name === row.role_name && s.resource === row.resource);
+          if (!already) stored.push(row);
+        }
+      } catch (err) {
+        if (err.code !== '42P01') throw err;
+      }
+    }
+
+    const effective = [];
+    for (const mod of described.modules) {
+      for (const role of described.roles) {
+        for (const resource of mod.resources) {
+          const row = stored.find((s) => s.module === mod.key
+            && s.role_name === role && s.resource === resource);
+          effective.push({
+            module: mod.key,
+            roleName: role,
+            resource,
+            source: row ? 'stored' : 'default',
+            editable: role !== described.alwaysAllowedRole,
+            ...Object.fromEntries(described.actions.map((a) => [
+              `can${a[0].toUpperCase()}${a.slice(1)}`,
+              row ? row[`can_${a}`] === true : mod.defaults[role][a] === true,
+            ])),
+          });
+        }
+      }
+    }
+
+    res.json({ ...described, permissions: effective });
+  } catch (error) {
+    console.error('Error fetching module permissions:', error);
+    res.status(500).json({ error: 'Failed to fetch module permissions' });
+  }
+});
+
+/**
+ * Save one grant.
+ *
+ * All six flags are written together rather than one at a time: a partial update would
+ * make the result depend on whether a row already existed, so the same click would mean
+ * different things on a fresh practice and an edited one.
+ */
+router.put('/modules', authorize('admin'), async (req, res) => {
+  try {
+    const db = req.db || req.app.locals.pool;
+    const { module, roleName, resource } = req.body || {};
+
+    if (!registry.isModule(module)) {
+      return res.status(400).json({ error: `Unknown module "${module}"` });
+    }
+    if (!registry.isResource(module, resource)) {
+      return res.status(400).json({
+        error: `"${resource}" is not a resource of ${module}`,
+        validResources: registry.MODULES[module].resources,
+      });
+    }
+    // Validated against the roles this practice uses, not the built-in list alone: the read
+    // endpoint offers custom roles, so refusing them here would put a switch on screen
+    // that the server rejects.
+    let allowedRoles = registry.ROLES;
+    try {
+      const { rows } = await req.app.locals.pool.query(
+        `SELECT DISTINCT m.role AS name FROM public.memberships m JOIN public.users u ON u.id = m.user_id
+          WHERE m.practice_id = $1 AND m.status = 'active' AND u.status = 'active' AND m.role IS NOT NULL
+          UNION
+         SELECT name FROM public.roles WHERE is_active = true`,
+        [req.user.practiceId || null]);
+      allowedRoles = registry.rolesFor(rows.map((r) => r.name).filter(Boolean));
+    } catch (err) {
+      console.error('[permissions] could not list practice roles:', err.message);
+    }
+    if (!allowedRoles.includes(roleName)) {
+      return res.status(400).json({ error: `Unknown role "${roleName}"`, validRoles: allowedRoles });
+    }
+    // Refused rather than quietly ignored: an administrator who believes they have just
+    // restricted their own role would be wrong, and would find out the hard way.
+    if (roleName === registry.ALWAYS_ALLOWED_ROLE) {
+      return res.status(400).json({
+        error: `The ${registry.ALWAYS_ALLOWED_ROLE} role cannot be restricted`,
+        message: 'Administrators always keep full access, so that a practice cannot lock '
+          + 'itself out of this screen.',
+      });
+    }
+
+    const flag = (name) => req.body[`can${name[0].toUpperCase()}${name.slice(1)}`] === true;
+    const values = registry.ACTIONS.map(flag);
+
+    const { rows } = await db.query(
+      `INSERT INTO module_permissions
+         (module, role_name, resource, can_view, can_create, can_edit, can_delete,
+          can_approve, can_export, updated_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+       ON CONFLICT (module, role_name, resource) DO UPDATE SET
+         can_view = $4, can_create = $5, can_edit = $6, can_delete = $7,
+         can_approve = $8, can_export = $9, updated_by = $10, updated_at = now()
+       RETURNING *`,
+      [module, roleName, resource, ...values, req.user.id]);
+
+    const row = rows[0];
+    res.json({
+      module: row.module,
+      roleName: row.role_name,
+      resource: row.resource,
+      source: 'stored',
+      editable: true,
+      ...Object.fromEntries(registry.ACTIONS.map((a) => [
+        `can${a[0].toUpperCase()}${a.slice(1)}`, row[`can_${a}`] === true,
+      ])),
+    });
+  } catch (error) {
+    if (error.code === '42P01') {
+      return res.status(503).json({
+        error: 'Module permissions are not set up for this practice',
+        message: 'Run the tenant migrations (npm run migrate:tenants) and try again.',
+      });
+    }
+    console.error('Error saving module permission:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to save module permission')) return;
+    res.status(500).json({ error: 'Failed to save module permission' });
+  }
+});
+
+/**
+ * Drop a stored grant so the role falls back to its default.
+ *
+ * Worth having as its own verb: without it, "put it back how it was" means knowing what
+ * the defaults were and re-entering them by hand.
+ */
+router.delete('/modules/:module/:roleName/:resource', authorize('admin'), async (req, res) => {
+  try {
+    const db = req.db || req.app.locals.pool;
+    const { module, roleName, resource } = req.params;
+    if (!registry.isModule(module) || !registry.isResource(module, resource)) {
+      return res.status(400).json({ error: 'Unknown module or resource' });
+    }
+    await db.query(
+      'DELETE FROM module_permissions WHERE module = $1 AND role_name = $2 AND resource = $3',
+      [module, roleName, resource]);
+    const mod = registry.describe().modules.find((m) => m.key === module);
+    res.json({
+      module, roleName, resource, source: 'default', editable: roleName !== registry.ALWAYS_ALLOWED_ROLE,
+      ...Object.fromEntries(registry.ACTIONS.map((a) => [
+        `can${a[0].toUpperCase()}${a.slice(1)}`, mod.defaults[roleName]?.[a] === true,
+      ])),
+    });
+  } catch (error) {
+    if (error.code === '42P01') return res.json({ reset: true });
+    console.error('Error resetting module permission:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to reset module permission')) return;
+    res.status(500).json({ error: 'Failed to reset module permission' });
+  }
+});
 
 // Get all role permissions (organized by role and module)
 router.get('/', async (req, res) => {
@@ -159,6 +386,8 @@ router.put('/', async (req, res) => {
       console.error('Error during rollback:', rollbackError);
     }
     console.error('Error updating permissions:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to update permissions')) return;
     res.status(500).json({ error: 'Failed to update permissions' });
   }
 });
@@ -228,6 +457,8 @@ router.put('/:role', async (req, res) => {
       console.error('Error during rollback:', rollbackError);
     }
     console.error('Error updating role permissions:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to update role permissions')) return;
     res.status(500).json({ error: 'Failed to update role permissions' });
   }
 });

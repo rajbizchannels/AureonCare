@@ -43,11 +43,16 @@ module.exports = {
 
     d.chapter('Building it');
     await d.step('Step 2 — Data source');
-    const source = page.locator('select').first();
-    if (await d.exists(source)) {
-      const options = await source.locator('option').allTextContents();
-      const pick = options.find((o) => /appointment/i.test(o)) || options[1];
-      if (pick) await d.select(source, { label: pick }, { pause: 2000 });
+    // The data source is a row of buttons, not a dropdown. This used to reach
+    // for page.locator('select').first(), which in this dialog is the Status
+    // filter — so the beat was quietly setting Status to Confirmed while the
+    // narration talked about data sources. It went unnoticed because
+    // selectOption() against a ThemedSelect did nothing at all; now that the
+    // harness drives the real control, a mis-aimed selector actually changes
+    // something, so it has to name what it means.
+    const appointments = page.getByRole('button', { name: /^Appointments$/ }).first();
+    if (await d.exists(appointments)) {
+      await d.click(appointments, { pause: 2000 });
     }
     await d.say(
       'The <b>data source</b> comes first, because it decides which fields even exist — appointments, claims, patients.',

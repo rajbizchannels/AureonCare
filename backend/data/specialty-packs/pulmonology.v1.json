@@ -1,0 +1,283 @@
+{
+  "code": "pulmonology",
+  "version": 1,
+  "label": "Respiratory Medicine",
+  "description": "Starting configuration for a respiratory practice: lung function and sleep appointment types, with an asthma, COPD and sleep-apnoea catalogue.",
+  "modules": {
+    "hide": [
+      "camps"
+    ]
+  },
+  "terminology": {
+    "provider": "Respiratory Physician",
+    "providers": "Respiratory Physicians"
+  },
+  "appointmentTypes": [
+    {
+      "name": "New Patient Consultation",
+      "durationMinutes": 45,
+      "color": "#2563EB",
+      "displayOrder": 10
+    },
+    {
+      "name": "Follow-up Consultation",
+      "durationMinutes": 20,
+      "color": "#0EA5E9",
+      "displayOrder": 20
+    },
+    {
+      "name": "Lung Function Testing",
+      "durationMinutes": 45,
+      "color": "#14B8A6",
+      "displayOrder": 30
+    },
+    {
+      "name": "Sleep Study Review",
+      "durationMinutes": 30,
+      "color": "#8B5CF6",
+      "displayOrder": 40
+    },
+    {
+      "name": "CPAP Review",
+      "durationMinutes": 30,
+      "color": "#F59E0B",
+      "displayOrder": 50
+    },
+    {
+      "name": "Nebuliser Treatment",
+      "durationMinutes": 30,
+      "color": "#64748B",
+      "displayOrder": 60
+    }
+  ],
+  "serviceCategories": [
+    {
+      "name": "Consultations",
+      "icon": "stethoscope",
+      "displayOrder": 10
+    },
+    {
+      "name": "Lung Function",
+      "icon": "wind",
+      "displayOrder": 20
+    },
+    {
+      "name": "Sleep Medicine",
+      "icon": "moon",
+      "displayOrder": 30
+    },
+    {
+      "name": "Treatment",
+      "icon": "droplet",
+      "displayOrder": 40
+    }
+  ],
+  "offerings": [
+    {
+      "name": "New Patient Respiratory Consultation",
+      "categoryName": "Consultations",
+      "durationMinutes": 45,
+      "cptCodes": [
+        "99204"
+      ]
+    },
+    {
+      "name": "Follow-up Respiratory Consultation",
+      "categoryName": "Consultations",
+      "durationMinutes": 20,
+      "cptCodes": [
+        "99213"
+      ]
+    },
+    {
+      "name": "Spirometry",
+      "categoryName": "Lung Function",
+      "durationMinutes": 20,
+      "cptCodes": [
+        "94010"
+      ],
+      "requiresPreparation": true,
+      "preparationInstructions": "Avoid your reliever inhaler for four hours and your preventer for twelve, unless you have been told otherwise. Do not smoke on the day of the test."
+    },
+    {
+      "name": "Spirometry with Bronchodilator",
+      "categoryName": "Lung Function",
+      "durationMinutes": 40,
+      "cptCodes": [
+        "94060"
+      ]
+    },
+    {
+      "name": "Nebulisation",
+      "categoryName": "Treatment",
+      "durationMinutes": 30,
+      "cptCodes": [
+        "94640"
+      ]
+    },
+    {
+      "name": "Asthma Review",
+      "categoryName": "Consultations",
+      "durationMinutes": 25
+    },
+    {
+      "name": "COPD Review",
+      "categoryName": "Consultations",
+      "durationMinutes": 25
+    },
+    {
+      "name": "Sleep Apnoea Assessment",
+      "categoryName": "Sleep Medicine",
+      "durationMinutes": 45
+    },
+    {
+      "name": "CPAP Titration and Review",
+      "categoryName": "Sleep Medicine",
+      "durationMinutes": 30
+    },
+    {
+      "name": "Smoking Cessation Counselling",
+      "categoryName": "Treatment",
+      "durationMinutes": 30
+    },
+    {
+      "name": "Inhaler Technique Review",
+      "categoryName": "Treatment",
+      "durationMinutes": 20
+    },
+    {
+      "name": "Pulmonary Rehabilitation Session",
+      "categoryName": "Treatment",
+      "durationMinutes": 60
+    }
+  ],
+  "formTemplates": [
+    {
+      "slug": "respiratory-intake",
+      "name": "Respiratory Intake",
+      "templateType": "onboarding",
+      "categorySlug": "onboarding",
+      "version": "1.0",
+      "languages": [
+        "en"
+      ],
+      "complianceTags": [
+        "HIPAA"
+      ],
+      "fields": [
+        {
+          "id": "main_symptom",
+          "type": "checkboxes",
+          "label": "What brings you in?",
+          "options": [
+            "Breathlessness",
+            "Cough",
+            "Wheeze",
+            "Chest tightness",
+            "Coughing blood",
+            "Snoring or daytime sleepiness"
+          ],
+          "required": true
+        },
+        {
+          "id": "duration",
+          "type": "text",
+          "label": "How long has this been going on?"
+        },
+        {
+          "id": "breathless_when",
+          "type": "select",
+          "label": "When are you breathless?",
+          "options": [
+            "Not breathless",
+            "Hurrying or uphill",
+            "Walking on the flat",
+            "After 100 metres",
+            "Dressing or at rest"
+          ]
+        },
+        {
+          "id": "smoking",
+          "type": "radio",
+          "label": "Smoking",
+          "options": [
+            "Never smoked",
+            "Ex-smoker",
+            "Current smoker"
+          ]
+        },
+        {
+          "id": "pack_years",
+          "type": "text",
+          "label": "If you have smoked, roughly how much and for how long?"
+        },
+        {
+          "id": "occupational_exposure",
+          "type": "textarea",
+          "label": "Any dust, fumes or asbestos exposure at work"
+        },
+        {
+          "id": "inhalers",
+          "type": "textarea",
+          "label": "Inhalers you use, and how often"
+        },
+        {
+          "id": "admissions",
+          "type": "text",
+          "label": "Hospital admissions for breathing problems in the last year"
+        },
+        {
+          "id": "epworth",
+          "type": "scale",
+          "label": "How likely are you to doze off during the day, out of 10?"
+        }
+      ]
+    }
+  ],
+  "inventoryCategories": [
+    {
+      "code": "resp_spirometry",
+      "name": "Spirometry Consumables"
+    },
+    {
+      "code": "resp_nebuliser",
+      "name": "Nebuliser Supplies"
+    },
+    {
+      "code": "resp_cpap",
+      "name": "CPAP Masks and Tubing"
+    },
+    {
+      "code": "resp_oxygen",
+      "name": "Oxygen Delivery"
+    }
+  ],
+  "codeSets": {
+    "icd10": [
+      "J45.909",
+      "J44.9",
+      "G47.33",
+      "J18.9",
+      "R05.9",
+      "R06.02",
+      "J30.9"
+    ],
+    "cpt": [
+      "99204",
+      "99213",
+      "94010",
+      "94060",
+      "94640"
+    ]
+  },
+  "settings": {
+    "defaultAppointmentDuration": 20,
+    "slotIntervalMinutes": 10
+  },
+  "reports": {
+    "show": [
+      "clinical",
+      "operational"
+    ]
+  }
+}

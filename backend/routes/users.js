@@ -3,13 +3,31 @@ const router = express.Router();
 const { authenticate, authorize } = require('../middleware/auth');
 const { getTimezoneFromCountry } = require('../utils/timezoneUtils');
 const { enforceUserQuota, enforceProviderQuota } = require('../middleware/planEnforcement');
-const { BCRYPT_COST, validatePassword } = require('../utils/passwordPolicy');
+const { BCRYPT_COST, checkNewPassword } = require('../utils/passwordPolicy');
+const { sendDbError } = require('../utils/dbErrors');
 
 // SEC-05: true only when the target row belongs to the caller's practice. A caller with
 // no practice context never matches, so these checks fail CLOSED. Replaces an earlier
 // sentinel-string comparison (which also introduced a stray null byte into this file).
 const samePractice = (rowPracticeId, callerPracticeId) =>
   Boolean(callerPracticeId) && String(rowPracticeId || '') === String(callerPracticeId);
+
+// Phase 1: a person can belong to several practices (public.memberships). "In the caller's
+// practice" means an ACTIVE membership there — not the account's default practice.
+async function memberOf(pool, userId, practiceId) {
+  if (!practiceId) return null;
+  const { rows } = await pool.query(
+    `SELECT role FROM public.memberships WHERE user_id::text = $1::text AND practice_id = $2 AND status = 'active'`,
+    [userId, practiceId]);
+  return rows[0] || null;
+}
+/** How many OTHER practices the person is an active member of. */
+async function otherPractices(pool, userId, practiceId) {
+  const { rows: [{ n }] } = await pool.query(
+    `SELECT count(*)::int AS n FROM public.memberships WHERE user_id::text = $1::text AND practice_id <> $2 AND status = 'active'`,
+    [userId, practiceId]);
+  return n;
+}
 
 // All user routes require a valid JWT
 router.use(authenticate);
@@ -50,11 +68,14 @@ router.get('/', authorize('admin'), async (req, res) => {
     // SEC-05: staff are isolated to their practice. users lives in public (identity
     // plane), so search_path can't scope it — filter explicitly by the caller's
     // practice. (A caller with no practice context sees an empty list, not everyone.)
+    // Phase 1: everyone with a membership in this practice, with their role HERE.
     const result = await pool.query(`
-      SELECT *
-      FROM users
-      WHERE practice_id = $1
-      ORDER BY id ASC
+      SELECT u.*, m.role AS role, (u.practice_id IS DISTINCT FROM m.practice_id) AS default_elsewhere,
+             (SELECT count(*)::int FROM public.memberships o
+               WHERE o.user_id = u.id AND o.practice_id <> m.practice_id AND o.status = 'active') AS other_practices
+      FROM users u
+      JOIN public.memberships m ON m.user_id = u.id AND m.practice_id = $1 AND m.status = 'active'
+      ORDER BY u.id ASC
     `, [req.user.practiceId || null]);
     const users = result.rows.map(toCamelCase);
     res.json(users);
@@ -70,10 +91,11 @@ router.get('/:id', isSelfOrAdmin, async (req, res) => {
     const pool = req.app.locals.pool;
     // SEC-05: allow viewing self always; otherwise only users in the caller's practice.
     const result = await pool.query(
-      `SELECT *
-       FROM users
-       WHERE id::text = $1::text
-         AND (id::text = $2::text OR practice_id = $3)`,
+      `SELECT u.*, COALESCE(m.role, u.role) AS role
+       FROM users u
+       LEFT JOIN public.memberships m ON m.user_id = u.id AND m.practice_id = $3 AND m.status = 'active'
+       WHERE u.id::text = $1::text
+         AND (u.id::text = $2::text OR m.user_id IS NOT NULL)`,
       [req.params.id, req.user.id, req.user.practiceId || null]
     );
 
@@ -106,7 +128,7 @@ router.post('/', authorize('admin'), enforceUserQuota, enforceProviderQuota, asy
     let passwordHash = null;
     if (password) {
       // SEC-12: enforce policy + hash at the shared cost factor
-      const pwCheck = validatePassword(password);
+      const pwCheck = await checkNewPassword(password);
       if (!pwCheck.valid) {
         return res.status(400).json({ error: pwCheck.message });
       }
@@ -233,7 +255,9 @@ router.post('/', authorize('admin'), enforceUserQuota, enforceProviderQuota, asy
       });
     }
 
-    res.status(500).json({ error: 'Failed to create user', details: error.message });
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to create user')) return;
+    res.status(500).json({ error: 'Failed to create user' });
   }
 });
 
@@ -269,7 +293,7 @@ router.put('/:id', isSelfOrAdmin, async (req, res) => {
     let passwordHash = null;
     if (password) {
       // SEC-12: enforce policy + hash at the shared cost factor
-      const pwCheck = validatePassword(password);
+      const pwCheck = await checkNewPassword(password);
       if (!pwCheck.valid) {
         return res.status(400).json({ error: pwCheck.message });
       }
@@ -287,13 +311,35 @@ router.put('/:id', isSelfOrAdmin, async (req, res) => {
     }
 
     const currentUser = currentUserResult.rows[0];
-    // SEC-05: may only modify self or a user in the same practice.
-    if (String(currentUser.id) !== String(req.user.id) &&
-        !samePractice(currentUser.practice_id, req.user.practiceId)) {
+    const isSelf = String(currentUser.id) === String(req.user.id);
+    // SEC-05 / Phase 1: may only modify self or a member of the caller's practice.
+    const membership = isSelf ? null : await memberOf(pool, currentUser.id, req.user.practiceId);
+    if (!isSelf && !membership) {
       return res.status(404).json({ error: 'User not found' });
     }
-    const oldRole = currentUser.role;
+    // Phase 1: an admin manages the person's role IN THIS PRACTICE. Account details (name,
+    // email, password, phone, status…) belong to the person once they also work at another
+    // practice — otherwise this practice's admin could reset their password and take over
+    // their access elsewhere. Those fields are ignored, and the answer says so.
+    const sharedAccount = !isSelf && (await otherPractices(pool, currentUser.id, req.user.practiceId)) > 0;
+    const oldRole = membership ? membership.role : currentUser.role;
     const newRole = safeRole || oldRole;
+    if (sharedAccount) {
+      if (safeRole && safeRole !== oldRole) {
+        await pool.query(
+          `UPDATE public.memberships SET role = $3, updated_at = now() WHERE user_id = $1 AND practice_id = $2`,
+          [currentUser.id, req.user.practiceId, safeRole]);
+        // Keep the default-practice mirror in step only when this IS their default.
+        if (String(currentUser.practice_id) === String(req.user.practiceId)) {
+          await pool.query('UPDATE users SET role = $2, updated_at = NOW() WHERE id = $1', [currentUser.id, safeRole]);
+        }
+      }
+      const { rows: [fresh] } = await pool.query('SELECT * FROM users WHERE id = $1', [currentUser.id]);
+      return res.json({ ...toCamelCase(fresh), role: newRole, accountFieldsIgnored: true,
+        message: 'This person also works at another practice, so only their role here was changed. They manage their own account details.' });
+    }
+    // Their default practice is another one only when they are shared (handled above);
+    // for a single-practice member, role on the account and the membership are the same.
 
     const result = await pool.query(
       `UPDATE users
@@ -420,7 +466,9 @@ router.put('/:id', isSelfOrAdmin, async (req, res) => {
       });
     }
 
-    res.status(500).json({ error: 'Failed to update user', details: error.message });
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to update user')) return;
+    res.status(500).json({ error: 'Failed to update user' });
   }
 });
 
@@ -440,6 +488,24 @@ router.delete('/:id', authorize('admin'), async (req, res) => {
   }
   try {
     const userId = req.params.id;
+
+    // Phase 1: someone who also works at another practice is REMOVED from this practice —
+    // their account, and their access elsewhere, are not this practice's to delete.
+    if (await memberOf(pool, userId, req.user.practiceId) && (await otherPractices(pool, userId, req.user.practiceId)) > 0) {
+      if (String(userId) === String(req.user.id)) {
+        return res.status(400).json({ error: 'You cannot remove yourself from the practice here.' });
+      }
+      await pool.query('DELETE FROM public.memberships WHERE user_id::text = $1::text AND practice_id = $2', [userId, req.user.practiceId]);
+      // If this was their default practice, start their next sign-in in one they still have.
+      const { rows: [next] } = await pool.query(
+        `SELECT practice_id, role FROM public.memberships WHERE user_id::text = $1::text AND status = 'active'
+          ORDER BY last_used_at DESC NULLS LAST, created_at ASC LIMIT 1`, [userId]);
+      await pool.query(
+        `UPDATE users SET practice_id = $2, role = $3, updated_at = NOW() WHERE id::text = $1::text AND practice_id = $4`,
+        [userId, next.practice_id, next.role, req.user.practiceId]);
+      return res.json({ message: 'Removed from this practice. Their account and their other practices are unchanged.', removedFromPractice: true });
+    }
+
     await db.query('BEGIN');
 
     // These two are housekeeping, not the deletion itself, and the tables they touch have
@@ -478,7 +544,9 @@ router.delete('/:id', authorize('admin'), async (req, res) => {
     // SEC-05: only delete a user in the caller's practice. A cross-practice id
     // matches 0 rows -> rollback (undoing the cascade deletes above) -> 404.
     const result = await db.query(
-      'DELETE FROM users WHERE id::text = $1::text AND practice_id = $2 RETURNING *',
+      `DELETE FROM users WHERE id::text = $1::text
+         AND EXISTS (SELECT 1 FROM public.memberships m WHERE m.user_id = users.id AND m.practice_id = $2 AND m.status = 'active')
+       RETURNING *`,
       [userId, req.user.practiceId || null]
     );
 
@@ -524,11 +592,9 @@ router.delete('/:id', authorize('admin'), async (req, res) => {
     // admin who sees it cannot act on it and nobody without server log access can diagnose
     // it. Carry the database's own code and message — this route is admin-only, and the
     // text is schema detail, never patient data.
-    res.status(500).json({
-      error: 'Failed to delete user',
-      code: error.code || undefined,
-      detail: String(error.message || '').slice(0, 300) || undefined,
-    });
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to delete user')) return;
+    res.status(500).json({ error: 'Failed to delete user' });
   }
 });
 
@@ -566,6 +632,8 @@ router.put('/:id/language', isSelfOrAdmin, async (req, res) => {
     res.json(toCamelCase(result.rows[0]));
   } catch (error) {
     console.error('Error updating language:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to update language')) return;
     res.status(500).json({ error: 'Failed to update language' });
   }
 });
@@ -596,14 +664,21 @@ router.put('/:id/switch-role', isSelfOrAdmin, async (req, res) => {
     }
 
     // Update active role — SEC-05: only self or a user in the caller's practice.
+    if (String(req.params.id) !== String(req.user.id) && !(await memberOf(pool, req.params.id, req.user.practiceId))) {
+      return res.status(404).json({ error: 'User not found' });
+    }
     const result = await pool.query(
       `UPDATE users
-       SET active_role = $1, role = $1, updated_at = NOW()
+       SET active_role = $1, role = CASE WHEN practice_id IS NOT DISTINCT FROM $3 THEN $1 ELSE role END, updated_at = NOW()
        WHERE id::text = $2::text
-         AND (id::text = $3::text OR practice_id = $4)
        RETURNING *`,
-      [role_name, req.params.id, req.user.id, req.user.practiceId || null]
+      [role_name, req.params.id, req.user.practiceId || null]
     );
+    // Phase 1: the role applies to the practice the session is working in.
+    if (req.user.practiceId) {
+      await pool.query(`UPDATE public.memberships SET role = $3, updated_at = now() WHERE user_id::text = $1::text AND practice_id = $2`,
+        [req.params.id, req.user.practiceId, role_name]);
+    }
 
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'User not found' });
@@ -616,6 +691,8 @@ router.put('/:id/switch-role', isSelfOrAdmin, async (req, res) => {
     });
   } catch (error) {
     console.error('Error switching role:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to switch role')) return;
     res.status(500).json({ error: 'Failed to switch role' });
   }
 });
@@ -654,9 +731,7 @@ router.post('/:id/roles', authorize('admin'), async (req, res) => {
     }
 
     // SEC-05: the target user must belong to the caller's practice.
-    const tgtP = await pool.query('SELECT practice_id FROM users WHERE id::text = $1::text', [req.params.id]);
-    if (tgtP.rows.length === 0 ||
-        !samePractice(tgtP.rows[0].practice_id, req.user.practiceId)) {
+    if (!(await memberOf(pool, req.params.id, req.user.practiceId))) {
       return res.status(404).json({ error: 'User not found' });
     }
 
@@ -708,6 +783,8 @@ router.post('/:id/roles', authorize('admin'), async (req, res) => {
     });
   } catch (error) {
     console.error('Error assigning role:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to assign role')) return;
     res.status(500).json({ error: 'Failed to assign role' });
   }
 });
@@ -718,9 +795,7 @@ router.delete('/:id/roles/:role_id', authorize('admin'), async (req, res) => {
     const pool = req.app.locals.pool;
 
     // SEC-05: the target user must belong to the caller's practice.
-    const tgtP = await pool.query('SELECT practice_id FROM users WHERE id::text = $1::text', [req.params.id]);
-    if (tgtP.rows.length === 0 ||
-        !samePractice(tgtP.rows[0].practice_id, req.user.practiceId)) {
+    if (!(await memberOf(pool, req.params.id, req.user.practiceId))) {
       return res.status(404).json({ error: 'User not found' });
     }
 
@@ -777,6 +852,8 @@ router.delete('/:id/roles/:role_id', authorize('admin'), async (req, res) => {
     res.json({ message: 'Role removed successfully' });
   } catch (error) {
     console.error('Error removing role:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to remove role')) return;
     res.status(500).json({ error: 'Failed to remove role' });
   }
 });

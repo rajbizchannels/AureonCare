@@ -1,5 +1,8 @@
 import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
-import api from '../api/apiService';
+import api, { PORTAL_MARKER } from '../api/apiService';
+import {
+  wasThisTabReloaded, installTabMarker, anotherSignedInTab, broadcast, onTabMessage,
+} from '../utils/sessionTab';
 import { getTranslations } from '../config/translations';
 
 // Create the context
@@ -35,12 +38,8 @@ const isOAuthReturn = () => {
 };
 
 /**
- * A page load always starts a fresh session.
- *
- * This module is evaluated once per page load, so clearing the stored session
- * here means a browser refresh (or a restored tab) lands on the login page
- * instead of resuming the previous session. The one exception is the return
- * leg of an OAuth round trip, which is a page load the app itself initiated.
+ * Forget what this tab remembered about a session. Used when a page load starts a NEW
+ * browser session, and whenever the signed-in identity ends.
  */
 const clearStoredSession = () => {
   try {
@@ -48,29 +47,39 @@ const clearStoredSession = () => {
     sessionStorage.removeItem('user');
     sessionStorage.removeItem('token');
     sessionStorage.removeItem('portalSessionToken');
+    sessionStorage.removeItem('portalSessionActive');
   } catch (error) {
     /* storage unavailable — nothing to clear */
   }
 };
 
-if (!isOAuthReturn()) {
-  clearStoredSession();
-}
+/**
+ * How this page load began (SEC-40, option b). Evaluated once per page load, BEFORE the tab
+ * marker is refreshed:
+ *   - a reload of this tab, or the return leg of an OAuth round trip the app started,
+ *     resumes — once the server confirms the session (see bootstrapSession);
+ *   - anything else is a new browser session and starts signed out.
+ *
+ * This replaced "every page load starts signed out", which only cleared the screen: the
+ * HttpOnly session cookie stayed valid on the server, so the user looked logged out while
+ * their session could still read patient data, and the tab's remembered identity could
+ * disagree with the cookie it shared with other tabs.
+ */
+const BOOT = {
+  resume: isOAuthReturn() || wasThisTabReloaded(),
+};
+installTabMarker();
 
 // AppProvider component
 const AppProvider = ({ children }) => {
   // Authentication and UI state - use sessionStorage for authentication (clears on tab/window close)
-  const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    // Initialize from sessionStorage (NOT localStorage) - clears on tab close
-    try {
-      const stored = sessionStorage.getItem('isAuthenticated');
-      return stored === 'true';
-    } catch (error) {
-      return false;
-    }
-  });
+  // Never initialised from storage: who is signed in is decided by the server during
+  // bootstrapSession below. `sessionChecking` covers that moment so no sign-in page flashes.
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [sessionChecking, setSessionChecking] = useState(true);
+  // Shown on the sign-in page when another tab ended or replaced this tab's session.
+  const [sessionNotice, setSessionNotice] = useState(null);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
-  const [showRegister, setShowRegister] = useState(false);
   const [currentModule, setCurrentModule] = useState('dashboard');
   const [currentView, setCurrentView] = useState('list');
   const [language, setLanguage] = useState('en');
@@ -100,15 +109,9 @@ const AppProvider = ({ children }) => {
 
   // User state - stored in sessionStorage (clears on tab close, not readable cross-tab)
   const [user, setUser] = useState(() => {
-    try {
-      // One-time migration: remove stale 'user' entry left in localStorage by the old code
-      localStorage.removeItem('user');
-      const storedUser = sessionStorage.getItem('user');
-      return storedUser ? JSON.parse(storedUser) : null;
-    } catch (error) {
-      console.error('Error loading user from sessionStorage:', error);
-      return null;
-    }
+    // One-time migration: remove stale 'user' entry left in localStorage by the old code.
+    try { localStorage.removeItem('user'); } catch (error) { /* storage unavailable */ }
+    return null;   // set from the server's answer, never from storage
   });
 
   // Persist authentication status to sessionStorage (clears on tab/window close)
@@ -120,6 +123,7 @@ const AppProvider = ({ children }) => {
         sessionStorage.removeItem('isAuthenticated');
         sessionStorage.removeItem('user');
         sessionStorage.removeItem('portalSessionToken');
+        sessionStorage.removeItem('portalSessionActive');
       }
     } catch (error) {
       console.error('Error saving authentication status:', error);
@@ -184,12 +188,127 @@ const AppProvider = ({ children }) => {
     }
   }, [user]);
 
+  // ── Session: resume on reload, start signed out in a new browser session ────────────
+  /** Who the server says this browser's session belongs to, or null. */
+  const sessionFromServer = useCallback(async () => {
+    let portalHint = false;
+    try { portalHint = Boolean(sessionStorage.getItem(PORTAL_MARKER)); } catch { portalHint = false; }
+    const staff = async () => { try { return await api.getCurrentUser(); } catch { return null; } };
+    const portal = async () => { try { return (await api.getPortalSession()).patient || null; } catch { return null; } };
+    // Ask the likelier one first; fall back to the other.
+    return portalHint ? ((await portal()) || (await staff())) : ((await staff()) || (await portal()));
+  }, []);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        if (BOOT.resume) {
+          const who = await sessionFromServer();
+          if (!alive) return;
+          if (who) {
+            setUser(who);
+            setIsAuthenticated(true);
+          } else {
+            clearStoredSession();
+          }
+        } else {
+          // A new browser session starts signed out — on the server too, unless another
+          // AureonCare tab in this browser is still signed in (its session is left alone).
+          clearStoredSession();
+          if (!(await anotherSignedInTab())) {
+            await api.endBrowserSession().catch(() => {});
+          }
+        }
+      } finally {
+        if (alive) setSessionChecking(false);
+      }
+    })();
+    return () => { alive = false; };
+  }, [sessionFromServer]);
+
+  // Tell the other tabs when the signed-in identity changes (sign-in, sign-out, restore),
+  // and react to theirs. A change made because ANOTHER tab said so is not re-broadcast.
+  const lastIdentity = React.useRef(null);
+  const quietChange = React.useRef(false);
+  const currentId = isAuthenticated && user ? String(user.id) : null;
+  useEffect(() => {
+    if (sessionChecking) return;
+    if (currentId === lastIdentity.current) return;
+    const previous = lastIdentity.current;
+    lastIdentity.current = currentId;
+    if (quietChange.current) { quietChange.current = false; return; }
+    if (previous !== null || currentId !== null) broadcast({ type: 'session', userId: currentId });
+  }, [currentId, sessionChecking]);
+
+  const dropSession = useCallback((notice) => {
+    quietChange.current = true;
+    api.clearToken();
+    clearStoredSession();
+    setIsAuthenticated(false);
+    setUser(null);
+    if (notice) setSessionNotice(notice);
+  }, []);
+
+  useEffect(() => onTabMessage((msg) => {
+    if (msg.type === 'ping') {
+      if (isAuthenticated) broadcast({ type: 'pong', nonce: msg.nonce });
+      return;
+    }
+    // Phase 1: the session cookie is shared by every tab, so when one tab switches practice
+    // the others must reload into it rather than keep showing the previous practice's data.
+    if (msg.type === 'practice-switched') {
+      if (isAuthenticated) window.location.reload();
+      return;
+    }
+    if (msg.type !== 'session' || !isAuthenticated || !user) return;
+    if (msg.userId === null) {
+      dropSession('You signed out in another tab.');
+    } else if (String(msg.userId) !== String(user.id)) {
+      // The session cookie is shared by every tab: another tab signed in as someone else,
+      // so this tab must not keep showing — or acting as — the previous person.
+      dropSession('Someone signed in as a different user in another tab, so this tab was signed out.');
+    }
+  }), [isAuthenticated, user, dropSession]);
+
+  // When the tab comes back into focus, confirm the session still belongs to the person on
+  // screen (it may have expired, timed out for inactivity, or been replaced).
+  useEffect(() => {
+    if (!isAuthenticated) return undefined;
+    let last = 0;
+    const check = async () => {
+      if (Date.now() - last < 30 * 1000) return;
+      last = Date.now();
+      const who = await sessionFromServer();
+      if (!who) dropSession('Your session has ended. Please sign in again.');
+      else if (user && String(who.id) !== String(user.id)) {
+        dropSession('Someone signed in as a different user in another tab, so this tab was signed out.');
+      }
+    };
+    window.addEventListener('focus', check);
+    return () => window.removeEventListener('focus', check);
+  }, [isAuthenticated, user, sessionFromServer, dropSession]);
+
+  // Once the signed-in identity ends, nothing of theirs stays in memory for whoever signs
+  // in next on this tab.
+  useEffect(() => {
+    if (isAuthenticated) return;
+    setAppointments([]); setPatients([]); setClaims([]); setPayments([]);
+    setNotifications([]); setTasks([]); setUsers([]);
+    setSelectedItem(null); setEditingItem(null);
+  }, [isAuthenticated]);
+  useEffect(() => { if (isAuthenticated) setSessionNotice(null); }, [isAuthenticated]);
+
   /**
    * Fetches all data from the backend API
    * @param {boolean} includeUser - Whether to fetch user data (only after authentication)
    */
   const fetchAllData = useCallback(async (includeUser = false) => {
     console.log('AppContext: fetchAllData called, includeUser:', includeUser);
+    // A portal patient has no staff session: every loader below is a staff route and
+    // answered 401/403 (users, claims, appointments of the whole practice…). The patient
+    // portal loads its own data through /api/patient-portal/:id.
+    if (user?.role === 'patient') { setLoading(false); return; }
     setLoading(true);
     setError(null);
     try {
@@ -305,11 +424,11 @@ const AppProvider = ({ children }) => {
 
   // Load currency from clinic settings after authentication
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || user?.role === 'patient') return;
     api.getClinicSettings()
       .then(s => { if (s?.currency) setCurrency(s.currency); })
       .catch(() => {});
-  }, [isAuthenticated]);
+  }, [isAuthenticated, user?.role]);
 
   /**
    * Updates user preferences in the backend and local state
@@ -346,6 +465,10 @@ const AppProvider = ({ children }) => {
    * @param {string} type - The type of notification (e.g., 'alert', 'info', 'success')
    * @param {string} message - The notification message
    */
+  // Read by addNotification, which must keep a stable identity (see below).
+  const roleRef = React.useRef(user?.role);
+  useEffect(() => { roleRef.current = user?.role; }, [user]);
+
   /**
    * Stable across renders on purpose.
    *
@@ -361,6 +484,12 @@ const AppProvider = ({ children }) => {
    * nothing to depend on.
    */
   const addNotification = useCallback(async (type, message) => {
+    // Patients have no staff notification store (staff-only endpoint): keep theirs on screen.
+    if (roleRef.current === 'patient') {
+      setNotifications(prev => [{ id: `local-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        type, message, read: false, created_at: new Date().toISOString() }, ...prev]);
+      return;
+    }
     try {
       const newNotif = await api.createNotification({ type, message, read: false });
       setNotifications(prev => [newNotif, ...prev]);
@@ -393,10 +522,14 @@ const AppProvider = ({ children }) => {
    */
   const clearNotification = async (notifId) => {
     try {
+      // Resolves for a 404 too: already gone is the result the user wanted.
       await api.deleteNotification(notifId);
       setNotifications(prevNotifications => prevNotifications.filter(n => n.id !== notifId));
     } catch (err) {
-      console.error('Error clearing notification:', err);
+      // Anything else is a real failure and the row stays, which is truthful — it was not
+      // deleted. Not surfaced through addNotification: reporting a failure to clear a
+      // notification by adding another notification is circular.
+      console.error('Error clearing notification:', err.message || err);
     }
   };
 
@@ -414,13 +547,14 @@ const AppProvider = ({ children }) => {
 
   // Context value object containing all state and functions
   const value = {
+    sessionChecking,
+    sessionNotice,
+    dropSession,
     // Authentication and UI state
     isAuthenticated,
     setIsAuthenticated,
     showForgotPassword,
     setShowForgotPassword,
-    showRegister,
-    setShowRegister,
     currentModule,
     setCurrentModule,
     currentView,
@@ -503,6 +637,9 @@ export const useApp = () => {
   }
   return context;
 };
+
+/** Like useApp, but returns null outside the provider instead of throwing. */
+export const useOptionalApp = () => useContext(AppContext) || null;
 
 // Export AppProvider as both named and default export
 export { AppProvider };

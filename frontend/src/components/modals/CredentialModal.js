@@ -1,18 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
-import { X, Key, User, Zap,  Eye, EyeOff, CheckCircle, ChevronDown, ChevronUp, ExternalLink, Shield } from 'lucide-react';
+import { X, Key, User, Zap,  CheckCircle, ChevronDown, ChevronUp, ExternalLink, Shield } from 'lucide-react';
 import { useAudit } from '../../hooks/useAudit';
 
-/**
- * CredentialModal - Themed modal for collecting OAuth credentials
- * Replaces browser prompts with a professional UI
- * Supports both create and edit modes
- *
- * For Zoom (and other providers with saved credentials), shows a
- * "One-Click Connect" experience instead of raw text boxes.
- */
-
-const ONECLICK_PROVIDERS = ['zoom', 'google_meet', 'webex'];
 
 const CredentialModal = ({
   isOpen,

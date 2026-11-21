@@ -8,6 +8,7 @@ const express = require('express');
 const router = express.Router();
 const fhirTrackingService = require('../services/fhirTracking');
 const { authenticate } = require('../middleware/auth');
+const { sendDbError } = require('../utils/dbErrors');
 
 /**
  * GET /api/fhir-tracking/:trackingNumber
@@ -197,10 +198,9 @@ router.post('/', authenticate, async (req, res) => {
     });
   } catch (error) {
     console.error('Error creating tracking:', error);
-    res.status(500).json({
-      error: 'Failed to create tracking record',
-      message: error.message
-    });
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to create tracking record')) return;
+    res.status(500).json({ error: 'Failed to create tracking record' });
   }
 });
 
@@ -238,10 +238,9 @@ router.put('/:trackingId/status', authenticate, async (req, res) => {
     });
   } catch (error) {
     console.error('Error updating tracking status:', error);
-    res.status(500).json({
-      error: 'Failed to update tracking status',
-      message: error.message
-    });
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to update tracking status')) return;
+    res.status(500).json({ error: 'Failed to update tracking status' });
   }
 });
 
@@ -281,10 +280,9 @@ router.post('/:trackingId/vendor-sync', authenticate, async (req, res) => {
     });
   } catch (error) {
     console.error('Error recording vendor sync:', error);
-    res.status(500).json({
-      error: 'Failed to record vendor synchronization',
-      message: error.message
-    });
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to record vendor synchronization')) return;
+    res.status(500).json({ error: 'Failed to record vendor synchronization' });
   }
 });
 
@@ -340,10 +338,9 @@ router.post('/:trackingId/error', authenticate, async (req, res) => {
     });
   } catch (error) {
     console.error('Error recording error:', error);
-    res.status(500).json({
-      error: 'Failed to record error',
-      message: error.message
-    });
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to record error')) return;
+    res.status(500).json({ error: 'Failed to record error' });
   }
 });
 
@@ -377,10 +374,9 @@ router.post('/:trackingId/resolve-error', authenticate, async (req, res) => {
     });
   } catch (error) {
     console.error('Error resolving error:', error);
-    res.status(500).json({
-      error: 'Failed to resolve error',
-      message: error.message
-    });
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to resolve error')) return;
+    res.status(500).json({ error: 'Failed to resolve error' });
   }
 });
 

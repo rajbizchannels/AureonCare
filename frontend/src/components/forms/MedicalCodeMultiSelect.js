@@ -247,10 +247,6 @@ const MedicalCodeMultiSelect = ({
     }
   };
 
-  // Display value: show selected codes as comma-separated in the input
-  const displayValue = value.length > 0
-    ? value.map(v => v.code).join(', ') + (inputValue ? ', ' + inputValue : '')
-    : inputValue;
 
   return (
     <div className="w-full">

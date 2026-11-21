@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { X, Save, Pill, Video, ExternalLink } from 'lucide-react';
+import QrCodeButton from '../common/QrCodeButton';
+import { X, Save, Pill, Video, ExternalLink, ToggleLeft, ToggleRight } from 'lucide-react';
 import { formatDate, formatTime, formatCurrency, toLocalDateTimeString, toLocalDateString } from '../../utils/formatters';
 import { isPhoneValid, validateOptionalPhone, validateOptionalEmail } from '../../utils/validators';
 import EPrescribeModal from './ePrescribeModal';
@@ -8,6 +9,10 @@ import ConfirmationModal from './ConfirmationModal';
 import { useAudit } from '../../hooks/useAudit';
 import { isProvider, isPatient } from '../../utils/rolePermissions';
 import ThemedSelect from '../../components/forms/ThemedSelect';
+import {
+  withFallback, bookableProviders, participantName,
+} from '../../utils/appointmentParticipants';
+import PortalInvitePanel from '../patients/PortalInvitePanel';
 
 const ViewEditModal = ({
   theme,
@@ -46,6 +51,8 @@ const ViewEditModal = ({
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
   const [appointmentTypes, setAppointmentTypes] = useState([]);
+  const [bookable, setBookable] = useState([]);
+  const [offerings, setOfferings] = useState([]);
 
   // Get setLanguage from AppContext for updating language preference
   const { setLanguage } = useApp();
@@ -148,6 +155,26 @@ const ViewEditModal = ({
     if (editingItem?.type === 'appointment') {
       fetchAppointmentTypes();
     }
+  }, [api, editingItem?.type]);
+
+  // The providers and services an appointment can be moved to.
+  //
+  // Both were missing here. The provider dropdown was built from the `users` prop alone —
+  // /api/users, which is admin-only, so a doctor reassigning an appointment saw an empty
+  // list — and there was no service field at all, so an offering chosen when the
+  // appointment was booked could never afterwards be seen or corrected.
+  useEffect(() => {
+    if (editingItem?.type !== 'appointment') return undefined;
+    let live = true;
+    api.getBookableProviders()
+      .then((rows) => { if (live) setBookable(Array.isArray(rows) ? rows : []); })
+      .catch((error) => console.error('Error fetching bookable providers:', error));
+    // is_active only, for the same reason as the new-appointment form: available_online is
+    // about patient self-booking and filtering on it hides in-clinic-only services.
+    api.getOfferings({ is_active: true })
+      .then((rows) => { if (live) setOfferings(Array.isArray(rows) ? rows : []); })
+      .catch((error) => console.error('Error fetching offerings:', error));
+    return () => { live = false; };
   }, [api, editingItem?.type]);
 
   // Fetch prescriptions for patient when viewing
@@ -385,27 +412,33 @@ const ViewEditModal = ({
   if (!editingItem) return null;
 
   const isView = currentView === 'view';
-  const { type, data } = editingItem;
+  const { type } = editingItem;
 
-  // Handle adding/updating preferred pharmacy
-  const handleAddPreferredPharmacy = async () => {
-    if (!selectedPharmacyId || !editingItem?.data?.id) {
-      addNotification('alert', t.pleaseSelectPharmacy);
-      return;
-    }
+  // ── the two participants an appointment can be moved between ────────────────────────
+  //
+  // Each list carries the appointment's CURRENT choice even when the source lists do not,
+  // so opening an appointment never shows a blank where it has a value. Without that, an
+  // appointment whose provider has since left the practice — or whose provider simply is
+  // not in the prop the host screen passed — opened with an empty Provider box, and the
+  // obvious reading of an empty box is "this appointment has no provider".
+  const appointmentPatientId = editData.patientId || editData.patient_id || null;
+  const appointmentPatient = appointmentPatientId
+    ? { id: appointmentPatientId, name: editData.patient, mrn: editData.mrn }
+    : null;
 
-    try {
-      await api.addPreferredPharmacy(editingItem.data.id, selectedPharmacyId, true);
-      addNotification('success', t.preferredPharmacyUpdated);
+  const appointmentProviderId = editData.providerId || editData.provider_id || null;
+  const appointmentProviders = withFallback(
+    bookableProviders({ fetched: bookable, passed: users, currentUser: user }),
+    appointmentProviderId
+      ? {
+        id: appointmentProviderId,
+        first_name: editData.provider_first_name,
+        last_name: editData.provider_last_name,
+        name: editData.doctor || editData.provider_name,
+      }
+      : null,
+  );
 
-      // Refresh preferred pharmacies list
-      const patientPreferred = await api.getPatientPreferredPharmacies(editingItem.data.id);
-      setPreferredPharmacies(patientPreferred || []);
-    } catch (error) {
-      console.error('Error adding preferred pharmacy:', error);
-      addNotification('alert', t.failedToUpdatePharmacy);
-    }
-  };
 
   const handleSubmit = () => {
     if (type === 'userProfile' || type === 'user') {
@@ -423,7 +456,8 @@ const ViewEditModal = ({
   };
 
   const handleActualSubmit = async () => {
-    setShowConfirmation(false);
+    // NOT closed here: ConfirmationModal awaits this and closes itself, showing a spinner
+    // meanwhile. Closing first put the user back on the form with no sign of the save.
 
     try {
       if (type === 'appointment') {
@@ -442,6 +476,9 @@ const ViewEditModal = ({
           appointmentData.appointment_type = editData.type;
           appointmentData.patient_id = editData.patientId || editData.patient_id;
           appointmentData.provider_id = editData.providerId || editData.provider_id;
+          // Empty string means "no service" to the select but is not a uuid; send null so
+          // the column is cleared rather than the update failing on a cast.
+          appointmentData.offering_id = editData.offering_id || null;
 
           // Auto-update status to completed if appointment is in the past and currently scheduled
           const now = new Date();
@@ -603,6 +640,7 @@ const ViewEditModal = ({
         message={t.confirmSaveChangesMessage || `Are you sure you want to save changes to this ${type}?`}
         type="confirm"
         confirmText={t.saveChanges || 'Save Changes'}
+        busyText={t.saving || 'Saving…'}
         cancelText={t.cancel || 'Cancel'}
       />
       <div className={`h-full flex flex-col border-2 rounded-lg ${theme === 'dark' ? 'bg-slate-900 border-slate-700' : 'bg-gray-50 border-gray-300'}`}>
@@ -645,9 +683,12 @@ const ViewEditModal = ({
                       }}
                     >
                       <option value="">{t.selectPatient || 'Select Patient'}</option>
-                      {patients.map(p => (
+                      {/* The appointment's own patient is added when the list does not
+                          hold them, so an appointment never opens showing a blank patient
+                          it in fact has. */}
+                      {withFallback(patients, appointmentPatient).map(p => (
                         <option key={p.id} value={p.id}>
-                          {p.name || `${p.first_name} ${p.last_name}` || `${p.firstName} ${p.lastName}`} {p.mrn ? `- ${p.mrn}` : ''}
+                          {participantName(p)}{p.mrn ? ` - ${p.mrn}` : ''}
                         </option>
                       ))}
                     </ThemedSelect>
@@ -661,16 +702,21 @@ const ViewEditModal = ({
                     <ThemedSelect
                       theme={theme}
                       focusClass="focus:border-cyan-500"
-                      value={editData.providerId || editData.provider_id}
+                      value={editData.providerId || editData.provider_id || ''}
                       onChange={(e) => {
-                        const provider = users?.find(u => u.id.toString() === e.target.value);
-                        setEditData({...editData, providerId: e.target.value, provider_id: e.target.value, doctor: provider ? `${provider.first_name || provider.firstName} ${provider.last_name || provider.lastName}` : ''});
+                        const provider = appointmentProviders.find(u => String(u.id) === e.target.value);
+                        setEditData({...editData, providerId: e.target.value, provider_id: e.target.value, doctor: participantName(provider)});
                       }}
                     >
                       <option value="">{t.selectProvider || 'Select Provider'}</option>
-                      {users?.filter(u => u.role === 'doctor' || u.role === 'physician' || u.role === 'provider' || u.role === 'admin').map(provider => (
+                      {/* Same rule as the new-appointment form, from the shared helper.
+                          This list used to come from the `users` prop filtered on
+                          doctor/physician/provider/admin: it offered admins, dropped every
+                          providers-table row (those carry no role), and on a non-admin
+                          account the prop itself is empty. */}
+                      {appointmentProviders.map(provider => (
                         <option key={provider.id} value={provider.id}>
-                          {`${provider.first_name || provider.firstName} ${provider.last_name || provider.lastName}`.trim() || provider.email}
+                          {participantName(provider)}
                         </option>
                       ))}
                     </ThemedSelect>
@@ -717,6 +763,40 @@ const ViewEditModal = ({
                       {appointmentTypes.map(type => (
                         <option key={type.id} value={type.name}>
                           {type.name}
+                        </option>
+                      ))}
+                    </ThemedSelect>
+                  )}
+                </div>
+                <div>
+                  <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+                    {t.service || 'Service/Offering'} <span className="text-gray-400 text-xs">({t.optional || 'Optional'})</span>
+                  </label>
+                  {/* New here. A service could be chosen when booking and never seen or
+                      corrected afterwards, so a booking made against the wrong offering
+                      stayed that way. */}
+                  {isView ? (
+                    <p className={`${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>
+                      {offerings.find(o => String(o.id) === String(editData.offering_id))?.name
+                        || t.notApplicable || 'N/A'}
+                    </p>
+                  ) : (
+                    <ThemedSelect
+                      theme={theme}
+                      focusClass="focus:border-cyan-500"
+                      value={editData.offering_id || ''}
+                      onChange={(e) => setEditData({
+                        ...editData,
+                        offering_id: e.target.value || null,
+                        // Keep the duration in step with the service, as booking does.
+                        duration: offerings.find(o => String(o.id) === e.target.value)?.duration_minutes
+                          || editData.duration,
+                      })}
+                    >
+                      <option value="">{t.selectService || 'Select a service (optional)'}</option>
+                      {offerings.map(o => (
+                        <option key={o.id} value={o.id}>
+                          {o.name}{o.duration_minutes ? ` (${o.duration_minutes} min)` : ''}
                         </option>
                       ))}
                     </ThemedSelect>
@@ -789,8 +869,12 @@ const ViewEditModal = ({
                       Join Meeting
                     </a>
                     <button
-                      onClick={() => {
-                        navigator.clipboard.writeText(editData.meeting_url);
+                      onClick={async () => {
+                        // Short link (/s/<code>) when available, else the meeting URL itself.
+                        const url = editData.id
+                          ? await api.createShortLink({ kind: 'meeting', appointmentId: editData.id }).catch(() => editData.meeting_url)
+                          : editData.meeting_url;
+                        try { await navigator.clipboard.writeText(url); } catch { /* clipboard blocked */ }
                       }}
                       className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
                         theme === 'dark'
@@ -802,6 +886,17 @@ const ViewEditModal = ({
                       <ExternalLink className="w-4 h-4" />
                       Copy Link
                     </button>
+                    <QrCodeButton
+                      theme={theme}
+                      title="Telehealth session link"
+                      description="Scan to join the session on a phone."
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors ${
+                        theme === 'dark' ? 'bg-slate-700 hover:bg-slate-600 text-slate-300' : 'bg-gray-200 hover:bg-gray-300 text-gray-700'
+                      }`}
+                      getUrl={async () => (editData.id
+                        ? api.createShortLink({ kind: 'meeting', appointmentId: editData.id }).catch(() => editData.meeting_url)
+                        : editData.meeting_url)}
+                    />
                     <span className={`text-xs break-all ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
                       {editData.meeting_url}
                     </span>
@@ -899,6 +994,14 @@ const ViewEditModal = ({
                     />
                   )}
                 </div>
+                {/* Portal access: invite the patient to set up their own login (staff only).
+                    It uses the SAVED email address — save a new address before inviting. */}
+                {user?.role !== 'patient' && editingItem?.data?.id && (
+                  <div className="col-span-2">
+                    <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>Patient portal</label>
+                    <PortalInvitePanel patientId={editingItem.data.id} theme={theme} api={api} addNotification={addNotification} />
+                  </div>
+                )}
                 <div className="col-span-2">
                   <label className={`block text-sm font-medium mb-1 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{t.streetAddress || 'Street Address'}</label>
                   {isView ? (
@@ -1375,43 +1478,25 @@ const ViewEditModal = ({
                   <div className="flex items-center justify-between">
                     <span className={`${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{t.emailNotifications || 'Email Notifications'}</span>
                     <button
+                      role="switch" aria-checked={!!((editData.emailNotifications !== false))}
                       type="button"
                       onClick={() => setEditData({...editData, emailNotifications: !(editData.emailNotifications !== false)})}
                       disabled={isView}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
-                        isView ? 'opacity-50 cursor-not-allowed' : ''
-                      } ${
-                        (editData.emailNotifications !== false)
-                          ? 'bg-blue-500'
-                          : theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'
-                      }`}
+                      className="inline-flex shrink-0 items-center transition-opacity hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:opacity-50"
                     >
-                      <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                          (editData.emailNotifications !== false) ? 'translate-x-6' : 'translate-x-1'
-                        }`}
-                      />
+                      {(editData.emailNotifications !== false) ? <ToggleRight className="w-6 h-6 text-green-400" /> : <ToggleLeft className="w-6 h-6 text-gray-400" />}
                     </button>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className={`${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>{t.smsAlerts || 'SMS Alerts'}</span>
                     <button
+                      role="switch" aria-checked={!!((editData.smsAlerts !== false))}
                       type="button"
                       onClick={() => setEditData({...editData, smsAlerts: !(editData.smsAlerts !== false)})}
                       disabled={isView}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
-                        isView ? 'opacity-50 cursor-not-allowed' : ''
-                      } ${
-                        (editData.smsAlerts !== false)
-                          ? 'bg-blue-500'
-                          : theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'
-                      }`}
+                      className="inline-flex shrink-0 items-center transition-opacity hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:opacity-50"
                     >
-                      <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                          (editData.smsAlerts !== false) ? 'translate-x-6' : 'translate-x-1'
-                        }`}
-                      />
+                      {(editData.smsAlerts !== false) ? <ToggleRight className="w-6 h-6 text-green-400" /> : <ToggleLeft className="w-6 h-6 text-gray-400" />}
                     </button>
                   </div>
                   {/* WhatsApp Number */}
@@ -1453,25 +1538,16 @@ const ViewEditModal = ({
                       )}
                     </div>
                     <button
+                      role="switch" aria-checked={!!((editData.whatsappNotifications && isPhoneValid(editData.whatsappNumber)))}
                       type="button"
                       disabled={isView || !isPhoneValid(editData.whatsappNumber)}
                       onClick={() => {
                         if (!isPhoneValid(editData.whatsappNumber)) return;
                         setEditData({...editData, whatsappNotifications: !editData.whatsappNotifications});
                       }}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                        isView || !isPhoneValid(editData.whatsappNumber)
-                          ? `opacity-40 cursor-not-allowed ${theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'}`
-                          : (editData.whatsappNotifications && isPhoneValid(editData.whatsappNumber))
-                            ? 'bg-green-500 cursor-pointer'
-                            : `cursor-pointer ${theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'}`
-                      }`}
+                      className="inline-flex shrink-0 items-center transition-opacity hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:opacity-50"
                     >
-                      <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                          (editData.whatsappNotifications && isPhoneValid(editData.whatsappNumber)) ? 'translate-x-6' : 'translate-x-1'
-                        }`}
-                      />
+                      {(editData.whatsappNotifications && isPhoneValid(editData.whatsappNumber)) ? <ToggleRight className="w-6 h-6 text-green-400" /> : <ToggleLeft className="w-6 h-6 text-gray-400" />}
                     </button>
                   </div>
                 </div>
@@ -1660,23 +1736,16 @@ const ViewEditModal = ({
                     )}
                   </div>
                   <button
+                    role="switch" aria-checked={!!((editData.whatsappNotifications && isPhoneValid(editData.whatsappNumber)))}
                     type="button"
                     disabled={isView || !isPhoneValid(editData.whatsappNumber)}
                     onClick={() => {
                       if (!isPhoneValid(editData.whatsappNumber)) return;
                       setEditData({...editData, whatsappNotifications: !editData.whatsappNotifications});
                     }}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                      isView || !isPhoneValid(editData.whatsappNumber)
-                        ? `opacity-40 cursor-not-allowed ${theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'}`
-                        : (editData.whatsappNotifications && isPhoneValid(editData.whatsappNumber))
-                          ? 'bg-green-500 cursor-pointer'
-                          : `cursor-pointer ${theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'}`
-                    }`}
+                    className="inline-flex shrink-0 items-center transition-opacity hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:opacity-50"
                   >
-                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      (editData.whatsappNotifications && isPhoneValid(editData.whatsappNumber)) ? 'translate-x-6' : 'translate-x-1'
-                    }`} />
+                    {(editData.whatsappNotifications && isPhoneValid(editData.whatsappNumber)) ? <ToggleRight className="w-6 h-6 text-green-400" /> : <ToggleLeft className="w-6 h-6 text-gray-400" />}
                   </button>
                 </div>
               </div>

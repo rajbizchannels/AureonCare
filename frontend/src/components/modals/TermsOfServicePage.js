@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowLeft, FileText, ChevronDown, ChevronRight, Shield, Users, CreditCard, AlertTriangle, Lock, Scale, Globe, Settings, Ban, RefreshCw, Mail, Stethoscope } from 'lucide-react';
+import { ArrowLeft, FileText, ChevronDown, ChevronRight, Shield, Users, CreditCard, AlertTriangle, Lock, Scale, Globe, Settings, Ban, RefreshCw, Stethoscope } from 'lucide-react';
 
 const EFFECTIVE_DATE = 'February 28, 2026';
 const LAST_UPDATED = 'February 28, 2026';

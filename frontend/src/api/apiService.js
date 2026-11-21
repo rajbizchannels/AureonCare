@@ -5,10 +5,16 @@
 // (Safari/ITP), and can use SameSite=Lax. Setting REACT_APP_SVC_URL to an absolute URL
 // still works but puts the API on another origin, which forces the cross-site cookie mode
 // and keeps the Bearer fallback alive.
+import { trackRequest } from './activity';
+
 const API_BASE_URL = process.env.REACT_APP_SVC_URL || '/api';
 
 // True when the API shares the SPA's origin — the condition under which the session
 // cookie alone is sufficient and no token needs to be kept in JS-readable storage.
+// SEC-15: records that a portal session exists. Not a credential — the session itself is
+// in the HttpOnly ac_portal cookie.
+export const PORTAL_MARKER = 'portalSessionActive';
+
 const API_IS_SAME_ORIGIN = (() => {
   try {
     if (API_BASE_URL.startsWith('/')) return true;
@@ -94,7 +100,15 @@ const authenticatedFetch = async (url, options = {}) => {
       ...(options.headers || {})
     }
   };
-  return fetch(url, mergedOptions);
+  // Counted so the app can show that something is happening. Every request in the app
+  // funnels through here, which is why the indicator lives at this one line rather than in
+  // each of the ~846 buttons that can start one.
+  const settled = trackRequest(url);
+  try {
+    return await fetch(url, mergedOptions);
+  } finally {
+    settled();
+  }
 };
 
 /**
@@ -499,14 +513,26 @@ const api = {
     const response = await authenticatedFetch(`${API_BASE_URL}/notifications/${id}`, {
       method: 'DELETE'
     });
-    if (!response.ok) throw new Error('Failed to delete notification');
+    // A 404 means the notification is already gone — another tab cleared it, or the list
+    // in this tab is stale. That is the outcome the user asked for, so report success and
+    // let the caller drop it from the list. Treating it as an error left the row on screen
+    // with "Failed to delete notification" in the console and no way to get rid of it.
+    if (response.status === 404) return { success: true, alreadyGone: true };
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.message || error.error || 'Failed to delete notification');
+    }
     return response.json();
   },
   clearAllNotifications: async () => {
     const response = await authenticatedFetch(`${API_BASE_URL}/notifications`, {
       method: 'DELETE'
     });
-    if (!response.ok) throw new Error('Failed to clear notifications');
+    if (response.status === 404) return { success: true, alreadyGone: true };
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({}));
+      throw new Error(error.message || error.error || 'Failed to clear notifications');
+    }
     return response.json();
   },
 
@@ -606,7 +632,10 @@ const api = {
   // routers — so each call picks its path from the credential actually held.
   _hasPortalSession: () => {
     try {
-      return Boolean(sessionStorage.getItem('portalSessionToken') && !sessionStorage.getItem('token'));
+      // SEC-15: the portal session itself is in an HttpOnly cookie; this marker only
+      // records that one exists. The token is present only in the cross-origin fallback.
+      const portal = sessionStorage.getItem(PORTAL_MARKER) || sessionStorage.getItem('portalSessionToken');
+      return Boolean(portal && !sessionStorage.getItem('token'));
     } catch {
       return false;
     }
@@ -619,7 +648,7 @@ const api = {
    */
   getPatientFormRequests: async (patientId) => {
     if (api._hasPortalSession()) {
-      const response = await fetch(`${API_BASE_URL}/patient-portal/${patientId}/form-requests`, {
+      const response = await authenticatedFetch(`${API_BASE_URL}/patient-portal/${patientId}/form-requests`, {
         headers: api._getPortalAuthHeader(),
       });
       if (!response.ok) throw new Error('Failed to load requested forms');
@@ -634,8 +663,8 @@ const api = {
     const url = usePortal
       ? `${API_BASE_URL}/patient-portal/${patientId}/medical-records/${recordId}/attachments/${attachmentId}`
       : `${API_BASE_URL}/medical-records/${recordId}/attachments/${attachmentId}`;
-    const response = await fetch(url, {
-      headers: usePortal ? api._getPortalAuthHeader() : getAuthHeaders(),
+    const response = await authenticatedFetch(url, {
+      headers: usePortal ? api._getPortalAuthHeader() : {},
     });
     if (!response.ok) throw new Error('Failed to download document');
     return response.blob();
@@ -647,8 +676,8 @@ const api = {
     const url = usePortal
       ? `${API_BASE_URL}/patient-portal/${patientId}/form-requests/${submissionId}/document`
       : `${API_BASE_URL}/form-management/submissions/${submissionId}/document`;
-    const response = await fetch(url, {
-      headers: usePortal ? api._getPortalAuthHeader() : getAuthHeaders(),
+    const response = await authenticatedFetch(url, {
+      headers: usePortal ? api._getPortalAuthHeader() : {},
     });
     if (!response.ok) throw new Error('Failed to download document');
     return response.blob();
@@ -660,11 +689,9 @@ const api = {
     const url = usePortal
       ? `${API_BASE_URL}/patient-portal/${patientId}/form-requests/${submissionId}/acknowledge`
       : `${API_BASE_URL}/form-management/submissions/${submissionId}/acknowledge`;
-    const response = await fetch(url, {
+    const response = await authenticatedFetch(url, {
       method: 'POST',
-      headers: usePortal
-        ? { 'Content-Type': 'application/json', ...api._getPortalAuthHeader() }
-        : getAuthHeaders(),
+      headers: usePortal ? api._getPortalAuthHeader() : {},
     });
     if (!response.ok) {
       const detail = await response.json().catch(() => ({}));
@@ -790,6 +817,17 @@ const api = {
     }
     return response.json();
   },
+  // Every active provider in the practice, for a booking screen's dropdown. getProviders
+  // is the MANAGEMENT list and returns only the caller's own record when they are a
+  // doctor, which left a doctor unable to book a colleague.
+  getBookableProviders: async () => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/providers/bookable`);
+    if (!response.ok) {
+      const body = await response.json().catch(() => ({}));
+      throw new Error(body.message || body.error || 'Failed to fetch bookable providers');
+    }
+    return response.json();
+  },
   getProvider: async (id) => {
     const response = await authenticatedFetch(`${API_BASE_URL}/providers/${id}`);
     if (!response.ok) throw new Error('Failed to fetch provider');
@@ -911,25 +949,6 @@ const api = {
     return api._storePortalSessionToken(await response.json());
   },
 
-  socialLogin: async (provider, providerId, accessToken, email, firstName, lastName, profileData) => {
-    const response = await authenticatedFetch(`${API_BASE_URL}/auth/social-login`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ provider, providerId, accessToken, email, firstName, lastName, profileData })
-    });
-    if (!response.ok) throw new Error('Failed to login with social account');
-    return api._storePortalSessionToken(await response.json());
-  },
-  socialRegister: async (provider, providerId, accessToken, email, firstName, lastName, profileData) => {
-    const response = await authenticatedFetch(`${API_BASE_URL}/auth/social-register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ provider, providerId, accessToken, email, firstName, lastName, profileData })
-    });
-    const data = await response.json();
-    if (!response.ok) throw new Error(data.error || 'Registration failed');
-    return data;
-  },
 
   // Telehealth
   getTelehealthSessions: async () => {
@@ -1060,9 +1079,13 @@ const api = {
   },
 
   // Patient Portal
-  // Returns the current portal session token from sessionStorage (set after login).
+  // SEC-15: a browser normally authenticates to the portal with the HttpOnly ac_portal
+  // cookie, which authenticatedFetch sends along with the CSRF header. A Bearer token is
+  // added only in the cross-origin deployment, where the token is the fallback for
+  // browsers that block third-party cookies (the same exception as the staff JWT).
   _getPortalAuthHeader: () => {
-    const token = sessionStorage.getItem('portalSessionToken');
+    let token = null;
+    try { token = sessionStorage.getItem('portalSessionToken'); } catch { /* unavailable */ }
     return token ? { Authorization: `Bearer ${token}` } : {};
   },
   // SEC-20: portal authorization-code exchange. The browser holds only a single-use code;
@@ -1091,15 +1114,6 @@ const api = {
       const detail = await response.json().catch(() => ({}));
       throw new Error(detail.error || 'Failed to login to patient portal');
     }
-    return response.json();
-  },
-  registerPatientPortal: async (patientId, email, password) => {
-    const response = await authenticatedFetch(`${API_BASE_URL}/patient-portal/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ patientId, email, password })
-    });
-    if (!response.ok) throw new Error('Failed to register patient portal');
     return response.json();
   },
   getPatientAppointments: async (patientId) => {
@@ -1149,6 +1163,50 @@ const api = {
     if (!response.ok) throw new Error('Failed to fetch patient medical records');
     return response.json();
   },
+  // ── Portal data (patient session only; see routes/patient-portal.js) ──────────────
+  // The portal used to read staff routes, which refuse a patient session (401/403).
+  _portalCall: async (patientId, path, { method = 'GET', body, fail = 'Request failed' } = {}) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/patient-portal/${patientId}${path}`, {
+      method,
+      headers: { ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}), ...api._getPortalAuthHeader() },
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      const err = new Error(data.message || data.error || fail);
+      err.status = response.status;
+      throw err;
+    }
+    return response.json();
+  },
+  portalGetDiagnoses: (patientId) => api._portalCall(patientId, '/diagnoses', { fail: 'Failed to load diagnoses' }),
+  portalGetActivePrescriptions: (patientId) => api._portalCall(patientId, '/prescriptions/active', { fail: 'Failed to load prescriptions' }),
+  portalGetPharmacies: (patientId) => api._portalCall(patientId, '/pharmacies', { fail: 'Failed to load pharmacies' }),
+  portalGetPreferredPharmacies: (patientId) => api._portalCall(patientId, '/pharmacies/preferred', { fail: 'Failed to load preferred pharmacies' }),
+  portalAddPreferredPharmacy: (patientId, pharmacyId, isPreferred = true) =>
+    api._portalCall(patientId, '/pharmacies/preferred', { method: 'POST', body: { pharmacyId, isPreferred }, fail: 'Failed to save pharmacy' }),
+  portalGetProviders: (patientId) => api._portalCall(patientId, '/providers', { fail: 'Failed to load providers' }),
+  portalGetAppointmentTypes: (patientId) => api._portalCall(patientId, '/appointment-types', { fail: 'Failed to load appointment types' }),
+  portalGetInsurancePayers: (patientId) => api._portalCall(patientId, '/insurance-payers', { fail: 'Failed to load insurance payers' }),
+  portalGetOfferings: (patientId, { featured } = {}) =>
+    api._portalCall(patientId, `/offerings${featured ? '?featured=true' : ''}`, { fail: 'Failed to load services' }),
+  portalBookAppointment: (patientId, data) =>
+    api._portalCall(patientId, '/appointments', { method: 'POST', body: data, fail: 'Failed to book appointment' }),
+  portalGetWaitlist: (patientId) => api._portalCall(patientId, '/waitlist', { fail: 'Failed to load waitlist' }),
+  portalAddToWaitlist: (patientId, data) =>
+    api._portalCall(patientId, '/waitlist', { method: 'POST', body: data, fail: 'Failed to add to waitlist' }),
+  portalRemoveFromWaitlist: (patientId, entryId) =>
+    api._portalCall(patientId, `/waitlist/${entryId}`, { method: 'DELETE', fail: 'Failed to remove from waitlist' }),
+  portalGetNotificationPreferences: (patientId) =>
+    api._portalCall(patientId, '/notification-preferences', { fail: 'Failed to load notification preferences' }),
+  portalSetNotificationPreference: (patientId, channelType, isEnabled, contactInfo) =>
+    api._portalCall(patientId, '/notification-preferences', {
+      method: 'PUT', body: { channel_type: channelType, is_enabled: isEnabled, contact_info: contactInfo || null },
+      fail: 'Failed to save notification preference' }),
+  portalSubmitForm: (patientId, submissionId, formData) =>
+    api._portalCall(patientId, `/form-requests/${submissionId}`, { method: 'PUT', body: { form_data: formData }, fail: 'Failed to submit form' }),
+  portalChangePassword: (patientId, currentPassword, newPassword) =>
+    api._portalCall(patientId, '/change-password', { method: 'POST', body: { currentPassword, newPassword }, fail: 'Failed to change password' }),
   linkSocialToPatient: async (patientId, provider, providerId, accessToken, refreshToken, profileData) => {
     const response = await authenticatedFetch(`${API_BASE_URL}/patient-portal/${patientId}/link-social`, {
       method: 'POST',
@@ -1176,6 +1234,34 @@ const api = {
     const response = await authenticatedFetch(url);
     if (!response.ok) throw new Error('Failed to fetch roles');
     return response.json();
+  },
+
+  // Creating a role was attempted through PUT /api/permissions/:role, which looks the role
+  // up in `roles` BEFORE writing its permissions — so for a role that does not exist yet it
+  // answered 404 and "Create Custom Role" never once worked. POST /api/roles is the
+  // endpoint that actually creates one.
+  createRole: async ({ name, displayName, description }) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/roles`, {
+      method: 'POST',
+      body: JSON.stringify({ name, display_name: displayName || name, description: description || null }),
+    });
+    if (!response.ok) {
+      const e = await response.json().catch(() => ({}));
+      throw new Error(e.error || 'Failed to create role');
+    }
+    return response.json();
+  },
+  // By id, which is what DELETE /api/roles/:id takes. There was no deleteRole in this file
+  // at all, so the delete button called `undefined` and reported a generic failure.
+  deleteRole: async (id) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/roles/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+    });
+    if (!response.ok) {
+      const e = await response.json().catch(() => ({}));
+      throw new Error(e.error || 'Failed to delete role');
+    }
+    return response.json().catch(() => ({ deleted: true }));
   },
 
   // Permissions
@@ -2246,38 +2332,41 @@ const api = {
     return response.json();
   },
 
-  // Stripe Integration Settings
-  getStripeSettings: async () => {
-    const response = await authenticatedFetch(`${API_BASE_URL}/stripe-settings`);
-    if (!response.ok) throw new Error('Failed to fetch Stripe settings');
-    return response.json();
-  },
-  saveStripeSettings: async (settings) => {
-    const response = await authenticatedFetch(`${API_BASE_URL}/stripe-settings`, {
-      method: 'POST',
-      body: JSON.stringify(settings)
-    });
-    if (!response.ok) throw new Error('Failed to save Stripe settings');
-    return response.json();
-  },
-  toggleStripeIntegration: async (isEnabled) => {
-    const response = await authenticatedFetch(`${API_BASE_URL}/stripe-settings/toggle`, {
-      method: 'PATCH',
-      body: JSON.stringify({ is_enabled: isEnabled })
-    });
-    if (!response.ok) throw new Error('Failed to toggle Stripe integration');
-    return response.json();
-  },
-  testStripeConnection: async () => {
-    const response = await authenticatedFetch(`${API_BASE_URL}/stripe-settings/test`, {
-      method: 'POST'
-    });
+
+  // AI integrations (bring-your-own-key, feature switches, human review)
+  aiRequest: async (path, options = {}) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/ai${path}`, options);
+    let body = null;
+    try { body = await response.json(); } catch (e) { body = null; }
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || 'Stripe connection test failed');
+      const err = new Error((body && (body.message || body.error)) || 'AI request failed');
+      err.code = body && body.error;
+      err.status = response.status;
+      throw err;
     }
-    return response.json();
+    return body;
   },
+  getAICatalog: () => api.aiRequest('/catalog'),
+  getAIProviders: () => api.aiRequest('/providers'),
+  saveAIProvider: (provider, settings) => api.aiRequest(`/providers/${provider}`, {
+    method: 'PUT', body: JSON.stringify(settings)
+  }),
+  toggleAIProvider: (provider, isEnabled) => api.aiRequest(`/providers/${provider}/toggle`, {
+    method: 'PATCH', body: JSON.stringify({ is_enabled: isEnabled })
+  }),
+  testAIProvider: (provider) => api.aiRequest(`/providers/${provider}/test`, { method: 'POST' }),
+  removeAIProviderKey: (provider) => api.aiRequest(`/providers/${provider}/key`, { method: 'DELETE' }),
+  getAIFeatures: () => api.aiRequest('/features'),
+  updateAIFeature: (key, settings) => api.aiRequest(`/features/${key}`, {
+    method: 'PATCH', body: JSON.stringify(settings)
+  }),
+  runAIFeature: (key, payload) => api.aiRequest(`/features/${key}/run`, {
+    method: 'POST', body: JSON.stringify(payload)
+  }),
+  getAISuggestions: (status = 'pending') => api.aiRequest(`/suggestions?status=${encodeURIComponent(status)}`),
+  reviewAISuggestion: (id, review) => api.aiRequest(`/suggestions/${id}/review`, {
+    method: 'POST', body: JSON.stringify(review)
+  }),
 
   // Lab Orders
   getLabOrders: async (filters = {}) => {
@@ -3775,6 +3864,36 @@ const api = {
     return r.json();
   },
 
+  // Fine-grained permissions for every module. One pair of endpoints, where the pattern
+  // these generalise had a pair per module and would have needed nine more.
+  getModulePermissions: async () => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/permissions/modules`);
+    if (!r.ok) {
+      const e = await r.json().catch(() => ({}));
+      throw new Error(e.message || e.error || 'Failed to fetch module permissions');
+    }
+    return r.json();
+  },
+  updateModulePermission: async (data) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/permissions/modules`, {
+      method: 'PUT', body: JSON.stringify(data),
+    });
+    if (!r.ok) {
+      const e = await r.json().catch(() => ({}));
+      throw new Error(e.message || e.error || 'Failed to update permission');
+    }
+    return r.json();
+  },
+  resetModulePermission: async ({ module, roleName, resource }) => {
+    const r = await authenticatedFetch(
+      `${API_BASE_URL}/permissions/modules/${encodeURIComponent(module)}/${encodeURIComponent(roleName)}/${encodeURIComponent(resource)}`,
+      { method: 'DELETE' });
+    if (!r.ok) {
+      const e = await r.json().catch(() => ({}));
+      throw new Error(e.message || e.error || 'Failed to reset permission');
+    }
+    return r.json();
+  },
   getInventoryPermissions: async () => {
     const r = await authenticatedFetch(`${API_BASE_URL}/inventory/rbac/permissions`);
     if (!r.ok) throw new Error('Failed to fetch inventory permissions');
@@ -3878,31 +3997,39 @@ const api = {
   // ── Public provider booking (/book/<slug>) ─────────────────────────────────
   // These endpoints are open, but they still go through API_BASE_URL so the
   // page works when the frontend and backend are on different origins.
+  // SEC-30: the booking page has no session, so every public call names the practice by
+  // its booking slug (X-Booking-Slug). The server resolves the slug to the practice and
+  // only serves that link's own provider. Remembered from the config lookup, which every
+  // visit to /book/<slug> starts with.
+  _publicBookingSlug: null,
+  _publicBookingHeaders: () => (api._publicBookingSlug ? { 'X-Booking-Slug': api._publicBookingSlug } : {}),
   getPublicBookingConfig: async (slug) => {
+    api._publicBookingSlug = slug;
     const r = await authenticatedFetch(`${API_BASE_URL}/scheduling/booking-config/slug/${encodeURIComponent(slug)}`);
     if (!r.ok) throw new Error('Provider not found or booking not available');
     return r.json();
   },
   getPublicAppointmentTypes: async (providerId) => {
-    const r = await authenticatedFetch(`${API_BASE_URL}/scheduling/appointment-types/${encodeURIComponent(providerId)}`);
+    const r = await authenticatedFetch(`${API_BASE_URL}/scheduling/appointment-types/${encodeURIComponent(providerId)}`, { headers: api._publicBookingHeaders() });
     if (!r.ok) throw new Error('Failed to fetch appointment types');
     return r.json();
   },
   getPublicAvailableDates: async (providerId, { startDate, endDate, appointmentTypeId }) => {
     const query = new URLSearchParams({ startDate, endDate, appointmentTypeId }).toString();
-    const r = await authenticatedFetch(`${API_BASE_URL}/scheduling/available-dates/${encodeURIComponent(providerId)}?${query}`);
+    const r = await authenticatedFetch(`${API_BASE_URL}/scheduling/available-dates/${encodeURIComponent(providerId)}?${query}`, { headers: api._publicBookingHeaders() });
     if (!r.ok) throw new Error('Failed to fetch available dates');
     return r.json();
   },
   getPublicAvailableSlots: async (providerId, { date, appointmentTypeId }) => {
     const query = new URLSearchParams({ date, appointmentTypeId }).toString();
-    const r = await authenticatedFetch(`${API_BASE_URL}/scheduling/slots/${encodeURIComponent(providerId)}?${query}`);
+    const r = await authenticatedFetch(`${API_BASE_URL}/scheduling/slots/${encodeURIComponent(providerId)}?${query}`, { headers: api._publicBookingHeaders() });
     if (!r.ok) throw new Error('Failed to fetch available slots');
     return r.json();
   },
   bookPublicAppointment: async (payload) => {
     const r = await authenticatedFetch(`${API_BASE_URL}/scheduling/book`, {
       method: 'POST',
+      headers: api._publicBookingHeaders(),
       body: JSON.stringify(payload)
     });
     if (!r.ok) { const e = await r.json().catch(() => ({})); throw new Error(e.error || 'Failed to book appointment'); }
@@ -3910,6 +4037,18 @@ const api = {
   },
 
   // SEC-15: re-fetch identity instead of persisting the user object in the browser.
+  // SEC-40: who a reloaded portal tab is signed in as, from the server (HttpOnly cookie).
+  getPortalSession: async () => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/patient-portal/session`);
+    if (!r.ok) throw new Error('No portal session');
+    return r.json();
+  },
+  // SEC-40: a new browser session starts signed out — the server removes this browser's
+  // session cookies (HttpOnly, so JavaScript cannot). Other devices are unaffected.
+  endBrowserSession: async () => {
+    const r = await fetch(`${API_BASE_URL}/auth/session/end`, { method: 'POST', credentials: 'include' });
+    return r.ok;
+  },
   getCurrentUser: async () => {
     const r = await authenticatedFetch(`${API_BASE_URL}/auth/me`);
     if (!r.ok) throw new Error('Failed to fetch current user');
@@ -3933,22 +4072,28 @@ const api = {
     try {
       sessionStorage.removeItem('token');
       sessionStorage.removeItem('portalSessionToken');
+      sessionStorage.removeItem(PORTAL_MARKER);
     } catch (e) {
       console.error('Failed to clear token:', e);
     }
   },
-  // A login response carries portalSessionToken only when the account is a patient with
-  // portal access. Unlike the JWT above this is always persisted, same-origin or not: the
-  // portal's router.param guard reads the Authorization header and nothing else, so there
-  // is no cookie to fall back on. This mirrors what PatientLoginPage already does after a
-  // direct portal login.
-  _storePortalSessionToken: (data) => {
-    if (!data || !data.portalSessionToken) return data;
+  // SEC-15: the server delivers the portal session as an HttpOnly cookie, so the token is
+  // NOT kept in JS-readable storage — only a marker saying a portal session exists. As
+  // with storeToken, the token itself is kept only in the cross-origin deployment, where
+  // a browser blocking third-party cookies could otherwise not authenticate at all.
+  storePortalSession: (sessionToken) => {
+    if (!sessionToken) return;
     try {
-      sessionStorage.setItem('portalSessionToken', data.portalSessionToken);
+      sessionStorage.setItem(PORTAL_MARKER, '1');
+      if (!API_IS_SAME_ORIGIN) sessionStorage.setItem('portalSessionToken', sessionToken);
     } catch (e) {
-      console.error('Failed to store portal session token:', e);
+      console.error('Failed to record portal session:', e);
     }
+  },
+  // A login response carries portalSessionToken only when the account is a patient with
+  // portal access.
+  _storePortalSessionToken: (data) => {
+    if (data && data.portalSessionToken) api.storePortalSession(data.portalSessionToken);
     return data;
   },
   // SEC-16: revoke the session server-side before dropping local state. Bumps the
@@ -4033,6 +4178,119 @@ const api = {
     if (!r.ok) throw new Error(data.error || 'Failed to accept invite');
     return data;
   },
+
+  // ── Patient portal invitations (Phase 1 onboarding) ─────────────────────────────
+  // Staff send a one-time link; the patient accepts it with a password or Google/Microsoft
+  // and is signed straight into the portal (the server sets the HttpOnly portal cookie).
+  sendPortalInvite: async (patientId) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/portal-invites`, {
+      method: 'POST', body: JSON.stringify({ patientId }),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || 'Could not send the invitation');
+    return data;
+  },
+  // From the Invite dialog (role "Patient"): the server finds the chart with this email, or
+  // creates one from the name and date of birth, then sends the portal invitation.
+  // ── Phase 1: the practices this person works at ──────────────────────────────────
+  getMyPractices: async () => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/auth/memberships`);
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || 'Could not load your practices');
+    return data;
+  },
+  switchPractice: async (practiceId) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/auth/switch-practice`, { method: 'POST', body: JSON.stringify({ practiceId }) });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || 'Could not switch practice');
+    if (data.token) api.storeToken(data.token);
+    return data;
+  },
+
+  // ── Practice profile (directory Phase 2; routes/practiceProfile.js) ──────────────
+  _profileCall: async (path, { method = 'GET', body, fail = 'Request failed' } = {}) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/practice-profile${path}`, {
+      method, body: body === undefined ? undefined : JSON.stringify(body),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || data.message || fail);
+    return data;
+  },
+  getPracticeProfile: () => api._profileCall('', { fail: 'Could not load the practice profile' }),
+  savePracticeProfile: (data) => api._profileCall('', { method: 'PUT', body: data, fail: 'Could not save the profile' }),
+  uploadProfilePhoto: async (kind, file) => {
+    const data = await new Promise((resolve, reject) => {
+      const fr = new FileReader();
+      fr.onload = () => resolve(String(fr.result));
+      fr.onerror = () => reject(new Error('Could not read the file'));
+      fr.readAsDataURL(file);
+    });
+    return api._profileCall('/photos', { method: 'POST', body: { kind, data }, fail: 'Could not upload the photo' });
+  },
+  reviewProfilePhoto: (id, status) => api._profileCall(`/photos/${id}`, { method: 'PUT', body: { status }, fail: 'Could not update the photo' }),
+  deleteProfilePhoto: (id) => api._profileCall(`/photos/${id}`, { method: 'DELETE', fail: 'Could not delete the photo' }),
+  // Staff preview of any photo of the practice (incl. pending) as an object URL.
+  profilePhotoObjectUrl: async (id) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/practice-profile/photos/${id}`);
+    if (!r.ok) throw new Error('Photo not available');
+    return URL.createObjectURL(await r.blob());
+  },
+  setProviderListingHidden: (providerId, hidden) =>
+    api._profileCall(`/providers/${providerId}/hidden`, { method: 'PUT', body: { hidden }, fail: 'Could not update the listing' }),
+  getMyListing: () => api._profileCall('/me', { fail: 'Could not load your listing' }),
+  saveMyListing: (data) => api._profileCall('/me', { method: 'PUT', body: data, fail: 'Could not save your listing' }),
+
+  // Short link (/s/<code>) for something staff share: { kind: 'booking', slug } or
+  // { kind: 'meeting', appointmentId }. Callers fall back to the full link on failure.
+  createShortLink: async (payload) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/short-links`, { method: 'POST', body: JSON.stringify(payload) });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok || !data.url) throw new Error(data.error || 'Could not create the short link');
+    return data.url;
+  },
+  sendPortalInviteByEmail: async ({ email, firstName, lastName, dateOfBirth }) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/portal-invites`, {
+      method: 'POST', body: JSON.stringify({ email, firstName, lastName, dateOfBirth }),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || data.message || 'Could not send the invitation');
+    return data;
+  },
+  getPortalInviteStatus: async (patientId) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/portal-invites/patient/${encodeURIComponent(patientId)}`);
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || 'Could not load portal status');
+    return data;
+  },
+  revokePortalInvite: async (patientId) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/portal-invites/patient/${encodeURIComponent(patientId)}`, { method: 'DELETE' });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || 'Could not withdraw the invitation');
+    return data;
+  },
+  lookupPortalInvite: async (token) => {
+    const r = await fetch(`${API_BASE_URL}/portal-invites/lookup/${encodeURIComponent(token)}`);
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || 'This invitation is no longer valid.');
+    return data;
+  },
+  // Both accept calls store the portal session the same way a portal login does.
+  _acceptPortalInvite: async (url, payload) => {
+    const r = await fetch(url, {
+      method: 'POST',
+      credentials: 'include',            // the response sets the HttpOnly portal cookie
+      headers: publicPostHeaders(),
+      body: JSON.stringify(payload),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || 'Could not set up your portal');
+    if (data.sessionToken) api.storePortalSession(data.sessionToken);
+    return data;
+  },
+  acceptPortalInvite: (token, password) =>
+    api._acceptPortalInvite(`${API_BASE_URL}/portal-invites/accept`, { token, password }),
+  acceptPortalInviteWithOAuth: (provider, token, code, redirectUri, codeVerifier) =>
+    api._acceptPortalInvite(`${API_BASE_URL}/portal-invites/accept/oauth/${provider}`, { token, code, redirectUri, codeVerifier }),
 
   listInvites: async () => {
     const r = await authenticatedFetch(`${API_BASE_URL}/invites`);
@@ -4201,9 +4459,11 @@ const api = {
     }
     // If a portal session token is present, revoke it server-side too.
     try {
+      // The session is normally in the HttpOnly cookie, which the server reads; the token
+      // is only passed when the cross-origin fallback holds one.
       const portalToken = sessionStorage.getItem('portalSessionToken');
-      if (portalToken) {
-        await api.patientPortalLogout(portalToken);
+      if (portalToken || sessionStorage.getItem(PORTAL_MARKER)) {
+        await api.patientPortalLogout(portalToken || undefined);
       }
     } catch (e) {
       console.error('Portal logout failed (clearing local session anyway):', e);

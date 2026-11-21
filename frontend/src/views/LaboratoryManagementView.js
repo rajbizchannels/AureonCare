@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Microscope, Plus, Edit, Trash2, RefreshCw, Search } from 'lucide-react';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 import NewLaboratoryForm from '../components/forms/NewLaboratoryForm';
@@ -26,7 +26,10 @@ const LaboratoryManagementView = ({
     });
   }, [logViewAccess]);
 
-  const loadLaboratories = async () => {
+  // Memoised: the effect below depends on it. As a plain function it was a new value on
+  // every render, so the effect re-ran after every render and each load's setState caused
+  // the next one — a request loop for as long as the screen was open.
+  const loadLaboratories = useCallback(async () => {
     setLoading(true);
     try {
       const data = await api.getLaboratories();
@@ -37,7 +40,7 @@ const LaboratoryManagementView = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [api, addNotification]);
 
   useEffect(() => {
     loadLaboratories();

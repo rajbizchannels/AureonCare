@@ -1,13 +1,21 @@
 const express = require('express');
 const { authenticate } = require('../middleware/auth');
+const { requireModuleAccess } = require('../middleware/modulePermissions');
 const router = express.Router();
 const { auditPhiRead } = require('../middleware/phiAccessLog');
 router.use(authenticate);
+// Fine-grained permissions, enforced. The method decides the action (GET=view,
+// POST=create, PUT/PATCH=edit, DELETE=delete); an administrator edits this under
+// Admin Panel -> Roles & Permissions. Absent grants fall back to the role defaults in
+// utils/permissionRegistry.js, so this changes nothing until somebody edits something.
+router.use(requireModuleAccess('clinical', 'prescriptions'));
 router.use(require('../middleware/planEnforcement').enforceActiveBilling); // SEC-05 S11: read-only when subscription past_due/canceled
 const WhatsAppService = require('../services/whatsappService');
-const vendorIntegrationManager = require('../services/vendorIntegrations');
+// SEC-37: vendor clients are per practice — resolved from this request's tenant.
+const { vendorsFor } = require('../services/vendorIntegrations');
 const fhirTrackingIntegration = require('../services/fhirTrackingIntegration');
 const notificationService = require('../services/notificationService');
+const { sendDbError } = require('../utils/dbErrors');
 
 // Helper function to convert snake_case to camelCase
 const toCamelCase = (obj) => {
@@ -269,7 +277,7 @@ router.post('/', async (req, res) => {
     }
 
     // Send to Surescripts if enabled and send_to_vendor is requested
-    if (req.body.sendToVendor && vendorIntegrationManager.isVendorEnabled('surescripts')) {
+    if (req.body.sendToVendor && (await vendorsFor(req)).isVendorEnabled('surescripts')) {
       try {
         // Get full patient and provider details for Surescripts
         const patientResult = await pool.query(
@@ -293,7 +301,7 @@ router.post('/', async (req, res) => {
           }
         }
 
-        const surescripts = vendorIntegrationManager.getSurescripts();
+        const surescripts = (await vendorsFor(req)).getSurescripts();
 
         const vendorPrescription = {
           ...prescription,
@@ -334,7 +342,7 @@ router.post('/', async (req, res) => {
           prescription.vendor_status = vendorResponse.status;
 
           // Log transaction
-          await vendorIntegrationManager.logTransaction('surescripts', 'prescription_send', {
+          await (await vendorsFor(req)).logTransaction('surescripts', 'prescription_send', {
             request: vendorPrescription,
             response: vendorResponse.response,
             status: 'success',
@@ -359,7 +367,7 @@ router.post('/', async (req, res) => {
           }
         } else {
           // Log failed transaction
-          await vendorIntegrationManager.logTransaction('surescripts', 'prescription_send', {
+          await (await vendorsFor(req)).logTransaction('surescripts', 'prescription_send', {
             request: vendorPrescription,
             response: vendorResponse.response,
             status: 'failed',
@@ -415,6 +423,8 @@ router.post('/', async (req, res) => {
     }).catch(() => {});
   } catch (error) {
     console.error('Error creating prescription:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to create prescription')) return;
     res.status(500).json({ error: 'Failed to create prescription' });
   }
 });
@@ -477,6 +487,8 @@ router.put('/:id', async (req, res) => {
     res.json(toCamelCase(updatedPrescription));
   } catch (error) {
     console.error('Error updating prescription:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to update prescription')) return;
     res.status(500).json({ error: 'Failed to update prescription' });
   }
 });
@@ -497,6 +509,8 @@ router.delete('/:id', async (req, res) => {
     res.json({ message: 'Prescription deleted successfully' });
   } catch (error) {
     console.error('Error deleting prescription:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to delete prescription')) return;
     res.status(500).json({ error: 'Failed to delete prescription' });
   }
 });
@@ -512,7 +526,11 @@ router.post('/:id/send-erx', async (req, res) => {
     if (!hasEPrescribing) {
       return res.status(501).json({
         error: 'ePrescribing functionality not available',
-        message: 'Please run migration 015 to enable ePrescribing features'
+        // Written for whoever ends up reading it on screen. The migration number is
+        // an internal detail: it tells a prescriber nothing they can act on and makes
+        // the product look unfinished. The 501 status is what clients branch on, and
+        // the server log below carries the detail an administrator needs.
+        message: 'ePrescribing is not enabled for this practice yet. Please contact your administrator.'
       });
     }
 
@@ -618,6 +636,8 @@ router.post('/:id/send-erx', async (req, res) => {
     });
   } catch (error) {
     console.error('Error sending eRx:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to send electronic prescription')) return;
     res.status(500).json({ error: 'Failed to send electronic prescription' });
   }
 });
@@ -631,7 +651,11 @@ router.post('/:id/cancel-erx', async (req, res) => {
     if (!hasEPrescribing) {
       return res.status(501).json({
         error: 'ePrescribing functionality not available',
-        message: 'Please run migration 015 to enable ePrescribing features'
+        // Written for whoever ends up reading it on screen. The migration number is
+        // an internal detail: it tells a prescriber nothing they can act on and makes
+        // the product look unfinished. The 501 status is what clients branch on, and
+        // the server log below carries the detail an administrator needs.
+        message: 'ePrescribing is not enabled for this practice yet. Please contact your administrator.'
       });
     }
 
@@ -663,6 +687,8 @@ router.post('/:id/cancel-erx', async (req, res) => {
     res.json(toCamelCase(result.rows[0]));
   } catch (error) {
     console.error('Error cancelling eRx:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to cancel electronic prescription')) return;
     res.status(500).json({ error: 'Failed to cancel electronic prescription' });
   }
 });
@@ -676,7 +702,11 @@ router.get('/:id/history', async (req, res) => {
     if (!hasEPrescribing) {
       return res.status(501).json({
         error: 'ePrescribing functionality not available',
-        message: 'Please run migration 015 to enable ePrescribing features'
+        // Written for whoever ends up reading it on screen. The migration number is
+        // an internal detail: it tells a prescriber nothing they can act on and makes
+        // the product look unfinished. The 501 status is what clients branch on, and
+        // the server log below carries the detail an administrator needs.
+        message: 'ePrescribing is not enabled for this practice yet. Please contact your administrator.'
       });
     }
 
@@ -708,7 +738,11 @@ router.post('/check-safety', async (req, res) => {
     if (!hasEPrescribing) {
       return res.status(501).json({
         error: 'ePrescribing functionality not available',
-        message: 'Please run migration 015 to enable ePrescribing features'
+        // Written for whoever ends up reading it on screen. The migration number is
+        // an internal detail: it tells a prescriber nothing they can act on and makes
+        // the product look unfinished. The 501 status is what clients branch on, and
+        // the server log below carries the detail an administrator needs.
+        message: 'ePrescribing is not enabled for this practice yet. Please contact your administrator.'
       });
     }
 
@@ -765,6 +799,8 @@ router.post('/check-safety', async (req, res) => {
     });
   } catch (error) {
     console.error('Error checking medication safety:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to check medication safety')) return;
     res.status(500).json({ error: 'Failed to check medication safety' });
   }
 });
@@ -876,7 +912,11 @@ router.post('/:id/refill', async (req, res) => {
     if (!hasEPrescribing) {
       return res.status(501).json({
         error: 'ePrescribing functionality not available',
-        message: 'Please run migration 015 to enable ePrescribing features'
+        // Written for whoever ends up reading it on screen. The migration number is
+        // an internal detail: it tells a prescriber nothing they can act on and makes
+        // the product look unfinished. The 501 status is what clients branch on, and
+        // the server log below carries the detail an administrator needs.
+        message: 'ePrescribing is not enabled for this practice yet. Please contact your administrator.'
       });
     }
 
@@ -921,6 +961,8 @@ router.post('/:id/refill', async (req, res) => {
     });
   } catch (error) {
     console.error('Error processing refill:', error);
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to process refill')) return;
     res.status(500).json({ error: 'Failed to process refill' });
   }
 });

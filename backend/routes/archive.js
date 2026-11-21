@@ -3,6 +3,7 @@ const router = express.Router();
 const pool = require('../db'); // Main database
 const { archivePool, ensureTableStructure, getArchiveTables, getTableRecordCount } = require('../archiveDb');
 const { requireAdmin } = require('../middleware/auth');
+const { sendDbError } = require('../utils/dbErrors');
 
 // Middleware to ensure only admins can access archive endpoints
 router.use(requireAdmin);
@@ -333,7 +334,9 @@ router.post('/create', async (req, res) => {
     });
   } catch (error) {
     console.error('Error creating archive:', error);
-    res.status(500).json({ error: 'Failed to create archive', details: error.message });
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to create archive')) return;
+    res.status(500).json({ error: 'Failed to create archive' });
   }
 });
 
@@ -667,10 +670,9 @@ router.post('/:id/restore', async (req, res) => {
     res.json(response);
   } catch (error) {
     console.error('Error restoring archive:', error);
-    res.status(500).json({
-      error: 'Failed to restore archive',
-      details: error.message
-    });
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to restore archive')) return;
+    res.status(500).json({ error: 'Failed to restore archive' });
   }
 });
 
@@ -717,7 +719,9 @@ router.delete('/:id', async (req, res) => {
     });
   } catch (error) {
     console.error('Error deleting archive:', error);
-    res.status(500).json({ error: 'Failed to delete archive', details: error.message });
+    // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, error, 'Failed to delete archive')) return;
+    res.status(500).json({ error: 'Failed to delete archive' });
   }
 });
 

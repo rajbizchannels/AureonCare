@@ -1,0 +1,288 @@
+{
+  "code": "pathology",
+  "version": 1,
+  "label": "Pathology and Laboratory Medicine",
+  "description": "Starting configuration for a laboratory service: phlebotomy and specimen appointment types, with a routine panel and histology catalogue. Most laboratory work is ordered rather than booked, so the appointment types cover collection.",
+  "modules": {
+    "hide": [
+      "camps",
+      "telehealth",
+      "patientPortal"
+    ]
+  },
+  "terminology": {
+    "provider": "Pathologist",
+    "providers": "Pathologists"
+  },
+  "appointmentTypes": [
+    {
+      "name": "Phlebotomy",
+      "durationMinutes": 15,
+      "color": "#2563EB",
+      "displayOrder": 10
+    },
+    {
+      "name": "Fasting Blood Test",
+      "durationMinutes": 15,
+      "color": "#0EA5E9",
+      "displayOrder": 20
+    },
+    {
+      "name": "Specimen Delivery",
+      "durationMinutes": 10,
+      "color": "#14B8A6",
+      "displayOrder": 30
+    },
+    {
+      "name": "Glucose Tolerance Test",
+      "durationMinutes": 150,
+      "color": "#8B5CF6",
+      "displayOrder": 40
+    },
+    {
+      "name": "Results Consultation",
+      "durationMinutes": 20,
+      "color": "#F59E0B",
+      "displayOrder": 50
+    }
+  ],
+  "serviceCategories": [
+    {
+      "name": "Specimen Collection",
+      "icon": "droplet",
+      "displayOrder": 10
+    },
+    {
+      "name": "Haematology and Chemistry",
+      "icon": "flask",
+      "displayOrder": 20
+    },
+    {
+      "name": "Histopathology",
+      "icon": "microscope",
+      "displayOrder": 30
+    },
+    {
+      "name": "Microbiology",
+      "icon": "bug",
+      "displayOrder": 40
+    }
+  ],
+  "offerings": [
+    {
+      "name": "Venepuncture",
+      "categoryName": "Specimen Collection",
+      "durationMinutes": 15,
+      "cptCodes": [
+        "36415"
+      ]
+    },
+    {
+      "name": "Full Blood Count with Differential",
+      "categoryName": "Haematology and Chemistry",
+      "durationMinutes": 15,
+      "cptCodes": [
+        "85025"
+      ]
+    },
+    {
+      "name": "Comprehensive Metabolic Panel",
+      "categoryName": "Haematology and Chemistry",
+      "durationMinutes": 15,
+      "cptCodes": [
+        "80053"
+      ],
+      "requiresPreparation": true,
+      "preparationInstructions": "Fast for 8 to 12 hours beforehand unless you have been told otherwise. Water is fine."
+    },
+    {
+      "name": "Basic Metabolic Panel",
+      "categoryName": "Haematology and Chemistry",
+      "durationMinutes": 15,
+      "cptCodes": [
+        "80048"
+      ]
+    },
+    {
+      "name": "Lipid Panel",
+      "categoryName": "Haematology and Chemistry",
+      "durationMinutes": 15,
+      "cptCodes": [
+        "80061"
+      ],
+      "requiresPreparation": true,
+      "preparationInstructions": "Fast for 9 to 12 hours beforehand. Water is fine."
+    },
+    {
+      "name": "Haemoglobin A1c",
+      "categoryName": "Haematology and Chemistry",
+      "durationMinutes": 15,
+      "cptCodes": [
+        "83036"
+      ]
+    },
+    {
+      "name": "Thyroid Function Panel",
+      "categoryName": "Haematology and Chemistry",
+      "durationMinutes": 15
+    },
+    {
+      "name": "Coagulation Screen",
+      "categoryName": "Haematology and Chemistry",
+      "durationMinutes": 15
+    },
+    {
+      "name": "Glucose Tolerance Test",
+      "categoryName": "Haematology and Chemistry",
+      "durationMinutes": 150,
+      "requiresPreparation": true,
+      "preparationInstructions": "Fast for 8 to 12 hours beforehand. Allow about two hours in the department, and bring something to read."
+    },
+    {
+      "name": "Surgical Pathology Examination",
+      "categoryName": "Histopathology",
+      "durationMinutes": 15,
+      "cptCodes": [
+        "88305"
+      ]
+    },
+    {
+      "name": "Cytology Specimen Processing",
+      "categoryName": "Histopathology",
+      "durationMinutes": 15
+    },
+    {
+      "name": "Culture and Sensitivity",
+      "categoryName": "Microbiology",
+      "durationMinutes": 15
+    }
+  ],
+  "formTemplates": [
+    {
+      "slug": "laboratory-request",
+      "name": "Laboratory Request and Consent",
+      "templateType": "clinical",
+      "categorySlug": "clinical",
+      "version": "1.0",
+      "languages": [
+        "en"
+      ],
+      "complianceTags": [
+        "HIPAA"
+      ],
+      "fields": [
+        {
+          "id": "tests_requested",
+          "type": "textarea",
+          "label": "Tests requested",
+          "required": true
+        },
+        {
+          "id": "clinical_details",
+          "type": "textarea",
+          "label": "Clinical details and reason for testing",
+          "required": true
+        },
+        {
+          "id": "fasting",
+          "type": "radio",
+          "label": "Has the patient fasted?",
+          "options": [
+            "Yes",
+            "No",
+            "Not required"
+          ],
+          "required": true
+        },
+        {
+          "id": "last_meal",
+          "type": "text",
+          "label": "Time of last food or drink other than water"
+        },
+        {
+          "id": "anticoagulants",
+          "type": "radio",
+          "label": "Is the patient on a blood thinner?",
+          "options": [
+            "No",
+            "Yes"
+          ],
+          "required": true
+        },
+        {
+          "id": "difficult_veins",
+          "type": "checkbox",
+          "label": "Known difficult venous access"
+        },
+        {
+          "id": "needle_anxiety",
+          "type": "checkbox",
+          "label": "History of fainting or needle anxiety"
+        },
+        {
+          "id": "specimen_site",
+          "type": "text",
+          "label": "For a tissue specimen, the site and side"
+        },
+        {
+          "id": "urgent",
+          "type": "radio",
+          "label": "Urgency",
+          "options": [
+            "Routine",
+            "Urgent",
+            "Same day"
+          ]
+        }
+      ]
+    }
+  ],
+  "inventoryCategories": [
+    {
+      "code": "path_tubes",
+      "name": "Collection Tubes"
+    },
+    {
+      "code": "path_reagents",
+      "name": "Reagents"
+    },
+    {
+      "code": "path_phlebotomy",
+      "name": "Phlebotomy Consumables"
+    },
+    {
+      "code": "path_histology",
+      "name": "Histology Consumables"
+    }
+  ],
+  "codeSets": {
+    "icd10": [
+      "Z01.812",
+      "D64.9",
+      "E78.5",
+      "E11.9",
+      "E03.9",
+      "R79.89",
+      "N39.0"
+    ],
+    "cpt": [
+      "36415",
+      "80048",
+      "80053",
+      "80061",
+      "83036",
+      "85025",
+      "88305"
+    ]
+  },
+  "settings": {
+    "defaultAppointmentDuration": 15,
+    "slotIntervalMinutes": 5
+  },
+  "reports": {
+    "show": [
+      "clinical",
+      "operational"
+    ]
+  }
+}

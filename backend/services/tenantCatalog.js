@@ -84,10 +84,28 @@ async function resolveTenantForUser(pool, userId) {
   return v;
 }
 
+/**
+ * The active tenant for a PRACTICE (Phase 1: a session works in one of the person's
+ * practices, named by the token and checked against memberships).
+ */
+const _practiceTenantCache = new Map();
+async function resolveTenantForPractice(pool, practiceId) {
+  if (!practiceId) return null;
+  const cached = _practiceTenantCache.get(practiceId);
+  if (cached && Date.now() - cached.ts < RESOLVE_TTL_MS) return cached;
+  const { rows } = await pool.query(
+    `SELECT t.id AS tenant_id, COALESCE(t.schema_name, 'public') AS schema_name
+       FROM control.tenants t WHERE t.practice_id = $1 AND t.status = 'active'`, [practiceId]);
+  const v = { practiceId, tenantId: rows[0] ? rows[0].tenant_id : null, schemaName: rows[0] ? rows[0].schema_name : 'public', ts: Date.now() };
+  _practiceTenantCache.set(practiceId, v);
+  return v;
+}
+
 /** Clear a user's cached tenant (call after changing their practice_id). */
 function invalidateUserTenant(userId) { _userTenantCache.delete(userId); }
 
 module.exports = {
+  resolveTenantForPractice,
   listTenants, getDefaultTenant, getTenantById, getBaselineConfig,
   resolveTenantForUser, invalidateUserTenant
 };

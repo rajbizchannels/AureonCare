@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Microscope, X, Save } from 'lucide-react';
+import { Microscope, X, Save, ToggleLeft, ToggleRight } from 'lucide-react';
 import LabCPTMultiSelect from './LabCPTMultiSelect';
 import ResultRecipientsMultiSelect from './ResultRecipientsMultiSelect';
 import ConfirmationModal from '../modals/ConfirmationModal';
@@ -38,14 +38,13 @@ const NewLabOrderForm = ({
     linkedDiagnosisId: ''
   });
   const [laboratories, setLaboratories] = useState([]);
-  const [loadingLaboratories, setLoadingLaboratories] = useState(true);
+  const [, setLoadingLaboratories] = useState(true);
   const [diagnoses, setDiagnoses] = useState([]);
   const [loadingDiagnoses, setLoadingDiagnoses] = useState(false);
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [showSuccessConfirmation, setShowSuccessConfirmation] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [createDiagnosis, setCreateDiagnosis] = useState(false);
-  const [medicalCodes, setMedicalCodes] = useState([]);
 
   // Log form view on mount
   useEffect(() => {
@@ -229,7 +228,9 @@ const NewLabOrderForm = ({
 
   const handleActualSubmit = async () => {
     setIsSubmitting(true);
-    setShowConfirmation(false);
+    // NOT closed here: ConfirmationModal awaits this handler and closes itself
+    // afterwards, showing a spinner meanwhile. Closing it first took that away and
+    // left the user on a screen with no sign that anything was happening.
 
     // Convert recipients array to JSON
     const recipientIds = formData.recipients && formData.recipients.length > 0
@@ -702,19 +703,12 @@ const NewLabOrderForm = ({
                       Create diagnosis record for this lab order
                     </span>
                     <button
+                      role="switch" aria-checked={!!(createDiagnosis)}
                       type="button"
                       onClick={() => setCreateDiagnosis(!createDiagnosis)}
-                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors cursor-pointer ${
-                        createDiagnosis
-                          ? 'bg-blue-500'
-                          : theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'
-                      }`}
+                      className="inline-flex shrink-0 items-center transition-opacity hover:opacity-80 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:opacity-50"
                     >
-                      <span
-                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                          createDiagnosis ? 'translate-x-6' : 'translate-x-1'
-                        }`}
-                      />
+                      {(createDiagnosis) ? <ToggleRight className="w-6 h-6 text-green-400" /> : <ToggleLeft className="w-6 h-6 text-gray-400" />}
                     </button>
                   </div>
                   {createDiagnosis && (

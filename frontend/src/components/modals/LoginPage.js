@@ -1,15 +1,19 @@
 import { useState } from 'react';
-import { Sun, Moon } from 'lucide-react';
+import { Sun, Moon, Loader2 } from 'lucide-react';
 import { useGoogleLogin } from '@react-oauth/google';
 import { getMicrosoftAuthCode } from '../../utils/msAuthCode';
 import { microsoftOAuthConfig } from '../../config/oauthConfig';
 
-const LoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, addNotification, setShowForgotPassword, setCurrentModule, setShowRegister, onCreatePractice }) => {
+const LoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, addNotification, setShowForgotPassword, setCurrentModule, onCreatePractice }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loginError, setLoginError] = useState('');
   const [needsMfa, setNeedsMfa] = useState(false);
   const [mfaCode, setMfaCode] = useState('');
+  // Signing in had NO busy state at all: you clicked Sign In and the page sat there until
+  // the response arrived. On a slow connection that is indistinguishable from a click that
+  // missed, so people click again — and this is the first button anyone ever presses.
+  const [signingIn, setSigningIn] = useState(false);
 
   // SEC-20: MSAL is no longer used for sign-in (see handleMicrosoftLogin).
 
@@ -25,7 +29,9 @@ const LoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, addNotif
 
   const handleLogin = async (e) => {
     e.preventDefault();
+    if (signingIn) return;   // a second submit while the first is in flight
     setLoginError('');
+    setSigningIn(true);
 
     try {
       const response = await api.login(email, password, mfaCode || undefined);
@@ -42,6 +48,10 @@ const LoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, addNotif
       // keep the password the user already typed, rather than making them start over.
       if (error.mfaRequired) setNeedsMfa(true);
       setLoginError(error.message || 'Login failed');
+    } finally {
+      // Both paths: a rejected sign-in has to leave the button usable, or a mistyped
+      // password would need a page reload to try again.
+      setSigningIn(false);
     }
   };
 
@@ -222,9 +232,14 @@ const LoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, addNotif
 
           <button
             type="submit"
-            className="w-full px-4 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 rounded-lg font-medium transition-colors text-white"
+            disabled={signingIn}
+            aria-busy={signingIn || undefined}
+            className={`w-full px-4 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 rounded-lg font-medium transition-colors text-white flex items-center justify-center gap-2 ${
+              signingIn ? 'opacity-70 cursor-wait' : ''
+            }`}
           >
-            Sign In
+            {signingIn && <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />}
+            {signingIn ? 'Signing in…' : 'Sign In'}
           </button>
         </form>
 
@@ -269,14 +284,11 @@ const LoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, addNotif
         </div>
 
         <div className="mt-6 text-center space-y-3">
+          {/* Accounts come from invitations: staff are invited by their practice's
+              administrator, patients by their practice (SEC-39 — the old self-registration
+              page could not create a working account). */}
           <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
-            Don't have an account?{' '}
-            <button
-              onClick={() => setShowRegister(true)}
-              className="text-cyan-500 hover:text-cyan-400 font-medium transition-colors"
-            >
-              Register here
-            </button>
+            Joining a practice? Ask your administrator to send you an invitation.
           </p>
           {onCreatePractice && (
             <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
