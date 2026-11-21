@@ -1,5 +1,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { Globe, Loader2, Upload } from 'lucide-react';
+import { getTranslations } from '../config/translations';
+import { useOptionalApp } from '../context/AppContext';
+
+const useT = () => getTranslations(useOptionalApp()?.language || 'en');
 
 /**
  * My profile → "Practice profile listing": a provider's own consent to appear on the
@@ -8,6 +12,7 @@ import { Globe, Loader2, Upload } from 'lucide-react';
  * Renders nothing for staff who are not providers.
  */
 const ProviderListingPanel = ({ theme = 'light', api, addNotification }) => {
+  const t = useT();
   const dark = theme === 'dark';
   const [data, setData] = useState(null);
   const [form, setForm] = useState(null);
@@ -49,7 +54,7 @@ const ProviderListingPanel = ({ theme = 'light', api, addNotification }) => {
     try {
       const next = { ...form, ...override };
       await api.saveMyListing({ ...next, languages: next.languages.split(',').map((s) => s.trim()).filter(Boolean) });
-      addNotification?.('success', next.consented ? 'Your listing preferences are saved' : 'You are no longer listed on the practice profile');
+      addNotification?.('success', next.consented ? (t.providerListingSaved || 'Your listing preferences are saved') : (t.providerListingRemoved || 'You are no longer listed on the practice profile'));
       await load();
     } catch (e) {
       setError(e.message);
@@ -64,7 +69,7 @@ const ProviderListingPanel = ({ theme = 'light', api, addNotification }) => {
     try {
       const ph = await api.uploadProfilePhoto('provider', file);
       setForm((f) => ({ ...f, photo_id: ph.id, show_photo: true }));
-      addNotification?.('success', 'Photo uploaded — it appears once an administrator approves it. Save to keep your choices.');
+      addNotification?.('success', t.providerListingPhotoUploaded || 'Photo uploaded — it appears once an administrator approves it. Save to keep your choices.');
       await api.getMyListing().then(setData);
     } catch (e) {
       setError(e.message);
@@ -75,18 +80,18 @@ const ProviderListingPanel = ({ theme = 'light', api, addNotification }) => {
 
   const photo = (data.photos || []).find((p) => p.id === form.photo_id);
   const visibilityNote = {
-    off: 'The practice profile is currently off, so nothing is public yet.',
-    link: 'The practice profile is link-only: visible to people with its link, not in search.',
-    searchable: 'The practice profile is public and searchable.',
+    off: t.providerListingVisibilityOff || 'The practice profile is currently off, so nothing is public yet.',
+    link: t.providerListingVisibilityLink || 'The practice profile is link-only: visible to people with its link, not in search.',
+    searchable: t.providerListingVisibilitySearchable || 'The practice profile is public and searchable.',
   }[data.practiceVisibility] || '';
 
   return (
     <div className={`rounded-lg p-4 ${dark ? 'bg-slate-800/50' : 'bg-gray-100/50'}`}>
       <h4 className={`font-semibold mb-1 flex items-center gap-2 ${dark ? 'text-white' : 'text-gray-900'}`}>
-        <Globe className="w-4 h-4" /> Practice profile listing
+        <Globe className="w-4 h-4" /> {t.providerListingTitle || 'Practice profile listing'}
       </h4>
       <p className={`text-xs mb-3 ${muted}`}>{visibilityNote}</p>
-      {data.needsReconsent && <p className="text-xs mb-3 text-amber-500">The listing terms have changed — please review and save to keep your listing.</p>}
+      {data.needsReconsent && <p className="text-xs mb-3 text-amber-500">{t.providerListingReconsent || 'The listing terms have changed — please review and save to keep your listing.'}</p>}
 
       <label className={`flex items-start gap-2 text-sm ${text}`}>
         <input type="checkbox" className="mt-0.5" checked={form.consented}
@@ -94,9 +99,9 @@ const ProviderListingPanel = ({ theme = 'light', api, addNotification }) => {
         <span>{data.consentText}</span>
       </label>
 
-      <fieldset className="mt-3 space-y-2" disabled={!form.consented} aria-label="Details to show">
-        <div className={`text-xs ${muted}`}>Your name and title always show when you are listed. Also show:</div>
-        {box('show_specialties', 'Specialties')}
+      <fieldset className="mt-3 space-y-2" disabled={!form.consented} aria-label={t.providerListingDetailsToShow || 'Details to show'}>
+        <div className={`text-xs ${muted}`}>{t.providerListingAlwaysShown || 'Your name and title always show when you are listed. Also show:'}</div>
+        {box('show_specialties', t.providerListingSpecialties || 'Specialties')}
         {form.consented && form.show_specialties && (
           <div className="flex flex-wrap gap-1.5 pl-6">
             {(data.specialties || []).slice(0, 60).map((s) => {
@@ -111,23 +116,23 @@ const ProviderListingPanel = ({ theme = 'light', api, addNotification }) => {
             })}
           </div>
         )}
-        {box('show_bio', 'A short bio')}
+        {box('show_bio', t.providerListingShortBio || 'A short bio')}
         {form.consented && form.show_bio && (
-          <textarea rows={3} maxLength={1500} className={input} value={form.bio} aria-label="Bio"
-                    onChange={(e) => setForm((f) => ({ ...f, bio: e.target.value }))} placeholder="Your background and interests, in a few sentences." />
+          <textarea rows={3} maxLength={1500} className={input} value={form.bio} aria-label={t.providerListingBio || 'Bio'}
+                    onChange={(e) => setForm((f) => ({ ...f, bio: e.target.value }))} placeholder={t.providerListingBioPlaceholder || 'Your background and interests, in a few sentences.'} />
         )}
-        {box('show_languages', 'Languages I speak')}
+        {box('show_languages', t.providerListingLanguagesSpoken || 'Languages I speak')}
         {form.consented && form.show_languages && (
-          <input className={input} value={form.languages} aria-label="Languages" placeholder="English, Spanish"
+          <input className={input} value={form.languages} aria-label={t.providerListingLanguages || 'Languages'} placeholder={t.providerListingLanguagesPlaceholder || 'English, Spanish'}
                  onChange={(e) => setForm((f) => ({ ...f, languages: e.target.value }))} />
         )}
-        {box('show_photo', 'My photo')}
+        {box('show_photo', t.providerListingMyPhoto || 'My photo')}
         {form.consented && form.show_photo && (
           <div className="flex items-center gap-2 pl-6 text-xs">
-            {photo ? <span className={muted}>Photo {photo.status === 'approved' ? 'approved' : photo.status === 'pending' ? 'waiting for approval' : 'not approved'}</span>
-              : <span className={muted}>No photo yet.</span>}
+            {photo ? <span className={muted}>{photo.status === 'approved' ? (t.providerListingPhotoApproved || 'Photo approved') : photo.status === 'pending' ? (t.providerListingPhotoPending || 'Photo waiting for approval') : (t.providerListingPhotoRejected || 'Photo not approved')}</span>
+              : <span className={muted}>{t.providerListingNoPhoto || 'No photo yet.'}</span>}
             <label className={`inline-flex items-center gap-1 px-2 py-1 rounded border cursor-pointer ${dark ? 'border-slate-600 text-slate-200' : 'border-gray-300 text-gray-700'}`}>
-              <Upload className="w-3.5 h-3.5" /> Upload
+              <Upload className="w-3.5 h-3.5" /> {t.providerListingUpload || 'Upload'}
               <input type="file" accept="image/jpeg,image/png" className="sr-only" onChange={(e) => { uploadPhoto(e.target.files[0]); e.target.value = ''; }} />
             </label>
           </div>
@@ -138,7 +143,7 @@ const ProviderListingPanel = ({ theme = 'light', api, addNotification }) => {
       <div className="flex justify-end mt-3">
         <button type="button" onClick={() => save()} disabled={busy}
                 className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-sm font-medium disabled:opacity-60">
-          {busy && <Loader2 className="w-4 h-4 animate-spin" />} Save listing
+          {busy && <Loader2 className="w-4 h-4 animate-spin" />} {t.providerListingSave || 'Save listing'}
         </button>
       </div>
     </div>

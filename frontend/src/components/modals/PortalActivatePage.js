@@ -3,6 +3,10 @@ import { Loader2, AlertCircle, HeartPulse, CheckCircle2 } from 'lucide-react';
 import { useGoogleLogin } from '@react-oauth/google';
 import { getMicrosoftAuthCode } from '../../utils/msAuthCode';
 import { microsoftOAuthConfig } from '../../config/oauthConfig';
+import { getTranslations } from '../../config/translations';
+import { useOptionalApp } from '../../context/AppContext';
+
+const useT = () => getTranslations(useOptionalApp()?.language || 'en');
 
 /**
  * The page behind a patient portal invitation (/portal/activate?token=…).
@@ -15,6 +19,7 @@ import { microsoftOAuthConfig } from '../../config/oauthConfig';
  * holds a single-use code, redeemed on the server.
  */
 const PortalActivatePage = ({ theme = 'light', token, api, onActivated, onSignIn }) => {
+  const t = useT();
   const dark = theme === 'dark';
   const [invite, setInvite] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -35,8 +40,8 @@ const PortalActivatePage = ({ theme = 'light', token, api, onActivated, onSignIn
   // Show the confirmation briefly, then enter the portal (Continue does it immediately).
   useEffect(() => {
     if (!done) return undefined;
-    const t = setTimeout(() => onActivated?.(done.patient), 1200);
-    return () => clearTimeout(t);
+    const timer = setTimeout(() => onActivated?.(done.patient), 1200);
+    return () => clearTimeout(timer);
   }, [done]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const finish = (res) => {
@@ -47,13 +52,13 @@ const PortalActivatePage = ({ theme = 'light', token, api, onActivated, onSignIn
   const withPassword = async (e) => {
     e.preventDefault();
     setError('');
-    if (form.password !== form.confirmPassword) return setError('The passwords do not match.');
-    if (form.password.length < 12) return setError('Use at least 12 characters.');
+    if (form.password !== form.confirmPassword) return setError(t.portalActivatePasswordsMismatch || 'The passwords do not match.');
+    if (form.password.length < 12) return setError(t.portalActivatePasswordTooShort || 'Use at least 12 characters.');
     setBusy('password');
     try {
       finish(await api.acceptPortalInvite(token, form.password));
     } catch (err) {
-      setError(err.message || 'Could not set up your portal.');
+      setError(err.message || t.portalActivateSetupFailed || 'Could not set up your portal.');
     } finally {
       setBusy('');
     }
@@ -66,12 +71,12 @@ const PortalActivatePage = ({ theme = 'light', token, api, onActivated, onSignIn
       try {
         finish(await api.acceptPortalInviteWithOAuth('google', token, resp.code, 'postmessage'));
       } catch (err) {
-        setError(err.message || 'Google sign-in failed.');
+        setError(err.message || t.portalActivateGoogleFailed || 'Google sign-in failed.');
       } finally {
         setBusy('');
       }
     },
-    onError: () => setError('Google sign-in was cancelled.'),
+    onError: () => setError(t.portalActivateGoogleCancelled || 'Google sign-in was cancelled.'),
   });
 
   const withMicrosoft = async () => {
@@ -80,7 +85,7 @@ const PortalActivatePage = ({ theme = 'light', token, api, onActivated, onSignIn
       const { code, redirectUri, codeVerifier } = await getMicrosoftAuthCode(microsoftOAuthConfig.auth.clientId);
       finish(await api.acceptPortalInviteWithOAuth('microsoft', token, code, redirectUri, codeVerifier));
     } catch (err) {
-      setError(err.message || 'Microsoft sign-in failed.');
+      setError(err.message || t.portalActivateMicrosoftFailed || 'Microsoft sign-in failed.');
     } finally {
       setBusy('');
     }
@@ -95,7 +100,7 @@ const PortalActivatePage = ({ theme = 'light', token, api, onActivated, onSignIn
 
   if (loading) {
     return (
-      <div className={`min-h-screen ${bg} flex items-center justify-center`} role="status" aria-label="Loading">
+      <div className={`min-h-screen ${bg} flex items-center justify-center`} role="status" aria-label={t.loading || 'Loading'}>
         <Loader2 className="animate-spin text-blue-600" size={32} />
       </div>
     );
@@ -106,11 +111,11 @@ const PortalActivatePage = ({ theme = 'light', token, api, onActivated, onSignIn
       <div className={`min-h-screen ${bg} flex items-center justify-center px-4`}>
         <div className={`w-full max-w-md p-6 rounded-xl border text-center ${card}`}>
           <CheckCircle2 className="mx-auto text-green-600" size={40} />
-          <h1 className={`mt-4 text-2xl font-semibold ${text}`}>You're all set</h1>
-          <p className={`mt-2 ${muted}`}>Your {invite?.practiceName} patient portal is ready. Opening it now…</p>
+          <h1 className={`mt-4 text-2xl font-semibold ${text}`}>{t.portalActivateAllSet || "You're all set"}</h1>
+          <p className={`mt-2 ${muted}`}>{(t.portalActivateReady || 'Your {practice} patient portal is ready. Opening it now…').replace('{practice}', invite?.practiceName ?? '')}</p>
           <button onClick={() => onActivated?.(done.patient)}
                   className="mt-6 px-5 py-2.5 rounded-lg bg-blue-600 text-white font-medium">
-            Continue
+            {t.portalActivateContinue || 'Continue'}
           </button>
         </div>
       </div>
@@ -122,13 +127,13 @@ const PortalActivatePage = ({ theme = 'light', token, api, onActivated, onSignIn
       <div className={`min-h-screen ${bg} flex items-center justify-center px-4`}>
         <div className="max-w-md text-center">
           <AlertCircle className="mx-auto text-amber-600" size={40} />
-          <h1 className={`mt-4 text-2xl font-semibold ${text}`}>This link can't be used</h1>
+          <h1 className={`mt-4 text-2xl font-semibold ${text}`}>{t.portalActivateLinkUnusable || "This link can't be used"}</h1>
           <p className={`mt-2 ${muted}`}>
-            {error || 'It may have expired or already been used.'} Ask your practice to send you a new invitation.
+            {error || t.portalActivateLinkExpired || 'It may have expired or already been used.'} {t.portalActivateAskNewInvite || 'Ask your practice to send you a new invitation.'}
           </p>
           {onSignIn && (
             <button onClick={onSignIn} className="mt-6 px-5 py-2.5 rounded-lg bg-blue-600 text-white font-medium">
-              I already have an account
+              {t.portalActivateHaveAccount || 'I already have an account'}
             </button>
           )}
         </div>
@@ -136,15 +141,19 @@ const PortalActivatePage = ({ theme = 'light', token, api, onActivated, onSignIn
     );
   }
 
+  const intro = (t.portalActivateIntro || 'Set up your {practice} patient portal to see appointments, messages and records.').split('{practice}');
+
   return (
     <div className={`min-h-screen ${bg} flex items-center justify-center px-4 py-10`}>
       <div className={`w-full max-w-md p-6 rounded-xl border ${card}`}>
         <HeartPulse className="text-blue-600" size={28} />
         <h1 className={`mt-3 text-2xl font-semibold ${text}`}>
-          Welcome{invite.firstName ? `, ${invite.firstName}` : ''}
+          {invite.firstName
+            ? (t.portalActivateWelcomeName || 'Welcome, {name}').replace('{name}', invite.firstName)
+            : (t.welcomeBack || 'Welcome')}
         </h1>
         <p className={`mt-1 ${muted}`}>
-          Set up your <strong>{invite.practiceName}</strong> patient portal to see appointments, messages and records.
+          {intro[0]}<strong>{invite.practiceName}</strong>{intro[1]}
         </p>
 
         {error && (
@@ -155,40 +164,40 @@ const PortalActivatePage = ({ theme = 'light', token, api, onActivated, onSignIn
 
         <div className="mt-5 space-y-2">
           <button type="button" onClick={() => googleLogin()} disabled={!!busy} className={secondary}>
-            {busy === 'google' ? 'Connecting…' : 'Continue with Google'}
+            {busy === 'google' ? (t.portalActivateConnecting || 'Connecting…') : (t.portalActivateContinueGoogle || 'Continue with Google')}
           </button>
           <button type="button" onClick={withMicrosoft} disabled={!!busy} className={secondary}>
-            {busy === 'microsoft' ? 'Connecting…' : 'Continue with Microsoft'}
+            {busy === 'microsoft' ? (t.portalActivateConnecting || 'Connecting…') : (t.portalActivateContinueMicrosoft || 'Continue with Microsoft')}
           </button>
         </div>
 
-        <div className={`my-4 text-center text-sm ${muted}`}>or choose a password</div>
+        <div className={`my-4 text-center text-sm ${muted}`}>{t.portalActivateOrPassword || 'or choose a password'}</div>
 
         <form onSubmit={withPassword} className="space-y-3">
           <label className="block">
-            <span className={`text-sm ${muted}`}>Password</span>
+            <span className={`text-sm ${muted}`}>{t.password || 'Password'}</span>
             <input className={input} type="password" required autoComplete="new-password"
-                   placeholder="At least 12 characters" value={form.password}
+                   placeholder={t.portalActivatePasswordPlaceholder || 'At least 12 characters'} value={form.password}
                    onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))} />
           </label>
           <label className="block">
-            <span className={`text-sm ${muted}`}>Confirm password</span>
+            <span className={`text-sm ${muted}`}>{t.portalActivateConfirmPassword || 'Confirm password'}</span>
             <input className={input} type="password" required autoComplete="new-password"
-                   placeholder="Type it again" value={form.confirmPassword}
+                   placeholder={t.portalActivateConfirmPlaceholder || 'Type it again'} value={form.confirmPassword}
                    onChange={(e) => setForm((f) => ({ ...f, confirmPassword: e.target.value }))} />
           </label>
           <p className={`text-xs ${muted}`}>
-            Use upper and lower case, a number and a symbol. Commonly breached passwords are refused.
+            {t.portalActivatePasswordHint || 'Use upper and lower case, a number and a symbol. Commonly breached passwords are refused.'}
           </p>
           <button type="submit" disabled={!!busy} aria-busy={busy === 'password'}
                   className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-blue-600 text-white font-medium disabled:opacity-60">
             {busy === 'password' ? <Loader2 className="animate-spin" size={16} /> : null}
-            Set up my portal
+            {t.portalActivateSubmit || 'Set up my portal'}
           </button>
         </form>
 
         <p className={`mt-4 text-xs text-center ${muted}`}>
-          Invitation for {invite.email}. The link works once.
+          {(t.portalActivateInvitationFor || 'Invitation for {email}. The link works once.').replace('{email}', invite.email)}
         </p>
       </div>
     </div>

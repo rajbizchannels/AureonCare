@@ -1,6 +1,10 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import QRCode from 'qrcode';
 import { QrCode, X, Download, Printer, Copy, Check, Loader2 } from 'lucide-react';
+import { getTranslations } from '../../config/translations';
+import { useOptionalApp } from '../../context/AppContext';
+
+const useT = () => getTranslations(useOptionalApp()?.language || 'en');
 
 /**
  * A "QR code" button for a link that is shared with someone: opens a dialog with the code,
@@ -20,7 +24,10 @@ export async function makeQrDataUrl(text, width = 512) {
 
 const safeName = (s) => String(s || 'qr-code').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'qr-code';
 
-const QrCodeButton = ({ getUrl, title = 'QR code', description, filename, theme = 'light', label = 'QR code', className = '' }) => {
+const QrCodeButton = ({ getUrl, title: titleProp, description, filename, theme = 'light', label: labelProp, className = '' }) => {
+  const t = useT();
+  const title = titleProp === undefined ? (t.qrCode || 'QR code') : titleProp;
+  const label = labelProp === undefined ? (t.qrCode || 'QR code') : labelProp;
   const dark = theme === 'dark';
   const [open, setOpen] = useState(false);
   const [url, setUrl] = useState('');
@@ -32,13 +39,13 @@ const QrCodeButton = ({ getUrl, title = 'QR code', description, filename, theme 
     setError('');
     try {
       const u = typeof getUrl === 'function' ? await getUrl() : getUrl;
-      if (!u) throw new Error('There is no link to show yet.');
+      if (!u) throw new Error(t.qrNoLinkYet || 'There is no link to show yet.');
       setUrl(u);
       setImg(await makeQrDataUrl(u));
     } catch (e) {
-      setError(e.message || 'Could not create the QR code.');
+      setError(e.message || t.qrCreateFailed || 'Could not create the QR code.');
     }
-  }, [getUrl]);
+  }, [getUrl, t]);
 
   useEffect(() => { if (open && !img && !error) load(); }, [open, img, error, load]);
 
@@ -72,7 +79,7 @@ const QrCodeButton = ({ getUrl, title = 'QR code', description, filename, theme 
       .u{font-family:monospace;font-size:13px;word-break:break-all;margin-top:14px}.b{font-weight:700;margin-top:24px}
       .g{color:#F9BD00}.t{color:#08B39C}</style></head><body>
       <h1>${esc(title)}</h1>${description ? `<p>${esc(description)}</p>` : ''}
-      <img src="${img}" alt="QR code"><div class="u">${esc(url)}</div>
+      <img src="${img}" alt="${esc(t.qrCode || 'QR code')}"><div class="u">${esc(url)}</div>
       <div class="b"><span class="g">Aureon</span><span class="t">Care</span></div></body></html>`);
     doc.close();
     const go = () => { frame.contentWindow.focus(); frame.contentWindow.print(); setTimeout(() => frame.remove(), 1000); };
@@ -89,7 +96,7 @@ const QrCodeButton = ({ getUrl, title = 'QR code', description, filename, theme 
 
   return (
     <>
-      <button type="button" onClick={() => setOpen(true)} title="Show a QR code for this link"
+      <button type="button" onClick={() => setOpen(true)} title={t.qrShowForLink || 'Show a QR code for this link'}
               className={className || `inline-flex items-center gap-1.5 px-2 py-1 rounded text-xs border shrink-0 ${
                 dark ? 'border-slate-600 text-slate-200 hover:bg-slate-700' : 'border-gray-300 text-gray-700 hover:bg-gray-100'}`}>
         <QrCode className="w-3.5 h-3.5" />{label}
@@ -104,14 +111,14 @@ const QrCodeButton = ({ getUrl, title = 'QR code', description, filename, theme 
                 <h3 className="text-base font-semibold">{title}</h3>
                 {description && <p className={`text-sm mt-0.5 ${dark ? 'text-slate-400' : 'text-gray-500'}`}>{description}</p>}
               </div>
-              <button type="button" onClick={() => setOpen(false)} aria-label="Close"
+              <button type="button" onClick={() => setOpen(false)} aria-label={t.close || 'Close'}
                       className={`p-1 rounded ${dark ? 'hover:bg-slate-700' : 'hover:bg-gray-100'}`}>
                 <X className="w-4 h-4" />
               </button>
             </div>
             <div className="flex justify-center">
               {img ? (
-                <img src={img} alt={`QR code for ${url}`} className="w-60 h-60 rounded-lg bg-white p-1" />
+                <img src={img} alt={(t.qrCodeFor || 'QR code for {url}').replace('{url}', url)} className="w-60 h-60 rounded-lg bg-white p-1" />
               ) : error ? (
                 <p className="text-sm text-red-500 py-16 text-center">{error}</p>
               ) : (
@@ -121,13 +128,13 @@ const QrCodeButton = ({ getUrl, title = 'QR code', description, filename, theme 
             {url && <p className={`mt-3 text-xs font-mono break-all text-center ${dark ? 'text-slate-300' : 'text-gray-600'}`}>{url}</p>}
             <div className="mt-4 flex flex-wrap justify-center gap-2">
               <button type="button" onClick={download} disabled={!img} className={`${btn} disabled:opacity-50`}>
-                <Download className="w-4 h-4" />Download PNG
+                <Download className="w-4 h-4" />{t.qrDownloadPng || 'Download PNG'}
               </button>
               <button type="button" onClick={print} disabled={!img} className={`${btn} disabled:opacity-50`}>
-                <Printer className="w-4 h-4" />Print
+                <Printer className="w-4 h-4" />{t.qrPrint || 'Print'}
               </button>
               <button type="button" onClick={copy} disabled={!url} className={`${btn} disabled:opacity-50`}>
-                {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}{copied ? 'Copied' : 'Copy link'}
+                {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}{copied ? (t.aiCopied || 'Copied') : (t.qrCopyLink || 'Copy link')}
               </button>
             </div>
           </div>
