@@ -1,6 +1,6 @@
 # AureonCare User Manual
 
-**Version 1.5 - Updated October 2026**
+**Version 1.6 - Updated November 2026**
 **Modern Healthcare Practice Management System**
 
 ---
@@ -40,6 +40,9 @@
 31. [Medical Camps](#31-medical-camps)
 32. [Locations](#32-locations)
 33. [Practice Setup Wizard](#33-practice-setup-wizard)
+34. [AI Suite](#34-ai-suite)
+35. [Practice Directory](#35-practice-directory)
+36. [Working in Several Practices](#36-working-in-several-practices)
 
 ---
 
@@ -54,7 +57,10 @@ AureonCare is a comprehensive, enterprise-grade medical practice management plat
 - Appointment scheduling, waitlist, and public self-booking links
 - Medical camps: outreach events run as a station pipeline
 - Multi-site support with locations for clinics, camps, mobile and partner venues
-- Specialty configuration for dentistry, ophthalmology, paediatrics and behavioural health
+- Specialty configuration with starter packs for 36 specialties
+- Optional AI assistance across 12 features, with your own provider key and mandatory human review
+- Public practice directory with per-provider listing consent
+- One account across several practices, with a practice switcher
 - Revenue Cycle Management (RCM) with claims and billing
 - Double-entry accounting and inventory management
 - Custom form building with automated patient intake
@@ -110,7 +116,82 @@ This manual is designed for:
 - 💡 **Tip** - Helpful suggestions and best practices
 - ✅ **Note** - Additional information
 
-### 1.5 What's New in Version 1.5 (October 2026)
+### 1.5 What's New in Version 1.6 (November 2026)
+
+**Major New Features:**
+
+🆕 **AI Suite**
+- Twelve AI features you switch on or off individually, per practice
+- **Bring your own key** — Anthropic Claude, OpenAI, Azure OpenAI, Google Gemini, Mistral AI (EU), or an offline/self-hosted model
+- A BAA or DPA confirmation is required before patient data may go to a cloud provider
+- **Patient identifiers are replaced with placeholders before anything is sent**, and restored on the way back
+- **Every AI output is a draft.** A named reviewer must accept, edit or reject it; clinical features require clinician sign-off
+- Cost guidance per use and per month, with usage and limits visible
+- AI drafts push straight into the chart: medications to Prescriptions, tests to Lab Orders, SOAP text and codes onto the note
+- See Section 34
+
+🆕 **Practice Directory**
+- Publish a plain public page for your practice — name, about, contact, specialties, locations, photos, and providers who consented
+- Three visibility levels: **Off**, **Link only**, **Searchable**
+- Providers opt in individually and choose exactly what is listed; an administrator can never list someone who has not consented
+- Public one-box search at **/find** — by specialty, place or name, typo-tolerant, with neutral ranking and no paid placement
+- Searches are never logged and never appear in the address bar
+- No reviews, no patient data, no third-party scripts
+- See Section 35
+
+🆕 **Working in Several Practices**
+- One person can now belong to more than one practice
+- A **practice switcher** in the top bar moves you between them
+- Your role, your data and your session timeout are those of the practice you are currently in
+- Administrators manage a shared colleague's role in their own practice only — they cannot change the person's account
+- Removing someone's membership ends their sessions in that practice immediately
+- See Section 36
+
+🆕 **Invitations Replace Self-Registration**
+- The "Register here" link and the old self-registration routes have been removed
+- Staff and patients now join by invitation only
+- **Patient portal invitations:** staff invite a patient already on file; the patient opens a one-time link, chooses a password or continues with Google or Microsoft, and lands in the portal signed in, tied to their existing chart — no duplicate records
+- Only the patient ever chooses their own password
+- Staff invitations now support Microsoft as well as Google
+- Invitation emails are branded
+
+🆕 **Short Links and QR Codes**
+- Links sent or shared are shortened on AureonCare's own domain (`/s/<code>`), never a third-party shortener — invitation and reset links carry sign-in tokens
+- A **QR code** button appears wherever a link is handed to someone:
+  - Provider online-booking links
+  - The telehealth meeting link on an appointment
+  - Staff and patient invitation links
+- Download as PNG, print, or copy
+- Booking QR codes use a link that does not expire, so a printed code keeps working
+
+🆕 **WhatsApp Message Templates**
+- Pre-approved templates so messages can be sent outside WhatsApp's 24-hour reply window
+- A QR code is attached to messages that carry a short link
+
+🆕 **Fine-Grained Permissions**
+- One permissions screen covering every module, replacing the separate Inventory and Accounts grids
+- Per-module permissions now actually take effect — the two grids that existed before were never read by anything
+- Create Custom Role simplified to a name-only form
+
+🆕 **Specialty Packs for 36 Specialties**
+- Starter content packs now cover all 36 top-level specialties, up from four
+
+🆕 **Session Fixes**
+- Your session resumes properly on reload
+- Sign-out now genuinely ends the session rather than only clearing the screen
+- Multiple browser tabs stay in step with each other
+
+🆕 **Smaller Improvements**
+- Claims, pre-authorisations and lab orders are numbered on the server, in sequence
+- Camp attendees receive sequential MRNs on promotion
+- Subscription changes are audited and prorated
+- Vendor integrations are configured per practice; Stripe is managed by the platform
+- The booking form defaults the doctor and patient, both still changeable
+- The Diagnosis form is reordered to follow the order of a visit
+- Buttons show a busy state on login, offerings and twelve other forms
+- Inventory, Accounts and Audit Log screens translated
+
+### 1.6 What's New in Version 1.5 (October 2026)
 
 **Major New Features:**
 
@@ -170,7 +251,7 @@ This manual is designed for:
 - Sign-in through Google or Microsoft reports why an authorisation was rejected
 - Provider search is reachable before you pick a date
 
-### 1.6 What's New in Version 1.4 (September 2026)
+### 1.7 What's New in Version 1.4 (September 2026)
 
 **Major New Features:**
 
@@ -249,7 +330,7 @@ This manual is designed for:
 - A published library of short how-to videos covering front desk, clinical, finance, and administration workflows
 - Linked from the in-app help drawer
 
-### 1.7 What's New in Version 1.3 (August 2026)
+### 1.8 What's New in Version 1.3 (August 2026)
 
 **Major New Features:**
 
@@ -343,7 +424,7 @@ This manual is designed for:
 - CI/CD pipelines and an automated update agent
 - Supports cloud, customer-cloud, and on-premises deployment
 
-### 1.8 What's New in Version 1.2 (January 2026)
+### 1.9 What's New in Version 1.2 (January 2026)
 
 **Major New Features:**
 
@@ -440,7 +521,7 @@ This manual is designed for:
 - Contextual help based on current module
 - Quick access via Help icon in header or ?help=true URL parameter
 
-### 1.9 What's New in Version 1.1 (December 2025)
+### 1.10 What's New in Version 1.1 (December 2025)
 
 **Previous Enhancements:**
 
@@ -565,21 +646,30 @@ When logging in for the first time:
 
 ### 2.2.1 Getting an Account
 
+⚠️ **CHANGED IN V1.6:** The public self-registration page has been removed. Nobody creates their own AureonCare account from a sign-up form any more — staff and patients join **by invitation**. The only thing you can still start yourself is a brand-new practice with its own subscription.
 There are three ways for staff to get an AureonCare account (patients: see **4** below). There is no open self-registration page — every account starts from an invitation, a verified work-email domain, or a new practice subscription:
 
-**1. Invitation from your practice**
-- An administrator adds you under **Settings → Users**
-- You receive an email with a link to set your password
-- You can also accept the invitation with Google or Microsoft sign-in
+**1. Staff — invitation from your practice**
+- An administrator adds you under **Settings → Users** and sends an invitation
+- You receive a branded email with a one-time link
+- Set a password, or accept with **Google** or **Microsoft** sign-in
+- 🆕 **V1.6:** If you already have an AureonCare account at another practice, accepting with your **existing** password adds the new practice rather than creating a second account (see Section 36)
 
-**2. Signing up with your work email** (🆕 NEW IN V1.4)
+**2. Patients — invitation from the practice** (🆕 NEW IN V1.6)
+- A staff member invites you from your existing patient record
+- You receive an email with a one-time link
+- Open it, choose a password or continue with Google or Microsoft
+- You land in the portal already signed in, attached to your existing chart
+**3. Signing up with your work email** (🆕 NEW IN V1.4)
 - If your practice has claimed and verified its email domain, you can sign yourself up with your work address
 - Open the join page (`/join`) and register with that address
 - Your account is created in a **pending** state and appears in your practice's approval queue
 - An administrator approves it before you can sign in
 - Self-serve joiners are never given administrator rights
 
-**3. Starting a new practice** (🆕 NEW IN V1.4)
+✅ **Note:** Only the patient ever chooses their own portal password. Staff cannot set it for them, and the invitation ties the login to the chart already on file, so no duplicate patient record is created.
+
+**4. Starting a new practice**
 - Go to `/signup`
 - Choose a subscription plan
 - Enter your practice details and apply a coupon code if you have one
@@ -588,6 +678,11 @@ There are three ways for staff to get an AureonCare account (patients: see **4**
 
 ✅ **Note:** Card details are handled entirely by Stripe and never reach AureonCare.
 
+**What if I used to have an account that never worked?**
+
+Accounts left behind by the old self-registration page were never attached to a practice, so they never appeared in User Management and could not be cleaned up. 🆕 **V1.6:** An invitation sent to that email address now **adopts** the orphaned account instead of failing. An invitation is only refused when the address already belongs to someone in a practice.
+
+### 2.3 Social Login (OAuth)
 **4. Patients: an invitation from the practice** (🆕 NEW)
 - Staff open the patient's record (the edit form in Electronic Health Records, or the chart) and click **Invite to portal** under *Patient portal*. The patient needs an email address on file.
 - The patient receives an email with a one-time link (valid for 14 days) and chooses a password, or continues with Google or Microsoft. They land in their portal, signed in.
@@ -697,13 +792,15 @@ Every module in AureonCare lives in exactly one workspace group. Use this map to
 - Custom report builder
 
 **🔧 Settings**
-- *Practice:* Practice setup, Clinic settings, Locations, Working hours, Appointment settings
-- *Access:* Users, Roles, Plans
-- *System:* Integrations, Telehealth setup, Backup, Archive, Audit logs
+- *Practice:* Practice setup, Clinic settings, Practice profile, Locations, Working hours, Appointment settings
+- *Access:* Users, Roles, Permissions, Plans
+- *System:* Integrations (including AI), Telehealth setup, Backup, Archive, Audit logs
 
 💡 **Tip:** What you see depends on three things: your subscription tier, your role, and your practice's specialty. A module must be in your plan **and** permitted by your role before it appears; a specialty pack can then hide modules you do not use, and an administrator can pin any of those back. See Sections 27 and 33.
 
 🆕 **Added in V1.5:** Medical Camps under **Scheduling**; Practice Setup and Locations under **Settings → Practice**.
+
+🆕 **Added in V1.6:** Practice Profile under **Settings → Practice** (Section 35); the AI section inside **Settings → Integrations** (Section 34); and a **practice switcher** in the top bar if you belong to more than one practice (Section 36).
 
 **Common Actions:**
 - **View** - Click on a record to see details
@@ -6508,12 +6605,15 @@ A specialty pack is a starting configuration: suggested services, forms, and ter
 
 **Available packs:**
 
+🆕 **UPDATED IN V1.6:** Starter content packs now cover all **36 top-level specialties**, up from four. The four below shipped first and are the most fully developed; the rest provide starter services, forms and terminology for their field.
+
 | Pack | Covers |
 |------|--------|
 | **Behavioural Health** | Counselling and behavioural health practice |
 | **Dentistry** | General dental practice, chair-side appointments |
 | **Ophthalmology** | Refraction and investigation workflows |
 | **Paediatrics** | Well-child visits and immunisation schedules |
+| **+ 32 more** | One per remaining top-level specialty |
 
 Choosing a pack does not commit you to it. Step 6 shows exactly what would be created or changed before anything happens.
 
@@ -6567,6 +6667,315 @@ Re-running:
 - ✅ Pin back any module your specialty hid but you actually use
 - ❌ Don't expect a pack to overwrite your edits — it is designed not to
 - ❌ Don't choose a specialty you do not practise just to get one of its forms; copy the form instead
+
+---
+
+## 34. AI Suite
+
+**🆕 NEW IN V1.6** — Found under **Settings → Integrations → AI** | Administrators configure, everyone uses
+
+The AI Suite adds optional AI assistance across the platform. It is **off by default**, every feature is switched on individually, and nothing an AI produces reaches a patient record without a person approving it.
+
+### 34.1 The Governing Rule
+
+> **Every AI output is a draft until a named reviewer accepts it.**
+
+AI never writes to a chart, sends a message, or submits a claim on its own. It produces a suggestion, the suggestion waits in a review queue, and a person with the right role accepts, edits or rejects it. For clinical features, that person must be a clinician.
+
+### 34.2 Bringing Your Own Key
+
+AureonCare does not resell AI. You supply a key from a provider you already have a relationship with.
+
+| Provider | Notes |
+|----------|-------|
+| **Anthropic Claude** | |
+| **OpenAI** | |
+| **Azure OpenAI** | Your own Azure tenancy |
+| **Google Gemini** | |
+| **Mistral AI** | EU-hosted |
+| **Offline / self-hosted** | Any OpenAI-compatible endpoint you run yourself |
+
+**Adding a provider:**
+
+1. Go to **Settings → Integrations → AI → Providers**
+2. Choose the provider
+3. Paste your API key
+4. For a cloud provider, confirm you hold a **BAA or DPA** with them
+5. Click **Test** to verify the key works
+6. Save
+
+⚠️ **Warning:** Patient data cannot be sent to a cloud provider until the BAA/DPA confirmation is ticked. This is a deliberate gate — it is your practice's legal relationship with that provider, not AureonCare's.
+
+✅ **Note:** Keys are encrypted at rest and never shown again after saving. To change one, replace it.
+
+💡 **Tip:** If your compliance position does not allow patient data to leave your infrastructure at all, use the **offline / self-hosted** option and point it at a model you run.
+
+### 34.3 How Patient Data Is Protected
+
+Before anything is sent to a provider, identifying details are **replaced with placeholders**. The response comes back with placeholders still in it, and AureonCare puts the real values back.
+
+- The mapping between placeholder and real value is kept for the duration of one request
+- The originals in that mapping are encrypted
+- An auditor can see exactly which values were substituted
+- Requests are logged under the **AI** module in the audit trail
+
+### 34.4 The Twelve Features
+
+Each can be switched on or off independently, with its own provider and model.
+
+**Clinical — reviewer must be a clinician**
+
+| Feature | What it does |
+|---------|--------------|
+| **Ambient Scribe** | Drafts a SOAP note from a visit transcript. Marks anything uncertain with `[verify]`, and will not invent vitals, doses or diagnoses |
+| **Chart Copilot** | Answers questions about a patient's chart |
+| **Coding Suggestions** | Proposes ICD-10 and CPT codes, each with the supporting sentence it came from |
+| **Lab Explanations** | Puts a result into plain language |
+| **Document Extraction** | Pulls structured data out of an uploaded document |
+
+**Revenue cycle**
+
+| Feature | What it does |
+|---------|--------------|
+| **Claim Scrubbing** | Flags problems on a claim before submission |
+| **Prior Authorisation** | Drafts a prior-authorisation request |
+
+**Operational**
+
+| Feature | What it does |
+|---------|--------------|
+| **Message Drafts** | Drafts a reply to a patient message |
+| **No-Show Prediction** | Flags appointments at risk of a no-show |
+| **Inventory Forecast** | Projects stock needs |
+| **Camp Summaries** | Summarises a medical camp's outcomes |
+| **Help Assistant** | Answers questions about using AureonCare |
+
+### 34.5 Switching a Feature On
+
+1. Go to **Settings → Integrations → AI → Features & cost**
+2. Find the feature
+3. Choose the **provider** and **model** it should use
+4. Set the **reviewer roles** who may approve its output
+5. Toggle it **on**
+6. Save
+
+The screen shows, per feature:
+- Estimated **cost per use** and **per month**
+- Actual **usage** so far this month
+- Any **limit** you have set
+
+💡 **Tip:** Turn on one feature, watch the cost and the review queue for a week, then decide about the next. Switching all twelve on at once makes both the bill and the queue hard to reason about.
+
+### 34.6 The Review Queue
+
+**Settings → Integrations → AI → Review queue**, and in your notifications.
+
+**Statuses:**
+
+| Status | Meaning |
+|--------|---------|
+| **Pending** | Waiting for a reviewer |
+| **Accepted** | Approved as written |
+| **Edited** | Approved after the reviewer changed it |
+| **Rejected** | Discarded |
+| **Expired** | Nobody reviewed it in time |
+
+**Reviewing a draft:**
+
+1. Open the draft
+2. Read it against the source — the transcript, the chart, the document
+3. Then either:
+   - **Accept** — apply as written
+   - **Edit** — change it, then apply
+   - **Reject** — discard it
+
+⚠️ **Warning:** Read AI output against its source before accepting. The Ambient Scribe marks uncertainty with `[verify]`, but it is not able to flag everything it got wrong. Accepting is a clinical act and is recorded as yours.
+
+### 34.7 Working With AI Drafts
+
+Accepted drafts push straight into the right place rather than leaving you to retype:
+
+- **SOAP text** goes onto the clinical note
+- **Suggested codes** go onto the diagnosis
+- **Medications** go to Prescriptions — and if a drug is not in the formulary, similar ones are suggested
+- **Tests** go to Lab Orders
+
+Drafts render as formatted text, so headings and lists survive the transfer.
+
+**AI assist buttons** appear on the screens where each feature applies, rather than in a separate AI area.
+
+### 34.8 Best Practices
+
+- ✅ Confirm your BAA or DPA before sending patient data anywhere
+- ✅ Start with one or two features and watch the cost
+- ✅ Set reviewer roles deliberately — the default is restrictive for a reason
+- ✅ Clear the review queue daily; expired drafts are wasted spend
+- ✅ Read every clinical draft against its source
+- ✅ Review AI audit entries alongside your other audit logs
+- ❌ Don't accept a draft you have not read
+- ❌ Don't treat `[verify]` markers as the only things worth checking
+- ❌ Don't give clinical reviewer roles to non-clinical staff to clear the queue faster
+
+---
+
+## 35. Practice Directory
+
+**🆕 NEW IN V1.6** — Found under **Settings → Practice → Practice Profile**
+
+The Directory lets a practice publish a plain public page and, if it chooses, be found by patients searching at **/find**.
+
+✅ **Note:** There are no reviews, no ratings, no patient data, and no third-party scripts on these pages.
+
+### 35.1 Visibility — Off by Default
+
+| Setting | What it means |
+|---------|---------------|
+| **Off** (default) | The page does not exist. Even someone with the link gets a 404 |
+| **Link only** | Reachable by link or QR code, but told not to index. Optionally served at an unguessable address you can re-issue |
+| **Searchable** | Indexable, and included in /find results |
+
+**Changing visibility:**
+
+1. Go to **Settings → Practice → Practice Profile**
+2. Set **Visibility**
+3. Save
+
+💡 **Tip:** An unguessable address keeps working after you switch to Searchable, so a QR code already printed on a leaflet does not break.
+
+### 35.2 What the Page Contains
+
+- Practice name and an "about" description
+- Contact details
+- Specialties, chosen from the catalogue
+- Selected locations (Section 32)
+- Photos
+- Providers who have **consented** to be listed, showing only what each chose
+- A **Book** button for providers who offer online booking
+
+### 35.3 Provider Listing Consent
+
+⚠️ **An administrator can never list a provider.** Only the provider can.
+
+**To consent (as a provider):**
+
+1. Go to your own profile
+2. Open **Directory listing**
+3. Choose what to show: specialties, a short bio, languages, a photo
+4. Read and accept the consent text
+5. Save
+
+**To withdraw:** return to the same screen and withdraw. You come off the public page and out of search.
+
+**What an administrator can do:** hide a provider who has consented — for example while they are on leave. They cannot add one who has not consented, and they cannot change what a consented provider chose to show.
+
+### 35.4 Photos
+
+- JPEG or PNG only, checked by content rather than filename
+- Maximum 2 MB
+- **Embedded metadata is stripped**, including GPS coordinates
+- Providers may upload their own photo, which an administrator then approves
+
+### 35.5 Public Search at /find
+
+Patients search in one box. They can type a specialty, a place, a name, or a mixture.
+
+**What it understands:**
+- Specialties from the catalogue, plus everyday wording — "skin doctor", "eye doctor", "pediatrician", "GP", "ob gyn"
+- A place — city, region, postcode, or "in Leeds" / "near Leeds"
+- Provider and practice names, with tolerance for typos
+
+**How results are ranked:** specialty match, then place, then name, then distance, then alphabetically. **There is no paid placement.**
+
+**What appears:** only practices set to **Searchable** with an active subscription, and only providers who consented and are not hidden. Link-only and Off practices can never appear.
+
+### 35.6 Search Privacy
+
+- Searches are **never logged** — not even when one fails
+- The query goes in the request body, never the address bar, so it is not in browser history or server logs
+- Results are not cached by the browser and are not indexed
+- **"Near me"** is rounded to roughly one kilometre in the browser, rounded again on the server, used once for that search, and never stored
+
+### 35.7 Best Practices
+
+- ✅ Leave visibility **Off** until the page is actually ready
+- ✅ Use **Link only** while you review it internally
+- ✅ Ask providers to complete their own listing rather than chasing consent for them
+- ✅ Keep locations current — patients navigate by them
+- ✅ Re-issue the unguessable address if a leaflet goes astray
+- ❌ Don't put patient stories or testimonials in the about text
+- ❌ Don't upload a photo that includes a patient
+
+---
+
+## 36. Working in Several Practices
+
+**🆕 NEW IN V1.6**
+
+One person can now belong to more than one practice with a single account — a locum, a consultant covering two sites, a clinician who also runs their own clinic.
+
+### 36.1 How It Works
+
+Your account has a **membership** in each practice, each with its own role. You are always working in exactly one at a time — the **active** practice.
+
+What follows the active practice:
+- Your **role**, and therefore what you can see and do
+- The **data** you see — patients, appointments, everything
+- Your **session timeout**, and whether 2FA is required
+
+### 36.2 Switching Practice
+
+1. Click the **practice switcher** in the top bar
+2. Choose the practice
+
+You are issued a fresh session for that practice. Other open tabs reload into it, so you are never looking at two practices at once by accident. The practice you switch to becomes the one you start in next time you sign in.
+
+⚠️ **Note:** If the practice you are switching to requires 2FA and you have not set it up, you will be asked to enrol before you can continue.
+
+### 36.3 Being Added to a Second Practice
+
+An administrator at the other practice invites you using the email address you already use.
+
+When you accept:
+- Enter your **existing** password — it is checked, not replaced
+- Or accept with Google or Microsoft
+
+The practice is added to your account. You keep one login, one password, one set of recovery codes.
+
+### 36.4 What Administrators Can and Cannot Do
+
+For a colleague who also works elsewhere, an administrator of **your** practice can:
+- ✅ Set their role **in this practice**
+- ✅ Remove them from **this practice**
+
+They cannot:
+- ❌ Change their name, email address or password
+- ❌ Change their status at another practice
+- ❌ See their work at another practice
+
+✅ **Note:** This is deliberate. A shared account must not be capturable by whichever practice edits it first.
+
+**Removing a membership takes effect immediately** — the person's sessions in that practice end at once. Their account, and their other practices, are untouched.
+
+### 36.5 What Counts Where
+
+Figures are scoped to the practice you are in, not the platform:
+
+- User lists and seat counts
+- Provider lists, and the providers a patient can book
+- Camp rosters
+- Permission roles
+- Report user statistics
+
+✅ **Note (V1.6):** Report user statistics previously counted every account on the platform. They now count this practice only — so the number may be lower than you are used to, and more accurate.
+
+### 36.6 Best Practices
+
+- ✅ Check the practice switcher before starting clinical work
+- ✅ Give a shared colleague the narrowest role that works in your practice
+- ✅ Remove a membership the day someone stops working with you
+- ✅ Enrol in 2FA once — it travels with your account
+- ❌ Don't create a second account for a second practice; ask for an invitation to the one you have
+- ❌ Don't assume a colleague's role elsewhere matches the one you gave them
 
 ---
 
@@ -6627,6 +7036,27 @@ Re-running:
 ---
 
 ## Document Version History
+
+**Version 1.6** - November 2026 - Major Update with:
+- AI Suite: 12 features, bring-your-own-key across six providers, PHI placeholder
+  substitution, and a review queue where every output is a draft until a named
+  reviewer accepts it
+- AI drafts transfer into the chart: SOAP text, codes, medications to
+  Prescriptions, tests to Lab Orders
+- Practice Directory: public profiles with Off / Link only / Searchable
+  visibility, per-provider listing consent, and one-box search at /find with
+  neutral ranking and no search logging
+- One person in several practices, with a practice switcher and
+  membership-scoped roles, data and session rules
+- Self-registration removed; staff and patients join by invitation
+- Patient portal invitations tied to the existing chart
+- Short links on AureonCare's own domain, and QR codes wherever a link is shared
+- WhatsApp message templates for the 24-hour rule
+- One fine-grained permissions screen covering every module
+- Specialty packs extended to all 36 top-level specialties
+- Session fixes: resume on reload, real sign-out, tabs kept in step
+- Server-side sequential numbering for claims, pre-auths, lab orders and camp MRNs
+- Subscription changes audited and prorated; vendor integrations per practice
 
 **Version 1.5** - October 2026 - Major Update with:
 - Medical Camps: planning, registration desk, station board and outcome reporting

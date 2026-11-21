@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Practice Directory - AureonCare</title>
+    <link rel="stylesheet" href="../styles.css">
+</head>
+<body>
+    <header class="doc-header">
+        <div class="doc-header-content">
+            <div class="doc-header-left">
+                <a href="/" class="home-button">
+                    <svg class="home-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"></path>
+                    </svg>
+                    Back to AureonCare
+                </a>
+                <div class="doc-header-title">
+                    <h1>&#128269; Practice Directory</h1>
+                    <p>Public profiles and patient search</p>
+                </div>
+            </div>
+            <span class="version-badge">v1.6</span>
+        </div>
+    </header>
+    <div class="doc-container">
+        <a href="../index.html" class="back-link">&larr; Back to Documentation</a>
+        <div class="article-card">
+            <h1>Practice Directory</h1>
+            <p>Found under <strong>Settings &rarr; Practice &rarr; Practice Profile</strong>.</p>
+            <p>The Directory lets a practice publish a plain public page and, if it chooses, be found by patients searching at <strong>/find</strong>.</p>
+            <p>There are no reviews, no ratings, no patient data, and no third-party scripts on these pages.</p>
+
+            <h2>Visibility &mdash; Off by Default</h2>
+            <table>
+                <tr><th>Setting</th><th>What it means</th></tr>
+                <tr><td>Off (default)</td><td>The page does not exist. Even someone with the link gets a 404</td></tr>
+                <tr><td>Link only</td><td>Reachable by link or QR, told not to index. Optionally at an unguessable address you can re-issue</td></tr>
+                <tr><td>Searchable</td><td>Indexable, and included in /find results</td></tr>
+            </table>
+            <p><strong>Tip:</strong> An unguessable address keeps working after you switch to Searchable, so a QR code already printed on a leaflet does not break.</p>
+
+            <h2>What the Page Contains</h2>
+            <ul>
+                <li>Practice name and an "about" description</li>
+                <li>Contact details</li>
+                <li>Specialties, chosen from the catalogue</li>
+                <li>Selected locations</li>
+                <li>Photos</li>
+                <li>Providers who have <strong>consented</strong>, showing only what each chose</li>
+                <li>A <strong>Book</strong> button for providers who offer online booking</li>
+            </ul>
+
+            <h2>Provider Listing Consent</h2>
+            <p><strong>An administrator can never list a provider.</strong> Only the provider can.</p>
+            <h3>To consent (as a provider)</h3>
+            <ol>
+                <li>Go to your own profile</li>
+                <li>Open <strong>Directory listing</strong></li>
+                <li>Choose what to show: specialties, a short bio, languages, a photo</li>
+                <li>Read and accept the consent text</li>
+                <li>Save</li>
+            </ol>
+            <p><strong>To withdraw:</strong> return to the same screen and withdraw. You come off the public page and out of search.</p>
+            <p><strong>What an administrator can do:</strong> hide a provider who has consented, for example during leave. They cannot add one who has not consented, and cannot change what a consented provider chose to show.</p>
+
+            <h2>Photos</h2>
+            <ul>
+                <li>JPEG or PNG only, checked by content rather than filename</li>
+                <li>Maximum 2 MB</li>
+                <li><strong>Embedded metadata is stripped</strong>, including GPS coordinates</li>
+                <li>Providers may upload their own photo, which an administrator then approves</li>
+            </ul>
+
+            <h2>Public Search at /find</h2>
+            <p>Patients search in one box &mdash; a specialty, a place, a name, or a mixture.</p>
+            <p><strong>What it understands:</strong></p>
+            <ul>
+                <li>Catalogue specialties, plus everyday wording &mdash; "skin doctor", "eye doctor", "pediatrician", "GP", "ob gyn"</li>
+                <li>A place &mdash; city, region, postcode, or "in Leeds" / "near Leeds"</li>
+                <li>Provider and practice names, with tolerance for typos</li>
+            </ul>
+            <p><strong>Ranking:</strong> specialty match, then place, then name, then distance, then alphabetically. <strong>There is no paid placement.</strong></p>
+            <p><strong>What appears:</strong> only practices set to Searchable with an active subscription, and only providers who consented and are not hidden. Link-only and Off practices can never appear.</p>
+
+            <h2>Search Privacy</h2>
+            <ul>
+                <li>Searches are <strong>never logged</strong> &mdash; not even when one fails</li>
+                <li>The query goes in the request body, never the address bar, so it is not in browser history or server logs</li>
+                <li>Results are not cached by the browser and are not indexed</li>
+                <li><strong>"Near me"</strong> is rounded to roughly one kilometre in the browser, rounded again on the server, used once, and never stored</li>
+            </ul>
+
+            <h2>Best Practices</h2>
+            <ul>
+                <li>&#10003; Leave visibility Off until the page is actually ready</li>
+                <li>&#10003; Use Link only while you review it internally</li>
+                <li>&#10003; Ask providers to complete their own listing rather than chasing consent for them</li>
+                <li>&#10003; Keep locations current &mdash; patients navigate by them</li>
+                <li>&#10003; Re-issue the unguessable address if a leaflet goes astray</li>
+                <li>&#10007; Don't put patient stories or testimonials in the about text</li>
+                <li>&#10007; Don't upload a photo that includes a patient</li>
+            </ul>
+
+            <h2>Related Guides</h2>
+            <ul>
+                <li><a href="locations.html">Locations</a></li>
+                <li><a href="practice-setup.html">Practice Setup Wizard</a></li>
+            </ul>
+        </div>
+    </div>
+    <footer style="background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); color: white; padding: 2rem; text-align: center; margin-top: 3rem;">
+        <p>AureonCare v1.6 - Practice Directory</p>
+    </footer>
+</body>
+</html>
