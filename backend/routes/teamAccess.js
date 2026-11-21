@@ -377,11 +377,14 @@ async function notifyAdminsOfRequest(pool, claim, user) {
 router.get('/requests', authenticate, authorize('admin'), requirePractice, async (req, res) => {
   try {
     const { rows } = await req.app.locals.pool.query(
+      // Domain sign-ups (an account exists) and profile-page requests (email only, no
+      // account until approval sends an invitation). Unconfirmed emails are not shown.
       `SELECT r.id, r.email, r.requested_role, r.status, r.created_at, r.decided_at,
-              r.email_verified_via, u.first_name, u.last_name
+              r.email_verified_via, r.source,
+              COALESCE(u.first_name, r.first_name) AS first_name, COALESCE(u.last_name, r.last_name) AS last_name
          FROM public.join_requests r
-         JOIN public.users u ON u.id = r.user_id
-        WHERE r.practice_id = $1
+         LEFT JOIN public.users u ON u.id = r.user_id
+        WHERE r.practice_id = $1 AND r.status <> 'unverified'
         ORDER BY (r.status = 'pending') DESC, r.created_at DESC
         LIMIT 200`,
       [req.user.practiceId]
@@ -408,7 +411,7 @@ router.post('/requests/:id/:decision', authenticate, authorize('admin'), require
       `UPDATE public.join_requests
           SET status = $3, decided_by = $4, decided_at = now(), decision_note = $5
         WHERE id = $1 AND practice_id = $2 AND status = 'pending'
-        RETURNING user_id, email, requested_role`,
+        RETURNING user_id, email, requested_role, source`,
       [req.params.id, req.user.practiceId, decision === 'approve' ? 'approved' : 'rejected',
        req.user.id, (req.body || {}).note || null]
     );
@@ -417,7 +420,12 @@ router.post('/requests/:id/:decision', authenticate, authorize('admin'), require
       return res.status(404).json({ error: 'No pending request with that id' });
     }
 
-    if (decision === 'approve') {
+    // A profile-page request has no account: approving sends a normal staff invitation
+    // (accepting it is what grants access); rejecting just tells them.
+    const fromProfile = !rows[0].user_id;
+    if (fromProfile) {
+      // nothing to change on an account — handled after COMMIT
+    } else if (decision === 'approve') {
       // Re-assert practice_id from the REQUEST, not from whatever the user row holds now.
       await client.query(
         `UPDATE public.users SET status = 'active', practice_id = $2 WHERE id = $1`,
@@ -429,6 +437,17 @@ router.post('/requests/:id/:decision', authenticate, authorize('admin'), require
       await client.query(`UPDATE public.users SET status = 'blocked' WHERE id = $1`, [rows[0].user_id]);
     }
     await client.query('COMMIT');
+
+    if (fromProfile && decision === 'approve') {
+      const { createStaffInvite } = require('./invites');
+      const out = await createStaffInvite(pool, {
+        email: rows[0].email, practiceId: req.user.practiceId, role: rows[0].requested_role, invitedBy: req.user.id,
+        inviterName: [req.user.firstName, req.user.lastName].filter(Boolean).join(' ') || req.user.email,
+      });
+      return res.json({ success: true, decision, invite: out.status === 201
+        ? { emailed: out.body.emailed, inviteUrl: out.body.emailed ? undefined : out.body.inviteUrl }
+        : { error: out.body.error } });
+    }
 
     sendEmail(
       rows[0].email,

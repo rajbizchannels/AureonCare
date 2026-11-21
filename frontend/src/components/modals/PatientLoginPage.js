@@ -257,6 +257,10 @@ const PatientLoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, a
             ask them if you haven't received one.
           </p>
           <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+            Looking for a doctor or clinic?{' '}
+            <a href="/find" className="text-blue-500 hover:text-blue-400 font-medium transition-colors">Find a practice</a>
+          </p>
+          <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
             Healthcare provider?{' '}
             <a
               href="/"

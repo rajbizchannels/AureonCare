@@ -1,4 +1,6 @@
 const express = require('express');
+const { getPortalCookie } = require('../utils/authCookies');
+const { resolvePatientActor } = require('../middleware/messagingAuth');
 const router = express.Router();
 const { authenticate, authorize, optionalAuth } = require('../middleware/auth');
 const { rosteredCampWindows } = require('../services/camps');
@@ -1132,31 +1134,28 @@ router.post('/book', optionalAuth, publicBookingTenant, async (req, res) => {
             return res.status(409).json({ error: 'Time slot is no longer available' });
         }
 
-        // Find or create patient
-        let patientId;
-        const existingPatient = await client.query(
-            'SELECT id FROM patients WHERE email = $1',
-            [patientInfo.email]
-        );
-
-        if (existingPatient.rows.length > 0) {
-            patientId = existingPatient.rows[0].id;
-        } else {
-            // Create new patient
-            const newPatient = await client.query(
-                `INSERT INTO patients
-                 (first_name, last_name, email, phone, date_of_birth, status)
-                 VALUES ($1, $2, $3, $4, $5, 'Active')
-                 RETURNING id`,
-                [
-                    patientInfo.firstName,
-                    patientInfo.lastName,
-                    patientInfo.email,
-                    patientInfo.phone,
-                    patientInfo.dob || null
-                ]
-            );
-            patientId = newPatient.rows[0].id;
+        // Who is booking? A patient signed in to THIS practice's portal books into their own
+        // chart — proven by their portal session, never by an email or id in the request.
+        // Anyone else is a guest: the booking becomes a REQUEST attached to no chart, and the
+        // practice confirms it (against an existing patient or as a new one). Matching a guest
+        // to a chart by email let anyone who knew a patient's address add appointments to
+        // that patient's record, and send them confirmation emails.
+        let patientId = null;
+        const portalToken = getPortalCookie(req);
+        if (portalToken) {
+            try {
+                const actor = await resolvePatientActor(req.app.locals.pool, portalToken);
+                if (actor && req.tenant && actor.schemaName === req.tenant.schemaName) patientId = actor.id;
+            } catch (e) { /* not a valid portal session: treat as a guest */ }
+        }
+        const guest = !patientId;
+        if (guest) {
+            const g = patientInfo || {};
+            const email = String(g.email || '').trim();
+            if (!String(g.firstName || '').trim() || !String(g.lastName || '').trim() || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+                await client.query('ROLLBACK');
+                return res.status(400).json({ error: 'Please give your first name, last name and a valid email address.' });
+            }
         }
 
         // Create appointment
@@ -1175,10 +1174,19 @@ router.post('/book', optionalAuth, publicBookingTenant, async (req, res) => {
                 appointmentType.duration_minutes,
                 appointmentType.name,
                 appointmentTypeId,
-                appointmentType.requires_approval ? 'pending' : 'scheduled',
-                'public',
+                (guest || appointmentType.requires_approval) ? 'pending' : 'scheduled',
+                guest ? 'public_request' : 'public',
                 customFormData.reason || '',
-                JSON.stringify(customFormData)
+                JSON.stringify(guest ? {
+                    ...customFormData,
+                    guest: {
+                        firstName: String(patientInfo.firstName || '').trim().slice(0, 100),
+                        lastName: String(patientInfo.lastName || '').trim().slice(0, 100),
+                        email: String(patientInfo.email || '').trim().toLowerCase().slice(0, 255),
+                        phone: String(patientInfo.phone || '').trim().slice(0, 40),
+                        dob: patientInfo.dob || null,
+                    },
+                } : customFormData)
             ]
         );
 
@@ -1190,8 +1198,8 @@ router.post('/book', optionalAuth, publicBookingTenant, async (req, res) => {
 
         const config = configResult.rows[0];
 
-        // Schedule confirmation email
-        if (config && config.send_confirmation_email) {
+        // Schedule confirmation email (a guest's request gets these once staff confirm it)
+        if (!guest && config && config.send_confirmation_email) {
             await client.query(
                 `INSERT INTO appointment_reminders
                  (appointment_id, reminder_type, scheduled_for, delivery_status)
@@ -1201,7 +1209,7 @@ router.post('/book', optionalAuth, publicBookingTenant, async (req, res) => {
         }
 
         // Schedule reminder
-        if (config && config.send_reminder_email) {
+        if (!guest && config && config.send_reminder_email) {
             const reminderTime = new Date(new Date(startTime).getTime() - config.reminder_hours_before * 3600000);
             await client.query(
                 `INSERT INTO appointment_reminders
@@ -1215,10 +1223,15 @@ router.post('/book', optionalAuth, publicBookingTenant, async (req, res) => {
 
         res.status(201).json({
             success: true,
-            appointment: appointment.rows[0],
-            message: appointmentType.requires_approval
-                ? 'Appointment request submitted. Waiting for approval.'
-                : 'Appointment booked successfully!'
+            requested: guest,
+            appointment: { id: appointment.rows[0].id, start_time: appointment.rows[0].start_time,
+                end_time: appointment.rows[0].end_time, appointment_type: appointment.rows[0].appointment_type,
+                duration_minutes: appointment.rows[0].duration_minutes, status: appointment.rows[0].status },
+            message: guest
+                ? 'Request sent. The practice will confirm your appointment by email.'
+                : appointmentType.requires_approval
+                    ? 'Appointment request submitted. Waiting for approval.'
+                    : 'Appointment booked successfully!'
         });
     } catch (error) {
         await client.query('ROLLBACK');

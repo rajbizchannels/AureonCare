@@ -290,6 +290,10 @@ const LoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, addNotif
           <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
             Joining a practice? Ask your administrator to send you an invitation.
           </p>
+          <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+            Looking for a doctor?{' '}
+            <a href="/find" className="text-cyan-500 hover:text-cyan-400 font-medium transition-colors">Find a practice</a>
+          </p>
           {onCreatePractice && (
             <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
               Running a practice?{' '}

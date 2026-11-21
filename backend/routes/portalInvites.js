@@ -428,3 +428,4 @@ router.post('/accept/oauth/:provider', publicLimiter, async (req, res) => {
 });
 
 module.exports = router;
+module.exports.findOrCreateChartForInvite = findOrCreateChartForInvite;

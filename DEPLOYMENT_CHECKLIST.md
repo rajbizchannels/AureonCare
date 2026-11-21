@@ -800,3 +800,26 @@ What changes:
   lacks, it starts in one that does not (switching in then asks for 2FA).
 
 Not yet: a patient with charts at several practices still has one portal sign-in per practice.
+
+## Guest booking requests, "Find a practice" link, "Ask to join" from profile pages
+
+**Order matters: apply the migration BEFORE deploying this code.**
+1. Paste `backend/migrations/094_profile_join_requests.sql` into the SQL editor (safe to re-run).
+   Check: `SELECT filename FROM public.schema_migrations WHERE filename LIKE '094%';` returns one row.
+2. Deploy.
+
+What changes:
+- **Guest bookings are requests.** Someone not signed in who books on a provider's public page
+  gets "Request sent"; the time is held as a pending appointment attached to NO chart, even
+  if their email matches a patient. Staff see "Booking requests" above the calendar
+  (Scheduling → Calendar), with a same-email chart shown only as a hint, and confirm it for that
+  patient, confirm as a new patient (needs a date of birth; refused if the email is already a
+  patient), or decline (frees the time). The guest is emailed the outcome. A patient signed in
+  to the practice's portal still books straight into their own chart.
+- Staff and patient sign-in pages link to `/find` ("Looking for a doctor? Find a practice").
+- **Ask to join.** Public practice pages show "Work here? Ask to join this practice". The
+  person gives name, work email and role (doctor, nurse or staff — never admin), confirms by a
+  24-hour emailed link, and only then do the practice's admins get an email and see the request
+  in Settings → User Management → Team access. Approving sends a normal staff invitation;
+  nothing is granted until it is accepted. Answers never reveal whether someone already works
+  there. No new environment variables.
