@@ -4,7 +4,8 @@ import {
 } from 'react-native';
 import { ArrowLeft, Server, ShieldCheck } from 'lucide-react-native';
 import { useSession } from '@/context/SessionContext';
-import { ErrorNote, PrimaryButton, Screen, SecondaryButton } from '@/components/ui';
+import { ErrorNote, PrimaryButton, Screen } from '@/components/ui';
+import { SocialSignInButton } from '@/components/SocialSignInButton';
 import { PROVIDER_LABEL, type Provider } from '@/lib/socialSignIn';
 import { palette, radius, space, tint, type } from '@/theme/tokens';
 
@@ -165,10 +166,13 @@ export const SignInScreen: React.FC<{ onOpenServer: () => void }> = ({ onOpenSer
                 <Text style={styles.orText}>or</Text>
                 <View style={styles.orLine} />
               </View>
+              {/* Each provider's own button style (src/components/SocialSignInButton.tsx). */}
               {(['google', 'microsoft'] as const).map((provider) => (
-                <SecondaryButton
+                <SocialSignInButton
                   key={provider}
-                  label={providerBusy === provider ? `Opening ${PROVIDER_LABEL[provider]}…` : `Continue with ${PROVIDER_LABEL[provider]}`}
+                  provider={provider}
+                  busy={providerBusy === provider}
+                  disabled={busy || (providerBusy !== null && providerBusy !== provider)}
                   onPress={() => void withProvider(provider)}
                 />
               ))}
