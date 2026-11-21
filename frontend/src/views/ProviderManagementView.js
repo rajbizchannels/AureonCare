@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { showToast } from '../utils/toast';
 import {
   Calendar, Clock, Settings, Link2, Mail, Phone,
   Eye, EyeOff, Copy, Check, AlertCircle
@@ -302,7 +303,7 @@ const ProviderManagementView = ({ theme = 'dark', setCurrentModule }) => {
       await fetchProviderDetails(selectedProvider.id);
     } catch (err) {
       console.error('Error updating booking config:', err);
-      alert('Error updating booking config: ' + err.message);
+      showToast('alert', 'Error updating booking config: ' + err.message);
     }
   };
 

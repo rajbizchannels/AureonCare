@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { showToast } from '../../utils/toast';
 import { CheckSquare, X, Save } from 'lucide-react';
 import ConfirmationModal from '../modals/ConfirmationModal';
 import { useAudit } from '../../hooks/useAudit';
@@ -46,7 +47,7 @@ const NewTaskForm = ({ theme, api, onClose, onSuccess, addNotification, t }) => 
 
     // Validation
     if (!formData.title.trim()) {
-      alert(t.pleaseEnterTaskTitle || 'Please enter a task title');
+      showToast('warning', t.pleaseEnterTaskTitle || 'Please enter a task title');
       return;
     }
 

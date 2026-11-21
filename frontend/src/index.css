@@ -70,3 +70,5 @@ body > [role="dialog"] {
 [class*="meeting-info-icon-container"] {
   overflow: visible !important;
 }
+/* An inline form scrolled into view (components/common/InlineFormScroller.js) clears the top bar. */
+form { scroll-margin-top: 5rem; }
