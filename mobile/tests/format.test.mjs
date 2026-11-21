@@ -1,6 +1,38 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { fullName, isToday, isUpcoming, formatDate, formatTime } from '../src/lib/useResource.ts';
+import {
+  fullName, isDueToday, isPastDue, isToday, isUpcoming, formatDate, formatTime,
+} from '../src/lib/useResource.ts';
+
+/** A DATE column comes back as midnight, which is how this went wrong. */
+const dueDateFor = (offsetDays) => {
+  const d = new Date();
+  d.setDate(d.getDate() + offsetDays);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}T00:00:00.000Z`;
+};
+
+test('a task due today is not overdue', () => {
+  // The bug this exists for: due_date is a DATE, so it arrives as midnight.
+  // Comparing it to Date.now() made everything due today read as overdue from
+  // 00:01 — and the row paints red, which is the worst way to be wrong.
+  assert.equal(isPastDue(dueDateFor(0)), false);
+  assert.equal(isDueToday(dueDateFor(0)), true);
+});
+
+test('overdue is strictly before today, by calendar day', () => {
+  assert.equal(isPastDue(dueDateFor(-1)), true);
+  assert.equal(isPastDue(dueDateFor(-30)), true);
+  assert.equal(isPastDue(dueDateFor(1)), false);
+  assert.equal(isDueToday(dueDateFor(1)), false);
+  assert.equal(isDueToday(dueDateFor(-1)), false);
+});
+
+test('no due date is neither overdue nor due today', () => {
+  for (const bad of [null, undefined, '', 'not-a-date']) {
+    assert.equal(isPastDue(bad), false, String(bad));
+    assert.equal(isDueToday(bad), false, String(bad));
+  }
+});
 
 test('fullName joins what is present', () => {
   assert.equal(fullName('Ada', 'Okonkwo'), 'Ada Okonkwo');

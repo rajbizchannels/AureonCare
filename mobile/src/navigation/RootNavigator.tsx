@@ -3,7 +3,7 @@ import { NavigationContainer, DarkTheme, type Theme } from '@react-navigation/na
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import {
-  CalendarDays, CalendarPlus, FileText, FlaskConical, Home, MessageSquare,
+  CalendarDays, CalendarPlus, FileText, FlaskConical, Home, ListTodo, MessageSquare,
   MoreHorizontal, Receipt, Settings, Stethoscope, Tent, Users,
 } from 'lucide-react-native';
 import { useSession } from '@/context/SessionContext';
@@ -205,6 +205,13 @@ const TAB: Record<string, TabSpec> = {
     component: StaffBillingScreen,
     requires: (c) => c.can('rcm'),
   },
+  tasks: {
+    key: 'tasks',
+    name: 'Tasks',
+    Icon: ListTodo,
+    component: TasksScreen,
+    requires: (c) => c.role !== 'patient' && c.can('practiceManagement'),
+  },
   camps: {
     key: 'camps',
     name: 'Camps',
@@ -240,15 +247,15 @@ const SHELLS: Record<Shell, { base: string[]; tabletExtras: string[] }> = {
     tabletExtras: [],
   },
   clinician: {
-    base: ['today', 'schedule', 'messages', 'patients'],
+    base: ['today', 'schedule', 'messages', 'patients', 'tasks'],
     tabletExtras: ['chart', 'orders'],
   },
   frontdesk: {
-    base: ['today', 'schedule', 'messages', 'patients'],
+    base: ['today', 'schedule', 'messages', 'patients', 'tasks'],
     tabletExtras: ['camps', 'billing'],
   },
   admin: {
-    base: ['today', 'schedule', 'messages', 'patients'],
+    base: ['today', 'schedule', 'messages', 'patients', 'tasks'],
     tabletExtras: ['chart', 'billing', 'admin'],
   },
 };
@@ -286,6 +293,7 @@ const MORE_ROWS: {
     key: 'tasks',
     label: 'Tasks',
     screen: 'Tasks',
+    tab: 'tasks',
     requires: (c) => c.role !== 'patient' && c.can('practiceManagement'),
   },
   { key: 'notifications', label: 'Notifications', screen: 'Notifications' },

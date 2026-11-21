@@ -3,7 +3,7 @@ import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'rea
 import { Check, CircleCheck, ListTodo } from 'lucide-react-native';
 import { useSession } from '@/context/SessionContext';
 import { useLayout } from '@/lib/device';
-import { useResource, formatDate } from '@/lib/useResource';
+import { useResource, formatDate, isDueToday, isPastDue } from '@/lib/useResource';
 import { Chip, EmptyState, ErrorNote, Loading, Segmented } from '@/components/ui';
 import { palette, radius, space, type } from '@/theme/tokens';
 import type { Task } from '@/lib/api';
@@ -32,11 +32,10 @@ const PRIORITY_TONE: Record<string, 'danger' | 'warning' | 'neutral'> = {
 };
 
 /** Overdue is a property of the row, and the only thing that should shout. */
-const isOverdue = (task: Task): boolean => {
-  if (!task.dueDate || isDone(task)) return false;
-  const due = new Date(task.dueDate).getTime();
-  return !Number.isNaN(due) && due < Date.now();
-};
+const isOverdue = (task: Task): boolean => !isDone(task) && isPastDue(task.dueDate);
+
+/** Due today is worth saying, but it is not late. */
+const dueToday = (task: Task): boolean => !isDone(task) && isDueToday(task.dueDate);
 
 export const TasksScreen: React.FC = () => {
   const { api } = useSession();
@@ -145,9 +144,18 @@ export const TasksScreen: React.FC = () => {
                     <Chip label={item.priority} tone={PRIORITY_TONE[item.priority] ?? 'neutral'} />
                   ) : null}
                   {item.dueDate ? (
-                    <Text style={[styles.due, isOverdue(item) && styles.dueOverdue]}>
-                      {isOverdue(item) ? 'Overdue ' : 'Due '}
-                      {formatDate(item.dueDate)}
+                    <Text
+                      style={[
+                        styles.due,
+                        isOverdue(item) && styles.dueOverdue,
+                        dueToday(item) && styles.dueToday,
+                      ]}
+                    >
+                      {isOverdue(item)
+                        ? `Overdue ${formatDate(item.dueDate)}`
+                        : dueToday(item)
+                          ? 'Due today'
+                          : `Due ${formatDate(item.dueDate)}`}
                     </Text>
                   ) : null}
                 </View>
@@ -199,4 +207,5 @@ const styles = StyleSheet.create({
   chips: { flexDirection: 'row', alignItems: 'center', gap: space.sm, flexWrap: 'wrap' },
   due: { ...type.xs, color: palette.textMuted },
   dueOverdue: { color: palette.danger, fontWeight: '600' },
+  dueToday: { color: palette.warningText, fontWeight: '600' },
 });
