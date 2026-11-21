@@ -49,6 +49,26 @@ const Toaster = () => {
     return () => { window.removeEventListener(TOAST_EVENT, onToast); all.forEach(clearTimeout); all.clear(); };
   }, [dismiss]);
 
+  // Line the stack up with the breadcrumb bar: its first toast sits on that row, right edge
+  // on the bar's own right padding. Screens without the bar (sign-in, sign-up) keep the
+  // top-right corner. Re-measured whenever toasts appear and on resize.
+  const [place, setPlace] = useState(null);
+  useEffect(() => {
+    if (!toasts.length) return undefined;
+    const measure = () => {
+      const bar = document.querySelector('[data-breadcrumb-bar]');
+      if (!bar) { setPlace(null); return; }
+      const r = bar.getBoundingClientRect();
+      if (!r.height) { setPlace(null); return; }
+      const pad = parseFloat(window.getComputedStyle(bar).paddingRight) || 16;
+      const TOAST_H = 48;   // one-line toast: py-3 + 20px line + borders
+      setPlace({ top: Math.round(r.top + Math.max(4, (r.height - TOAST_H) / 2)), right: Math.round(window.innerWidth - r.right + pad) });
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, [toasts.length]);
+
   const dark = useOptionalApp()?.theme === 'dark';
   const errors = toasts.filter((t) => t.kind === 'error');
   const others = toasts.filter((t) => t.kind !== 'error');
@@ -70,9 +90,12 @@ const Toaster = () => {
   };
 
   return (
-    <div className="fixed z-[100] top-4 inset-x-4 sm:inset-x-auto sm:right-4 sm:w-96 flex flex-col gap-2 pointer-events-none">
+    <div className={`fixed z-[100] inset-x-4 sm:inset-x-auto sm:w-96 flex flex-col pointer-events-none ${place ? '' : 'top-4 sm:right-4'}`}
+         style={place ? { top: place.top, ...(window.innerWidth >= 640 ? { right: place.right } : {}) } : undefined}>
       <div role="alert" aria-live="assertive" className="flex flex-col gap-2">{errors.map(render)}</div>
-      <div role="status" aria-live="polite" className="flex flex-col gap-2">{others.map(render)}</div>
+      {/* The live regions stay mounted (screen readers need them before content arrives),
+          but an empty one must not add a gap above the first toast. */}
+      <div role="status" aria-live="polite" className={`flex flex-col gap-2 ${errors.length && others.length ? 'mt-2' : ''}`}>{others.map(render)}</div>
     </div>
   );
 };

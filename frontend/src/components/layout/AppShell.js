@@ -141,6 +141,7 @@ const AppShell = ({
         <main className={`flex-1 min-w-0 flex flex-col ${dark ? 'bg-slate-950' : 'bg-gray-50'}`}>
           {activeItem && (
             <div
+              data-breadcrumb-bar   /* toasts line up with this row (components/common/Toaster.js) */
               className={`flex-shrink-0 flex items-center gap-3 px-4 sm:px-6 h-14 border-b ${
                 dark ? 'bg-slate-900/40 border-slate-800' : 'bg-white border-gray-200'
               }`}
