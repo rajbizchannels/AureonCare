@@ -2,7 +2,7 @@ import React, { useCallback, useState } from 'react';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { AlertTriangle, CheckCircle2 } from 'lucide-react-native';
 import { useSession } from '@/context/SessionContext';
-import { Card, ErrorNote, PrimaryButton, Screen, SecondaryButton } from '@/components/ui';
+import { Card, ErrorNote, PrimaryButton, Screen, SecondaryButton, inputChrome } from '@/components/ui';
 import { checkServer, isServerUrlAllowed, normaliseServerUrl } from '@/lib/server';
 import { useLayout } from '@/lib/device';
 import { palette, radius, space, tint, type } from '@/theme/tokens';
@@ -60,13 +60,13 @@ export const ServerScreen: React.FC<{ navigation?: { goBack: () => void } }> = (
           <View style={[styles.inputRow, error ? styles.inputError : null]}>
             <Text style={styles.scheme}>https://</Text>
             <TextInput
+                  {...inputChrome}
               value={value}
               onChangeText={setValue}
               autoCapitalize="none"
               autoCorrect={false}
               keyboardType="url"
               placeholder="app.aureoncare.tech"
-              placeholderTextColor={palette.textMuted}
               style={styles.input}
             />
           </View>

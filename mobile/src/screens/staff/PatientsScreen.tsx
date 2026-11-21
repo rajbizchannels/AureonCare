@@ -4,7 +4,7 @@ import { AlertTriangle, ArrowLeft, Search, Users } from 'lucide-react-native';
 import { useSession } from '@/context/SessionContext';
 import { useActivePatient } from '@/context/ActivePatientContext';
 import { SplitView } from '@/components/SplitView';
-import { Card, Chip, EmptyState, ErrorNote, Loading, SectionLabel } from '@/components/ui';
+import { Card, Chip, EmptyState, ErrorNote, Loading, SectionLabel, inputChrome, refreshChrome, scrollChrome } from '@/components/ui';
 import { formatDate, fullName, humanStatus, useResource } from '@/lib/useResource';
 import { useLayout } from '@/lib/device';
 import { palette, radius, space, tint, type } from '@/theme/tokens';
@@ -38,10 +38,10 @@ export const StaffPatientsScreen: React.FC = () => {
         <View style={styles.search}>
           <Search size={18} color={palette.textMuted} />
           <TextInput
+                  {...inputChrome}
             value={query}
             onChangeText={setQuery}
             placeholder="Search patients"
-            placeholderTextColor={palette.textMuted}
             autoCapitalize="none"
             style={styles.searchInput}
           />
@@ -55,12 +55,13 @@ export const StaffPatientsScreen: React.FC = () => {
       ) : null}
 
       <FlatList
+        {...scrollChrome}
         data={rows}
         keyExtractor={(p) => p.id}
         contentContainerStyle={[styles.list, { paddingHorizontal: gutter }]}
         keyboardShouldPersistTaps="handled"
         refreshControl={
-          <RefreshControl refreshing={patients.refreshing} onRefresh={patients.refresh} tintColor={palette.accent} />
+          <RefreshControl refreshing={patients.refreshing} onRefresh={patients.refresh} {...refreshChrome} />
         }
         ListEmptyComponent={
           <EmptyState

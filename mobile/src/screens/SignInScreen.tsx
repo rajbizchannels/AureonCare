@@ -4,7 +4,7 @@ import {
 } from 'react-native';
 import { ArrowLeft, Server, ShieldCheck } from 'lucide-react-native';
 import { useSession } from '@/context/SessionContext';
-import { ErrorNote, PrimaryButton, Screen } from '@/components/ui';
+import { ErrorNote, PrimaryButton, Screen, inputChrome } from '@/components/ui';
 import { palette, radius, space, tint, type } from '@/theme/tokens';
 
 /**
@@ -105,6 +105,7 @@ export const SignInScreen: React.FC<{ onOpenServer: () => void }> = ({ onOpenSer
               <View style={styles.field}>
                 <Text style={styles.label}>Email</Text>
                 <TextInput
+                  {...inputChrome}
                   value={email}
                   onChangeText={setEmail}
                   autoCapitalize="none"
@@ -112,7 +113,6 @@ export const SignInScreen: React.FC<{ onOpenServer: () => void }> = ({ onOpenSer
                   keyboardType="email-address"
                   textContentType="username"
                   placeholder="you@example.com"
-                  placeholderTextColor={palette.textMuted}
                   style={[styles.input, error ? styles.inputError : null]}
                 />
               </View>
@@ -120,6 +120,7 @@ export const SignInScreen: React.FC<{ onOpenServer: () => void }> = ({ onOpenSer
               <View style={styles.field}>
                 <Text style={styles.label}>Password</Text>
                 <TextInput
+                  {...inputChrome}
                   value={password}
                   onChangeText={setPassword}
                   secureTextEntry
@@ -151,6 +152,7 @@ export const SignInScreen: React.FC<{ onOpenServer: () => void }> = ({ onOpenSer
               <View style={styles.field}>
                 <Text style={styles.label}>Six-digit code</Text>
                 <TextInput
+                  {...inputChrome}
                   value={code}
                   onChangeText={setCode}
                   autoFocus

@@ -4,7 +4,7 @@ import { Check, CircleCheck, ListTodo } from 'lucide-react-native';
 import { useSession } from '@/context/SessionContext';
 import { useLayout } from '@/lib/device';
 import { useResource, formatDate, isDueToday, isPastDue } from '@/lib/useResource';
-import { Chip, EmptyState, ErrorNote, Loading, Segmented } from '@/components/ui';
+import { Chip, EmptyState, ErrorNote, Loading, Segmented, refreshChrome, scrollChrome } from '@/components/ui';
 import { palette, radius, space, type } from '@/theme/tokens';
 import type { Task } from '@/lib/api';
 
@@ -94,6 +94,7 @@ export const TasksScreen: React.FC = () => {
       ) : null}
 
       <FlatList
+        {...scrollChrome}
         data={rows}
         keyExtractor={(t) => String(t.id)}
         contentContainerStyle={[styles.list, { paddingHorizontal: gutter }]}
@@ -101,7 +102,7 @@ export const TasksScreen: React.FC = () => {
           <RefreshControl
             refreshing={tasks.refreshing}
             onRefresh={tasks.refresh}
-            tintColor={palette.accent}
+            {...refreshChrome}
           />
         }
         ListEmptyComponent={

@@ -2,7 +2,7 @@ import React, { useCallback, useState } from 'react';
 import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { Download, FileText } from 'lucide-react-native';
 import { useSession } from '@/context/SessionContext';
-import { Card, Chip, EmptyState, ErrorNote, Loading } from '@/components/ui';
+import { Card, Chip, EmptyState, ErrorNote, Loading, refreshChrome, scrollChrome } from '@/components/ui';
 import { formatDate, fullName, useResource } from '@/lib/useResource';
 import { useLayout } from '@/lib/device';
 import { palette, space, type } from '@/theme/tokens';
@@ -58,11 +58,12 @@ export const PatientRecordsScreen: React.FC = () => {
       )}
 
       <FlatList
+        {...scrollChrome}
         data={records.data ?? []}
         keyExtractor={(r) => r.id}
         contentContainerStyle={[styles.list, { paddingHorizontal: gutter }]}
         refreshControl={
-          <RefreshControl refreshing={records.refreshing} onRefresh={records.refresh} tintColor={palette.accent} />
+          <RefreshControl refreshing={records.refreshing} onRefresh={records.refresh} {...refreshChrome} />
         }
         ListEmptyComponent={
           <EmptyState

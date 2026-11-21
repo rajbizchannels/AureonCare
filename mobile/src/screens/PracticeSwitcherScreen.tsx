@@ -5,7 +5,7 @@ import { useSession } from '@/context/SessionContext';
 import { useLayout } from '@/lib/device';
 import { useResource } from '@/lib/useResource';
 import { ApiError } from '@/lib/api';
-import { Card, Chip, EmptyState, ErrorNote, Loading, SectionLabel } from '@/components/ui';
+import { Card, Chip, EmptyState, ErrorNote, Loading, SectionLabel, refreshChrome, scrollChrome } from '@/components/ui';
 import { palette, radius, space, type } from '@/theme/tokens';
 
 /**
@@ -63,12 +63,13 @@ export const PracticeSwitcherScreen: React.FC<{ navigation?: { goBack: () => voi
 
   return (
     <ScrollView
+        {...scrollChrome}
       contentContainerStyle={[styles.content, { paddingHorizontal: gutter }]}
       refreshControl={
         <RefreshControl
           refreshing={memberships.refreshing}
           onRefresh={memberships.refresh}
-          tintColor={palette.accent}
+          {...refreshChrome}
         />
       }
     >

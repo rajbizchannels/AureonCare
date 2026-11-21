@@ -4,7 +4,7 @@ import { ClipboardList, FileSignature, ExternalLink } from 'lucide-react-native'
 import { useSession } from '@/context/SessionContext';
 import { useLayout } from '@/lib/device';
 import { useResource, formatDate } from '@/lib/useResource';
-import { Chip, EmptyState, ErrorNote, Loading, Segmented } from '@/components/ui';
+import { Chip, EmptyState, ErrorNote, Loading, Segmented, refreshChrome, scrollChrome } from '@/components/ui';
 import { palette, radius, space, type } from '@/theme/tokens';
 import type { FormSubmission } from '@/lib/api';
 
@@ -95,6 +95,7 @@ export const FormsScreen: React.FC = () => {
       ) : null}
 
       <FlatList
+        {...scrollChrome}
         data={rows}
         keyExtractor={(f) => f.id}
         contentContainerStyle={[styles.list, { paddingHorizontal: gutter }]}
@@ -102,7 +103,7 @@ export const FormsScreen: React.FC = () => {
           <RefreshControl
             refreshing={forms.refreshing}
             onRefresh={forms.refresh}
-            tintColor={palette.accent}
+            {...refreshChrome}
           />
         }
         ListEmptyComponent={

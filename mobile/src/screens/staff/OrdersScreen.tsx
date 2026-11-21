@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { FlaskConical, Pill } from 'lucide-react-native';
 import { useSession } from '@/context/SessionContext';
-import { Card, Chip, EmptyState, ErrorNote, Loading } from '@/components/ui';
+import { Card, Chip, EmptyState, ErrorNote, Loading, refreshChrome, scrollChrome } from '@/components/ui';
 import { formatDate, humanStatus, useResource } from '@/lib/useResource';
 import { useLayout } from '@/lib/device';
 import { palette, space, type } from '@/theme/tokens';
@@ -61,6 +61,7 @@ export const StaffOrdersScreen: React.FC = () => {
         <Loading />
       ) : segment === 'prescriptions' ? (
         <FlatList
+        {...scrollChrome}
           data={prescriptions.data ?? []}
           keyExtractor={(p) => String(p.id)}
           contentContainerStyle={[styles.list, { paddingHorizontal: gutter }]}
@@ -68,7 +69,7 @@ export const StaffOrdersScreen: React.FC = () => {
             <RefreshControl
               refreshing={prescriptions.refreshing}
               onRefresh={prescriptions.refresh}
-              tintColor={palette.accent}
+              {...refreshChrome}
             />
           }
           ListEmptyComponent={
@@ -92,11 +93,12 @@ export const StaffOrdersScreen: React.FC = () => {
         />
       ) : (
         <FlatList
+        {...scrollChrome}
           data={labs.data ?? []}
           keyExtractor={(l) => String(l.id)}
           contentContainerStyle={[styles.list, { paddingHorizontal: gutter }]}
           refreshControl={
-            <RefreshControl refreshing={labs.refreshing} onRefresh={labs.refresh} tintColor={palette.accent} />
+            <RefreshControl refreshing={labs.refreshing} onRefresh={labs.refresh} {...refreshChrome} />
           }
           ListEmptyComponent={
             <EmptyState icon={<FlaskConical size={34} color={palette.textFaint} />} title="No lab orders" />

@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { FlatList, Linking, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { CalendarDays, ChevronLeft, ChevronRight, Video } from 'lucide-react-native';
 import { useSession } from '@/context/SessionContext';
-import { Card, Chip, EmptyState, ErrorNote, Loading, PrimaryButton } from '@/components/ui';
+import { Card, Chip, EmptyState, ErrorNote, Loading, PrimaryButton, refreshChrome, scrollChrome } from '@/components/ui';
 import { formatTime, humanStatus, useResource } from '@/lib/useResource';
 import { useLayout } from '@/lib/device';
 import { palette, space, type } from '@/theme/tokens';
@@ -97,6 +97,7 @@ export const StaffScheduleScreen: React.FC = () => {
       ) : null}
 
       <FlatList
+        {...scrollChrome}
         data={rows}
         keyExtractor={(a) => a.id}
         contentContainerStyle={[styles.list, { paddingHorizontal: gutter }]}
@@ -104,7 +105,7 @@ export const StaffScheduleScreen: React.FC = () => {
           <RefreshControl
             refreshing={appointments.refreshing}
             onRefresh={appointments.refresh}
-            tintColor={palette.accent}
+            {...refreshChrome}
           />
         }
         ListEmptyComponent={

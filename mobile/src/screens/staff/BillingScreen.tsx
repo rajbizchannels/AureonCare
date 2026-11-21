@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { Receipt } from 'lucide-react-native';
 import { useSession } from '@/context/SessionContext';
-import { Card, Chip, EmptyState, ErrorNote, Loading } from '@/components/ui';
+import { Card, Chip, EmptyState, ErrorNote, Loading, refreshChrome, scrollChrome } from '@/components/ui';
 import { formatDate, humanStatus, useResource } from '@/lib/useResource';
 import { useLayout } from '@/lib/device';
 import { palette, space, type } from '@/theme/tokens';
@@ -45,11 +45,12 @@ export const StaffBillingScreen: React.FC = () => {
       ) : null}
 
       <FlatList
+        {...scrollChrome}
         data={claims.data ?? []}
         keyExtractor={(c) => c.id}
         contentContainerStyle={[styles.list, { paddingHorizontal: gutter }]}
         refreshControl={
-          <RefreshControl refreshing={claims.refreshing} onRefresh={claims.refresh} tintColor={palette.accent} />
+          <RefreshControl refreshing={claims.refreshing} onRefresh={claims.refresh} {...refreshChrome} />
         }
         ListHeaderComponent={
           (claims.data ?? []).length > 0 ? (

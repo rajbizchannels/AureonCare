@@ -4,7 +4,7 @@ import { Bell } from 'lucide-react-native';
 import { useSession } from '@/context/SessionContext';
 import { useLayout } from '@/lib/device';
 import { useResource, formatDate, formatTime } from '@/lib/useResource';
-import { EmptyState, ErrorNote, Loading } from '@/components/ui';
+import { EmptyState, ErrorNote, Loading, refreshChrome, scrollChrome } from '@/components/ui';
 import { palette, radius, space, type } from '@/theme/tokens';
 import type { Notification } from '@/lib/api';
 
@@ -52,6 +52,7 @@ export const NotificationsScreen: React.FC = () => {
       ) : null}
 
       <FlatList
+        {...scrollChrome}
         data={notifications.data ?? []}
         keyExtractor={(n) => String(n.id)}
         contentContainerStyle={[styles.list, { paddingHorizontal: gutter }]}
@@ -59,7 +60,7 @@ export const NotificationsScreen: React.FC = () => {
           <RefreshControl
             refreshing={notifications.refreshing}
             onRefresh={notifications.refresh}
-            tintColor={palette.accent}
+            {...refreshChrome}
           />
         }
         ListEmptyComponent={

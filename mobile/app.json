@@ -16,7 +16,8 @@
         "NSFaceIDUsageDescription": "Unlock AureonCare without re-entering your password.",
         "NSMicrophoneUsageDescription": "Speak during a video visit.",
         "ITSAppUsesNonExemptEncryption": false
-      }
+      },
+      "backgroundColor": "#020617"
     },
     "android": {
       "package": "tech.aureoncare.app",
@@ -25,7 +26,8 @@
         "RECORD_AUDIO",
         "USE_BIOMETRIC",
         "USE_FINGERPRINT"
-      ]
+      ],
+      "backgroundColor": "#020617"
     },
     "plugins": [
       "expo-secure-store",
@@ -45,6 +47,20 @@
       "googleClientIdWeb": "",
       "microsoftClientId": "",
       "microsoftTenant": "common"
+    },
+    "backgroundColor": "#020617",
+    "splash": {
+      "backgroundColor": "#020617",
+      "resizeMode": "contain"
+    },
+    "androidStatusBar": {
+      "backgroundColor": "#0f172a",
+      "barStyle": "light-content",
+      "translucent": false
+    },
+    "androidNavigationBar": {
+      "backgroundColor": "#0f172a",
+      "barStyle": "light-content"
     }
   }
 }

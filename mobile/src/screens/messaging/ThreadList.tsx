@@ -2,7 +2,7 @@ import React from 'react';
 import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { Lock, Users, MessageSquare } from 'lucide-react-native';
 import type { Thread } from '@/lib/api';
-import { Chip, EmptyState, Loading } from '@/components/ui';
+import { Chip, EmptyState, Loading, refreshChrome, scrollChrome } from '@/components/ui';
 import { palette, space, type } from '@/theme/tokens';
 
 /** "14:32" today, "12 Aug" this year, otherwise the date. */
@@ -41,10 +41,11 @@ export const ThreadList: React.FC<{
 
   return (
     <FlatList
+        {...scrollChrome}
       data={threads}
       keyExtractor={(t) => t.id}
       refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={palette.accent} />
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} {...refreshChrome} />
       }
       ListEmptyComponent={
         <EmptyState

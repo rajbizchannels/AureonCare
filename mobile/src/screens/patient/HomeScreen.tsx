@@ -2,7 +2,7 @@ import React, { useCallback } from 'react';
 import { Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { CalendarDays, ChevronRight, MessageSquare, Video } from 'lucide-react-native';
 import { useSession } from '@/context/SessionContext';
-import { Card, ErrorNote, Loading, PrimaryButton, SecondaryButton, SectionLabel } from '@/components/ui';
+import { Card, ErrorNote, Loading, PrimaryButton, SecondaryButton, SectionLabel, refreshChrome, scrollChrome } from '@/components/ui';
 import { formatTime, fullName, isUpcoming, useResource } from '@/lib/useResource';
 import { useLayout } from '@/lib/device';
 import { palette, radius, space, tint, type } from '@/theme/tokens';
@@ -44,6 +44,7 @@ export const PatientHomeScreen: React.FC<{
 
   return (
     <ScrollView
+        {...scrollChrome}
       contentContainerStyle={[styles.content, { paddingHorizontal: gutter, maxWidth: maxContentWidth }]}
       refreshControl={
         <RefreshControl
@@ -52,7 +53,7 @@ export const PatientHomeScreen: React.FC<{
             appointments.refresh();
             unread.refresh();
           }}
-          tintColor={palette.accent}
+          {...refreshChrome}
         />
       }
     >

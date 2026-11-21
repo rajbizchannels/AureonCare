@@ -1,10 +1,45 @@
 import React from 'react';
 import {
-  ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View,
-  type StyleProp, type TextStyle, type ViewStyle,
+  ActivityIndicator, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View,
+  type RefreshControlProps, type StyleProp, type TextStyle, type ViewStyle,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { palette, radius, space, tint, type, HIT_SLOP_MIN } from '@/theme/tokens';
+
+/**
+ * Props for things the OS draws, not us.
+ *
+ * A dark app still gets a light keyboard, a black scrollbar and a blue text
+ * cursor unless each is asked for explicitly — and each is a separate prop on
+ * a different component. Collected here so a screen cannot forget one.
+ */
+
+/** iOS draws the scroll indicator; on a dark ground the default is invisible. */
+export const scrollChrome = {
+  indicatorStyle: 'white',
+} as const;
+
+/** The keyboard, the caret, the selection handles and the magnifier. */
+export const inputChrome = {
+  keyboardAppearance: 'dark',
+  selectionColor: palette.accent,
+  cursorColor: palette.accent,
+  placeholderTextColor: palette.textMuted,
+} as const;
+
+/**
+ * Android's pull-to-refresh spinner sits on its own surface, which defaults
+ * to white. iOS only reads `tintColor`, so both are given.
+ */
+// Not `as const`: RefreshControl wants a mutable ColorValue[] for `colors`.
+export const refreshChrome: Pick<
+  RefreshControlProps,
+  'tintColor' | 'colors' | 'progressBackgroundColor'
+> = {
+  tintColor: palette.accent,
+  colors: [palette.accent],
+  progressBackgroundColor: palette.surface,
+};
 
 /** Screen frame. Edges are handled here so no screen paints under the notch. */
 export const Screen: React.FC<{
@@ -15,9 +50,11 @@ export const Screen: React.FC<{
   <SafeAreaView style={styles.screen} edges={edges}>
     {scroll ? (
       <ScrollView
+        {...scrollChrome}
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
+        {...scrollChrome}
       >
         {children}
       </ScrollView>
@@ -139,7 +176,7 @@ export const Field: React.FC<
   <View style={[styles.field, style as StyleProp<ViewStyle>]}>
     <Text style={styles.fieldLabel}>{label}</Text>
     <TextInput
-      placeholderTextColor={palette.textMuted}
+      {...inputChrome}
       {...input}
       style={[styles.input, inputStyle]}
     />
@@ -194,6 +231,92 @@ const chipTone: Record<ChipTone, { container: ViewStyle; label: { color: string 
   danger: { container: { backgroundColor: tint.dangerSoft }, label: { color: palette.danger } },
 };
 
+/**
+ * A confirmation that belongs to this app.
+ *
+ * `Alert.alert` hands the question to the OS, and the OS does not know what
+ * the app looks like: on iOS a UIAlertController follows the *device's*
+ * appearance, so a phone in light mode drops a white dialog on top of a dark
+ * clinical app. Nothing about it is themeable — there is no prop for it —
+ * so the only way to theme it is not to use it.
+ *
+ * This is a plain Modal instead: same two-choice shape, same destructive
+ * emphasis, drawn in the app's own palette on both platforms.
+ *
+ * `statusBarTranslucent` so the scrim covers the status bar on Android
+ * rather than stopping under it, and `onRequestClose` so the hardware back
+ * button cancels, which is the behaviour Android users expect of a dialog.
+ */
+export const ConfirmDialog: React.FC<{
+  visible: boolean;
+  title: string;
+  message?: string;
+  confirmLabel: string;
+  cancelLabel?: string;
+  destructive?: boolean;
+  busy?: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+}> = ({
+  visible,
+  title,
+  message,
+  confirmLabel,
+  cancelLabel = 'Cancel',
+  destructive,
+  busy,
+  onConfirm,
+  onCancel,
+}) => (
+  <Modal
+    visible={visible}
+    transparent
+    animationType="fade"
+    statusBarTranslucent
+    onRequestClose={onCancel}
+  >
+    {/* Tapping outside cancels, as both platforms' own dialogs do. */}
+    <Pressable style={styles.scrim} onPress={onCancel} accessibilityElementsHidden>
+      {/* Swallows taps so a press inside the card does not dismiss it. */}
+      <Pressable style={styles.dialog} onPress={() => {}} accessibilityViewIsModal>
+        <Text style={styles.dialogTitle}>{title}</Text>
+        {message ? <Text style={styles.dialogMessage}>{message}</Text> : null}
+
+        <View style={styles.dialogActions}>
+          <Pressable
+            onPress={onCancel}
+            disabled={busy}
+            accessibilityRole="button"
+            style={({ pressed }) => [styles.dialogButton, pressed && styles.pressedDim]}
+          >
+            <Text style={styles.dialogCancel}>{cancelLabel}</Text>
+          </Pressable>
+
+          <Pressable
+            onPress={onConfirm}
+            disabled={busy}
+            accessibilityRole="button"
+            style={({ pressed }) => [
+              styles.dialogButton,
+              styles.dialogConfirm,
+              destructive && styles.dialogDestructive,
+              (pressed || busy) && styles.pressedDim,
+            ]}
+          >
+            {busy ? (
+              <ActivityIndicator color={palette.text} size="small" />
+            ) : (
+              <Text style={[styles.dialogConfirmLabel, destructive && styles.dialogDestructiveLabel]}>
+                {confirmLabel}
+              </Text>
+            )}
+          </Pressable>
+        </View>
+      </Pressable>
+    </Pressable>
+  </Modal>
+);
+
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: palette.bg },
   scrollContent: { padding: space.lg, gap: space.md, paddingBottom: space.xl * 2 },
@@ -244,6 +367,46 @@ const styles = StyleSheet.create({
     letterSpacing: 0.6,
   },
   divider: { height: 1, backgroundColor: palette.hairline },
+  scrim: {
+    flex: 1,
+    backgroundColor: 'rgba(2,6,23,0.72)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: space.xl,
+  },
+  dialog: {
+    width: '100%',
+    maxWidth: 400,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: palette.border,
+    backgroundColor: palette.surface,
+    padding: space.xl,
+    gap: space.sm,
+    // iOS floats, Android lifts — the one place the platforms genuinely differ.
+    ...Platform.select({
+      ios: { shadowColor: '#000', shadowOpacity: 0.4, shadowRadius: 24, shadowOffset: { width: 0, height: 8 } },
+      android: { elevation: 8 },
+      default: {},
+    }),
+  },
+  dialogTitle: { ...type.lg, color: palette.text, fontWeight: '700' },
+  dialogMessage: { ...type.base, color: palette.textSecondary },
+  dialogActions: { flexDirection: 'row', justifyContent: 'flex-end', gap: space.sm, marginTop: space.md },
+  dialogButton: {
+    minHeight: HIT_SLOP_MIN,
+    minWidth: 96,
+    paddingHorizontal: space.lg,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dialogCancel: { ...type.md, color: palette.textStrong, fontWeight: '500' },
+  dialogConfirm: { backgroundColor: palette.accentFrom },
+  dialogConfirmLabel: { ...type.md, color: palette.text, fontWeight: '600' },
+  dialogDestructive: { backgroundColor: palette.danger },
+  dialogDestructiveLabel: { color: palette.text },
+  pressedDim: { opacity: 0.7 },
   segmented: {
     flexDirection: 'row',
     backgroundColor: palette.raised,

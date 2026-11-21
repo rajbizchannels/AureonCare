@@ -1,8 +1,8 @@
 import React, { useCallback, useState } from 'react';
-import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { ChevronRight, LogOut, Server } from 'lucide-react-native';
 import { useSession } from '@/context/SessionContext';
-import { Card, Divider, SectionLabel } from '@/components/ui';
+import { Card, ConfirmDialog, Divider, SectionLabel, scrollChrome } from '@/components/ui';
 import { fullName } from '@/lib/useResource';
 import { useLayout } from '@/lib/device';
 import { palette, radius, space, type } from '@/theme/tokens';
@@ -24,19 +24,11 @@ export const MoreScreen: React.FC<{
   const { account, serverUrl, signOut, isPatient } = useSession();
   const { gutter, maxContentWidth } = useLayout();
   const [signingOut, setSigningOut] = useState(false);
+  const [asking, setAsking] = useState(false);
 
   const confirmSignOut = useCallback(() => {
-    Alert.alert('Sign out?', 'You will need your password to sign back in.', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Sign out',
-        style: 'destructive',
-        onPress: () => {
-          setSigningOut(true);
-          void signOut();
-        },
-      },
-    ]);
+    setSigningOut(true);
+    void signOut();
   }, [signOut]);
 
   const name = fullName(account?.firstName, account?.lastName, account?.email ?? 'Signed in');
@@ -50,6 +42,8 @@ export const MoreScreen: React.FC<{
 
   return (
     <ScrollView
+        {...scrollChrome}
+      {...scrollChrome}
       contentContainerStyle={[styles.content, { paddingHorizontal: gutter, maxWidth: maxContentWidth }]}
     >
       <View style={styles.identity}>
@@ -103,7 +97,7 @@ export const MoreScreen: React.FC<{
       )}
 
       <Pressable
-        onPress={confirmSignOut}
+        onPress={() => setAsking(true)}
         disabled={signingOut}
         accessibilityRole="button"
         style={({ pressed }) => [styles.signOut, pressed && styles.rowPressed]}
@@ -111,6 +105,17 @@ export const MoreScreen: React.FC<{
         <LogOut size={17} color={palette.danger} />
         <Text style={styles.signOutLabel}>{signingOut ? 'Signing out…' : 'Sign out'}</Text>
       </Pressable>
+
+      <ConfirmDialog
+        visible={asking}
+        title="Sign out?"
+        message="You will need your password to sign back in. This also ends the session on the server."
+        confirmLabel="Sign out"
+        destructive
+        busy={signingOut}
+        onConfirm={confirmSignOut}
+        onCancel={() => setAsking(false)}
+      />
     </ScrollView>
   );
 };

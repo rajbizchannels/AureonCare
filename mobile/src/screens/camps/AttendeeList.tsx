@@ -5,7 +5,7 @@ import { useSession } from '@/context/SessionContext';
 import { useLayout } from '@/lib/device';
 import { useResource, formatDate } from '@/lib/useResource';
 import { canWorkCampDesk } from '@/lib/permissions';
-import { Chip, EmptyState, ErrorNote, Loading } from '@/components/ui';
+import { Chip, EmptyState, ErrorNote, Loading, inputChrome, refreshChrome, scrollChrome } from '@/components/ui';
 import { palette, radius, space, type } from '@/theme/tokens';
 import type { Camp } from '@/lib/api';
 
@@ -64,10 +64,10 @@ export const AttendeeList: React.FC<{ camp: Camp }> = ({ camp }) => {
       <View style={[styles.searchRow, { marginHorizontal: gutter }]}>
         <Search size={15} color={palette.textMuted} />
         <TextInput
+                  {...inputChrome}
           value={query}
           onChangeText={setQuery}
           placeholder="Name, phone or token"
-          placeholderTextColor={palette.textMuted}
           autoCapitalize="none"
           returnKeyType="search"
           style={styles.searchInput}
@@ -84,6 +84,7 @@ export const AttendeeList: React.FC<{ camp: Camp }> = ({ camp }) => {
         <Loading />
       ) : (
         <FlatList
+        {...scrollChrome}
           data={attendees.data ?? []}
           keyExtractor={(a) => a.id}
           contentContainerStyle={[styles.list, { paddingHorizontal: gutter }]}
@@ -92,7 +93,7 @@ export const AttendeeList: React.FC<{ camp: Camp }> = ({ camp }) => {
             <RefreshControl
               refreshing={attendees.refreshing}
               onRefresh={attendees.refresh}
-              tintColor={palette.accent}
+              {...refreshChrome}
             />
           }
           ListEmptyComponent={

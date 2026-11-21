@@ -4,7 +4,7 @@ import { Check, ChevronRight, FileWarning, ListTodo, Tent, X } from 'lucide-reac
 import type { Appointment, Camp, PendingReview, Task } from '@/lib/api';
 import { useSession } from '@/context/SessionContext';
 import { useActivePatient } from '@/context/ActivePatientContext';
-import { Card, Chip, SectionLabel } from '@/components/ui';
+import { Card, Chip, SectionLabel, refreshChrome, scrollChrome } from '@/components/ui';
 import { useLayout } from '@/lib/device';
 import { canUseCamps } from '@/lib/permissions';
 import { formatTime, fullName, humanStatus, isPastDue, isToday } from '@/lib/useResource';
@@ -152,6 +152,7 @@ export const StaffTodayScreen: React.FC<{ navigation?: Nav }> = ({ navigation })
 
   return (
     <ScrollView
+        {...scrollChrome}
       style={styles.fill}
       contentContainerStyle={[styles.content, { paddingHorizontal: gutter }]}
       refreshControl={
@@ -161,7 +162,7 @@ export const StaffTodayScreen: React.FC<{ navigation?: Nav }> = ({ navigation })
             setRefreshing(true);
             void load();
           }}
-          tintColor={palette.accent}
+          {...refreshChrome}
         />
       }
     >

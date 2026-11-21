@@ -5,7 +5,7 @@ import { useSession } from '@/context/SessionContext';
 import { useLayout } from '@/lib/device';
 import { useResource } from '@/lib/useResource';
 import { rolePermissions, type Module } from '@/lib/permissions';
-import { Card, Chip, EmptyState, ErrorNote, Loading, SectionLabel } from '@/components/ui';
+import { Card, Chip, EmptyState, ErrorNote, Loading, SectionLabel, refreshChrome, scrollChrome } from '@/components/ui';
 import { palette, radius, space, tint, type } from '@/theme/tokens';
 
 /**
@@ -40,6 +40,7 @@ export const AdminScreen: React.FC = () => {
 
   return (
     <ScrollView
+        {...scrollChrome}
       contentContainerStyle={[styles.content, { paddingHorizontal: gutter }]}
       refreshControl={
         <RefreshControl
@@ -48,7 +49,7 @@ export const AdminScreen: React.FC = () => {
             tenant.refresh();
             sites.refresh();
           }}
-          tintColor={palette.accent}
+          {...refreshChrome}
         />
       }
     >

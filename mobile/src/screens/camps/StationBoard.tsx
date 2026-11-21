@@ -5,7 +5,7 @@ import { useSession } from '@/context/SessionContext';
 import { useLayout } from '@/lib/device';
 import { useResource } from '@/lib/useResource';
 import { formatWait, hasLiveBoard, stationPressure, summariseBoard, type Pressure } from '@/lib/camps';
-import { Chip, EmptyState, ErrorNote, Loading } from '@/components/ui';
+import { Chip, EmptyState, ErrorNote, Loading, refreshChrome, scrollChrome } from '@/components/ui';
 import { palette, radius, space, tint, type } from '@/theme/tokens';
 import type { Camp, CampStation } from '@/lib/api';
 
@@ -88,6 +88,7 @@ export const StationBoard: React.FC<{ camp: Camp }> = ({ camp }) => {
       ) : null}
 
       <FlatList
+        {...scrollChrome}
         data={stations}
         keyExtractor={(s) => s.id}
         contentContainerStyle={[styles.list, { paddingHorizontal: gutter }]}
@@ -95,7 +96,7 @@ export const StationBoard: React.FC<{ camp: Camp }> = ({ camp }) => {
           <RefreshControl
             refreshing={board.refreshing}
             onRefresh={board.refresh}
-            tintColor={palette.accent}
+            {...refreshChrome}
           />
         }
         ListEmptyComponent={<EmptyState title="No stations" hint="Nothing laid out for this camp." />}
@@ -196,6 +197,7 @@ const StationQueue: React.FC<{ station: CampStation; onClose: () => void }> = ({
         <Loading />
       ) : (
         <FlatList
+        {...scrollChrome}
           data={queue.data ?? []}
           keyExtractor={(v) => v.id}
           contentContainerStyle={[styles.list, { paddingHorizontal: gutter }]}
@@ -203,7 +205,7 @@ const StationQueue: React.FC<{ station: CampStation; onClose: () => void }> = ({
             <RefreshControl
               refreshing={queue.refreshing}
               onRefresh={queue.refresh}
-              tintColor={palette.accent}
+              {...refreshChrome}
             />
           }
           ListEmptyComponent={<EmptyState title="Queue is empty" hint="Nobody is waiting here." />}

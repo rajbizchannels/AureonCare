@@ -8,7 +8,7 @@ import {
 } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
 import type { ApiClient, Disposition, Message, OutgoingAttachment, Thread } from '@/lib/api';
-import { Loading } from '@/components/ui';
+import { Loading, inputChrome, scrollChrome } from '@/components/ui';
 import { useLayout } from '@/lib/device';
 import { palette, radius, space, tint, type } from '@/theme/tokens';
 
@@ -147,6 +147,7 @@ export const Conversation: React.FC<{
         <Loading />
       ) : (
         <FlatList
+        {...scrollChrome}
           ref={listRef}
           data={messages}
           keyExtractor={(m) => m.id}
@@ -234,10 +235,10 @@ export const Conversation: React.FC<{
             <Camera size={21} color={palette.textSecondary} />
           </Pressable>
           <TextInput
+                  {...inputChrome}
             value={draft}
             onChangeText={setDraft}
             placeholder="Write a secure message…"
-            placeholderTextColor={palette.textMuted}
             multiline
             style={styles.input}
           />

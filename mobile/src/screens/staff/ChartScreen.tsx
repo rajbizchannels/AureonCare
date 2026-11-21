@@ -5,7 +5,7 @@ import {
 } from 'lucide-react-native';
 import { useSession } from '@/context/SessionContext';
 import { useActivePatient } from '@/context/ActivePatientContext';
-import { Chip, EmptyState, ErrorNote, Loading } from '@/components/ui';
+import { Chip, EmptyState, ErrorNote, Loading, refreshChrome, scrollChrome } from '@/components/ui';
 import { formatDate, fullName, humanStatus, useResource } from '@/lib/useResource';
 import { useLayout } from '@/lib/device';
 import { palette, radius, space, tint, type } from '@/theme/tokens';
@@ -118,11 +118,12 @@ export const StaffChartScreen: React.FC = () => {
       ) : null}
 
       <FlatList
+        {...scrollChrome}
         data={entries}
         keyExtractor={(e) => e.id}
         contentContainerStyle={[styles.list, { paddingHorizontal: gutter }]}
         refreshControl={
-          <RefreshControl refreshing={chart.refreshing} onRefresh={chart.refresh} tintColor={palette.accent} />
+          <RefreshControl refreshing={chart.refreshing} onRefresh={chart.refresh} {...refreshChrome} />
         }
         ListEmptyComponent={<EmptyState title="Nothing recorded" hint="No entries of this kind on file." />}
         renderItem={({ item }) => {

@@ -6,7 +6,7 @@ import { useLayout } from '@/lib/device';
 import { useResource, formatDate } from '@/lib/useResource';
 import { canWorkCampDesk } from '@/lib/permissions';
 import { acceptsRegistrations, sortCamps } from '@/lib/camps';
-import { Chip, EmptyState, ErrorNote, Loading, Segmented } from '@/components/ui';
+import { Chip, EmptyState, ErrorNote, Loading, Segmented, refreshChrome, scrollChrome } from '@/components/ui';
 import { SplitView } from '@/components/SplitView';
 import { palette, radius, space, type } from '@/theme/tokens';
 import type { Camp, CampStatus } from '@/lib/api';
@@ -92,6 +92,7 @@ export const CampsScreen: React.FC<{ route?: { params?: { campId?: string } } }>
       ) : null}
 
       <FlatList
+        {...scrollChrome}
         data={ordered}
         keyExtractor={(camp) => camp.id}
         contentContainerStyle={[styles.list, { paddingHorizontal: gutter }]}
@@ -99,7 +100,7 @@ export const CampsScreen: React.FC<{ route?: { params?: { campId?: string } } }>
           <RefreshControl
             refreshing={camps.refreshing}
             onRefresh={camps.refresh}
-            tintColor={palette.accent}
+            {...refreshChrome}
           />
         }
         ListEmptyComponent={

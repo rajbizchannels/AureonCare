@@ -4,7 +4,7 @@ import { Check, TicketCheck } from 'lucide-react-native';
 import { useSession } from '@/context/SessionContext';
 import { useLayout } from '@/lib/device';
 import { registrationBlockedReason, validateAttendee } from '@/lib/camps';
-import { Card, EmptyState, ErrorNote, Field, PrimaryButton, SectionLabel } from '@/components/ui';
+import { Card, EmptyState, ErrorNote, Field, PrimaryButton, SectionLabel, scrollChrome } from '@/components/ui';
 import { palette, radius, space, tint, type } from '@/theme/tokens';
 import type { Camp } from '@/lib/api';
 
@@ -111,6 +111,7 @@ export const RegistrationDesk: React.FC<{ camp: Camp; onRegistered?: () => void 
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <ScrollView
+        {...scrollChrome}
         contentContainerStyle={[styles.content, { paddingHorizontal: gutter }]}
         keyboardShouldPersistTaps="handled"
       >
