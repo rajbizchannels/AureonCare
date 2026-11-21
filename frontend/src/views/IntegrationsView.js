@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { showToast } from '../utils/toast';
 import { ToggleLeft, ToggleRight, ChevronDown, ChevronUp, Save } from 'lucide-react';
 import api from '../api/apiService';
 import { useAudit } from '../hooks/useAudit';
@@ -89,7 +90,7 @@ const IntegrationsView = ({ theme, setCurrentModule, t, user }) => {
 
     // Don't allow enabling if not configured
     if (!currentEnabled && !isIntegrationConfigured(integration)) {
-      alert('Please configure this integration before enabling it.');
+      showToast('warning', 'Please configure this integration before enabling it.');
       return;
     }
 
@@ -99,7 +100,7 @@ const IntegrationsView = ({ theme, setCurrentModule, t, user }) => {
       await fetchIntegrations();
     } catch (err) {
       console.error('Error toggling vendor integration:', err);
-      alert('Failed to toggle integration: ' + err.message);
+      showToast('alert', 'Failed to toggle integration: ' + err.message);
     } finally {
       setToggling(prev => ({ ...prev, [vendorType]: false }));
     }
@@ -196,10 +197,10 @@ const IntegrationsView = ({ theme, setCurrentModule, t, user }) => {
     try {
       await api.saveVendorIntegrationSettings(vendorType, formData[key]);
       await fetchIntegrations();
-      alert('Vendor integration settings saved successfully');
+      showToast('success', 'Vendor integration settings saved successfully');
     } catch (err) {
       console.error('Error saving vendor settings:', err);
-      alert('Failed to save settings: ' + err.message);
+      showToast('alert', 'Failed to save settings: ' + err.message);
     } finally {
       setSaving(prev => ({ ...prev, [key]: false }));
     }

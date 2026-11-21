@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { showToast } from '../utils/toast';
 import BookingRequestsPanel from '../components/scheduling/BookingRequestsPanel';
 import { Plus, List, Calendar, Eye, Edit, Trash2, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Search, Filter, X, Clock, User, CheckCircle, Bell, Video, Loader2, RefreshCw } from 'lucide-react';
 import { formatDate, formatTime } from '../utils/formatters';
@@ -757,7 +758,7 @@ const PracticeManagementView = ({
                                   await addNotification('alert', t.appointmentDeletedSuccessfully || 'Appointment deleted successfully');
                                 } catch (err) {
                                   console.error('Error deleting appointment:', err);
-                                  alert(t.failedToDeleteAppointment || 'Failed to delete appointment');
+                                  showToast('alert', t.failedToDeleteAppointment || 'Failed to delete appointment');
                                 }
                               }
                             }}
@@ -1009,7 +1010,7 @@ const PracticeManagementView = ({
                                   await addNotification('alert', t.appointmentDeletedSuccessfully || 'Appointment deleted successfully');
                                 } catch (err) {
                                   console.error('Error deleting appointment:', err);
-                                  alert(t.failedToDeleteAppointment || 'Failed to delete appointment');
+                                  showToast('alert', t.failedToDeleteAppointment || 'Failed to delete appointment');
                                 }
                               }
                             }}

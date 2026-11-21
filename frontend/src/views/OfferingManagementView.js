@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { showToast } from '../utils/toast';
 import { useApp } from '../context/AppContext';
 import api from '../api/apiService';
 import { formatCurrency } from '../utils/formatters';
@@ -187,7 +188,7 @@ const OfferingManagementView = ({ activeTab: shellTab, onTabChange }) => {
       fetchData();
     } catch (error) {
       console.error('Error saving:', error);
-      alert('Failed to save: ' + error.message);
+      showToast('alert', 'Failed to save: ' + error.message);
     } finally {
       setLoading(false);
     }

@@ -1,3 +1,4 @@
+import { showToast } from '../utils/toast';
 import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
 import api, { PORTAL_MARKER } from '../api/apiService';
 import {
@@ -484,6 +485,8 @@ const AppProvider = ({ children }) => {
    * nothing to depend on.
    */
   const addNotification = useCallback(async (type, message) => {
+    // Also on screen, not only behind the bell (see utils/toast.js).
+    showToast(type, message);
     // Patients have no staff notification store (staff-only endpoint): keep theirs on screen.
     if (roleRef.current === 'patient') {
       setNotifications(prev => [{ id: `local-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,

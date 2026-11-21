@@ -72,6 +72,8 @@ import PortalActivatePage from './components/modals/PortalActivatePage';
 import JoinPracticePage from './components/modals/JoinPracticePage';
 import DirectorySearchPage from './components/directory/DirectorySearchPage';
 import ForgotPasswordModal from './components/modals/ForgotPasswordModal';
+import Toaster from './components/common/Toaster';
+import InlineFormScroller from './components/common/InlineFormScroller';
 import ViewEditModal from './components/modals/ViewEditModal';
 import UserProfileModal from './components/modals/UserProfileModal';
 
@@ -1553,6 +1555,8 @@ export default function AppWithProvider() {
               on any of them — which is exactly where the first thing a user ever clicks
               lives. Here it is mounted for every screen, signed in or not. */}
           <ActivityIndicator />
+          <Toaster />
+          <InlineFormScroller />
           <App />
         </AppProvider>
       </MsalProvider>

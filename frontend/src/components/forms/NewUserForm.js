@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { showToast } from '../../utils/toast';
 import { X, Save } from 'lucide-react';
 import ConfirmationModal from '../modals/ConfirmationModal';
 import { useAudit } from '../../hooks/useAudit';
@@ -93,12 +94,12 @@ const NewUserForm = ({ theme, api, user, onClose, onSuccess, addNotification }) 
 
     // Validate passwords
     if (formData.password !== formData.confirmPassword) {
-      alert('Passwords do not match');
+      showToast('alert', 'Passwords do not match');
       return;
     }
 
     if (formData.password && formData.password.length < 6) {
-      alert('Password must be at least 6 characters long');
+      showToast('alert', 'Password must be at least 6 characters long');
       return;
     }
 

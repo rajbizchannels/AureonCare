@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { showToast } from '../../utils/toast';
 import { X } from 'lucide-react';
 import { useAudit } from '../../hooks/useAudit';
 
@@ -56,11 +57,13 @@ const ForgotPasswordModal = ({ theme, api, onClose }) => {
     try {
       await api.forgotPassword(email);
       setResetSuccess('Password reset instructions sent! Check your email.');
+      showToast('success', 'Password reset instructions sent. Check your email.');
       // SEC-04: the reset token is delivered only via email, never in the API
       // response. The user pastes the token they received into the step-2 field.
       setStep(2);
     } catch (error) {
       setResetError(error.message || 'Failed to send reset email');
+      showToast('alert', error.message || 'Failed to send reset email');
     }
   };
 
@@ -70,17 +73,21 @@ const ForgotPasswordModal = ({ theme, api, onClose }) => {
 
     if (newPassword !== confirmPassword) {
       setResetError('Passwords do not match');
+      showToast('alert', 'Passwords do not match');
       return;
     }
 
     if (newPassword.length < 6) {
       setResetError('Password must be at least 6 characters long');
+      showToast('alert', 'Password must be at least 6 characters long');
       return;
     }
 
     try {
       await api.resetPassword(resetToken, newPassword);
       setResetSuccess('Password reset successfully! You can now login.');
+      // The dialog closes itself in 2 s; the toast outlives it.
+      showToast('success', 'Password reset successfully. You can now sign in with your new password.');
       setTimeout(() => {
         handleClose();
         setStep(1);
@@ -97,6 +104,7 @@ const ForgotPasswordModal = ({ theme, api, onClose }) => {
         },
       });
       setResetError(error.message || 'Failed to reset password');
+      showToast('alert', error.message || 'Failed to reset password');
     }
   };
 
