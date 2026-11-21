@@ -1,4 +1,5 @@
 const express = require('express');
+const lockout = require('../services/loginLockout');
 const router = express.Router();
 const { authenticate, authorize } = require('../middleware/auth');
 const { getTimezoneFromCountry } = require('../utils/timezoneUtils');
@@ -77,11 +78,31 @@ router.get('/', authorize('admin'), async (req, res) => {
       JOIN public.memberships m ON m.user_id = u.id AND m.practice_id = $1 AND m.status = 'active'
       ORDER BY u.id ASC
     `, [req.user.practiceId || null]);
-    const users = result.rows.map(toCamelCase);
+    // Locked out after repeated wrong passwords? (services/loginLockout.js)
+    const locked = await lockout.lockedAmong(pool, 'staff', result.rows.map((r) => r.email));
+    const users = result.rows.map((r) => ({ ...toCamelCase(r), locked: locked.has(String(r.email || '').toLowerCase()) }));
     res.json(users);
   } catch (error) {
     console.error('Error fetching users:', error);
     res.status(500).json({ error: 'Failed to fetch users' });
+  }
+});
+
+// Unlock a sign-in locked by repeated wrong passwords — admins, for people in their practice.
+router.post('/:id/unlock', authorize('admin'), async (req, res) => {
+  try {
+    const pool = req.app.locals.pool;
+    const { rows: [u] } = await pool.query(
+      `SELECT u.id, u.email, u.first_name, u.last_name FROM users u
+         JOIN public.memberships m ON m.user_id = u.id AND m.practice_id = $2 AND m.status = 'active'
+        WHERE u.id::text = $1`, [req.params.id, req.user.practiceId || null]);
+    if (!u) return res.status(404).json({ error: 'User not found' });
+    const wasLocked = await lockout.clear(pool, 'staff', u.email);
+    console.log(`[lockout] staff sign-in unlocked by admin ${req.user.id} for user ${u.id}`);
+    res.json({ unlocked: true, wasLocked, message: `${u.first_name || 'The user'} ${u.last_name || ''} can sign in again.`.replace(/\s+/g, ' ').trim() });
+  } catch (error) {
+    console.error('Error unlocking user:', error);
+    res.status(500).json({ error: 'Could not unlock the account' });
   }
 });
 

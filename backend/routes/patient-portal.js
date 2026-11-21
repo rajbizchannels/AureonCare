@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
+const lockout = require('../services/loginLockout');
 const rateLimit = require('express-rate-limit');
 const { storeFor } = require('../middleware/rateLimitStore');
 const { getTimezoneFromCountry } = require('../utils/timezoneUtils');
@@ -40,25 +41,10 @@ const loginIpLimiter = rateLimit({
   },
 });
 
-// Per-account lockout: counts only FAILED logins (skipSuccessfulRequests),
-// keyed by the submitted email, so a single account cannot be brute-forced
-// even from a rotating set of IPs. A successful login resets the counter.
-// Social logins (no password) bypass this — they can't be brute-forced and
-// would otherwise share a single 'unknown'-email bucket.
-const loginAccountLimiter = rateLimit({
-  store: storeFor('portal-account'),  // SEC-21: shared across instances
-  windowMs: LOGIN_WINDOW_MS,
-  max: 3,
-  skipSuccessfulRequests: true,
-  standardHeaders: true,
-  legacyHeaders: false,
-  keyGenerator: (req) => (req.body?.email || 'unknown').toLowerCase(),
-  skip: (req) => Boolean(req.body?.provider && req.body?.providerId),
-  handler: (req, res) => {
-    res.status(429).json({ error: 'Account temporarily locked due to too many failed attempts. Please try again in 15 minutes.' });
-  },
-});
-
+// Per-account lockout: 4 wrong passwords lock the address for 15 minutes — the same rule
+// and the same table as staff sign-in (services/loginLockout.js), so staff can see and
+// clear it. It replaced an in-memory limiter that allowed 3 tries, was per server instance
+// and could not be unlocked.
 // Session tokens are stored HASHED (SHA-256) in patient_portal_sessions.session_token.
 // The raw token is only ever held by the client; a DB leak exposes only hashes,
 // which cannot be replayed as bearer tokens. SHA-256 (not bcrypt) is used because
@@ -278,6 +264,8 @@ const portalLoginHandler = async (req, res) => {
       }
     } else {
       // Traditional login
+      const lock = await lockout.status(req.app.locals.pool, 'portal', email);
+      if (lock.locked) return res.status(423).json({ error: lock.message, locked: true });
       // Match either address: patients.email is what the portal registers, but a
       // record created through the staff EHR may only carry the email on the
       // linked users row, and the patient signs in with the address they know.
@@ -325,8 +313,10 @@ const portalLoginHandler = async (req, res) => {
       if (!anyCompareRun) await bcrypt.compare(password, DUMMY_PASSWORD_HASH);
 
       if (!candidate) {
-        return res.status(401).json({ error: 'Invalid credentials' });
+        const f = await lockout.recordFailure(req.app.locals.pool, 'portal', email, 'Invalid email or password.');
+        return res.status(f.locked ? 423 : 401).json({ error: f.message, locked: f.locked || undefined });
       }
+      await lockout.clear(req.app.locals.pool, 'portal', email);
 
       patient = candidate;
       if (matchedTenant) {
@@ -390,7 +380,7 @@ const portalLoginHandler = async (req, res) => {
   }
 };
 
-router.post('/login', loginIpLimiter, loginAccountLimiter, portalLoginHandler);
+router.post('/login', loginIpLimiter, portalLoginHandler);
 
 // SEC-20: portal authorization-code exchange. The patient's browser receives only a
 // single-use code; it is redeemed here with the client secret and the provider token

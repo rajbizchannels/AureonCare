@@ -4282,6 +4282,18 @@ const api = {
     if (!r.ok) throw new Error(data.error || 'Could not load portal status');
     return data;
   },
+  unlockPortalSignIn: async (patientId) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/portal-invites/patient/${encodeURIComponent(patientId)}/unlock`, { method: 'POST', body: JSON.stringify({}) });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || 'Could not unlock the portal sign-in');
+    return data;
+  },
+  unlockUser: async (userId) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/users/${encodeURIComponent(userId)}/unlock`, { method: 'POST', body: JSON.stringify({}) });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || 'Could not unlock the account');
+    return data;
+  },
   revokePortalInvite: async (patientId) => {
     const r = await authenticatedFetch(`${API_BASE_URL}/portal-invites/patient/${encodeURIComponent(patientId)}`, { method: 'DELETE' });
     const data = await r.json().catch(() => ({}));

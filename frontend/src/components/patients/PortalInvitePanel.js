@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Send, CheckCircle2, Clock, AlertCircle, Copy, XCircle } from 'lucide-react';
+import { Send, CheckCircle2, Clock, AlertCircle, Copy, XCircle, Lock, Unlock } from 'lucide-react';
 import BusyButton from '../common/BusyButton';
 import QrCodeButton from '../common/QrCodeButton';
 import { formatDate } from '../../utils/formatters';
@@ -56,6 +56,16 @@ const PortalInvitePanel = ({ patientId, theme = 'light', api, addNotification })
     }
   };
 
+  const unlock = async () => {
+    try {
+      await api.unlockPortalSignIn(patientId);
+      addNotification?.('success', 'Portal sign-in unlocked. The patient can try again now.');
+      await load();
+    } catch (e) {
+      addNotification?.('alert', e.message);
+    }
+  };
+
   const copy = async () => {
     try { await navigator.clipboard.writeText(manualLink); addNotification?.('success', 'Link copied'); }
     catch { /* clipboard unavailable: the link is selectable on screen */ }
@@ -105,6 +115,14 @@ const PortalInvitePanel = ({ patientId, theme = 'light', api, addNotification })
           )}
         </div>
       </div>
+      {status.locked && (
+        <div role="status" className={`mt-3 p-3 rounded-lg text-sm flex flex-wrap items-center justify-between gap-2 ${dark ? 'bg-red-900/30 text-red-200' : 'bg-red-50 text-red-800'}`}>
+          <span className="flex items-center gap-1.5"><Lock size={16} /> Portal sign-in is locked after 4 wrong passwords. It unlocks itself after 15 minutes.</span>
+          <BusyButton onClick={unlock} busyLabel="Unlocking…" className={`${btn} bg-red-600 hover:bg-red-700 text-white`}>
+            <Unlock size={14} /> Unlock now
+          </BusyButton>
+        </div>
+      )}
       {manualLink && (
         <div className={`mt-3 p-3 rounded-lg text-sm ${dark ? 'bg-slate-800 text-slate-200' : 'bg-amber-50 text-gray-800'}`}>
           <p className="mb-2">The email could not be sent. Give the patient this link (it works once, for 14 days):</p>
