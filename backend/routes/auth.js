@@ -1123,7 +1123,10 @@ const socialLoginHandler = async (req, res) => {
     // those logins WITHOUT trusting client input, adopt an existing row only when the
     // PROVIDER-VERIFIED email (from the validated token, never the client) matches the
     // account the row is linked to, then re-key it to the canonical id so it self-heals.
-    if (socialRows.length === 0 && verified.email) {
+    // SEC-48: only a PROVIDER-VERIFIED email may re-link. An unverified claim (a Microsoft
+    // UPN with no mailbox, a mail attribute a foreign tenant's admin can set to anything)
+    // re-keyed the victim's link to the attacker's account and signed them in as the victim.
+    if (socialRows.length === 0 && verified.email && providerEmailVerified) {
       const relink = await pool.query(
         `SELECT sa.* FROM social_auth sa
          JOIN users u ON u.id = sa.user_id
@@ -1485,6 +1488,61 @@ router.post('/oauth/google/exchange', async (req, res) => {
     }
     console.error('Error during google code exchange:', err);
     // A constraint the request broke is the caller's to fix, not a server fault.
+    if (sendDbError(res, err, 'Social login failed')) return;
+    res.status(500).json({ error: 'Social login failed' });
+  }
+});
+
+// ── Google / Microsoft sign-in from the mobile app (services/mobileOAuth.js) ──────────
+// The server runs the provider sign-in and hands the app a one-time code over its own link;
+// the app redeems it with its PKCE verifier and gets exactly what the web sign-in returns.
+const mobileOAuth = require('../services/mobileOAuth');
+const mobileErrorPage = (res, status, message) => {
+  res.status(status).set('Cache-Control', 'no-store')
+    .set('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'")
+    .type('html').send(`<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Sign-in · AureonCare</title><style>body{margin:0;font-family:system-ui,sans-serif;background:#0F172A;color:#E2E8F0;display:flex;min-height:100vh;align-items:center;justify-content:center}
+.c{max-width:420px;margin:24px;padding:24px;background:#1E293B;border-radius:14px;border-top:4px solid #08B39C}</style></head>
+<body><main class="c"><h1 style="font-size:18px;margin-top:0">Sign-in did not complete</h1><p>${String(message).replace(/[&<>"']/g, '')}</p>
+<p style="color:#94A3B8">Close this window and go back to the AureonCare app.</p></main></body></html>`);
+};
+
+router.get('/mobile/oauth/:provider/start', async (req, res) => {
+  try {
+    const r = await mobileOAuth.start(req.app.locals.pool, req, req.params.provider, {
+      redirectUri: req.query.redirect_uri, codeChallenge: req.query.code_challenge, method: req.query.code_challenge_method,
+    });
+    if (r.error) return mobileErrorPage(res, r.status, r.error);
+    res.set('Cache-Control', 'no-store').redirect(302, r.url);
+  } catch (err) {
+    console.error('[mobile-oauth] start failed:', err.message);
+    mobileErrorPage(res, 500, err.code === '42P01' ? 'Mobile sign-in is not set up on this server yet.' : 'Sign-in could not start. Please try again.');
+  }
+});
+
+router.get('/mobile/oauth/:provider/callback', async (req, res) => {
+  try {
+    const r = await mobileOAuth.callback(req.app.locals.pool, req, req.params.provider,
+      { code: req.query.code, state: req.query.state, error: req.query.error }, exchangeAuthCode);
+    if (r.error) return mobileErrorPage(res, r.status, r.error);
+    res.set('Cache-Control', 'no-store').redirect(302, r.redirect);
+  } catch (err) {
+    console.error('[mobile-oauth] callback failed:', err.message);
+    mobileErrorPage(res, 500, 'Sign-in could not complete. Please try again.');
+  }
+});
+
+router.post('/mobile/oauth/redeem', async (req, res) => {
+  try {
+    const b = req.body || {};
+    const r = await mobileOAuth.redeem(req.app.locals.pool, { code: b.code, codeVerifier: b.code_verifier || b.codeVerifier });
+    if (r.error) return res.status(r.status).json({ error: r.error });
+    // Exactly the web path from here: staff session, patient portal (or invitation
+    // accepted), "no account", blocked, pending… all answered the same way.
+    req.body = { provider: r.provider, providerId: null, accessToken: r.accessToken, refreshToken: r.refreshToken, profileData: {} };
+    return socialLoginHandler(req, res);
+  } catch (err) {
+    console.error('[mobile-oauth] redeem failed:', err.message);
     if (sendDbError(res, err, 'Social login failed')) return;
     res.status(500).json({ error: 'Social login failed' });
   }

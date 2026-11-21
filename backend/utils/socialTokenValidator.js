@@ -45,6 +45,15 @@ async function validateGoogle(accessToken) {
   };
 }
 
+/** True when a Graph `mail` value is in the same domain as the account's UPN (see SEC-48). */
+function microsoftMailVerified(mail, upn) {
+  if (!mail || !upn) return false;
+  const dom = (v) => String(v).trim().toLowerCase().split('@')[1] || '';
+  const d = dom(mail);
+  // Guest accounts' UPNs look like alice_example.com#EXT#@tenant.onmicrosoft.com: never a match.
+  return Boolean(d) && !String(upn).includes('#EXT#') && d === dom(upn);
+}
+
 async function validateMicrosoft(accessToken) {
   const response = await fetchWithTimeout('https://graph.microsoft.com/v1.0/me', {
     headers: { Authorization: `Bearer ${accessToken}` }
@@ -65,7 +74,11 @@ async function validateMicrosoft(accessToken) {
     // (data.mail) are directory-managed and treated as verified; a bare
     // userPrincipalName (no mail) is not guaranteed to be a deliverable/verified
     // address, so it is not treated as verified for account-linking purposes.
-    emailVerified: Boolean(data.mail),
+    // SEC-48 (the "nOAuth" pattern): `mail` is an attribute any tenant's admin can set to
+    // ANY address, including someone else's. The UPN's domain, by contrast, must be a
+    // domain the tenant has proven it owns. So `mail` counts as verified only when it is in
+    // the UPN's domain. Accounts already linked match on the Graph id and are unaffected.
+    emailVerified: microsoftMailVerified(data.mail, data.userPrincipalName),
     firstName: data.givenName || '',
     lastName: data.surname || ''
   };
@@ -122,4 +135,5 @@ function isProviderIdMatch(provider, verifiedId, claimedId) {
   return false;
 }
 
-module.exports = { validateSocialToken, isProviderIdMatch };
+module.exports = {
+  microsoftMailVerified, validateSocialToken, isProviderIdMatch };

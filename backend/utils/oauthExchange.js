@@ -31,6 +31,7 @@ async function exchangeAuthCode(provider, { code, redirectUri, codeVerifier }) {
       redirect_uri: redirectUri || 'postmessage',
       grant_type: 'authorization_code',
     };
+    if (codeVerifier) body.code_verifier = codeVerifier; // PKCE (the mobile broker uses it)
   } else if (provider === 'microsoft') {
     const id = microsoftClientId(), secret = process.env.AC_MS_CSK;
     if (!id || !secret) fail(503, 'Microsoft sign-in is not configured on the server (REACT_APP_MS_CID / AC_MS_CSK).');

@@ -184,7 +184,8 @@ const portalLoginHandler = async (req, res) => {
       // SEC-19 safe re-link: recover an existing link stored under a non-canonical id
       // (e.g. Microsoft personal-account homeAccountId) using the provider-VERIFIED
       // email only — never client input — then re-key it to the canonical id.
-      if (socialAuth.rows.length === 0 && verified.email) {
+      // SEC-48: only a provider-VERIFIED email may re-link (see routes/auth.js).
+      if (socialAuth.rows.length === 0 && verified.email && verified.emailVerified === true) {
         // Matched on users (the shared identity table; patients.id = users.id). It joined
         // `patients`, a per-practice table that the shared pool cannot see since the
         // schema-per-tenant cutover, so every not-yet-linked identity answered 500.

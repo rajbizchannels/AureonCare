@@ -898,3 +898,24 @@ What changes:
   portal access for them, they are told so.
 - The "Cross-Origin-Opener-Policy would block the window.closed call" console line comes from
   Google's sign-in script polling its popup; it is harmless (sign-in completes).
+
+## Google / Microsoft sign-in in the mobile app (+ SEC-48)
+
+1. Paste `backend/migrations/098_mobile_oauth_flows.sql` into the SQL editor (safe to re-run).
+2. Register one more redirect URI with each provider (same clients the web app uses):
+   - Google Cloud Console → APIs & Services → Credentials → the web OAuth client →
+     Authorized redirect URIs: `https://app.aureoncare.tech/api/auth/mobile/oauth/google/callback`
+   - Microsoft Entra → App registrations → the app → Authentication → **Web** platform →
+     Redirect URIs: `https://app.aureoncare.tech/api/auth/mobile/oauth/microsoft/callback`
+3. Deploy, then build the app (the `aureoncare://` link needs a development or store build;
+   Expo Go uses `exp://` links — allow them on a TEST server only with `AC_MOBILE_REDIRECTS=exp://`).
+
+How it works: the app opens the system browser at the server; the server signs the person
+in with Google/Microsoft using its existing web client and hands the app a one-time code over
+`aureoncare://auth`; the app redeems it with a PKCE verifier only it holds. No client ids or
+secrets in the app, works against any AureonCare server, and an app that intercepts the link
+cannot use the code. Same outcomes as the web: staff session, patient portal (an invitation
+to the verified address is accepted), "no account — ask for an invitation", blocked, pending.
+
+SEC-48 (in the same deploy): Google/Microsoft re-linking now requires a provider-verified
+email, and a Microsoft `mail` value counts as verified only in the UPN's own domain.
