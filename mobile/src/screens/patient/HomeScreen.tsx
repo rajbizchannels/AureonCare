@@ -1,8 +1,8 @@
 import React, { useCallback } from 'react';
-import { Linking, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { CalendarDays, MessageSquare, Video } from 'lucide-react-native';
+import { Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { CalendarDays, ChevronRight, MessageSquare, Video } from 'lucide-react-native';
 import { useSession } from '@/context/SessionContext';
-import { Card, Chip, ErrorNote, Loading, PrimaryButton, SecondaryButton, SectionLabel } from '@/components/ui';
+import { Card, ErrorNote, Loading, PrimaryButton, SecondaryButton, SectionLabel } from '@/components/ui';
 import { formatTime, fullName, isUpcoming, useResource } from '@/lib/useResource';
 import { useLayout } from '@/lib/device';
 import { palette, radius, space, tint, type } from '@/theme/tokens';
@@ -12,9 +12,14 @@ import type { Appointment } from '@/lib/api';
  * The patient's landing screen: the next thing that is going to happen, and
  * the one or two things waiting on them. Everything else lives behind a tab.
  */
-export const PatientHomeScreen: React.FC<{ onOpenMessages: () => void; onOpenVisits: () => void }> = ({
+export const PatientHomeScreen: React.FC<{
+  onOpenMessages: () => void;
+  onOpenVisits: () => void;
+  onOpenBook: () => void;
+}> = ({
   onOpenMessages,
   onOpenVisits,
+  onOpenBook,
 }) => {
   const { api, account } = useSession();
   const { gutter, maxContentWidth } = useLayout();
@@ -91,28 +96,42 @@ export const PatientHomeScreen: React.FC<{ onOpenMessages: () => void; onOpenVis
           </View>
         </Card>
       ) : (
-        <Card>
-          <View style={styles.emptyRow}>
-            <CalendarDays size={19} color={palette.textSecondary} />
-            <Text style={styles.emptyText}>No upcoming appointments booked.</Text>
-          </View>
-        </Card>
+        <Pressable
+          onPress={onOpenBook}
+          accessibilityRole="button"
+          accessibilityLabel="Book an appointment"
+          style={({ pressed }) => [pressed && styles.pressed]}
+        >
+          <Card>
+            <View style={styles.emptyRow}>
+              <CalendarDays size={19} color={palette.textSecondary} />
+              <Text style={styles.emptyText}>No upcoming appointments. Tap to book one.</Text>
+              <ChevronRight size={17} color={palette.textFaint} />
+            </View>
+          </Card>
+        </Pressable>
       )}
 
       {(unread.data ?? 0) > 0 && (
-        <Card style={styles.messageCard}>
-          <View style={styles.emptyRow}>
-            <MessageSquare size={19} color={palette.accent} />
-            <View style={styles.grow}>
-              <Text style={styles.messageTitle}>
-                {unread.data} unread {unread.data === 1 ? 'message' : 'messages'}
-              </Text>
-              <Text style={styles.emptyText}>From your care team</Text>
+        <Pressable
+          onPress={onOpenMessages}
+          accessibilityRole="button"
+          accessibilityLabel={`${unread.data} unread messages, open`}
+          style={({ pressed }) => [pressed && styles.pressed]}
+        >
+          <Card style={styles.messageCard}>
+            <View style={styles.emptyRow}>
+              <MessageSquare size={19} color={palette.accent} />
+              <View style={styles.grow}>
+                <Text style={styles.messageTitle}>
+                  {unread.data} unread {unread.data === 1 ? 'message' : 'messages'}
+                </Text>
+                <Text style={styles.emptyText}>From your care team</Text>
+              </View>
+              <ChevronRight size={17} color={palette.accent} />
             </View>
-            <Chip label="Open" tone="accent" />
-          </View>
-          <SecondaryButton label="Read messages" onPress={onOpenMessages} style={styles.readBtn} />
-        </Card>
+          </Card>
+        </Pressable>
       )}
 
       <View style={styles.section}>
@@ -121,15 +140,24 @@ export const PatientHomeScreen: React.FC<{ onOpenMessages: () => void; onOpenVis
           .filter((a) => !isUpcoming(a.start_time))
           .slice(0, 3)
           .map((a) => (
-            <Card key={a.id} style={styles.pastRow}>
-              <View style={styles.grow}>
-                <Text style={styles.pastTitle}>{a.reason ?? a.appointment_type ?? 'Visit'}</Text>
-                <Text style={styles.emptyText}>
-                  {new Date(a.start_time).toLocaleDateString()} ·{' '}
-                  {fullName(a.provider?.first_name, a.provider?.last_name, 'Care team')}
-                </Text>
-              </View>
-            </Card>
+            <Pressable
+              key={a.id}
+              onPress={onOpenVisits}
+              accessibilityRole="button"
+              accessibilityLabel={`${a.reason ?? 'Visit'}, open your visits`}
+              style={({ pressed }) => [pressed && styles.pressed]}
+            >
+              <Card style={styles.pastRow}>
+                <View style={styles.grow}>
+                  <Text style={styles.pastTitle}>{a.reason ?? a.appointment_type ?? 'Visit'}</Text>
+                  <Text style={styles.emptyText}>
+                    {new Date(a.start_time).toLocaleDateString()} ·{' '}
+                    {fullName(a.provider?.first_name, a.provider?.last_name, 'Care team')}
+                  </Text>
+                </View>
+                <ChevronRight size={17} color={palette.textFaint} />
+              </Card>
+            </Pressable>
           ))}
       </View>
     </ScrollView>
@@ -172,6 +200,7 @@ const styles = StyleSheet.create({
   messageCard: { borderColor: palette.accentFrom },
   messageTitle: { ...type.base, color: palette.text, fontWeight: '600' },
   readBtn: { marginTop: space.md },
+  pressed: { opacity: 0.7 },
   section: { gap: space.sm },
   pastRow: { flexDirection: 'row', alignItems: 'center', padding: space.md, borderRadius: radius.lg },
   pastTitle: { ...type.base, color: palette.text, fontWeight: '500' },

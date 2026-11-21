@@ -348,6 +348,7 @@ const RoleTabs: React.FC<{ openServer: () => void; navigate: (screen: string) =>
             <PatientHomeScreen
               onOpenMessages={() => navigation.navigate('Messages')}
               onOpenVisits={() => navigation.navigate('Visits')}
+              onOpenBook={() => navigation.navigate('Book')}
             />
           )}
         </Tabs.Screen>

@@ -190,6 +190,9 @@ export interface Appointment {
   notes: string | null;
   meeting_url?: string | null;
   provider?: ProviderRef | null;
+  /** Joined in by GET /appointments — absent from the portal's own list. */
+  patient?: string | null;
+  doctor?: string | null;
 }
 
 export interface MedicalRecord {
