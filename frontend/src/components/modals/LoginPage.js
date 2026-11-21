@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { requestPracticeChoice } from '../layout/PracticeChooser';
 import { Sun, Moon, Loader2 } from 'lucide-react';
 import { useGoogleLogin } from '@react-oauth/google';
 import { getMicrosoftAuthCode } from '../../utils/msAuthCode';
@@ -36,6 +37,7 @@ const LoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, addNotif
     try {
       const response = await api.login(email, password, mfaCode || undefined);
       api.storeToken(response.token);
+      requestPracticeChoice();   // people at several practices pick one next
       setUser(response.user);
       setIsAuthenticated(true);
 
@@ -46,7 +48,30 @@ const LoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, addNotif
     } catch (error) {
       // The password was right and a second factor is wanted. Reveal the code field and
       // keep the password the user already typed, rather than making them start over.
-      if (error.mfaRequired) setNeedsMfa(true);
+      if (error.mfaRequired) {
+        setNeedsMfa(true);
+        setLoginError(error.message || 'Login failed');
+        return;
+      }
+      // One sign-in box for everyone: not a staff account (or a patient account) -> try the
+      // patient portal with the same details, exactly as the mobile app does. A patient no
+      // longer has to know there is a separate "Patient Login".
+      if (error.status === 401 && !mfaCode) {
+        try {
+          const portal = await api.patientPortalLogin(email, password);
+          api.storePortalSession(portal.sessionToken);
+          setUser({ ...portal.patient, role: 'patient' });
+          setIsAuthenticated(true);
+          setCurrentModule('patientPortal');
+          await addNotification('success', 'Welcome to your patient portal');
+          return;
+        } catch (portalError) {
+          // Say what the staff sign-in said (e.g. "1 attempt left") unless the portal has
+          // something more specific: a lock, or this being a patient account.
+          setLoginError((error.patientAccount || /locked/i.test(portalError.message || '')) ? portalError.message : error.message);
+          return;
+        }
+      }
       setLoginError(error.message || 'Login failed');
     } finally {
       // Both paths: a rejected sign-in has to leave the button usable, or a mistyped
@@ -67,6 +92,7 @@ const LoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, addNotif
         const response = await api.exchangeGoogleCode(codeResponse.code, 'postmessage');
 
         api.storeToken(response.token);
+      requestPracticeChoice();   // people at several practices pick one next
         setUser(response.user);
         setIsAuthenticated(true);
 
@@ -97,6 +123,7 @@ const LoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, addNotif
       const response = await api.exchangeMicrosoftCode(code, redirectUri, codeVerifier);
 
       api.storeToken(response.token);
+      requestPracticeChoice();   // people at several practices pick one next
       setUser(response.user);
       setIsAuthenticated(true);
 

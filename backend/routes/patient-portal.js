@@ -284,7 +284,8 @@ const portalLoginHandler = async (req, res) => {
         let row;
         try {
           const r = await candDb.query(`
-            SELECT p.*, u.language, u.first_name as user_first_name, u.last_name as user_last_name
+            SELECT p.*, u.language, u.first_name as user_first_name, u.last_name as user_last_name,
+                   CASE WHEN u.role = 'patient' THEN u.password_hash END AS account_password_hash
             FROM patients p
             LEFT JOIN users u ON p.id = u.id
             WHERE (LOWER(p.email) = LOWER($1) OR LOWER(u.email) = LOWER($1))
@@ -300,9 +301,28 @@ const portalLoginHandler = async (req, res) => {
         // this address.
         const hashToCompare = row && row.portal_password_hash ? row.portal_password_hash : DUMMY_PASSWORD_HASH;
         const ok = await bcrypt.compare(password, hashToCompare);
+        // Older patient accounts keep their password on the account (users.password_hash)
+        // and have no portal password yet — they could sign in nowhere: the portal checked
+        // only the portal password and the staff page refuses patient accounts. Accept the
+        // account password too. Always two compares (one against a dummy when there is no
+        // account password), so timing says nothing about which kind of password exists.
+        const accountHash = row && row.account_password_hash ? row.account_password_hash : DUMMY_PASSWORD_HASH;
+        const okAccount = await bcrypt.compare(password, accountHash);
         anyCompareRun = true;
 
-        if (row && row.portal_password_hash && ok) {
+        const viaPortal = Boolean(row && row.portal_password_hash && ok);
+        const viaAccount = Boolean(row && row.account_password_hash && okAccount);
+        if (viaPortal || viaAccount) {
+          if (!viaPortal && viaAccount && !row.portal_password_hash) {
+            // First portal sign-in with the account password: keep it as the portal
+            // password from now on (the same hash — nothing new is stored in the clear).
+            const upDb = makeTenantDb(req.app.locals.pool, cand.schemaName, req.res);
+            try {
+              await upDb.query('UPDATE patients SET portal_password_hash = $2 WHERE id = $1 AND portal_password_hash IS NULL',
+                [row.id, row.account_password_hash]);
+            } catch (e) { console.warn('[portal] could not keep the account password as the portal password:', e.message); }
+            finally { upDb.release(); }
+          }
           candidate = row;
           matchedTenant = cand;
           break; // first authenticated match wins; a picker would be post-auth UX
@@ -317,6 +337,9 @@ const portalLoginHandler = async (req, res) => {
         return res.status(f.locked ? 423 : 401).json({ error: f.message, locked: f.locked || undefined });
       }
       await lockout.clear(req.app.locals.pool, 'portal', email);
+      // The web page and the app try the staff sign-in first; a patient's attempt there
+      // must not build up toward a lock.
+      await lockout.clear(req.app.locals.pool, 'staff', email);
 
       patient = candidate;
       if (matchedTenant) {
@@ -361,7 +384,7 @@ const portalLoginHandler = async (req, res) => {
     // `role` is stated explicitly: the patients table has no role column, and
     // the frontend keys navigation and access checks off user.role — without it
     // a portal session looks role-less and falls through to the staff shell.
-    const { portal_password_hash, ...patientData } = patient;
+    const { portal_password_hash, account_password_hash, ...patientData } = patient;
 
     // SEC-15: the browser authenticates with this HttpOnly cookie from now on. The token
     // is still in the body for non-browser clients, but the web app no longer stores it.
@@ -985,7 +1008,7 @@ router.get('/session', async (req, res) => {
       return rows[0] || null;
     });
     if (!patient) return res.status(401).json({ error: 'Invalid or expired portal session' });
-    const { portal_password_hash, ...patientData } = patient;   // eslint-disable-line no-unused-vars
+    const { portal_password_hash, account_password_hash, ...patientData } = patient;   // eslint-disable-line no-unused-vars
     res.json({ patient: { ...patientData, role: 'patient' } });
   } catch (error) {
     console.error('Portal session lookup error:', error);

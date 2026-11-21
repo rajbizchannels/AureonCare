@@ -6,6 +6,7 @@ import { useAudit } from '../../hooks/useAudit';
 import { isPhoneValid, validateOptionalPhone } from '../../utils/validators';
 import TwoFactorPanel from '../TwoFactorPanel';
 import ProviderListingPanel from '../ProviderListingPanel';
+import { openPracticeChooser } from '../layout/PracticeChooser';
 
 const UserProfileModal = ({
   theme,
@@ -36,6 +37,12 @@ const UserProfileModal = ({
     user?.preferences?.whatsappNumber ?? user?.phone ?? ''
   );
   const [editingWhatsapp, setEditingWhatsapp] = useState(false);
+  // How many practices this person works at; the "Switch practice" row shows only for 2+.
+  const [practiceCount, setPracticeCount] = useState(0);
+  useEffect(() => {
+    if (user?.role === 'patient') return;
+    api?.getMyPractices?.().then((d) => setPracticeCount((d && d.practices && d.practices.length) || 0)).catch(() => {});
+  }, [user?.role, api]);
   const [whatsappDraft, setWhatsappDraft] = useState('');
   const [whatsappDraftError, setWhatsappDraftError] = useState('');
 
@@ -382,6 +389,20 @@ const UserProfileModal = ({
               </div>
             </div>
           </div>
+
+          {/* People at several practices switch here (it used to sit in the top bar). */}
+          {practiceCount > 1 && (
+            <div className={`rounded-lg p-4 flex items-center justify-between gap-3 ${theme === 'dark' ? 'bg-slate-800/50' : 'bg-gray-100/50'}`}>
+              <div>
+                <h4 className={`font-semibold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>Practice</h4>
+                <p className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>You work at {practiceCount} practices.</p>
+              </div>
+              <button type="button" onClick={() => { handleClose(); openPracticeChooser(); }}
+                      className="px-3 py-1.5 rounded-lg text-sm font-medium bg-teal-700 hover:bg-teal-800 text-white">
+                Switch practice
+              </button>
+            </div>
+          )}
 
           {/* Change Password Section */}
           <div className={`rounded-lg p-4 ${theme === 'dark' ? 'bg-slate-800/50' : 'bg-gray-100/50'}`}>

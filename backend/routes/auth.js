@@ -156,8 +156,13 @@ router.post('/login', async (req, res) => {
     // reached nothing but 401/403 on every screen. Checked AFTER the password, so this
     // answer does not reveal which emails belong to patient accounts.
     if (!(await preferStaffMembership(pool, user))) {
-      return res.status(403).json({
-        error: 'This is a patient account. Please sign in through your practice\'s patient portal (Patient Login).',
+      // 401, not 403: both the web sign-in page and the mobile app treat a 401 as "not a
+      // staff account" and carry straight on to the patient-portal sign-in with the same
+      // details, so a patient who typed them here simply lands in their portal. (A 403 was
+      // a dead end: the mobile app stopped there, and the web page showed this message.)
+      // The password was right, so this is not counted as a failed attempt.
+      return res.status(401).json({
+        error: 'This is a patient account. Signing you in to your patient portal…',
         patientAccount: true,
       });
     }
@@ -208,6 +213,7 @@ router.post('/login', async (req, res) => {
     // clients; the frontend migrates to the cookie and stops storing it.
     const csrfToken = issueAuthCookies(res, token);
     await lockout.clear(pool, 'staff', email);   // a successful sign-in wipes earlier wrong tries
+    await lockout.clear(pool, 'portal', email);
 
     // A patient signing in here lands in the portal, whose routes accept only a portal
     // session token — the JWT above is not one. Null for every non-patient, and for a

@@ -203,7 +203,36 @@ const report = (err) => {
   await pool.query(`INSERT INTO public.users (id,email,first_name,last_name,role,status,password_hash,created_at)
     VALUES (gen_random_uuid(),$1,'L','O','patient','active',$2,NOW())`, [leftover, await bcrypt.hash(PW, 12)]);
   const sl = await call('POST', '/api/auth/login', { body: { email: leftover, password: PW } });
-  check(`STAFF LOGIN REFUSES A PATIENT ACCOUNT (got ${sl.status})`, sl.status === 403 && sl.body.patientAccount === true && !sl.body.token);
-  check('...but only after the password: a wrong one still reads "invalid"',
-    (await call('POST', '/api/auth/login', { body: { email: leftover, password: 'wrong-password' } })).status === 401);
+  check(`STAFF LOGIN GIVES A PATIENT ACCOUNT NO STAFF SESSION (got ${sl.status})`, sl.status === 401 && sl.body.patientAccount === true && !sl.body.token);
+  check('...but says so only after the password: a wrong one reads "invalid"', await (async () => {
+    const w = await call('POST', '/api/auth/login', { body: { email: leftover, password: 'wrong-password' } });
+    return w.status === 401 && !w.body.patientAccount;
+  })());
+
+  // ── 8. older patient accounts: password on the account, no portal password ─────────
+  // They could sign in nowhere: the portal checked only the portal password and the staff
+  // page refused patient accounts (and the mobile app stopped at that refusal).
+  const oldId = crypto.randomUUID();
+  const oldEmail = `oldpt_${RUN}@example.com`;
+  await pool.query(`INSERT INTO public.users (id,email,first_name,last_name,role,status,password_hash,practice_id,created_at)
+    VALUES ($1,$2,'Old','Patient','patient','active',$3,$4,NOW())`, [oldId, oldEmail, await bcrypt.hash(PW, 12), t.practiceId]);
+  await pool.query(`INSERT INTO ${schema}.patients (id, first_name, last_name, mrn, date_of_birth, email, portal_enabled)
+    VALUES ($1,'Old','Patient',$2,'1960-03-03',$3,true)`, [oldId, `MRN-OLD-${RUN}`, oldEmail]);
+  const staffTry = await call('POST', '/api/auth/login', { body: { email: oldEmail, password: PW } });
+  check('the staff page answers 401 "patient account", so the web page and the app carry on to the portal',
+    staffTry.status === 401 && staffTry.body.patientAccount === true);
+  const op = await call('POST', '/api/patient-portal/login', { body: { email: oldEmail, password: PW } });
+  check(`AN OLDER PATIENT ACCOUNT SIGNS IN TO THE PORTAL WITH ITS ACCOUNT PASSWORD (got ${op.status} ${JSON.stringify(op.body).slice(0, 80)})`,
+    op.status === 200 && op.body.patient && op.body.patient.id === oldId && !('account_password_hash' in op.body.patient) && !('portal_password_hash' in op.body.patient));
+  check('...the password is kept as the portal password from now on',
+    (await pool.query(`SELECT portal_password_hash IS NOT NULL AS ok FROM ${schema}.patients WHERE id = $1`, [oldId])).rows[0].ok);
+  check('...a wrong password is still refused',
+    (await call('POST', '/api/patient-portal/login', { body: { email: oldEmail, password: 'nope-nope' } })).status === 401);
+  // Staff-then-portal, five times in a row (what the sign-in page does) never locks the patient out.
+  let ok5 = true;
+  for (let i = 0; i < 5; i++) {
+    await call('POST', '/api/auth/login', { body: { email: oldEmail, password: PW } });
+    ok5 = ok5 && (await call('POST', '/api/patient-portal/login', { body: { email: oldEmail, password: PW } })).status === 200;
+  }
+  check('signing in through the staff page five times in a row never locks the patient out', ok5);
 })().then(() => report(), report);

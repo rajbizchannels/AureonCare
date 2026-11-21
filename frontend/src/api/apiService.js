@@ -870,6 +870,9 @@ const api = {
       // are not failures the user can act on if they never see them.
       const data = await response.json().catch(() => ({}));
       const err = new Error(data.error || 'Failed to login');
+      err.status = response.status;
+      err.patientAccount = Boolean(data.patientAccount);
+      err.locked = Boolean(data.locked);
       err.mfaRequired = Boolean(data.mfaRequired);
       err.mfaEnrolmentRequired = Boolean(data.mfaEnrolmentRequired);
       throw err;
