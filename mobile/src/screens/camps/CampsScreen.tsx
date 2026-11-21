@@ -5,7 +5,7 @@ import { useSession } from '@/context/SessionContext';
 import { useLayout } from '@/lib/device';
 import { useResource, formatDate } from '@/lib/useResource';
 import { canWorkCampDesk } from '@/lib/permissions';
-import { acceptsRegistrations, hasLiveBoard, sortCamps } from '@/lib/camps';
+import { acceptsRegistrations, sortCamps } from '@/lib/camps';
 import { Chip, EmptyState, ErrorNote, Loading, Segmented } from '@/components/ui';
 import { SplitView } from '@/components/SplitView';
 import { palette, radius, space, type } from '@/theme/tokens';
@@ -50,11 +50,14 @@ export const CampsScreen: React.FC<{ route?: { params?: { campId?: string } } }>
   const selected = ordered.find((c) => c.id === selectedId) ?? null;
   const mayWorkDesk = canWorkCampDesk(role);
 
-  // The pane a camp opens on depends on what it is doing. A running camp wants
-  // the board; one that is merely published has nobody queued yet.
+  // Desk is the landing pane at every width, for anyone who can work one and
+  // any camp still taking people. Registering the person in front of you is
+  // the time-critical job; the board is a glance you choose to take, and it
+  // is one tap away. Width used to decide this, which meant the same camp
+  // opened differently on a phone and a tablet.
   const open = (camp: Camp) => {
     setSelectedId(camp.id);
-    setPane(hasLiveBoard(camp) && isSplit ? 'board' : mayWorkDesk && acceptsRegistrations(camp) ? 'desk' : 'attendees');
+    setPane(mayWorkDesk && acceptsRegistrations(camp) ? 'desk' : 'attendees');
   };
 
   /**
