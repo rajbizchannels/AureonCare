@@ -267,7 +267,7 @@ export const StaffTodayScreen: React.FC = () => {
             <Text style={styles.queueTitle}>
               {openTasks.length} open task{openTasks.length === 1 ? '' : 's'}
             </Text>
-            <Text style={styles.queueHint}>Open Tasks from More to work through them</Text>
+            <Text style={styles.queueHint}>Open the Tasks tab to work through them</Text>
           </View>
         </Card>
       )}

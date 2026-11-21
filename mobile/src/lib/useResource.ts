@@ -110,6 +110,40 @@ export const humanStatus = (value: string | null | undefined): string =>
   (value ?? '').replace(/_/g, ' ');
 
 /**
+ * Is this due date in the past?
+ *
+ * Compared by calendar day, not by instant. `due_date` is a DATE column, so
+ * it arrives as midnight — comparing it to `Date.now()` made every task due
+ * *today* read as overdue from one minute past midnight, which is both wrong
+ * and the most alarming way to be wrong on a screen that paints overdue rows
+ * red.
+ */
+export const isPastDue = (due: string | null | undefined): boolean => {
+  if (!due) return false;
+  const date = new Date(due);
+  if (Number.isNaN(date.getTime())) return false;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  // The timestamp is midnight UTC for a DATE; read the date parts in the same
+  // frame the string carries rather than shifting it into local time first.
+  const dueDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  return dueDay.getTime() < today.getTime();
+};
+
+/** Due today, which deserves its own word rather than silence. */
+export const isDueToday = (due: string | null | undefined): boolean => {
+  if (!due) return false;
+  const date = new Date(due);
+  if (Number.isNaN(date.getTime())) return false;
+  const today = new Date();
+  return (
+    date.getFullYear() === today.getFullYear() &&
+    date.getMonth() === today.getMonth() &&
+    date.getDate() === today.getDate()
+  );
+};
+
+/**
  * Same calendar day in the device's own timezone — which is the one the
  * person reading "Today" is standing in, even when the practice stores
  * timestamps in another.
