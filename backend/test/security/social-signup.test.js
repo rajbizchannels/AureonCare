@@ -125,6 +125,39 @@ const report = (err) => {
   const off = await signIn('google');
   check('a patient whose portal access is off is told so (403), with no session', off.status === 403 && /not switched on/.test(off.body.error) && !off.body.sessionToken && !off.body.token);
 
+  // A patient the practice has INVITED (portal still off) signs in on the main page with the
+  // invited address: that is accepting the invitation.
+  const T = t.tenant.schema_name;
+  const invId = crypto.randomUUID(); const invEmail = `invited_${RUN}@gmail.example`;
+  await pool.query(`INSERT INTO public.users (id,email,first_name,last_name,role,status,practice_id,created_at)
+    VALUES ($1,$2,'Ina','Vited','patient','active',$3,NOW())`, [invId, invEmail, t.practiceId]);
+  await pool.query(`INSERT INTO ${T}.patients (id, first_name, last_name, mrn, date_of_birth, email, portal_enabled)
+    VALUES ($1,'Ina','Vited',$2,'1985-01-01',$3,false)`, [invId, `MRN-I-${RUN}`, invEmail]);
+  const sendInv = await call('POST', '/api/portal-invites', admin, { patientId: invId });
+  check(`the practice invites the patient to the portal (got ${sendInv.status})`, sendInv.status === 201);
+  IDENTITY = { email: `someone.else_${RUN}@gmail.example`, emailVerified: true, providerId: `g-other-${RUN}` };
+  // (an unrelated Google account has no account here at all)
+  check('an unrelated Google account does not get in', (await signIn('google')).status === 404);
+  IDENTITY = { email: invEmail, emailVerified: false, providerId: `g-inv-unv-${RUN}` };
+  const unv = await signIn('google');
+  check(`an UNVERIFIED email does not accept the invitation (got ${unv.status})`, unv.status !== 200 && !(unv.body && unv.body.sessionToken));
+  IDENTITY = { email: invEmail, emailVerified: true, providerId: `ms-inv-${RUN}`, firstName: 'Ina', lastName: 'Vited' };
+  const acc = await signIn('microsoft');
+  check(`SIGNING IN WITH THE INVITED ADDRESS ACCEPTS THE INVITATION AND OPENS THE PORTAL (got ${acc.status} ${JSON.stringify(acc.body).slice(0, 100)})`,
+    acc.status === 200 && acc.body.portal === true && acc.body.patient.id === invId && Boolean(acc.body.sessionToken));
+  const st = (await pool.query(`SELECT p.portal_enabled, (SELECT bool_and(used_at IS NOT NULL) FROM ${T}.portal_invites WHERE patient_id = p.id) AS used FROM ${T}.patients p WHERE id = $1`, [invId])).rows[0];
+  check('...portal access is switched on and the invitation is used up', st.portal_enabled === true && st.used === true);
+  check('...and next time it simply signs in', (await signIn('google')).status === 200 || (await signIn('microsoft')).status === 200);
+
+  // A leftover patient account with no practice or chart is told what to do.
+  const lostEmail = `lost_${RUN}@gmail.example`;
+  await pool.query(`INSERT INTO public.users (id,email,first_name,last_name,role,status,created_at)
+    VALUES (gen_random_uuid(),$1,'Lo','St','patient','active',NOW())`, [lostEmail]);
+  IDENTITY = { email: lostEmail, emailVerified: true, providerId: `g-lost-${RUN}` };
+  const lost = await signIn('google');
+  check(`a patient account with no practice is told to ask for an invitation (got ${lost.status})`,
+    lost.status === 403 && /could not find your patient record/.test(lost.body.error || ''));
+
   await pool.query('DELETE FROM public.social_auth WHERE provider_user_id = ANY($1)', [[`g-nurse-${RUN}`, `g-adm-${RUN}`]]).catch(() => {});
   await pool.query('DELETE FROM public.users WHERE email = ANY($1)', [[adminEmail, staffEmail]]).catch(() => {});
   report();

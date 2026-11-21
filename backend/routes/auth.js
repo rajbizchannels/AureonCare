@@ -66,11 +66,56 @@ async function preferStaffMembership(pool, user) {
  * already proven and the one-time code is spent, so it cannot be "retried" against the
  * portal the way a password can: sign them in to their portal here. Returns the response.
  */
-async function answerPatientAccount(req, res, pool, user) {
-  const session = await issuePortalSession(pool, { ...user, role: 'patient' }, { ip: req.ip, userAgent: req.get('user-agent') });
+async function answerPatientAccount(req, res, pool, user, verifiedEmail = null) {
+  const meta = { ip: req.ip, userAgent: req.get('user-agent') };
+  let session = await issuePortalSession(pool, { ...user, role: 'patient' }, meta);
+
+  // Not on the portal yet, but the practice has INVITED this person, to the very address the
+  // provider has just verified: signing in with that account is accepting the invitation
+  // (the same thing "Continue with Google/Microsoft" on the invitation page does). Without
+  // this, a patient who went to the main sign-in page instead of the invitation link was
+  // told portal access was off, although their practice had just asked them to join.
+  let chartFound = null;
+  if (!session && verifiedEmail) {
+    try {
+      const { resolveTenantForUser } = require('../services/tenantCatalog');
+      const { registerIdentity } = require('../services/portalRouting');
+      const tenant = await resolveTenantForUser(pool, user.id);
+      if (tenant && tenant.tenantId && tenant.schemaName && tenant.schemaName !== 'public') {
+        const used = await withTenant(pool, tenant.schemaName, async (c) => {
+          const { rows: [chart] } = await c.query('SELECT id FROM patients WHERE id = $1', [user.id]);
+          chartFound = Boolean(chart);
+          if (!chart) return [];
+          const { rows } = await c.query(
+            `UPDATE portal_invites SET used_at = now()
+              WHERE patient_id = $1 AND used_at IS NULL AND revoked_at IS NULL AND expires_at > now()
+                AND LOWER(email) = LOWER($2)
+              RETURNING token_hash`, [user.id, verifiedEmail]);
+          if (rows.length) await c.query('UPDATE patients SET portal_enabled = true WHERE id = $1', [user.id]);
+          return rows;
+        });
+        if (used.length) {
+          for (const r of used) {
+            await pool.query('SELECT control.forget_portal_invite($1)', [r.token_hash])
+              .catch((e) => console.warn('[auth] could not drop invite route:', e.message));
+          }
+          await registerIdentity(pool, verifiedEmail, tenant.tenantId);
+          console.log(`[auth] portal invitation accepted by ${req.body && req.body.provider ? req.body.provider : 'social'} sign-in for patient ${user.id}`);
+          session = await issuePortalSession(pool, { ...user, role: 'patient' }, meta);
+        }
+      } else {
+        chartFound = false;
+      }
+    } catch (e) {
+      console.warn('[auth] invitation check during social sign-in failed:', e.message);
+    }
+  }
+
   if (!session) {
     return res.status(403).json({
-      error: 'Your practice has not switched on patient portal access for you yet. Please contact the practice.',
+      error: chartFound === false
+        ? 'We could not find your patient record at a practice. Ask your practice to invite you to the patient portal, then use the link in their email.'
+        : 'Your practice has not switched on patient portal access for you yet. Please contact the practice, or use the invitation link they emailed you.',
       patientAccount: true,
     });
   }
@@ -1224,7 +1269,7 @@ const socialLoginHandler = async (req, res) => {
 
         // A patient account: no staff identity is attached; they go to their portal.
         if (!(await preferStaffMembership(pool, user))) {
-          return answerPatientAccount(req, res, pool, user);
+          return answerPatientAccount(req, res, pool, user, providerEmailVerified ? verified.email : null);
         }
 
         await pool.query(`
@@ -1318,7 +1363,7 @@ const socialLoginHandler = async (req, res) => {
     // Patients use the patient portal; a leftover 'patient' users row gets no staff session
     // (it could reach nothing — every staff route refuses it). An invite adopts it above.
     if (!(await preferStaffMembership(pool, user))) {
-      return answerPatientAccount(req, res, pool, user);
+      return answerPatientAccount(req, res, pool, user, providerEmailVerified ? verified.email : null);
     }
 
     // Update last login
