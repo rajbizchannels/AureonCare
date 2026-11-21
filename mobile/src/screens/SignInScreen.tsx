@@ -5,6 +5,8 @@ import {
 import { ArrowLeft, Server, ShieldCheck } from 'lucide-react-native';
 import { useSession } from '@/context/SessionContext';
 import { ErrorNote, PrimaryButton, Screen } from '@/components/ui';
+import { SocialSignInButton } from '@/components/SocialSignInButton';
+import { PROVIDER_LABEL, type Provider } from '@/lib/socialSignIn';
 import { palette, radius, space, tint, type } from '@/theme/tokens';
 
 /**
@@ -22,7 +24,8 @@ type Step =
   | { name: 'enrol-elsewhere'; prompt: string };
 
 export const SignInScreen: React.FC<{ onOpenServer: () => void }> = ({ onOpenServer }) => {
-  const { signInWithPassword, serverUrl, endedReason } = useSession();
+  const { signInWithPassword, signInWithProvider, serverUrl, endedReason } = useSession();
+  const [providerBusy, setProviderBusy] = useState<Provider | null>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [code, setCode] = useState('');
@@ -51,6 +54,24 @@ export const SignInScreen: React.FC<{ onOpenServer: () => void }> = ({ onOpenSer
       }
     },
     [email, password, signInWithPassword]
+  );
+
+  // Google / Microsoft open the system browser; the server does the provider sign-in and
+  // the answer opens the same shell a password would (staff, or the patient's portal).
+  const withProvider = useCallback(
+    async (provider: Provider) => {
+      if (busy || providerBusy) return;
+      setError(null);
+      setProviderBusy(provider);
+      try {
+        await signInWithProvider(provider);   // 'cancelled' simply leaves the screen as it was
+      } catch (e) {
+        setError(e instanceof Error ? e.message : `Could not sign in with ${PROVIDER_LABEL[provider]}.`);
+      } finally {
+        setProviderBusy(null);
+      }
+    },
+    [busy, providerBusy, signInWithProvider]
   );
 
   const submitCredentials = useCallback(() => {
@@ -139,6 +160,22 @@ export const SignInScreen: React.FC<{ onOpenServer: () => void }> = ({ onOpenSer
                 busy={busy}
                 style={styles.submit}
               />
+
+              <View style={styles.orRow} accessibilityElementsHidden importantForAccessibility="no">
+                <View style={styles.orLine} />
+                <Text style={styles.orText}>or</Text>
+                <View style={styles.orLine} />
+              </View>
+              {/* Each provider's own button style (src/components/SocialSignInButton.tsx). */}
+              {(['google', 'microsoft'] as const).map((provider) => (
+                <SocialSignInButton
+                  key={provider}
+                  provider={provider}
+                  busy={providerBusy === provider}
+                  disabled={busy || (providerBusy !== null && providerBusy !== provider)}
+                  onPress={() => void withProvider(provider)}
+                />
+              ))}
             </>
           ) : step.name === 'second-factor' ? (
             <>
@@ -255,6 +292,9 @@ const styles = StyleSheet.create({
   codeInput: { ...type.display, letterSpacing: 6, textAlign: 'center' },
   inputError: { borderColor: palette.danger },
   submit: { marginTop: space.sm },
+  orRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm, marginVertical: space.xs },
+  orLine: { flex: 1, height: 1, backgroundColor: palette.border },
+  orText: { ...type.xs, color: palette.textMuted },
   backRow: {
     minHeight: 44,
     flexDirection: 'row',

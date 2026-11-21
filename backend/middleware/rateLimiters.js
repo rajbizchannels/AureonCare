@@ -38,7 +38,7 @@ const testBypass = () =>
 // one IP used up the allowance and the next real sign-in was refused with "Too many
 // attempts". Per-ACCOUNT protection is the lockout after 4 wrong passwords
 // (services/loginLockout.js); this is the per-IP backstop against spraying many accounts.
-const CREDENTIAL_PATHS = /^\/(login|forgot-password|reset-password|social-login|link-social-account|change-password|mfa\/(verify|disable)|oauth\/[a-z]+\/exchange)\/?$/;
+const CREDENTIAL_PATHS = /^\/(login|forgot-password|reset-password|social-login|link-social-account|change-password|mfa\/(verify|disable)|oauth\/[a-z]+\/exchange|mobile\/oauth\/[a-z]+\/(start|callback)|mobile\/oauth\/redeem)\/?$/;
 const authLimiter = rateLimit({
   store: storeFor('auth'),
   windowMs: WINDOW_MS,

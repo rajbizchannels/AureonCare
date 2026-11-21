@@ -1,4 +1,5 @@
 import { credentials } from './storage';
+import type { RedeemResponse } from './socialSignIn';
 
 /**
  * Client for the AureonCare API.
@@ -578,16 +579,18 @@ export class ApiClient {
     });
   }
 
-  /** Exchanges a verified provider token for an AureonCare session. */
-  async signInSocial(input: {
-    provider: 'google' | 'microsoft';
-    providerId: string;
-    accessToken: string;
-  }): Promise<{
-    token?: string; user?: Account;
-    portal?: boolean; sessionToken?: string; patient?: Account & { id: string };
-  }> {
-    return this.request('/auth/social-login', { method: 'POST', body: JSON.stringify(input) });
+  /**
+   * Google / Microsoft: redeem the one-time code the server put on the app link, with the
+   * PKCE verifier only this app knows (src/lib/socialSignIn.ts). The answer is the same as
+   * the web sign-in's: a staff session, or — for a patient — their portal session.
+   * (The old /auth/social-login took a provider token minted on the device; it is switched
+   * off on production servers, SEC-20.)
+   */
+  async redeemMobileOAuth(code: string, codeVerifier: string): Promise<RedeemResponse> {
+    return this.request('/auth/mobile/oauth/redeem', {
+      method: 'POST',
+      body: JSON.stringify({ code, code_verifier: codeVerifier }),
+    });
   }
 
   /** Patient portal sign-in — a different table and a different token shape. */

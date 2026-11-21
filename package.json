@@ -69,7 +69,8 @@
     "test:booking-requests": "node backend/test/scheduling/booking-requests.test.js",
     "test:join-requests": "node backend/test/directory/join-requests.test.js",
     "test:lockout": "node backend/test/security/lockout.test.js",
-    "test:sick-notes": "node backend/test/records/sick-notes.test.js"
+    "test:sick-notes": "node backend/test/records/sick-notes.test.js",
+    "test:mobile-oauth": "node backend/test/security/mobile-oauth.test.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.6.0",

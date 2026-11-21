@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import SocialSignInButton from '../common/SocialSignInButton';
 import { Loader2, AlertCircle, UserPlus, CheckCircle2 } from 'lucide-react';
 import { useGoogleLogin } from '@react-oauth/google';
 import { getMicrosoftAuthCode } from '../../utils/msAuthCode';
@@ -224,14 +225,10 @@ const AcceptInvitePage = ({ theme = 'light', token, api, addNotification, onAcce
 
         <div className={`my-4 text-center text-sm ${muted}`}>or</div>
 
-        <button type="button" onClick={() => googleLogin()} disabled={!!busy}
-                className={`w-full py-2.5 rounded-lg border ${card} ${text} font-medium disabled:opacity-60`}>
-          {busy === 'google' ? 'Connecting…' : 'Continue with Google'}
-        </button>
-        <button type="button" onClick={withMicrosoft} disabled={!!busy}
-                className={`mt-2 w-full py-2.5 rounded-lg border ${card} ${text} font-medium disabled:opacity-60`}>
-          {busy === 'microsoft' ? 'Connecting…' : 'Continue with Microsoft'}
-        </button>
+        <div className="space-y-2">
+          <SocialSignInButton provider="google" theme={theme} onClick={() => googleLogin()} disabled={!!busy} busy={busy === 'google'} />
+          <SocialSignInButton provider="microsoft" theme={theme} onClick={withMicrosoft} disabled={!!busy} busy={busy === 'microsoft'} />
+        </div>
         <p className={`mt-3 text-xs text-center ${muted}`}>
           Use the Google or Microsoft account for <strong>{invite.email}</strong> — the invite is tied to that address.
         </p>

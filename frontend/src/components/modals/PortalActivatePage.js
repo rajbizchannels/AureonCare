@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import SocialSignInButton from '../common/SocialSignInButton';
 import { Loader2, AlertCircle, HeartPulse, CheckCircle2 } from 'lucide-react';
 import { useGoogleLogin } from '@react-oauth/google';
 import { getMicrosoftAuthCode } from '../../utils/msAuthCode';
@@ -96,7 +97,6 @@ const PortalActivatePage = ({ theme = 'light', token, api, onActivated, onSignIn
   const text = dark ? 'text-gray-100' : 'text-gray-900';
   const muted = dark ? 'text-gray-400' : 'text-gray-500';
   const input = `w-full px-3 py-2.5 rounded-lg border ${dark ? 'bg-gray-900 border-gray-600 text-gray-100' : 'bg-white border-gray-300 text-gray-900'} focus:outline-none focus:ring-2 focus:ring-blue-500`;
-  const secondary = `w-full py-2.5 rounded-lg border font-medium disabled:opacity-60 ${dark ? 'border-gray-600 text-gray-100 hover:bg-gray-700' : 'border-gray-300 text-gray-900 hover:bg-gray-50'}`;
 
   if (loading) {
     return (
@@ -163,12 +163,10 @@ const PortalActivatePage = ({ theme = 'light', token, api, onActivated, onSignIn
         )}
 
         <div className="mt-5 space-y-2">
-          <button type="button" onClick={() => googleLogin()} disabled={!!busy} className={secondary}>
-            {busy === 'google' ? (t.portalActivateConnecting || 'Connecting…') : (t.portalActivateContinueGoogle || 'Continue with Google')}
-          </button>
-          <button type="button" onClick={withMicrosoft} disabled={!!busy} className={secondary}>
-            {busy === 'microsoft' ? (t.portalActivateConnecting || 'Connecting…') : (t.portalActivateContinueMicrosoft || 'Continue with Microsoft')}
-          </button>
+          <SocialSignInButton provider="google" theme={theme} onClick={() => googleLogin()} disabled={!!busy} busy={busy === 'google'}
+                              label={t.portalActivateContinueGoogle} busyLabel={t.portalActivateConnecting || 'Connecting…'} />
+          <SocialSignInButton provider="microsoft" theme={theme} onClick={withMicrosoft} disabled={!!busy} busy={busy === 'microsoft'}
+                              label={t.portalActivateContinueMicrosoft} busyLabel={t.portalActivateConnecting || 'Connecting…'} />
         </div>
 
         <div className={`my-4 text-center text-sm ${muted}`}>{t.portalActivateOrPassword || 'or choose a password'}</div>

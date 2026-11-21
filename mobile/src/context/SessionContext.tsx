@@ -9,6 +9,13 @@ import {
 } from '@/lib/permissions';
 import { credentials, prefs } from '@/lib/storage';
 import { DEFAULT_SERVER_URL, loadServerUrl, saveServerUrl } from '@/lib/server';
+import * as Crypto from 'expo-crypto';
+import * as Linking from 'expo-linking';
+import * as WebBrowser from 'expo-web-browser';
+import {
+  base64ToBase64Url, landingFor, parseReturnUrl, returnErrorMessage, startUrl, verifierFromBytes,
+  type Provider,
+} from '@/lib/socialSignIn';
 
 /**
  * Who is signed in, against which server, and with which credential.
@@ -52,11 +59,11 @@ interface SessionValue {
   can(module: Module, action?: Action): boolean;
   canAdmin(key: keyof AdminGrants): boolean;
   signInWithPassword(email: string, password: string, mfaCode?: string): Promise<SignInOutcome>;
-  signInWithProvider(input: {
-    provider: 'google' | 'microsoft';
-    providerId: string;
-    accessToken: string;
-  }): Promise<void>;
+  /**
+   * Google / Microsoft in the system browser, brokered by the server. Resolves 'cancelled'
+   * when the person closed the browser or declined; throws with a message to show otherwise.
+   */
+  signInWithProvider(provider: Provider): Promise<'signed-in' | 'cancelled'>;
   signOut(): Promise<void>;
   changeServer(origin: string): Promise<void>;
   /** Re-read the account, so a role change lands without a sign-out. */
@@ -183,16 +190,38 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
   );
 
   const signInWithProvider = useCallback(
-    async (input: { provider: 'google' | 'microsoft'; providerId: string; accessToken: string }) => {
-      const client = new ApiClient(serverUrl, null);
-      const res = await client.signInSocial(input);
-      // A patient account answers with its portal session (the provider proved who it is,
-      // so there is nothing to retry against the portal).
-      if (res.portal && res.sessionToken && res.patient) {
-        await establish({ kind: 'portal', token: res.sessionToken, patientId: res.patient.id }, { ...res.patient, role: 'patient' });
-        return;
+    async (provider: Provider): Promise<'signed-in' | 'cancelled'> => {
+      // PKCE between this app and the server: whoever else receives the app link cannot
+      // redeem the code without this verifier.
+      const verifier = verifierFromBytes(Crypto.getRandomBytes(64));
+      const challenge = base64ToBase64Url(await Crypto.digestStringAsync(
+        Crypto.CryptoDigestAlgorithm.SHA256, verifier, { encoding: Crypto.CryptoEncoding.BASE64 }
+      ));
+      // aureoncare://auth in a build; exp://…/--/auth in Expo Go (the server must allow it).
+      const redirect = Linking.createURL('auth');
+      const result = await WebBrowser.openAuthSessionAsync(
+        startUrl(serverUrl, provider, redirect, challenge), redirect
+      );
+      if (result.type !== 'success') return 'cancelled';
+
+      const back = parseReturnUrl(result.url);
+      if (back.kind === 'error') {
+        const message = returnErrorMessage(provider, back);
+        if (!message) return 'cancelled';
+        throw new ApiError(400, message);
       }
-      await establish({ kind: 'staff', token: res.token as string }, res.user as Account);
+
+      const client = new ApiClient(serverUrl, null);
+      const landing = landingFor(await client.redeemMobileOAuth(back.code, verifier));
+      if (landing.kind === 'portal') {
+        await establish(
+          { kind: 'portal', token: landing.sessionToken, patientId: landing.patient.id },
+          { ...(landing.patient as unknown as Account), role: 'patient' } as Account
+        );
+      } else {
+        await establish({ kind: 'staff', token: landing.token }, landing.user as Account);
+      }
+      return 'signed-in';
     },
     [serverUrl, establish]
   );
