@@ -104,6 +104,27 @@ const report = (err) => {
   check('...and no second account is made', (await usersWith(adminEmail)).length === 1);
   check('...and next time the link alone finds it', (await signIn('google')).status === 200);
 
+  // ── 4. a PATIENT account signs in with Google/Microsoft on the main page ────────────
+  // The identity is proven and the code is spent, so it cannot be retried against the
+  // portal: the answer IS the portal session (was a 403 "use Patient Login" dead end).
+  const ptId = crypto.randomUUID(); const ptEmail = `pt_${RUN}@gmail.example`;
+  await pool.query(`INSERT INTO public.users (id,email,first_name,last_name,role,status,practice_id,created_at)
+    VALUES ($1,$2,'Pat','Ient','patient','active',$3,NOW())`, [ptId, ptEmail, t.practiceId]);
+  await pool.query(`INSERT INTO ${t.tenant.schema_name}.patients (id, first_name, last_name, mrn, date_of_birth, email, portal_enabled)
+    VALUES ($1,'Pat','Ient',$2,'1980-01-01',$3,true)`, [ptId, `MRN-S-${RUN}`, ptEmail]);
+  for (const provider of ['google', 'microsoft']) {
+    IDENTITY = { email: ptEmail, emailVerified: true, providerId: `${provider}-pt-${RUN}`, firstName: 'Pat', lastName: 'Ient' };
+    const sp = await signIn(provider);
+    check(`A PATIENT SIGNING IN WITH ${provider.toUpperCase()} ON THE MAIN PAGE GETS THEIR PORTAL (got ${sp.status})`,
+      sp.status === 200 && sp.body.portal === true && sp.body.patient && sp.body.patient.id === ptId && Boolean(sp.body.sessionToken) && !sp.body.token);
+    const prof = await fetch(`${BASE}/api/patient-portal/${ptId}/profile`, { headers: { Authorization: 'Bearer ' + sp.body.sessionToken } });
+    check(`...and that portal session works (${provider}, got ${prof.status})`, prof.status === 200);
+  }
+  await pool.query(`UPDATE ${t.tenant.schema_name}.patients SET portal_enabled = false WHERE id = $1`, [ptId]);
+  IDENTITY = { email: ptEmail, emailVerified: true, providerId: `google-pt-${RUN}`, firstName: 'Pat', lastName: 'Ient' };
+  const off = await signIn('google');
+  check('a patient whose portal access is off is told so (403), with no session', off.status === 403 && /not switched on/.test(off.body.error) && !off.body.sessionToken && !off.body.token);
+
   await pool.query('DELETE FROM public.social_auth WHERE provider_user_id = ANY($1)', [[`g-nurse-${RUN}`, `g-adm-${RUN}`]]).catch(() => {});
   await pool.query('DELETE FROM public.users WHERE email = ANY($1)', [[adminEmail, staffEmail]]).catch(() => {});
   report();

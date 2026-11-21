@@ -80,6 +80,14 @@
       "dest": "frontend/index.html"
     },
     {
+      "src": "/portal/(.*)",
+      "dest": "frontend/index.html"
+    },
+    {
+      "src": "/((?!.*\\.)[^?]*)",
+      "dest": "frontend/index.html"
+    },
+    {
       "src": "/(.*)",
       "dest": "frontend/$1"
     }

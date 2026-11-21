@@ -28,6 +28,15 @@ const LoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, addNotif
     }
   };
 
+  // A patient signed in here (password fall-through or Google/Microsoft): open their portal.
+  const enterPortal = async (portal) => {
+    api.storePortalSession(portal.sessionToken);
+    setUser({ ...portal.patient, role: 'patient' });
+    setIsAuthenticated(true);
+    setCurrentModule('patientPortal');
+    await addNotification('success', 'Welcome to your patient portal');
+  };
+
   const handleLogin = async (e) => {
     e.preventDefault();
     if (signingIn) return;   // a second submit while the first is in flight
@@ -58,12 +67,7 @@ const LoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, addNotif
       // longer has to know there is a separate "Patient Login".
       if (error.status === 401 && !mfaCode) {
         try {
-          const portal = await api.patientPortalLogin(email, password);
-          api.storePortalSession(portal.sessionToken);
-          setUser({ ...portal.patient, role: 'patient' });
-          setIsAuthenticated(true);
-          setCurrentModule('patientPortal');
-          await addNotification('success', 'Welcome to your patient portal');
+          await enterPortal(await api.patientPortalLogin(email, password));
           return;
         } catch (portalError) {
           // Say what the staff sign-in said (e.g. "1 attempt left") unless the portal has
@@ -90,6 +94,7 @@ const LoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, addNotif
     onSuccess: async (codeResponse) => {
       try {
         const response = await api.exchangeGoogleCode(codeResponse.code, 'postmessage');
+        if (response.portal) { await enterPortal(response); return; }   // a patient account
 
         api.storeToken(response.token);
       requestPracticeChoice();   // people at several practices pick one next
@@ -121,6 +126,7 @@ const LoginPage = ({ theme, setTheme, api, setUser, setIsAuthenticated, addNotif
         microsoftOAuthConfig.auth.clientId
       );
       const response = await api.exchangeMicrosoftCode(code, redirectUri, codeVerifier);
+      if (response.portal) { await enterPortal(response); return; }   // a patient account
 
       api.storeToken(response.token);
       requestPracticeChoice();   // people at several practices pick one next

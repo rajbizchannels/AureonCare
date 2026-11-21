@@ -185,8 +185,14 @@ export const SessionProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const signInWithProvider = useCallback(
     async (input: { provider: 'google' | 'microsoft'; providerId: string; accessToken: string }) => {
       const client = new ApiClient(serverUrl, null);
-      const { token, user } = await client.signInSocial(input);
-      await establish({ kind: 'staff', token }, user);
+      const res = await client.signInSocial(input);
+      // A patient account answers with its portal session (the provider proved who it is,
+      // so there is nothing to retry against the portal).
+      if (res.portal && res.sessionToken && res.patient) {
+        await establish({ kind: 'portal', token: res.sessionToken, patientId: res.patient.id }, { ...res.patient, role: 'patient' });
+        return;
+      }
+      await establish({ kind: 'staff', token: res.token as string }, res.user as Account);
     },
     [serverUrl, establish]
   );
