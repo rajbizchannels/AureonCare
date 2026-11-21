@@ -1,14 +1,20 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { Check, FileWarning, ListTodo, Tent, X } from 'lucide-react-native';
+import { Check, ChevronRight, FileWarning, ListTodo, Tent, X } from 'lucide-react-native';
 import type { Appointment, Camp, PendingReview, Task } from '@/lib/api';
 import { useSession } from '@/context/SessionContext';
+import { useActivePatient } from '@/context/ActivePatientContext';
 import { Card, Chip, SectionLabel } from '@/components/ui';
 import { useLayout } from '@/lib/device';
 import { canUseCamps } from '@/lib/permissions';
-import { formatTime, fullName, humanStatus, isToday } from '@/lib/useResource';
+import { formatTime, fullName, humanStatus, isPastDue, isToday } from '@/lib/useResource';
 import { hasLiveBoard } from '@/lib/camps';
 import { palette, radius, space, tint, type } from '@/theme/tokens';
+
+/** What this screen needs from the navigator it is mounted in. */
+interface Nav {
+  navigate: (screen: string, params?: Record<string, unknown>) => void;
+}
 
 /**
  * The staff landing screen, composed from what this account may actually see.
@@ -21,10 +27,18 @@ import { palette, radius, space, tint, type } from '@/theme/tokens';
  *
  * Every section is both capability-gated and empty-gated: nothing renders a
  * panel to say it has nothing to say.
+ *
+ * And everything on it is a door. A landing screen that reports the day but
+ * makes you navigate somewhere else to act on it costs two taps for every
+ * item and teaches people to skip it. So each row launches the place it is
+ * about: an appointment opens that patient, the camp banner opens that camp's
+ * board, the task count opens Tasks.
  */
-export const StaffTodayScreen: React.FC = () => {
+export const StaffTodayScreen: React.FC<{ navigation?: Nav }> = ({ navigation }) => {
   const { api, account, role, can } = useSession();
+  const { setPatient } = useActivePatient();
   const { gutter, isTablet } = useLayout();
+  const [opening, setOpening] = useState<string | null>(null);
 
   const mayReview = can('ehr');
   const maySeeSchedule = can('appointments');
@@ -92,6 +106,31 @@ export const StaffTodayScreen: React.FC = () => {
     [api]
   );
 
+  /**
+   * Open a patient wherever their id turns up.
+   *
+   * Rows carry a patient_id and a name, not a patient row, so the record is
+   * fetched and put in ActivePatientContext before navigating — which is what
+   * makes Patients and Chart both land on the right person. A failed fetch
+   * still navigates: an empty roster the person can search is better than a
+   * tap that does nothing.
+   */
+  const openPatient = useCallback(
+    async (patientId: string | null | undefined, key: string) => {
+      if (!patientId || !can('patients')) return;
+      setOpening(key);
+      try {
+        setPatient(await api.getPatient(patientId));
+      } catch {
+        /* fall through — Patients opens on its roster */
+      } finally {
+        setOpening(null);
+        navigation?.navigate('Patients');
+      }
+    },
+    [api, can, navigation, setPatient]
+  );
+
   const todays = useMemo(
     () =>
       appointments
@@ -106,6 +145,8 @@ export const StaffTodayScreen: React.FC = () => {
   );
 
   const running = useMemo(() => camps.filter(hasLiveBoard), [camps]);
+
+  const overdue = useMemo(() => openTasks.filter((t) => isPastDue(t.dueDate)).length, [openTasks]);
 
   const name = [account?.firstName, account?.lastName].filter(Boolean).join(' ') || 'there';
 
@@ -140,23 +181,37 @@ export const StaffTodayScreen: React.FC = () => {
       {/* A camp in progress outranks everything else on the screen: somebody is
           standing in a field with a queue in front of them. */}
       {running.length > 0 && (
-        <Card style={styles.campCard}>
-          <View style={styles.rowHeader}>
-            <View style={[styles.icon, { backgroundColor: tint.successSoft }]}>
-              <Tent size={17} color={palette.success} />
+        <Pressable
+          onPress={() =>
+            // One running camp opens straight onto its board; several open the
+            // list, because picking is the next decision either way.
+            navigation?.navigate('Camps', running.length === 1 ? { campId: running[0]?.id } : undefined)
+          }
+          accessibilityRole="button"
+          accessibilityLabel={
+            running.length === 1 ? `Open ${running[0]?.name}` : `Open ${running.length} running camps`
+          }
+          style={({ pressed }) => [pressed && styles.pressed]}
+        >
+          <Card style={styles.campCard}>
+            <View style={styles.rowHeader}>
+              <View style={[styles.icon, { backgroundColor: tint.successSoft }]}>
+                <Tent size={17} color={palette.success} />
+              </View>
+              <View style={styles.fill}>
+                <Text style={styles.queueTitle}>
+                  {running.length === 1 ? running[0]?.name : `${running.length} camps running`}
+                </Text>
+                <Text style={styles.queueHint}>
+                  {running.length === 1
+                    ? `${running[0]?.registrationCount ?? 0} registered${running[0]?.locationName ? ` · ${running[0].locationName}` : ''}`
+                    : 'Tap to run a desk or watch a board'}
+                </Text>
+              </View>
+              <ChevronRight size={18} color={palette.textFaint} />
             </View>
-            <View style={styles.fill}>
-              <Text style={styles.queueTitle}>
-                {running.length === 1 ? running[0]?.name : `${running.length} camps running`}
-              </Text>
-              <Text style={styles.queueHint}>
-                {running.length === 1
-                  ? `${running[0]?.registrationCount ?? 0} registered${running[0]?.locationName ? ` · ${running[0].locationName}` : ''}`
-                  : 'Open Camps to run a desk or watch a board'}
-              </Text>
-            </View>
-          </View>
-        </Card>
+          </Card>
+        </Pressable>
       )}
 
       {mayReview && queue.length > 0 && (
@@ -178,12 +233,23 @@ export const StaffTodayScreen: React.FC = () => {
                 key={record.id}
                 style={[styles.queueRow, isTablet && styles.queueRowWide]}
               >
-                <View style={styles.fill}>
+                {/* Tapping the document opens the patient it belongs to —
+                    reviewing means knowing whose it is. Accept and reject stay
+                    separate controls so neither is hit by accident. */}
+                <Pressable
+                  onPress={() => void openPatient(record.patient_id, record.id)}
+                  disabled={!can('patients')}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Open ${record.patient_name ?? 'patient'}`}
+                  style={({ pressed }) => [styles.fill, pressed && styles.pressed]}
+                >
                   <Text numberOfLines={1} style={styles.fileName}>{record.title}</Text>
                   <Text style={styles.fileMeta}>
-                    {[record.patient_name, record.patient_mrn].filter(Boolean).join(' · ')}
+                    {opening === record.id
+                      ? 'Opening…'
+                      : [record.patient_name, record.patient_mrn].filter(Boolean).join(' · ')}
                   </Text>
-                </View>
+                </Pressable>
 
                 <View style={styles.queueActions}>
                   {/* Accept sits after the file name, never before a chance to
@@ -228,27 +294,40 @@ export const StaffTodayScreen: React.FC = () => {
               <Text style={styles.placeholder}>Nothing booked for today.</Text>
             ) : (
               todays.slice(0, 6).map((appointment, index) => (
-                <View
+                <Pressable
                   key={appointment.id}
-                  style={[styles.apptRow, index > 0 && styles.apptRowDivided]}
+                  onPress={() => void openPatient(appointment.patient_id, appointment.id)}
+                  disabled={!can('patients')}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${formatTime(appointment.start_time)}, ${appointment.patient ?? 'patient'}`}
+                  style={({ pressed }) => [
+                    styles.apptRow,
+                    index > 0 && styles.apptRowDivided,
+                    pressed && styles.pressed,
+                  ]}
                 >
                   <Text style={styles.apptTime}>{formatTime(appointment.start_time)}</Text>
                   <View style={styles.fill}>
+                    {/* Who, then why. A list of reasons with no names is no use
+                        on a ward round; the name is what you are looking for. */}
                     <Text numberOfLines={1} style={styles.apptTitle}>
-                      {appointment.reason ?? appointment.appointment_type ?? 'Appointment'}
+                      {appointment.patient ?? appointment.reason ?? 'Appointment'}
                     </Text>
-                    {appointment.provider ? (
-                      <Text numberOfLines={1} style={styles.fileMeta}>
-                        {fullName(
-                          appointment.provider.first_name,
-                          appointment.provider.last_name,
-                          'Unassigned'
-                        )}
-                      </Text>
-                    ) : null}
+                    <Text numberOfLines={1} style={styles.fileMeta}>
+                      {opening === appointment.id
+                        ? 'Opening…'
+                        : [
+                            appointment.reason ?? appointment.appointment_type,
+                            appointment.provider
+                              ? fullName(appointment.provider.first_name, appointment.provider.last_name, '')
+                              : appointment.doctor,
+                          ]
+                            .filter(Boolean)
+                            .join(' · ')}
+                    </Text>
                   </View>
                   <Chip label={humanStatus(appointment.status)} tone="neutral" />
-                </View>
+                </Pressable>
               ))
             )}
           </Card>
@@ -259,17 +338,27 @@ export const StaffTodayScreen: React.FC = () => {
       )}
 
       {maySeeTasks && openTasks.length > 0 && (
-        <Card style={styles.rowHeader}>
-          <View style={[styles.icon, { backgroundColor: tint.accentSoft }]}>
-            <ListTodo size={17} color={palette.accent} />
-          </View>
-          <View style={styles.fill}>
-            <Text style={styles.queueTitle}>
-              {openTasks.length} open task{openTasks.length === 1 ? '' : 's'}
-            </Text>
-            <Text style={styles.queueHint}>Open Tasks from More to work through them</Text>
-          </View>
-        </Card>
+        <Pressable
+          onPress={() => navigation?.navigate('Tasks')}
+          accessibilityRole="button"
+          accessibilityLabel={`${openTasks.length} open tasks`}
+          style={({ pressed }) => [pressed && styles.pressed]}
+        >
+          <Card style={styles.rowHeader}>
+            <View style={[styles.icon, { backgroundColor: tint.accentSoft }]}>
+              <ListTodo size={17} color={palette.accent} />
+            </View>
+            <View style={styles.fill}>
+              <Text style={styles.queueTitle}>
+                {openTasks.length} open task{openTasks.length === 1 ? '' : 's'}
+              </Text>
+              <Text style={styles.queueHint}>
+                {overdue > 0 ? `${overdue} overdue` : 'None overdue'}
+              </Text>
+            </View>
+            <ChevronRight size={18} color={palette.textFaint} />
+          </Card>
+        </Pressable>
       )}
     </ScrollView>
   );
@@ -323,6 +412,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  pressed: { opacity: 0.7 },
   section: { gap: space.sm },
   listCard: { paddingVertical: space.sm },
   apptRow: {

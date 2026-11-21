@@ -188,6 +188,32 @@ it belongs on a phone, and one piece belongs there more than it does on the web.
 
 ---
 
+## 5b. The second catch-up: memberships, invitations, directory, AI
+
+| Web addition | Mobile treatment |
+|---|---|
+| **One person, several practices** (memberships, practice switching) | **Built.** A person can hold a different role at each practice, so this is not a filter — the server re-issues the session and the shell re-derives. A locum walking between two sites in a morning reaches for a phone, which is exactly who this is for. |
+| **Patients refused by the staff login** (`403 patientAccount`) | **Fixed, and it was a break.** The dual sign-in tried staff first and fell back to the portal on 401/404 only, so the new 403 escaped and every patient was told their correct password was wrong. |
+| **Patient portal self-service** (booking, waitlist, pharmacies, active prescriptions, notification preferences) | **Booking and the waitlist are built** — the two that make a patient open the app. The rest is read-only or belongs in a profile screen, and is not yet surfaced. |
+| **Server-side sign-out** (`/auth/logout` bumps `token_version`) | **Built.** Dropping the token locally left a live credential on a handed-back phone. |
+| **Patient portal invitations** (staff send a one-time link; self-registration removed) | **Web-only.** Accepting an invitation happens once, from an email link, on whatever device opened it. The app's job starts at the first sign-in. |
+| **Practice directory and `/find`** | **Web-only.** A public search page for prospective patients, not a feature for someone already signed in to their practice's app. |
+| **WhatsApp templates, short links, QR codes** | **Web-only, correctly.** These are how the practice reaches *out*; the app is the thing being reached. A QR for a link is also a desktop-to-phone bridge the phone does not need. |
+| **AI scribe, AI integrations, PHI anonymization** | **Not yet, deliberately.** The scribe's value is ambient capture during a consultation, which is a genuinely good phone use case — but it needs audio capture, a review-before-commit flow and the human-review gate the web build enforces. Worth its own piece of work rather than a button. |
+| **Per-practice vendor integrations; platform-managed Stripe** | **Web-only.** Configuration, not use. |
+| **Fine-grained module permissions** (`module_permissions`, per-practice overrides) | **Not yet reflected.** The app's matrix is still the role defaults, which is right until a practice customises them. See the note below. |
+| **Server-minted record numbers; i18n of more screens** | **No mobile change needed** — the app renders whatever the server sends. |
+
+**The permissions caveat, stated rather than buried.** A practice can now
+override what a role may do, stored in `module_permissions` and enforced
+server-side. The app still reads the static role matrix, which matches the
+defaults — "absence is not denial" — so it is right until somebody edits a
+permission, after which the app can offer a tab the server will refuse. The
+fix is to read the caller's effective grants at sign-in; it is not done, and
+the server remains the authority either way.
+
+---
+
 ## 6. Deliberately web-only ❌
 
 Administrative and configuration surfaces. Deep-link to the hosted web app instead of

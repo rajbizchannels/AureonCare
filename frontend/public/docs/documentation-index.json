@@ -1,6 +1,6 @@
 {
-  "version": "1.5",
-  "lastUpdated": "2026-11-08",
+  "version": "1.6",
+  "lastUpdated": "2026-11-20",
   "sections": [
     {
       "id": "getting-started",
@@ -95,6 +95,27 @@
           ],
           "summary": "Three ways to get an AureonCare account\n\nInvitation, signing up with your work email, or starting a new practice.",
           "content": "**Getting an Account**\n\n**1. Invitation from your practice**\nAn administrator adds you under Settings > Users. You receive an email with a link to set your password. You can also accept with Google or Microsoft sign-in.\n\n**2. Signing up with your work email**\nIf your practice has claimed and verified its email domain, sign yourself up with your work address. Your account is created PENDING and appears in the practice's approval queue. An administrator approves it before you can sign in. Self-serve joiners are never given administrator rights.\n\n**3. Starting a new practice**\nGo to /signup, choose a plan, enter your details, apply a coupon if you have one, and pay through Stripe Checkout. Your workspace and administrator account are created once payment succeeds. Card details never reach AureonCare.\n\n**Claiming your email domain (administrators)**\n1. Settings > Access > Team Access\n2. Click Claim Domain and enter the domain\n3. Add the DNS TXT record the system gives you\n4. Return and click Verify\n\nPublic mailbox providers such as gmail.com cannot be claimed. A domain can only be claimed by one practice.\n\n**Join policy**\n- Request approval (default): account created pending, administrator must approve\n- Auto-join: account activated immediately\n\nLeave it on Request approval. A claimed domain is not a staff list, and for a clinical system a person should decide who gets in.\n\n**Approving joiners**\nSettings > Access > Team Access > Pending Requests. Review and Approve or Reject. Rejecting blocks the account rather than leaving it pending, so it cannot be approved later by mistake.",
+          "roles": [
+            "all"
+          ]
+        },
+        {
+          "id": "invitations",
+          "title": "Joining by Invitation",
+          "path": "/docs/index.html#invitations",
+          "url": "/docs/index.html#invitations",
+          "keywords": [
+            "invitation",
+            "invite",
+            "register",
+            "sign up",
+            "portal invite",
+            "onboarding",
+            "qr",
+            "short link"
+          ],
+          "summary": "Self-registration has been removed\n\nStaff and patients now join by invitation; only you ever choose your password.",
+          "content": "**Joining by Invitation**\n\nChanged in V1.6: the public self-registration page has been removed. Nobody creates their own AureonCare account from a sign-up form. Staff and patients join by invitation. The only thing you can still start yourself is a brand-new practice with its own subscription.\n\n**Staff**\nAn administrator adds you under Settings > Users and sends an invitation. You get a branded email with a one-time link. Set a password, or accept with Google or Microsoft.\n\nIf you already have an AureonCare account at another practice, accepting with your EXISTING password adds the new practice rather than creating a second account.\n\n**Patients**\nA staff member invites you from your existing patient record. Open the one-time link, choose a password or continue with Google or Microsoft, and you land in the portal already signed in, attached to your existing chart.\n\nOnly the patient ever chooses their own portal password. Staff cannot set it for them, and the invitation ties the login to the chart already on file, so no duplicate record is created.\n\n**Starting a new practice**\nGo to /signup, choose a plan, enter your details, apply a coupon if you have one, and pay through Stripe Checkout. Your workspace and administrator account are created once payment succeeds.\n\n**An old account that never worked?**\nAccounts left by the old self-registration page had no practice, never appeared in User Management, and could not be cleaned up. An invitation sent to that address now adopts the orphaned account. An invitation is refused only when the address already belongs to someone in a practice.\n\n**If the email does not arrive**\nThe invitation dialog shows the link directly, with a QR code button - download as PNG, print, or copy the link.",
           "roles": [
             "all"
           ]
@@ -1374,6 +1395,161 @@
           "content": "**Practice Setup Wizard**\n\nSettings > Practice > Practice Setup. Administrators only.\n\nA new practice starts generic - every module visible, no services defined. The wizard configures AureonCare for what you actually do.\n\n**Six steps:**\n1. Profile - practice name, address, contact details\n2. Specialty - choose one or more\n3. Services - review the starter services your specialty suggests\n4. Providers - add clinicians and their specialties\n5. Forms - review suggested intake and clinical forms\n6. Review - see everything that will change, then apply\n\nYou can leave at any step and return; progress is saved.\n\n**Available specialty packs:**\n- Behavioural Health - counselling and behavioural health practice\n- Dentistry - general dental practice, chair-side appointments\n- Ophthalmology - refraction and investigation workflows\n- Paediatrics - well-child visits and immunisation schedules\n\n**What a pack will do:** create services, forms and terminology you do not already have, and hide modules your specialty typically does not use.\n\n**What a pack will never do:** overwrite anything you have edited (it reports a conflict and leaves your version alone), take ownership of something it did not create, or reveal a module your plan or role forbids.\n\n**Module visibility is now three filters:**\nvisible = (plan AND role) minus (specialty-hidden, unless pinned)\n\nSpecialty can only ever narrow the menu. To bring something back: Settings > Practice > Practice Setup > Hidden modules > Pin.\n\n**Best practices:**\n- Run the wizard before adding real patient data\n- Read the Step 6 preview - it is the last point before changes apply\n- Treat seeded services and forms as starting points\n- Pin back any module your specialty hid but you do use",
           "roles": [
             "admin"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ai",
+      "title": "AI Suite",
+      "icon": "🤖",
+      "articles": [
+        {
+          "id": "ai-setup",
+          "title": "Setting Up AI",
+          "path": "/docs/guides/ai-suite.html",
+          "url": "/docs/guides/ai-suite.html",
+          "keywords": [
+            "ai",
+            "api key",
+            "anthropic",
+            "openai",
+            "gemini",
+            "mistral",
+            "azure",
+            "baa",
+            "dpa",
+            "provider",
+            "byok"
+          ],
+          "summary": "Bring your own key and switch features on\n\nAI is off by default; you supply the provider key and enable features one at a time.",
+          "content": "**Setting Up AI**\n\nSettings > Integrations > AI. Administrators configure; everyone uses.\n\nThe AI Suite is OFF by default. Every feature is switched on individually, and nothing an AI produces reaches a patient record without a person approving it.\n\n**Bring your own key**\nAureonCare does not resell AI. Supported providers:\n- Anthropic Claude\n- OpenAI\n- Azure OpenAI (your own tenancy)\n- Google Gemini\n- Mistral AI (EU-hosted)\n- Offline / self-hosted (any OpenAI-compatible endpoint you run)\n\n**Adding a provider:**\n1. Settings > Integrations > AI > Providers\n2. Choose the provider and paste your API key\n3. For a cloud provider, confirm you hold a BAA or DPA with them\n4. Click Test to verify the key\n5. Save\n\nPatient data cannot be sent to a cloud provider until the BAA/DPA confirmation is ticked. Keys are encrypted and never shown again - to change one, replace it.\n\nIf patient data must not leave your infrastructure at all, use the offline / self-hosted option.\n\n**How patient data is protected**\nIdentifying details are replaced with placeholders before anything is sent, and restored on the way back. The mapping is kept for one request, with originals encrypted, and an auditor can see exactly which values were substituted. Requests are logged under the AI module.\n\n**Switching a feature on:**\n1. Settings > Integrations > AI > Features & cost\n2. Choose the provider and model for that feature\n3. Set the reviewer roles who may approve its output\n4. Toggle on\n\nThe screen shows cost per use, cost per month, usage so far and any limit you set.\n\nTurn on one feature, watch the cost and the review queue for a week, then decide about the next.",
+          "roles": [
+            "admin"
+          ]
+        },
+        {
+          "id": "ai-features",
+          "title": "The Twelve AI Features",
+          "path": "/docs/guides/ai-suite.html",
+          "url": "/docs/guides/ai-suite.html",
+          "keywords": [
+            "scribe",
+            "soap",
+            "coding",
+            "claim scrubbing",
+            "prior auth",
+            "copilot",
+            "lab explanation",
+            "no-show",
+            "forecast"
+          ],
+          "summary": "What each AI feature does\n\nFive clinical, two revenue-cycle and five operational features, each switchable.",
+          "content": "**The Twelve AI Features**\n\nEach can be switched on or off independently, with its own provider and model.\n\n**Clinical - reviewer must be a clinician**\n- Ambient Scribe: drafts a SOAP note from a visit transcript. Marks anything uncertain with [verify], and will not invent vitals, doses or diagnoses\n- Chart Copilot: answers questions about a patient's chart\n- Coding Suggestions: proposes ICD-10 and CPT codes, each with the supporting sentence it came from\n- Lab Explanations: puts a result into plain language\n- Document Extraction: pulls structured data out of an uploaded document\n\n**Revenue cycle**\n- Claim Scrubbing: flags problems on a claim before submission\n- Prior Authorisation: drafts a prior-authorisation request\n\n**Operational**\n- Message Drafts: drafts a reply to a patient message\n- No-Show Prediction: flags appointments at risk\n- Inventory Forecast: projects stock needs\n- Camp Summaries: summarises a medical camp's outcomes\n- Help Assistant: answers questions about using AureonCare\n\n**Working with drafts**\nAccepted drafts push straight into the right place: SOAP text onto the clinical note, suggested codes onto the diagnosis, medications to Prescriptions (with similar drugs suggested when one is not in the formulary), tests to Lab Orders.\n\nAI assist buttons appear on the screens where each feature applies, not in a separate AI area.",
+          "roles": [
+            "admin",
+            "doctor",
+            "nurse",
+            "billing_manager"
+          ]
+        },
+        {
+          "id": "ai-review-queue",
+          "title": "Reviewing AI Output",
+          "path": "/docs/guides/ai-suite.html",
+          "url": "/docs/guides/ai-suite.html",
+          "keywords": [
+            "review",
+            "draft",
+            "accept",
+            "reject",
+            "queue",
+            "sign-off",
+            "pending",
+            "human review"
+          ],
+          "summary": "Every AI output is a draft until someone accepts it\n\nAccept, edit or reject; clinical features need clinician sign-off.",
+          "content": "**Reviewing AI Output**\n\nThe governing rule: every AI output is a draft until a named reviewer accepts it. AI never writes to a chart, sends a message or submits a claim on its own.\n\nFind the queue at Settings > Integrations > AI > Review queue, and in your notifications.\n\n**Statuses:**\n- Pending - waiting for a reviewer\n- Accepted - approved as written\n- Edited - approved after the reviewer changed it\n- Rejected - discarded\n- Expired - nobody reviewed it in time\n\n**Reviewing a draft:**\n1. Open the draft\n2. Read it against the source - the transcript, the chart, the document\n3. Accept (apply as written), Edit (change, then apply), or Reject (discard)\n\n**Read AI output against its source before accepting.** The Ambient Scribe marks uncertainty with [verify], but it cannot flag everything it got wrong. Accepting is a clinical act and is recorded as yours.\n\n**Best practices:**\n- Clear the queue daily; expired drafts are wasted spend\n- Set reviewer roles deliberately - the default is restrictive for a reason\n- Do not give clinical reviewer roles to non-clinical staff to clear the queue faster\n- Review AI audit entries alongside your other audit logs",
+          "roles": [
+            "admin",
+            "doctor",
+            "nurse",
+            "billing_manager"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "directory",
+      "title": "Practice Directory",
+      "icon": "🔎",
+      "articles": [
+        {
+          "id": "practice-profile",
+          "title": "Publishing a Practice Profile",
+          "path": "/docs/guides/practice-directory.html",
+          "url": "/docs/guides/practice-directory.html",
+          "keywords": [
+            "directory",
+            "profile",
+            "public page",
+            "visibility",
+            "searchable",
+            "link only",
+            "photos",
+            "slug"
+          ],
+          "summary": "Publish a public page for your practice\n\nOff, Link only or Searchable; no reviews, no patient data.",
+          "content": "**Publishing a Practice Profile**\n\nSettings > Practice > Practice Profile.\n\nThere are no reviews, no ratings, no patient data and no third-party scripts on these pages.\n\n**Visibility - off by default:**\n- Off (default): the page does not exist; even someone with the link gets a 404\n- Link only: reachable by link or QR, told not to index, optionally at an unguessable address you can re-issue\n- Searchable: indexable, and included in /find results\n\nAn unguessable address keeps working after you switch to Searchable, so a QR code already printed on a leaflet does not break.\n\n**What the page contains:**\nPractice name and about text, contact details, specialties from the catalogue, selected locations, photos, and providers who consented - with a Book button for providers who offer online booking.\n\n**Photos:** JPEG or PNG only (checked by content), maximum 2 MB, embedded metadata including GPS stripped. Providers may upload their own, which an administrator approves.\n\n**Best practices:**\n- Leave visibility Off until the page is ready\n- Use Link only while reviewing internally\n- Keep locations current - patients navigate by them\n- Do not put patient stories or testimonials in the about text\n- Do not upload a photo that includes a patient",
+          "roles": [
+            "admin"
+          ]
+        },
+        {
+          "id": "listing-consent",
+          "title": "Provider Listing Consent & Public Search",
+          "path": "/docs/guides/practice-directory.html",
+          "url": "/docs/guides/practice-directory.html",
+          "keywords": [
+            "consent",
+            "listing",
+            "provider",
+            "find",
+            "search",
+            "near me",
+            "privacy",
+            "opt in"
+          ],
+          "summary": "Only a provider can list themselves\n\nConsent is per provider and withdrawable; /find never logs a search.",
+          "content": "**Provider Listing Consent**\n\nAn administrator can NEVER list a provider. Only the provider can.\n\n**To consent (as a provider):**\n1. Go to your own profile\n2. Open Directory listing\n3. Choose what to show: specialties, a short bio, languages, a photo\n4. Read and accept the consent text\n5. Save\n\n**To withdraw:** return to the same screen and withdraw. You come off the public page and out of search.\n\n**What an administrator can do:** hide a provider who has consented, for example during leave. They cannot add one who has not consented, and cannot change what a consented provider chose to show.\n\n**Public search at /find**\n\nPatients search in one box - a specialty, a place, a name, or a mixture.\n\nIt understands catalogue specialties plus everyday wording ('skin doctor', 'eye doctor', 'pediatrician', 'GP', 'ob gyn'), a place (city, region, postcode, or 'in X' / 'near X'), and names with tolerance for typos.\n\nRanking is specialty, then place, then name, then distance, then alphabetical. There is no paid placement.\n\nOnly practices set to Searchable with an active subscription appear, and only providers who consented and are not hidden. Link-only and Off practices can never appear.\n\n**Search privacy:**\n- Searches are never logged, not even when one fails\n- The query goes in the request body, never the address bar, so it is not in browser history\n- 'Near me' is rounded to roughly one kilometre in the browser, rounded again on the server, used once, and never stored",
+          "roles": [
+            "all"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "multi-practice",
+      "title": "Multiple Practices",
+      "icon": "🔀",
+      "articles": [
+        {
+          "id": "practice-switching",
+          "title": "Working in Several Practices",
+          "path": "/docs/guides/multi-practice.html",
+          "url": "/docs/guides/multi-practice.html",
+          "keywords": [
+            "multiple practices",
+            "switch",
+            "membership",
+            "locum",
+            "two practices",
+            "practice switcher"
+          ],
+          "summary": "One account across several practices\n\nSwitch from the top bar; role, data and timeout follow the active practice.",
+          "content": "**Working in Several Practices**\n\nOne person can belong to more than one practice with a single account - a locum, a consultant covering two sites, a clinician who also runs their own clinic.\n\nYour account has a membership in each practice, each with its own role. You work in exactly one at a time: the active practice.\n\n**What follows the active practice:** your role (and therefore what you can see and do), the data you see, your session timeout, and whether 2FA is required.\n\n**Switching:**\n1. Click the practice switcher in the top bar\n2. Choose the practice\n\nYou get a fresh session for that practice. Other open tabs reload into it, so you are never looking at two practices at once. The practice you switch to becomes the one you start in next time.\n\nIf the practice requires 2FA and you have not set it up, you will be asked to enrol first.\n\n**Being added to a second practice:**\nAn administrator at the other practice invites the email address you already use. Accept with your EXISTING password - it is checked, not replaced - or with Google or Microsoft. You keep one login, one password, one set of recovery codes.\n\n**What administrators can and cannot do**\nFor a colleague who also works elsewhere, an administrator of your practice can set their role in this practice and remove them from this practice. They cannot change the person's name, email, password, or anything at another practice. A shared account must not be capturable by whichever practice edits it first.\n\nRemoving a membership takes effect immediately - sessions in that practice end at once. The account and other practices are untouched.\n\n**What counts where:** user lists, seat counts, provider lists, camp rosters, permission roles and report user statistics are all scoped to the practice you are in. Report user statistics previously counted every account on the platform; they now count this practice only.",
+          "roles": [
+            "all"
           ]
         }
       ]

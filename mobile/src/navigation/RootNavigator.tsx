@@ -3,7 +3,7 @@ import { NavigationContainer, DarkTheme, type Theme } from '@react-navigation/na
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import {
-  CalendarDays, FileText, FlaskConical, Home, MessageSquare,
+  CalendarDays, CalendarPlus, FileText, FlaskConical, Home, ListTodo, MessageSquare,
   MoreHorizontal, Receipt, Settings, Stethoscope, Tent, Users,
 } from 'lucide-react-native';
 import { useSession } from '@/context/SessionContext';
@@ -13,6 +13,8 @@ import { SignInScreen } from '@/screens/SignInScreen';
 import { ServerScreen } from '@/screens/ServerScreen';
 import { MoreScreen } from '@/screens/MoreScreen';
 import { SecurityScreen } from '@/screens/SecurityScreen';
+import { PracticeSwitcherScreen } from '@/screens/PracticeSwitcherScreen';
+import { PatientBookScreen } from '@/screens/patient/BookScreen';
 import { NotificationsScreen } from '@/screens/NotificationsScreen';
 import { MessagesScreen } from '@/screens/messaging/MessagesScreen';
 import { FormsScreen } from '@/screens/forms/FormsScreen';
@@ -151,6 +153,13 @@ const TAB: Record<string, TabSpec> = {
     Icon: FileText,
     component: PatientPaperworkScreen,
   },
+  book: {
+    key: 'book',
+    name: 'Book',
+    Icon: CalendarPlus,
+    component: PatientBookScreen,
+    requires: (c) => c.can('appointments', 'create'),
+  },
   today: { key: 'today', name: 'Today', Icon: Home, component: StaffTodayScreen },
   schedule: {
     key: 'schedule',
@@ -196,6 +205,13 @@ const TAB: Record<string, TabSpec> = {
     component: StaffBillingScreen,
     requires: (c) => c.can('rcm'),
   },
+  tasks: {
+    key: 'tasks',
+    name: 'Tasks',
+    Icon: ListTodo,
+    component: TasksScreen,
+    requires: (c) => c.role !== 'patient' && c.can('practiceManagement'),
+  },
   camps: {
     key: 'camps',
     name: 'Camps',
@@ -226,20 +242,20 @@ const SHELLS: Record<Shell, { base: string[]; tabletExtras: string[] }> = {
     // Home is declared directly in the navigator below — it is the only screen
     // that drives navigation, so it cannot come from the catalogue — and it
     // renders first either way.
-    base: ['visits', 'paperwork', 'messages'],
+    base: ['visits', 'book', 'messages'],
     // A patient's tablet is a bigger phone, not a workstation. Nothing to add.
     tabletExtras: [],
   },
   clinician: {
-    base: ['today', 'schedule', 'messages', 'patients'],
+    base: ['today', 'schedule', 'messages', 'patients', 'tasks'],
     tabletExtras: ['chart', 'orders'],
   },
   frontdesk: {
-    base: ['today', 'schedule', 'messages', 'patients'],
+    base: ['today', 'schedule', 'messages', 'patients', 'tasks'],
     tabletExtras: ['camps', 'billing'],
   },
   admin: {
-    base: ['today', 'schedule', 'messages', 'patients'],
+    base: ['today', 'schedule', 'messages', 'patients', 'tasks'],
     tabletExtras: ['chart', 'billing', 'admin'],
   },
 };
@@ -259,11 +275,25 @@ const MORE_ROWS: {
   tab?: string;
   requires?: (ctx: Ctx) => boolean;
 }[] = [
+  {
+    key: 'paperwork',
+    label: 'Records and forms',
+    screen: 'Paperwork',
+    tab: 'paperwork',
+    requires: (c) => c.role === 'patient',
+  },
   { key: 'camps', label: 'Medical camps', screen: 'Camps', tab: 'camps', requires: (c) => canUseCamps(c.role) },
+  {
+    key: 'practices',
+    label: 'Switch practice',
+    screen: 'Practices',
+    requires: (c) => c.role !== 'patient',
+  },
   {
     key: 'tasks',
     label: 'Tasks',
     screen: 'Tasks',
+    tab: 'tasks',
     requires: (c) => c.role !== 'patient' && c.can('practiceManagement'),
   },
   { key: 'notifications', label: 'Notifications', screen: 'Notifications' },
@@ -318,6 +348,7 @@ const RoleTabs: React.FC<{ openServer: () => void; navigate: (screen: string) =>
             <PatientHomeScreen
               onOpenMessages={() => navigation.navigate('Messages')}
               onOpenVisits={() => navigation.navigate('Visits')}
+              onOpenBook={() => navigation.navigate('Book')}
             />
           )}
         </Tabs.Screen>
@@ -352,6 +383,8 @@ const RoleTabs: React.FC<{ openServer: () => void; navigate: (screen: string) =>
  * promoting one to a tab does not end up with two copies of it mounted.
  */
 const DETAIL_SCREENS: { name: string; title: string; component: React.ComponentType }[] = [
+  { name: 'Paperwork', title: 'Records and forms', component: PatientPaperworkScreen },
+  { name: 'Practices', title: 'Your practices', component: PracticeSwitcherScreen },
   { name: 'Camps', title: 'Medical camps', component: CampsScreen },
   { name: 'Tasks', title: 'Tasks', component: TasksScreen },
   { name: 'Notifications', title: 'Notifications', component: NotificationsScreen },

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { ArrowLeft, MapPin, Tent, Users } from 'lucide-react-native';
 import { useSession } from '@/context/SessionContext';
@@ -36,7 +36,9 @@ const STATUS_TONE: Record<CampStatus, 'success' | 'accent' | 'neutral'> = {
   archived: 'neutral',
 };
 
-export const CampsScreen: React.FC = () => {
+export const CampsScreen: React.FC<{ route?: { params?: { campId?: string } } }> = ({
+  route,
+}) => {
   const { api, role } = useSession();
   const { isSplit, gutter } = useLayout();
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -54,6 +56,27 @@ export const CampsScreen: React.FC = () => {
     setSelectedId(camp.id);
     setPane(hasLiveBoard(camp) && isSplit ? 'board' : mayWorkDesk && acceptsRegistrations(camp) ? 'desk' : 'attendees');
   };
+
+  /**
+   * Arrived from Today's camp banner, which names the running camp.
+   *
+   * Declared after `open` rather than beside the other derived values: the
+   * effect body only runs after render, so referencing it earlier would work
+   * — and would read like the use-before-declaration that has bitten the web
+   * client more than once.
+   *
+   * Applied only while nothing is chosen, so a later tap on a different camp
+   * is not undone by the parameter that opened the screen.
+   */
+  const requestedId = route?.params?.campId;
+  useEffect(() => {
+    if (!requestedId || selectedId) return;
+    const target = ordered.find((c) => c.id === requestedId);
+    if (target) open(target);
+    // `open` is re-made every render; the guards above are what make this run
+    // once, not the dependency list.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requestedId, selectedId, ordered]);
 
   if (camps.loading) return <Loading />;
 
