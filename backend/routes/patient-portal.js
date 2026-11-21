@@ -1060,6 +1060,36 @@ router.get('/:patientId/diagnoses', async (req, res) => {
   }
 });
 
+// The patient's own sick notes (issued and voided — a voided one prints marked VOID).
+router.get('/:patientId/sick-notes', async (req, res) => {
+  try {
+    const { rows } = await portalDb(req).query(
+      'SELECT * FROM sick_notes WHERE patient_id = $1 ORDER BY created_at DESC LIMIT 100', [req.params.patientId]);
+    res.json(rows.map(require('../services/sickNotes').toApi));
+  } catch (error) {
+    if (error.code === '42P01') return res.json([]);   // practice not migrated yet (096)
+    console.error('[portal] sick notes:', error.message);
+    res.status(500).json({ error: 'Failed to load sick notes' });
+  }
+});
+router.get('/:patientId/sick-notes/:noteId/document', async (req, res) => {
+  try {
+    const SN = require('../services/sickNotes');
+    const db = portalDb(req);
+    const { rows: [note] } = await db.query('SELECT * FROM sick_notes WHERE id::text = $1 AND patient_id = $2', [req.params.noteId, req.params.patientId]);
+    if (!note) return res.status(404).json({ error: 'Sick note not found' });
+    const { rows: [patient] } = await db.query('SELECT first_name, last_name, date_of_birth, mrn FROM patients WHERE id = $1', [req.params.patientId]);
+    const { rows: [practice] } = await req.app.locals.pool.query(
+      `SELECT p.name, p.address, p.phone, p.email FROM control.tenants t JOIN public.practices p ON p.id = t.practice_id
+        WHERE t.schema_name = $1`, [req.tenant && req.tenant.schemaName]);
+    res.set('Cache-Control', 'no-store');
+    res.json({ html: SN.renderDocument(note, patient, practice || {}), reference: note.reference });
+  } catch (error) {
+    console.error('[portal] sick note document:', error.message);
+    res.status(500).json({ error: 'Failed to load the sick note' });
+  }
+});
+
 // Active prescriptions on the patient's own chart.
 router.get('/:patientId/prescriptions/active', async (req, res) => {
   try {

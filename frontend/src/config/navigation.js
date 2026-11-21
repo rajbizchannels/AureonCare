@@ -333,6 +333,13 @@ export const getNavigation = (t = {}) => [
                 tab: 'records',
               },
               {
+                id: 'patients.portalSickNotes',
+                label: t.sickNotes || 'Sick Notes',
+                icon: FileText,
+                module: 'patientPortal',
+                tab: 'sickNotes',
+              },
+              {
                 id: 'patients.portalForms',
                 label: t.formsRequested || 'Forms Requested',
                 icon: ClipboardList,

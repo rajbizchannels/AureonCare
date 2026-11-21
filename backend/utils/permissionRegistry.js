@@ -65,7 +65,7 @@ const MODULES = {
   },
   clinical: {
     label: 'Clinical Records',
-    resources: ['diagnoses', 'prescriptions', 'lab_orders'],
+    resources: ['diagnoses', 'prescriptions', 'lab_orders', 'sick_notes'],
     defaults: {
       doctor: 'all', nurse: 'rw', receptionist: 'none', billing_manager: 'none', crm_manager: 'none', staff: 'view',
     },

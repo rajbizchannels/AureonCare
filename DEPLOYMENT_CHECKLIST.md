@@ -844,3 +844,24 @@ What changes:
 - **Unlocking:** admins see "Sign-in locked" with an **Unlock** button in Settings → User
   Management; staff see the same on a patient's portal panel. A password reset (or portal
   set-up link), or a successful sign-in, also clears it.
+
+## Sick notes
+
+1. Paste `backend/migrations/096_sick_notes.sql` into the SQL editor as the database owner
+   (safe to re-run). It registers the table for new practices and creates it in `template`
+   and every existing practice. The notice says how many schemas it created it in.
+2. Deploy.
+
+What changes:
+- Patient chart (Patients → Patient History → a patient) has a **Sick Notes** tab. Doctors and
+  nurses — or an admin who is also a provider — issue a note: for work / school / normal
+  activities, not fit or may be fit with adjustments (phased return, altered hours, amended
+  duties, workplace adaptations), the period (max 92 days per note), the condition as it
+  should appear (blank prints "A medical condition"), comments and whether a review is needed.
+  "Issue and print" prints an A4 certificate with the practice's name, address and phone,
+  the clinician's registration number and a reference (SN-YYYY-XXXXXX) to verify it by.
+- Notes can be printed again or emailed to the patient; they are never edited or deleted. A
+  wrong one is **voided** with a reason (by the issuer or an admin) and prints marked VOID.
+- Patients see and print their notes in the portal (Sick Notes tab).
+- Permission: Clinical Records → `sick_notes` (doctors all, nurses read/write, reception none
+  by default; change in Settings → Permissions).
