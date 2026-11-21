@@ -880,3 +880,21 @@ No migration. Deploy.
 - **Practice switcher** is gone from the top bar. People at 2+ practices pick one in a
   "Which practice are you working in?" step right after signing in, and switch later from their
   profile (avatar → Switch practice).
+
+## Patient Google/Microsoft sign-in + tenant migrations 010/013
+
+1. Paste `backend/scripts/manual/apply-tenant-migrations-010-013.sql` into the SQL editor as
+   postgres. Production is missing tenant migration 010 (the five AI tables) in `template`
+   and tenant_default — found by the SEC-05 schema check. The last query must return
+   `missing_tables = 0`. Safe to re-run.
+2. Deploy (vercel.json changed).
+
+What changes:
+- The patient-portal invitation link (`/portal/activate?token=…`) was not routed by Vercel
+  and answered with Vercel's own 404. vercel.json now serves `/portal/*` and every other app
+  path without a file extension from the app (deep links and reloads too).
+- A patient account signing in with Google or Microsoft on the main sign-in page is taken to
+  their portal (was 403 "This is a patient account…"). If the practice has not switched on
+  portal access for them, they are told so.
+- The "Cross-Origin-Opener-Policy would block the window.closed call" console line comes from
+  Google's sign-in script polling its popup; it is harmless (sign-in completes).

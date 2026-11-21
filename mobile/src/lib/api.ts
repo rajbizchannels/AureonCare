@@ -583,7 +583,10 @@ export class ApiClient {
     provider: 'google' | 'microsoft';
     providerId: string;
     accessToken: string;
-  }): Promise<{ token: string; user: Account }> {
+  }): Promise<{
+    token?: string; user?: Account;
+    portal?: boolean; sessionToken?: string; patient?: Account & { id: string };
+  }> {
     return this.request('/auth/social-login', { method: 'POST', body: JSON.stringify(input) });
   }
 

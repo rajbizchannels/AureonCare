@@ -62,6 +62,31 @@ async function preferStaffMembership(pool, user) {
 
 
 /**
+ * A patient account signed in on the staff page with Google or Microsoft. The identity is
+ * already proven and the one-time code is spent, so it cannot be "retried" against the
+ * portal the way a password can: sign them in to their portal here. Returns the response.
+ */
+async function answerPatientAccount(req, res, pool, user) {
+  const session = await issuePortalSession(pool, { ...user, role: 'patient' }, { ip: req.ip, userAgent: req.get('user-agent') });
+  if (!session) {
+    return res.status(403).json({
+      error: 'Your practice has not switched on patient portal access for you yet. Please contact the practice.',
+      patientAccount: true,
+    });
+  }
+  const csrfToken = issuePortalCookies(res, session.sessionToken, { expiresAt: session.expiresAt });
+  await lockout.clear(pool, 'portal', user.email);
+  return res.json({
+    message: 'Signed in to your patient portal',
+    portal: true,
+    patient: { id: user.id, first_name: user.first_name, last_name: user.last_name, email: user.email, role: 'patient' },
+    sessionToken: session.sessionToken,
+    csrfToken,
+    expiresAt: session.expiresAt,
+  });
+}
+
+/**
  * Phase 1: when the default practice requires 2FA and the account has none, start the
  * sign-in in another active staff membership whose practice does not require it. Mutates
  * `user` and the account's default. Returns false when there is no such practice.
@@ -1197,12 +1222,9 @@ const socialLoginHandler = async (req, res) => {
           }
         }
 
-        // Do not attach a new identity to a leftover patient account it cannot use.
+        // A patient account: no staff identity is attached; they go to their portal.
         if (!(await preferStaffMembership(pool, user))) {
-          return res.status(403).json({
-            error: 'This is a patient account. Please sign in through your practice\'s patient portal (Patient Login).',
-            patientAccount: true,
-          });
+          return answerPatientAccount(req, res, pool, user);
         }
 
         await pool.query(`
@@ -1296,10 +1318,7 @@ const socialLoginHandler = async (req, res) => {
     // Patients use the patient portal; a leftover 'patient' users row gets no staff session
     // (it could reach nothing — every staff route refuses it). An invite adopts it above.
     if (!(await preferStaffMembership(pool, user))) {
-      return res.status(403).json({
-        error: 'This is a patient account. Please sign in through your practice\'s patient portal (Patient Login).',
-        patientAccount: true,
-      });
+      return answerPatientAccount(req, res, pool, user);
     }
 
     // Update last login
