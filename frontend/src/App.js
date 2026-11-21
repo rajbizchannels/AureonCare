@@ -74,6 +74,7 @@ import DirectorySearchPage from './components/directory/DirectorySearchPage';
 import ForgotPasswordModal from './components/modals/ForgotPasswordModal';
 import Toaster from './components/common/Toaster';
 import InlineFormScroller from './components/common/InlineFormScroller';
+import PracticeChooser from './components/layout/PracticeChooser';
 import ViewEditModal from './components/modals/ViewEditModal';
 import UserProfileModal from './components/modals/UserProfileModal';
 
@@ -1557,6 +1558,7 @@ export default function AppWithProvider() {
           <ActivityIndicator />
           <Toaster />
           <InlineFormScroller />
+          <PracticeChooser />
           <App />
         </AppProvider>
       </MsalProvider>

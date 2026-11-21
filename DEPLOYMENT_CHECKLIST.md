@@ -865,3 +865,18 @@ What changes:
 - Patients see and print their notes in the portal (Sick Notes tab).
 - Permission: Clinical Records → `sick_notes` (doctors all, nurses read/write, reception none
   by default; change in Settings → Permissions).
+
+## Patient sign-in fix + practice chooser
+
+No migration. Deploy.
+- **Patients can sign in from the main sign-in page and the mobile app.** The staff sign-in
+  answers a patient account with 401 "patient account" (it was a 403 dead end), and the web
+  page — like the mobile app already does on a 401 — carries straight on to the patient-portal
+  sign-in with the same details. Installed mobile apps work without an update.
+- **Older patient accounts** (password on the account, no portal password — 3 such patients in
+  production) can sign in to the portal; their password becomes the portal password on first use.
+- A patient with no portal route yet is looked up in the practices on their own account, not
+  only the default practice.
+- **Practice switcher** is gone from the top bar. People at 2+ practices pick one in a
+  "Which practice are you working in?" step right after signing in, and switch later from their
+  profile (avatar → Switch practice).

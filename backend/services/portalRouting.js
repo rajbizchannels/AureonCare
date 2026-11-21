@@ -75,7 +75,36 @@ async function candidateTenantsForEmail(pool, email) {
       console.warn('[portalRouting] identity route unavailable, using default tenant:', err.message);
     }
   }
-  return [await defaultTenant(pool)];
+  // No identity route yet (accounts from before routing, or never signed in to the portal):
+  // the practices on the person's own account — users.practice_id and their memberships —
+  // plus the default practice. Precise, and never a search of every practice. A successful
+  // sign-in registers the route, so this is a one-time path per person.
+  const out = [];
+  try {
+    const { rows } = await pool.query(
+      `SELECT DISTINCT t.id AS tenant_id, t.schema_name
+         FROM public.users u
+         LEFT JOIN public.memberships m ON m.user_id = u.id AND m.status = 'active'
+         JOIN control.tenants t ON t.practice_id IN (u.practice_id, m.practice_id) AND t.status = 'active'
+        WHERE LOWER(u.email) = LOWER($1)`, [String(email || '').trim()]);
+    for (const r of rows) out.push({ tenantId: r.tenant_id, schemaName: r.schema_name });
+  } catch (err) {
+    if (err.code === '42P01') {
+      // before memberships (093): users.practice_id only
+      try {
+        const { rows } = await pool.query(
+          `SELECT t.id AS tenant_id, t.schema_name FROM public.users u
+             JOIN control.tenants t ON t.practice_id = u.practice_id AND t.status = 'active'
+            WHERE LOWER(u.email) = LOWER($1)`, [String(email || '').trim()]);
+        for (const r of rows) out.push({ tenantId: r.tenant_id, schemaName: r.schema_name });
+      } catch (_) { /* default only */ }
+    } else {
+      console.warn('[portalRouting] account practice lookup failed:', err.message);
+    }
+  }
+  const def = await defaultTenant(pool);
+  if (def && !out.some((c) => c.schemaName === def.schemaName) && !(def.schemaName === 'public' && out.length)) out.push(def);
+  return out;
 }
 
 /**

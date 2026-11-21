@@ -161,5 +161,5 @@ const report = (err) => {
   const bl = await login(both);
   check('a patient at A who is a nurse at B signs in to B as a nurse', bl.status === 200 && (await call('GET', '/api/auth/me', bl.body.token)).body.role === 'nurse');
   const onlyPt = `pt_${RUN}@example.com`; await mkUser(onlyPt, 'patient', A.practiceId);
-  check('a patient-only account is still refused at the staff sign-in', (await login(onlyPt)).status === 403);
+  { const r = await login(onlyPt); check('a patient-only account gets no staff session (401, marked as a patient account)', r.status === 401 && r.body && r.body.patientAccount === true && !r.body.token); }
 })().then(() => report(), report);
