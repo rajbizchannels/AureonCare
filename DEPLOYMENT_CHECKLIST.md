@@ -907,6 +907,9 @@ What changes:
      Authorized redirect URIs: `https://app.aureoncare.tech/api/auth/mobile/oauth/google/callback`
    - Microsoft Entra → App registrations → the app → Authentication → **Web** platform →
      Redirect URIs: `https://app.aureoncare.tech/api/auth/mobile/oauth/microsoft/callback`
+   To see the exact addresses for a server, open `https://<server>/api/auth/mobile/oauth/setup`
+   — they must match character for character (https, no trailing slash). The server uses the
+   address the phone reached; set `AC_PUBLIC_URL` only to pin a different one.
 3. Deploy, then build the app (the `aureoncare://` link needs a development or store build;
    Expo Go uses `exp://` links — allow them on a TEST server only with `AC_MOBILE_REDIRECTS=exp://`).
 

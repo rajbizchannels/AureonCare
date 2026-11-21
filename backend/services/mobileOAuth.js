@@ -39,9 +39,15 @@ function allowedRedirect(uri) {
 }
 
 function publicBase(req) {
-  const configured = (process.env.AC_PUBLIC_URL || process.env.FRONTEND_URL || '').split(',')[0].trim().replace(/\/+$/, '');
-  if (configured) return configured;
-  return `${req.protocol}://${req.get('host')}`;
+  // AC_PUBLIC_URL pins it when set. Otherwise the address the phone actually reached — the
+  // provider sends the browser back to the same server, and this is what has to be
+  // registered with Google/Microsoft. (FRONTEND_URL was used before: it can hold a list or a
+  // different origin, and then the address sent to Google matched nothing registered.)
+  const pinned = (process.env.AC_PUBLIC_URL || '').trim().replace(/\/+$/, '');
+  if (pinned) return pinned;
+  const proto = String(req.get('x-forwarded-proto') || req.protocol || 'https').split(',')[0].trim();
+  const host = String(req.get('x-forwarded-host') || req.get('host') || '').split(',')[0].trim();
+  return `${proto}://${host}`;
 }
 const callbackUrl = (req, provider) => `${publicBase(req)}/api/auth/mobile/oauth/${provider}/callback`;
 
@@ -150,4 +156,4 @@ async function redeem(pool, { code, codeVerifier }) {
   return { provider: flow.provider, accessToken: t.accessToken, refreshToken: t.refreshToken };
 }
 
-module.exports = { start, callback, redeem, allowedRedirect, challengeOf, configured, callbackUrl };
+module.exports = { start, callback, redeem, allowedRedirect, challengeOf, configured, callbackUrl, publicBase };
