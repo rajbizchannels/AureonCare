@@ -61,3 +61,7 @@ package.json
 # npm ci needs a lockfile; the update-agent image runs npm ci, so its lockfile is tracked
 # despite the blanket package-lock.json rule above.
 !update-agent/package-lock.json
+
+# Python bytecode (from the docs/presentation generator scripts)
+__pycache__/
+*.pyc
