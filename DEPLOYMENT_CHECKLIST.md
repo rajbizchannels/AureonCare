@@ -1020,3 +1020,60 @@ Still required before go-live (none of this can be done in code alone):
       no renewal-request record to answer, so RxRenewalResponse is not built either.
 - [ ] Pharmacy directory search via Surescripts is a separate licensed product; the practice's own
       pharmacy list is used.
+
+## Migration 100 — notifications, eligibility, claim checks, low stock, per-practice settings
+
+**Run before deploying this code:** paste `backend/migrations/100_notifications_eligibility_scrub.sql`
+into the SQL editor as postgres (safe to re-run). It:
+- adds `npi`, `website`, `currency` to `public.practices` and copies the values every practice used
+  to share (SEC-53): currency to every practice; NPI and website only when there is a single
+  practice. **Practices should open Clinic Settings and check their NPI, tax ID and currency.**
+- creates `staff_notification_preferences` and `eligibility_checks` in every practice (and for new
+  ones), adds the claim-check columns to `claims` and `low_stock_alerted_at` to `inventory_items`.
+
+Then deploy. What changes:
+
+**Clinic Settings belong to each practice (SEC-53).** They were one shared record, so one
+practice's save overwrote another's name, tax ID, phone, NPI and currency.
+
+**Background work after a response no longer borrows a returned connection (SEC-54).**
+Notifications, PHI-read audit rows and alerts that run after the response used a database
+connection already handed back to the pool; a busy server could interleave them with another
+request. Fixed centrally in `backend/db/requestTenantDb.js`.
+
+**My notifications** (Settings → My settings): each staff member chooses, per notification and per
+channel (in the app / email / WhatsApp), what they receive. Only notifications their role is
+eligible for are offered. Defaults are what was sent before, so nobody's inbox changes on deploy;
+billing staff now also get claim-status and payment notices in the app.
+
+**Low-stock alerts** go to everyone who can reorder (raise purchase orders or record stock: by
+default admin, billing manager, nurse — and the practice's Roles & Permissions are respected),
+each on their chosen channels; admins only when nobody else can act (a solo practice) or when
+they switch it on. One alert per dip below the reorder level; restocking re-arms it.
+
+**Insurance eligibility** (patient record → Insurance Information, and the claim form): sends an
+X12 270 through the practice's Optum clearinghouse connection and shows the 271 — active or not,
+copay, deductible left, coinsurance, out-of-pocket left, plan and dates. Before it can be used:
+- [ ] The practice's NPI in Clinic Settings (10 digits, validated) and the payer's **electronic
+      payer ID** in Insurance Payers; each patient's member ID and payer.
+- [ ] An Optum (formerly Change Healthcare) API account: in Settings → Integrations → Optum set
+      client ID/secret, base URL (Optum's API gateway, sandbox first) and, in the settings JSON,
+      `token_path: "/apip/auth/v2/token"` and, if Optum gives a different one,
+      `eligibility_path` (default `/medicalnetwork/eligibility/v3`). The request/response follow
+      Optum's published Medical Network Eligibility v3 schema; the first sandbox run is the real
+      verification — tested here only against a stub gateway (`npm run test:eligibility`, 20 checks).
+
+**Claim checks before submission** (claim form, and the Submit button on Claims): rule checks
+(identifiers, ICD-10/CPT validity and billability against the code sets, dates and timely filing,
+amount, duplicates, prior auth, eligibility) plus an AI review when the **Claim Scrubbing** AI
+feature is switched on (Settings → Integrations → AI; PHI anonymised, advisory only). A claim with
+errors cannot be marked Submitted or sent as an 837 until it is fixed or an admin/billing manager
+overrides with a reason (kept on the claim). Set each payer's **timely filing limit** in Insurance
+Payers for the filing-deadline check. Test: `npm run test:claim-scrubbing` (36 checks).
+
+**Labcorp is NOT ready to use with keys alone.** Orders now carry the patient (they read the wrong
+table and went out with no patient details), but the Labcorp endpoints and message format in
+`labcorpService.js` are not Labcorp's: electronic ordering is set up with Labcorp's connectivity
+team (usually HL7 v2 ORM/ORU, or a FHIR/aggregator route they specify), with an account number,
+ordering-provider registration and a results interface. Treat it as a project with Labcorp, not a
+setting.

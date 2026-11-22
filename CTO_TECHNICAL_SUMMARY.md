@@ -584,11 +584,12 @@ Lab Systems (status 22 Nov 2026):
   - FHIR ServiceRequest / Observation: in place
 
 Pharmacy (status 22 Nov 2026):
-  - Surescripts connector wired to "Send to pharmacy"; not live
-  - NCPDP SCRIPT and Surescripts certification: still required
+  - NCPDP SCRIPT 2017071 NewRx / CancelRx built and sent to the Surescripts endpoint; not live
+  - Surescripts certification, account, prescriber SPIs and EPCS: still required
 
 Clearinghouse (status 22 Nov 2026):
-  - Optum connector for claims; eligibility call used only for prior auth; not switched on
+  - Optum: claims, and real-time eligibility (X12 270/271 JSON API) used by the patient record,
+    the claim form and the pre-submission claim check; not switched on in production
 ```
 
 ---
