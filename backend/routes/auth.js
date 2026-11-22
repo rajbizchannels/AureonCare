@@ -1507,6 +1507,19 @@ const mobileErrorPage = (res, status, message) => {
 <p style="color:#94A3B8">Close this window and go back to the AureonCare app.</p></main></body></html>`);
 };
 
+// The exact addresses to register with Google and Microsoft for this server (public facts,
+// no secrets): open it in a browser on the server's own address.
+router.get('/mobile/oauth/setup', (req, res) => {
+  res.set('Cache-Control', 'no-store').json({
+    register: {
+      google: { where: 'Google Cloud Console > APIs & Services > Credentials > the Web OAuth client > Authorized redirect URIs',
+        redirectUri: mobileOAuth.callbackUrl(req, 'google'), configured: mobileOAuth.configured('google') },
+      microsoft: { where: 'Microsoft Entra > App registrations > the app > Authentication > Web platform > Redirect URIs',
+        redirectUri: mobileOAuth.callbackUrl(req, 'microsoft'), configured: mobileOAuth.configured('microsoft') },
+    },
+  });
+});
+
 router.get('/mobile/oauth/:provider/start', async (req, res) => {
   try {
     const r = await mobileOAuth.start(req.app.locals.pool, req, req.params.provider, {

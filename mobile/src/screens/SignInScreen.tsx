@@ -23,7 +23,7 @@ type Step =
   | { name: 'second-factor'; prompt: string }
   | { name: 'enrol-elsewhere'; prompt: string };
 
-export const SignInScreen: React.FC<{ onOpenServer: () => void }> = ({ onOpenServer }) => {
+export const SignInScreen: React.FC<{ onOpenServer: () => void; onOpenFindPractice?: () => void }> = ({ onOpenServer, onOpenFindPractice }) => {
   const { signInWithPassword, signInWithProvider, serverUrl, endedReason } = useSession();
   const [providerBusy, setProviderBusy] = useState<Provider | null>(null);
   const [email, setEmail] = useState('');
@@ -231,6 +231,13 @@ export const SignInScreen: React.FC<{ onOpenServer: () => void }> = ({ onOpenSer
 
           <View style={styles.fill} />
 
+          {onOpenFindPractice && step.name === 'credentials' ? (
+            <Pressable onPress={onOpenFindPractice} accessibilityRole="link" style={styles.serverRow}>
+              <Text style={styles.serverText}>Looking for a doctor?</Text>
+              <Text style={styles.findAction}>Find a practice</Text>
+            </Pressable>
+          ) : null}
+
           <Pressable
             onPress={onOpenServer}
             accessibilityRole="button"
@@ -312,4 +319,5 @@ const styles = StyleSheet.create({
   },
   serverText: { ...type.xs, color: palette.textMuted },
   serverAction: { ...type.xs, color: palette.textSecondary, textDecorationLine: 'underline' },
+  findAction: { ...type.sm, color: palette.accent, fontWeight: '600' },
 });

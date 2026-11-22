@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { AlertTriangle, ArrowLeft, Search, Users } from 'lucide-react-native';
+import { AlertTriangle, ArrowLeft, FileText, Search, Users } from 'lucide-react-native';
+import { useNavigation } from '@react-navigation/native';
 import { useSession } from '@/context/SessionContext';
 import { useActivePatient } from '@/context/ActivePatientContext';
 import { SplitView } from '@/components/SplitView';
@@ -114,7 +115,7 @@ export const StaffPatientsScreen: React.FC = () => {
 
 /** Allergies, active medications, recent diagnoses and documents — read-only. */
 const PatientSummary: React.FC<{ patient: PatientRow; onBack: () => void }> = ({ patient, onBack }) => {
-  const { api } = useSession();
+  const { api, can } = useSession();
   const { gutter, isSplit } = useLayout();
 
   const prescriptions = useResource<Prescription[]>(() => api.listPrescriptions(patient.id), [api, patient.id]);
@@ -125,6 +126,8 @@ const PatientSummary: React.FC<{ patient: PatientRow; onBack: () => void }> = ({
   );
 
   const name = fullName(patient.first_name, patient.last_name);
+  const navigation = useNavigation();
+  const canClinical = can('ehr');
 
   return (
     <ScrollView contentContainerStyle={[styles.detail, { paddingHorizontal: gutter }]}>
@@ -136,7 +139,17 @@ const PatientSummary: React.FC<{ patient: PatientRow; onBack: () => void }> = ({
       )}
 
       <View>
-        <Text style={styles.detailName}>{name}</Text>
+        <View style={styles.nameRow}>
+          <Text style={[styles.detailName, styles.grow]}>{name}</Text>
+          {/* Sick notes for this patient (clinical access only; on a phone Chart is not a tab). */}
+          {canClinical ? (
+            <Pressable onPress={() => navigation.navigate('ChartSickNotes' as never)} accessibilityRole="button"
+                       accessibilityLabel="Sick notes" style={styles.sickNotes}>
+              <FileText size={14} color={palette.accent} />
+              <Text style={styles.sickNotesText}>Sick notes</Text>
+            </Pressable>
+          ) : null}
+        </View>
         <Text style={styles.meta}>
           {[patient.mrn, formatDate(patient.dob ?? patient.date_of_birth), patient.blood_type]
             .filter(Boolean)
@@ -268,6 +281,9 @@ const styles = StyleSheet.create({
   allergyCard: { backgroundColor: tint.dangerSoft, borderColor: tint.dangerBorder },
   allergyRow: { flexDirection: 'row', alignItems: 'center', gap: space.md },
   allergyLabel: { ...type.xs, color: palette.danger, fontWeight: '700', letterSpacing: 0.6 },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  sickNotes: { flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 36, paddingHorizontal: space.sm },
+  sickNotesText: { ...type.sm, color: palette.accent, fontWeight: '600' },
   mutedLabel: { color: palette.textMuted },
   allergyValue: { ...type.base, color: palette.text, fontWeight: '600', marginTop: 2 },
   section: { gap: space.sm },

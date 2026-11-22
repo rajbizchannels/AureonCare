@@ -560,6 +560,25 @@ router.put('/:patientId/profile', async (req, res) => {
     // Health details the patient keeps up to date from the portal's profile form.
     const { height, weight, blood_type, allergies, past_history, family_history, current_medications, insurance_payer_id } = req.body;
 
+    // Name, date of birth and email identify the patient to the practice and to sign-in
+    // (portal sign-in looks patients up by email). The patient cannot change them here: a
+    // patient setting their email to another patient's address could lock that patient out,
+    // and identity changes belong with the practice. Unchanged values (the web form sends the
+    // whole profile) pass; a CHANGE is refused.
+    {
+      const { rows: [cur] } = await pool.query('SELECT first_name, last_name, email, date_of_birth FROM patients WHERE id = $1', [patientId]);
+      if (!cur) return res.status(404).json({ error: 'Patient not found' });
+      const same = (a, b) => String(a == null ? '' : a).trim() === String(b == null ? '' : b).trim();
+      const dob = (v) => (v instanceof Date ? v.toISOString() : String(v || '')).slice(0, 10);
+      const changed = (first_name !== undefined && first_name !== null && !same(first_name, cur.first_name))
+        || (last_name !== undefined && last_name !== null && !same(last_name, cur.last_name))
+        || (email !== undefined && email !== null && !same(String(email).toLowerCase(), String(cur.email || '').toLowerCase()))
+        || (date_of_birth !== undefined && date_of_birth !== null && date_of_birth !== '' && dob(date_of_birth) !== dob(cur.date_of_birth));
+      if (changed) {
+        return res.status(403).json({ error: 'To change your name, date of birth or email, contact your practice.', identityLocked: true });
+      }
+    }
+
     // Handle address - it should be plain TEXT, not JSON
     // If address is an object, convert it to a string; otherwise keep it as is
     const addressValue = typeof address === 'object' && address !== null
@@ -596,12 +615,13 @@ router.put('/:patientId/profile', async (req, res) => {
       WHERE id = $10
       RETURNING *
     `, [
-      first_name,
-      last_name,
+      // Identity is never written from the portal (checked above): the stored values stay.
+      null,
+      null,
       phone,
-      email,
+      null,
       addressValue,
-      date_of_birth,
+      null,
       emergencyContact ? JSON.stringify(emergencyContact) : null,
       country,
       timezone,

@@ -83,14 +83,14 @@ const DirectorySearchPage = ({ theme = 'light' }) => {
 
       <main className="max-w-4xl mx-auto px-4 py-8">
         <h1 className="text-2xl sm:text-3xl font-bold">{t.directoryTitle || 'Find a practice'}</h1>
-        <p className={`mt-1 ${muted}`}>{t.directoryIntro || 'Search by specialty, place or doctor — for example “dermatologist near Springfield” or “Dr Patel”.'}</p>
+        <p className={`mt-1 ${muted}`}>{t.directoryIntro || 'Search by practice name, specialty, place or doctor — for example “Riverside Family Practice”, “dermatologist near Springfield” or “Dr Patel”.'}</p>
 
         <form role="search" className="mt-6" onSubmit={(e) => { e.preventDefault(); run(); }}>
           <label htmlFor="directory-q" className="sr-only">{t.directorySearchLabel || 'Search practices'}</label>
           <div className={`flex items-center gap-2 rounded-xl border px-3 py-2 ${card} focus-within:ring-2 focus-within:ring-teal-500`}>
             <Search className={`w-5 h-5 shrink-0 ${muted}`} aria-hidden="true" />
             <input id="directory-q" type="search" value={q} onChange={(e) => setQ(e.target.value)} maxLength={200} autoComplete="off"
-                   placeholder={t.directorySearchPlaceholder || 'Specialty, place or doctor'} className="flex-1 min-w-0 bg-transparent outline-none py-1.5 text-base" />
+                   placeholder={t.directorySearchPlaceholder || 'Practice name, specialty, place or doctor'} className="flex-1 min-w-0 bg-transparent outline-none py-1.5 text-base" />
             <button type="submit" className="shrink-0 px-4 py-2 rounded-lg bg-teal-700 hover:bg-teal-800 text-white font-medium">{t.search || 'Search'}</button>
           </div>
           <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">

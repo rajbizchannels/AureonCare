@@ -157,6 +157,26 @@ const report = (err) => {
   check('works for a signed-in browser without a CSRF header (session-independent)', cookieOnly.status === 200);
   check('an over-long query is cut, not an error', (await search('x'.repeat(5000))).status === 200);
 
+  // ── practice names ───────────────────────────────────────────────────────────────
+  // A clinic whose NAME contains a place and a specialty it does not list.
+  const E = await mk('Springfield Family Clinic', { visibility: 'searchable', city: 'Shelbyville', state: 'IL', postal: '62565', lat: null, lng: null, specialty: 'dermatology' });
+  const F = await mk('Echo Legal Name', { visibility: 'searchable', city: 'Austin', state: 'TX', postal: '73301', lat: null, lng: null, specialty: 'general_practice' });
+  await call('PUT', '/api/practice-profile', F.token, { display_name: `Sunrise Care ${RUN}` });
+  D.invalidate();
+  r = await search(`Springfield Family Clinic ${RUN}`);
+  check(`A PRACTICE NAME WITH A PLACE AND A SPECIALTY IN IT FINDS THAT PRACTICE FIRST (got ${JSON.stringify(ours(r))})`, ours(r)[0] === E.name);
+  check('...and says it matched the practice name', r.body.results[0].matchedBy === 'practice-name' && r.body.understood.practiceName === true);
+  r = await search(`Sprngfield Famly Clinic ${RUN}`);
+  check(`...even with typos (got ${JSON.stringify(ours(r))})`, ours(r)[0] === E.name);
+  r = await search(`Sunrise Care ${RUN}`);
+  check('the name shown on the profile finds it', ours(r)[0] === `Sunrise Care ${RUN}`);
+  r = await search(`Echo Legal Name ${RUN}`);
+  check(`the practice's own (legal) name finds it too (got ${JSON.stringify(ours(r))})`, ours(r)[0] === `Sunrise Care ${RUN}`);
+  r = await search(`Charlie Skin ${RUN}`);
+  check('a LINK-ONLY practice is not found by its name either', !ours(r).includes(C.name));
+  r = await search('skin doctor in springfield');
+  check('specialty + place searches are unchanged', JSON.stringify(ours(r)) === JSON.stringify([A.name]));
+
   // ── changes take effect ──────────────────────────────────────────────────────────
   const sm = await (await fetch(`${BASE}/sitemap-practices.xml`)).text();
   check('the sitemap lists searchable profiles only', sm.includes(`/p/${A.slug}`) && sm.includes(`/p/${B.slug}`) && !sm.includes(C.slug) && !sm.includes(Dp.slug));

@@ -14,7 +14,8 @@ process.env.AC_JWT_S = process.env.AC_JWT_S || crypto.randomBytes(48).toString('
 process.env.AC_TK_S = process.env.AC_TK_S || process.env.AC_JWT_S;
 process.env.AC_IDX_K = process.env.AC_IDX_K || crypto.randomBytes(32).toString('base64');
 process.env.AC_PW_BREACH_CHECK = 'false';
-process.env.FRONTEND_URL = 'https://app.example.test';
+process.env.FRONTEND_URL = 'https://elsewhere.example.test,http://localhost:3000';   // must NOT be used for the callback
+process.env.AC_PUBLIC_URL = 'https://app.example.test';
 process.env.REACT_APP_GG_CID = 'google-client-id.apps.example';
 process.env.AC_GG_CSK = 'google-secret';
 process.env.REACT_APP_MS_CID = '00000000-0000-0000-0000-00000000c1d0';
@@ -114,6 +115,18 @@ async function signIn(provider, identity) {
   };
   const admin = await mkUser('admin');
   const adminTok = (await post('/api/auth/login', { email: admin.email, password: PW })).body.token;
+
+  // ── the addresses to register ────────────────────────────────────────────────────
+  const setup = await (await fetch(`${BASE}/api/auth/mobile/oauth/setup`)).json();
+  check('the setup page names the exact Google and Microsoft redirect URIs',
+    setup.register.google.redirectUri === 'https://app.example.test/api/auth/mobile/oauth/google/callback'
+    && setup.register.microsoft.redirectUri === 'https://app.example.test/api/auth/mobile/oauth/microsoft/callback'
+    && setup.register.google.configured === true);
+  delete process.env.AC_PUBLIC_URL;
+  const viaHost = await (await fetch(`${BASE}/api/auth/mobile/oauth/setup`, { headers: { 'X-Forwarded-Host': 'app.aureoncare.tech', 'X-Forwarded-Proto': 'https' } })).json();
+  check('without AC_PUBLIC_URL it is the address the phone reached (not FRONTEND_URL)',
+    viaHost.register.google.redirectUri === 'https://app.aureoncare.tech/api/auth/mobile/oauth/google/callback');
+  process.env.AC_PUBLIC_URL = 'https://app.example.test';
 
   // ── start: what is refused ───────────────────────────────────────────────────────
   const { challenge } = pkce();
