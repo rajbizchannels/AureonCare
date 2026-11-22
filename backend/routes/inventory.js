@@ -4,6 +4,7 @@ const cloudStorage = require('../services/cloudBackupStorage');
 const { authenticate, authorize } = require('../middleware/auth');
 const { requireModuleAccessByPath } = require('../middleware/modulePermissions');
 const { sendDbError } = require('../utils/dbErrors');
+const lowStock = require('../services/lowStockAlerts'); // tells the people who reorder when stock runs low
 
 // All inventory routes require authentication
 router.use(authenticate);
@@ -406,6 +407,7 @@ router.post('/items', authorize('admin', 'billing_manager'), async (req, res) =>
       req.user.id
     ]);
     res.status(201).json(toCamelCase(result.rows[0]));
+    lowStock.checkItems(pool, [result.rows[0].id], { practiceId: req.tenant && req.tenant.practiceId }).catch(() => {});
   } catch (err) {
     console.error('Error creating item:', err);
     if (err.code === '23505') return res.status(409).json({ error: 'Item number or SKU already exists' });
@@ -481,6 +483,8 @@ router.put('/items/:id', authorize('admin', 'billing_manager'), async (req, res)
       req.params.id
     ]);
     res.json(toCamelCase(result.rows[0]));
+    // A raised reorder level can put an item below the line without any stock moving.
+    lowStock.checkItems(pool, [req.params.id], { practiceId: req.tenant && req.tenant.practiceId }).catch(() => {});
   } catch (err) {
     console.error('Error updating item:', err);
     if (err.code === '23514') return res.status(400).json({ error: 'Validation failed: ' + err.detail });
@@ -612,6 +616,7 @@ router.post('/movements', authorize('admin', 'billing_manager', 'nurse'), async 
 
     await client.query('COMMIT');
     res.status(201).json(toCamelCase(result.rows[0]));
+    lowStock.checkItems(req.db || req.app.locals.pool, [itemId], { practiceId: req.tenant && req.tenant.practiceId }).catch(() => {});
   } catch (err) {
     await client.query('ROLLBACK');
     console.error('Error creating stock movement:', err);
@@ -919,6 +924,8 @@ router.post('/orders/:id/receive', authorize('admin', 'billing_manager'), async 
       movements: createdMovements,
       fullyReceived: allReceived
     });
+    // Restocked items re-arm their alert (and a partial receipt can still leave one low).
+    lowStock.checkItems(req.db || req.app.locals.pool, lines.rows.map((l) => l.item_id), { practiceId: req.tenant && req.tenant.practiceId }).catch(() => {});
   } catch (err) {
     await client.query('ROLLBACK');
     console.error('Error receiving purchase order:', err);

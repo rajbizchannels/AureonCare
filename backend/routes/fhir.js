@@ -149,7 +149,7 @@ router.post('/resources', async (req, res) => {
         const labOrder = labOrderResult.rows[0];
 
         // Send to Labcorp
-        const patientResult = await pool.query('SELECT * FROM users WHERE id = $1', [patientId]);
+        const patientResult = await pool.query('SELECT id, first_name, last_name, date_of_birth, gender, mrn, phone, address FROM patients WHERE id::text = $1::text', [patientId]);
         const providerResult = await pool.query('SELECT * FROM users WHERE id = $1', [labOrderData.provider_id]);
 
         const labcorp = (await vendorsFor(req)).getLabcorp();

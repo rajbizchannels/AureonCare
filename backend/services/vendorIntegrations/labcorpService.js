@@ -321,16 +321,35 @@ class LabcorpService {
       intent: 'order',
       priority: labOrder.priority || 'routine',
 
+      // The patient travels with the order: a lab cannot resolve our internal ids.
+      contained: [
+        {
+          resourceType: 'Patient',
+          id: 'patient',
+          identifier: labOrder.patient?.mrn ? [{ type: { text: 'MRN' }, value: labOrder.patient.mrn }] : [],
+          name: [{ family: labOrder.patient?.last_name || '', given: [labOrder.patient?.first_name || ''].filter(Boolean) }],
+          birthDate: labOrder.patient?.date_of_birth ? String(labOrder.patient.date_of_birth).slice(0, 10) : undefined,
+          gender: ({ m: 'male', male: 'male', f: 'female', female: 'female' })[String(labOrder.patient?.gender || '').toLowerCase()] || 'unknown',
+          telecom: labOrder.patient?.phone ? [{ system: 'phone', value: labOrder.patient.phone }] : [],
+        },
+        {
+          resourceType: 'Practitioner',
+          id: 'requester',
+          identifier: labOrder.provider?.npi ? [{ system: 'http://hl7.org/fhir/sid/us-npi', value: labOrder.provider.npi }] : [],
+          name: [{ family: labOrder.provider?.last_name || '', given: [labOrder.provider?.first_name || ''].filter(Boolean) }],
+        },
+      ],
+
       // Patient information
       subject: {
-        reference: `Patient/${labOrder.patient_id}`,
-        display: labOrder.patient?.full_name || ''
+        reference: '#patient',
+        display: [labOrder.patient?.first_name, labOrder.patient?.last_name].filter(Boolean).join(' ')
       },
 
       // Ordering provider
       requester: {
-        reference: `Practitioner/${labOrder.provider_id}`,
-        display: labOrder.provider?.full_name || ''
+        reference: '#requester',
+        display: [labOrder.provider?.first_name, labOrder.provider?.last_name].filter(Boolean).join(' ')
       },
 
       // Tests ordered

@@ -239,6 +239,7 @@ app.use('/api/payment-postings', require('./routes/payment-postings'));
 app.use('/api/denials', require('./routes/denials'));
 app.use('/api/edi', require('./routes/edi'));
 app.use('/api/notifications', require('./routes/notifications'));
+app.use('/api/notification-settings', require('./routes/notificationSettings')); // per-channel staff notification choices
 app.use('/api/messages', require('./routes/messages'));
 app.use('/api/tasks', require('./routes/tasks'));
 app.use('/api/users', require('./routes/users'));

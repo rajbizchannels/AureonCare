@@ -575,6 +575,8 @@ router.post('/:id/allocations', canPlan, async (req, res) => {
       return { allocation: toCamelCase(alloc[0]), movement: toCamelCase(movement[0]) };
     });
     res.status(201).json(out);
+    // Stock issued to a camp can take the clinic's own shelf below its reorder level.
+    require('../services/lowStockAlerts').checkItems(db_(req), [out.allocation && out.allocation.itemId], { practiceId: req.tenant && req.tenant.practiceId }).catch(() => {});
   } catch (err) { fail(res, err, 'to issue stock to camp'); }
 });
 
@@ -638,6 +640,8 @@ router.post('/allocations/:allocId/reconcile', canPlan, async (req, res) => {
       return toCamelCase(rows[0]);
     });
     res.json(out);
+    // Returned stock may bring an item back above its reorder level (re-arms the alert).
+    require('../services/lowStockAlerts').checkItems(db_(req), [out && out.itemId], { practiceId: req.tenant && req.tenant.practiceId }).catch(() => {});
   } catch (err) { fail(res, err, 'to reconcile camp stock'); }
 });
 
