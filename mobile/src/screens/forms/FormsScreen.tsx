@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
-import { ClipboardList, FileSignature, ExternalLink } from 'lucide-react-native';
+import { ClipboardList, FileSignature } from 'lucide-react-native';
+import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { useSession } from '@/context/SessionContext';
 import { useLayout } from '@/lib/device';
 import { useResource, formatDate } from '@/lib/useResource';
@@ -15,12 +16,11 @@ import type { FormSubmission } from '@/lib/api';
  * they have read. Staff see the same queue across patients, to know what is
  * still outstanding before a clinic starts.
  *
- * Filling in a *template* form is deliberately absent. The web builder
- * supports conditional fields, repeating groups and typed validation
- * (`form-management.js`); a mobile renderer that handled some of that and
- * silently dropped the rest would produce submissions that look complete and
- * are not. Document-backed requests — read this, confirm you have — are fully
- * handled here, because those are the ones that actually hold a visit up.
+ * Template forms are filled in on the device (FormFillScreen): the renderer
+ * draws every field type the web renderer does — sections, show-when
+ * conditions, role-visible fields, signatures — and the server checks each
+ * submission against the template, so nothing incomplete gets through.
+ * Documents to read are acknowledged here; documents to sign need the web app.
  */
 
 type Filter = 'outstanding' | 'all';
@@ -40,7 +40,10 @@ export const FormsScreen: React.FC = () => {
   // A patient reads their own; staff read the practice's queue. The client
   // picks the portal or the staff route from the credential it holds.
   const patientId = isPatient ? account?.id : undefined;
-  const forms = useResource(() => api.listFormSubmissions(patientId), [api, patientId]);
+  const navigation = useNavigation();
+  // Refetch when coming back from filling one in, so it moves out of Outstanding.
+  const focused = useIsFocused();
+  const forms = useResource(() => api.listFormSubmissions(patientId), [api, patientId, focused]);
 
   const rows = useMemo(() => {
     const all = forms.data ?? [];
@@ -162,21 +165,22 @@ export const FormsScreen: React.FC = () => {
                     </Pressable>
                   ) : null}
 
-                  {/* Signing and template forms both need the web app. Saying
-                      so beats a button that opens a screen which cannot finish
-                      the job. */}
-                  {needsSignature || !isDocument ? (
+                  {/* Template forms are filled in here (FormFillScreen renders every
+                      field type the web does, and the server checks the answers). A
+                      document that must be signed still needs the web app. */}
+                  {!isDocument ? (
+                    <Pressable
+                      onPress={() => (navigation as unknown as { navigate: (n: string, p: object) => void }).navigate('FormFill', { submissionId: item.id })}
+                      accessibilityRole="button"
+                      style={({ pressed }) => [styles.action, pressed && styles.pressed]}
+                    >
+                      <Text style={styles.actionLabel}>{isPatient ? 'Fill in' : 'Fill in with the patient'}</Text>
+                    </Pressable>
+                  ) : null}
+                  {needsSignature ? (
                     <View style={styles.webNote}>
-                      {needsSignature ? (
-                        <FileSignature size={13} color={palette.textMuted} />
-                      ) : (
-                        <ExternalLink size={13} color={palette.textMuted} />
-                      )}
-                      <Text style={styles.webNoteText}>
-                        {needsSignature
-                          ? 'Needs a signature — open the web app to sign.'
-                          : 'Complete this one in the web app.'}
-                      </Text>
+                      <FileSignature size={13} color={palette.textMuted} />
+                      <Text style={styles.webNoteText}>Needs a signature — open the web app to sign.</Text>
                     </View>
                   ) : null}
                 </View>

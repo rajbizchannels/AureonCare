@@ -170,7 +170,11 @@ const report = (err) => {
   check('notification preferences save', np.status === 200 && np.body.is_enabled === false && np.body.patient_id === P);
   const prof = await send('PUT', '/profile', { height: '170 cm', allergies: 'Penicillin' });
   check('profile health details save', prof.status === 200 && prof.body.height === '170 cm' && prof.body.allergies === 'Penicillin');
-  const { rows: [tpl] } = await pool.query(`SELECT id FROM ${schema}.form_templates LIMIT 1`);
+  // A one-question template, so the answer below is a complete form (completed forms are now
+  // checked against their template — SEC-52; the full rules are in forms-fill.test.js).
+  const { rows: [tpl] } = await pool.query(
+    `INSERT INTO ${schema}.form_templates (name, fields) VALUES ('Portal data check', $1::jsonb) RETURNING id`,
+    [JSON.stringify([{ id: 'q1', type: 'text', label: 'Question 1', required: true }])]);
   check('(the practice has a form template to request)', Boolean(tpl));
   const { rows: [fs] } = await pool.query(`INSERT INTO ${schema}.form_submissions (template_id, template_name, patient_id, status, form_data) VALUES ($2, 'Intake', $1, 'pending', '{}') RETURNING id`, [P, tpl.id]);
   const sub = await send('PUT', `/form-requests/${fs.id}`, { form_data: { q1: 'yes' } });

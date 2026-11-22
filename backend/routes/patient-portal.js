@@ -3,6 +3,7 @@ const router = express.Router();
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const lockout = require('../services/loginLockout');
+const { validateFormData } = require('../utils/formValidation');
 const rateLimit = require('express-rate-limit');
 const { storeFor } = require('../middleware/rateLimitStore');
 const { getTimezoneFromCountry } = require('../utils/timezoneUtils');
@@ -823,7 +824,8 @@ router.post('/:patientId/form-requests/:submissionId/acknowledge', async (req, r
           SET status = 'submitted', submitted_at = CURRENT_TIMESTAMP,
               submitted_by = $1, submitted_by_role = 'patient',
               ip_address = $2, user_agent = $3, updated_at = NOW()
-        WHERE id = $4 AND patient_id = $1 AND status = 'draft'
+        WHERE id = $4 AND patient_id = $1
+          AND status NOT IN ('submitted','reviewed','approved','completed')
           AND document_attachment_id IS NOT NULL
         RETURNING *`,
       [patientId, req.ip, req.get('user-agent'), submissionId]
@@ -1465,16 +1467,66 @@ router.put('/:patientId/notification-preferences', async (req, res) => {
 
 // Fill in a form the practice asked for. Only the patient's own, and only while it is
 // still waiting for them.
+// One requested form WITH its questions: the practice's own template (by id, else by the
+// slug the request recorded, else by name), so a form the practice designed can be filled
+// in — the web portal used to look forms up in a list built into the web app.
+async function templateForSubmission(db, sub) {
+  const slug = sub.metadata && sub.metadata.template_slug;
+  const q = sub.template_id
+    ? ['SELECT id, name, fields, require_signature FROM form_templates WHERE id = $1', [sub.template_id]]
+    : slug ? ['SELECT id, name, fields, require_signature FROM form_templates WHERE slug = $1', [slug]]
+      : ['SELECT id, name, fields, require_signature FROM form_templates WHERE name = $1 AND COALESCE(is_active, true) ORDER BY version_number DESC NULLS LAST LIMIT 1', [sub.template_name]];
+  const { rows: [t] } = await db.query(q[0], q[1]);
+  return t || null;
+}
+
+router.get('/:patientId/form-requests/:submissionId', async (req, res) => {
+  try {
+    const db = portalDb(req);
+    const { rows: [sub] } = await db.query(
+      `SELECT id, template_id, template_name, status, form_data, metadata, document_attachment_id, document_name, document_action,
+              created_at, submitted_at FROM form_submissions WHERE id::text = $1 AND patient_id = $2`,
+      [req.params.submissionId, req.params.patientId]);
+    if (!sub) return res.status(404).json({ error: 'Form not found' });
+    const t = await templateForSubmission(db, sub);
+    res.json({
+      submission: { ...sub, metadata: undefined },
+      fields: (t && Array.isArray(t.fields)) ? t.fields : [],
+      templateName: (t && t.name) || sub.template_name,
+      editable: !['submitted', 'reviewed', 'approved', 'completed'].includes(sub.status) && !sub.document_attachment_id,
+    });
+  } catch (error) {
+    console.error('[portal] form request:', error.message);
+    res.status(500).json({ error: 'Failed to load the form' });
+  }
+});
+
 router.put('/:patientId/form-requests/:submissionId', async (req, res) => {
   const { form_data } = req.body || {};
   if (!form_data || typeof form_data !== 'object') return res.status(400).json({ error: 'form_data is required' });
   try {
+    // Check the answers against the practice's template (required, types, choices,
+    // conditions) — the same rules every client applies; the server has the final word.
+    let toSave = form_data;
+    {
+      const db = portalDb(req);
+      const { rows: [sub] } = await db.query(
+        'SELECT id, template_id, template_name, metadata FROM form_submissions WHERE id::text = $1 AND patient_id = $2',
+        [req.params.submissionId, req.params.patientId]);
+      if (!sub) return res.status(404).json({ error: 'This form is not waiting for you.' });
+      const t = await templateForSubmission(db, sub);
+      if (t && Array.isArray(t.fields) && t.fields.length) {
+        const v = validateFormData(t.fields, form_data, 'patient');
+        if (!v.ok) return res.status(400).json({ error: 'Some answers need attention.', fieldErrors: v.errors });
+        toSave = v.cleaned;
+      }
+    }
     const { rows } = await portalDb(req).query(
       `UPDATE form_submissions
           SET form_data = $1, status = 'submitted', submitted_at = NOW(), submitted_by_role = 'patient', updated_at = NOW()
         WHERE id = $2 AND patient_id = $3 AND status NOT IN ('submitted','reviewed','approved','completed')
         RETURNING id, status, submitted_at`,
-      [JSON.stringify(form_data), req.params.submissionId, req.params.patientId]);
+      [JSON.stringify(toSave), req.params.submissionId, req.params.patientId]);
     if (!rows.length) return res.status(404).json({ error: 'This form is not waiting for you.' });
     res.json(rows[0]);
   } catch (error) {

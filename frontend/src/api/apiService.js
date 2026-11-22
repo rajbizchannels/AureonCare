@@ -1178,6 +1178,7 @@ const api = {
       const data = await response.json().catch(() => ({}));
       const err = new Error(data.message || data.error || fail);
       err.status = response.status;
+      if (data.fieldErrors) err.fieldErrors = data.fieldErrors;   // a form's per-question problems
       throw err;
     }
     return response.json();
@@ -1218,6 +1219,8 @@ const api = {
     api._portalCall(patientId, '/notification-preferences', {
       method: 'PUT', body: { channel_type: channelType, is_enabled: isEnabled, contact_info: contactInfo || null },
       fail: 'Failed to save notification preference' }),
+  portalGetFormRequest: (patientId, submissionId) =>
+    api._portalCall(patientId, `/form-requests/${encodeURIComponent(submissionId)}`, { fail: 'Failed to load the form' }),
   portalSubmitForm: (patientId, submissionId, formData) =>
     api._portalCall(patientId, `/form-requests/${submissionId}`, { method: 'PUT', body: { form_data: formData }, fail: 'Failed to submit form' }),
   portalChangePassword: (patientId, currentPassword, newPassword) =>

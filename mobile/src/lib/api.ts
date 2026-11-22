@@ -3,6 +3,7 @@ import type { RedeemResponse } from './socialSignIn';
 import type { DirectoryAnswer } from './directory';
 import type { PortalProfile } from './profile';
 import type { SickNote, SickNoteRequest } from './sickNotes';
+import type { FormField } from './forms';
 
 /**
  * Client for the AureonCare API.
@@ -907,6 +908,38 @@ export class ApiClient {
     }
     const suffix = patientId ? `?patient_id=${encodeURIComponent(patientId)}` : '';
     return this.request(`/form-management/submissions${suffix}`);
+  }
+
+  // ── Filling in forms ─────────────────────────────────────────────────────
+  // Patients: their requested form with the practice's questions (portal). Staff: a
+  // submission (with template_fields), the template list, create and complete.
+
+  getPortalFormRequest(patientId: string, submissionId: string): Promise<{ submission: FormSubmission & { form_data?: Record<string, unknown> }; fields: FormField[]; templateName: string; editable: boolean }> {
+    return this.request(`/patient-portal/${patientId}/form-requests/${encodeURIComponent(submissionId)}`);
+  }
+
+  submitPortalForm(patientId: string, submissionId: string, formData: Record<string, unknown>): Promise<{ id: string; status: string }> {
+    return this.request(`/patient-portal/${patientId}/form-requests/${encodeURIComponent(submissionId)}`, { method: 'PUT', body: JSON.stringify({ form_data: formData }) });
+  }
+
+  getFormSubmission(id: string): Promise<FormSubmission & { form_data?: Record<string, unknown>; template_fields?: FormField[]; template_name_ref?: string }> {
+    return this.request(`/form-management/submissions/${encodeURIComponent(id)}`);
+  }
+
+  listFormTemplates(): Promise<{ id: string; name: string; slug?: string; category_name?: string; fields?: FormField[]; is_active?: boolean }[]> {
+    return this.request('/form-management/templates?is_active=true');
+  }
+
+  getFormTemplate(id: string): Promise<{ id: string; name: string; fields: FormField[] }> {
+    return this.request(`/form-management/templates/${encodeURIComponent(id)}`);
+  }
+
+  createFormSubmission(body: Record<string, unknown>): Promise<FormSubmission> {
+    return this.request('/form-management/submissions', { method: 'POST', body: JSON.stringify(body) });
+  }
+
+  updateFormSubmission(id: string, body: Record<string, unknown>): Promise<FormSubmission> {
+    return this.request(`/form-management/submissions/${encodeURIComponent(id)}`, { method: 'PUT', body: JSON.stringify(body) });
   }
 
   acknowledgeForm(submissionId: string, patientId?: string): Promise<{ success?: boolean }> {

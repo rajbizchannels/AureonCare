@@ -159,13 +159,15 @@ router.get('/templates/:id', async (req, res) => {
       `SELECT ft.*, fc.name as category_name
        FROM form_templates ft
        LEFT JOIN form_categories fc ON ft.category_id = fc.id
-       WHERE ft.id = $1 OR ft.slug = $1`,
+       -- id::text: comparing the uuid column and the varchar slug with one untyped
+       -- parameter failed for every request ("character varying = uuid") — 500.
+       WHERE ft.id::text = $1 OR ft.slug = $1`,
       [req.params.id]
     );
     if (result.rows.length === 0) return res.status(404).json({ error: 'Template not found' });
 
-    const actorId = req.headers['x-user-id'];
-    const actorRole = req.headers['x-user-role'];
+    const actorId = (req.user && req.user.id);
+    const actorRole = (req.user && req.user.role);
     await logAudit(pool, { resourceType: 'template', resourceId: result.rows[0].id, action: 'viewed', actorId, actorRole });
     res.json(result.rows[0]);
   } catch (error) {
@@ -182,8 +184,8 @@ router.post('/templates', async (req, res) => {
     allow_pdf_export, languages, translations, tags, intake_flow_eligible, specialty,
     compliance_tags, is_system_template
   } = req.body;
-  const actorId = req.headers['x-user-id'];
-  const actorRole = req.headers['x-user-role'];
+  const actorId = (req.user && req.user.id);
+  const actorRole = (req.user && req.user.role);
 
   try {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
@@ -239,8 +241,8 @@ router.put('/templates/:id', async (req, res) => {
     allow_pdf_export, languages, translations, tags, intake_flow_eligible, specialty,
     compliance_tags, is_active, change_summary
   } = req.body;
-  const actorId = req.headers['x-user-id'];
-  const actorRole = req.headers['x-user-role'];
+  const actorId = (req.user && req.user.id);
+  const actorRole = (req.user && req.user.role);
 
   try {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
@@ -329,8 +331,8 @@ router.put('/templates/:id', async (req, res) => {
 
 // Delete template
 router.delete('/templates/:id', async (req, res) => {
-  const actorId = req.headers['x-user-id'];
-  const actorRole = req.headers['x-user-role'];
+  const actorId = (req.user && req.user.id);
+  const actorRole = (req.user && req.user.role);
   try {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     await ensureTables(pool);
@@ -374,8 +376,8 @@ router.get('/templates/:id/versions', async (req, res) => {
 
 // Restore a specific version
 router.post('/templates/:id/versions/:versionId/restore', async (req, res) => {
-  const actorId = req.headers['x-user-id'];
-  const actorRole = req.headers['x-user-role'];
+  const actorId = (req.user && req.user.id);
+  const actorRole = (req.user && req.user.role);
   try {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     await ensureTables(pool);
@@ -572,8 +574,8 @@ router.get('/submissions/:id', async (req, res) => {
     // Fetch signatures
     const sigs = await pool.query('SELECT * FROM form_signatures WHERE submission_id = $1 ORDER BY signed_at', [req.params.id]);
 
-    const actorId = req.headers['x-user-id'];
-    const actorRole = req.headers['x-user-role'];
+    const actorId = (req.user && req.user.id);
+    const actorRole = (req.user && req.user.role);
     await logAudit(pool, { resourceType: 'submission', resourceId: req.params.id, action: 'viewed', actorId, actorRole, patientId: result.rows[0].patient_id });
 
     res.json({ ...result.rows[0], signatures: sigs.rows });
@@ -583,13 +585,25 @@ router.get('/submissions/:id', async (req, res) => {
   }
 });
 
+
+// Check a SUBMITTED form against its template (utils/formValidation.js) — required fields,
+// answer types, choices, conditions. Drafts are saved as they are. Returns null when fine,
+// or the 400 to send.
+async function checkSubmission(pool, templateId, formData, role) {
+  if (!templateId) return { ok: true, cleaned: formData };
+  const { rows: [t] } = await pool.query('SELECT fields FROM form_templates WHERE id = $1', [templateId]);
+  if (!t || !Array.isArray(t.fields) || !t.fields.length) return { ok: true, cleaned: formData };
+  const { validateFormData } = require('../utils/formValidation');
+  return validateFormData(t.fields, formData, role || 'staff');
+}
+
 router.post('/submissions', async (req, res) => {
   const {
     template_id, template_name, template_version, patient_id, appointment_id, intake_flow_id,
     form_data, status, language, expires_at, metadata
   } = req.body;
-  const actorId = req.headers['x-user-id'];
-  const actorRole = req.headers['x-user-role'];
+  const actorId = (req.user && req.user.id);
+  const actorRole = (req.user && req.user.role);
 
   try {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
@@ -645,10 +659,18 @@ router.post('/submissions', async (req, res) => {
     const pinnedVersion = (resolvedTemplate && resolvedTemplate.version)
       || template_version || '1.0';
 
+    // Filled in and submitted (e.g. staff filling a form for a patient on a tablet): check it.
+    let formDataToSave = form_data;
+    if (status === 'submitted') {
+      const v = await checkSubmission(pool, resolvedTemplateId, form_data || {}, actorRole);
+      if (!v.ok) return res.status(400).json({ error: 'Some answers need attention.', fieldErrors: v.errors });
+      formDataToSave = v.cleaned;
+    }
+
     // Build FHIR QuestionnaireResponse if the template has a FHIR mapping
     let fhirResponse = null;
-    if (resolvedTemplate && resolvedTemplate.fhir_questionnaire && form_data) {
-      fhirResponse = buildFhirResponse(resolvedTemplate.fhir_questionnaire, form_data, patient_id);
+    if (resolvedTemplate && resolvedTemplate.fhir_questionnaire && formDataToSave) {
+      fhirResponse = buildFhirResponse(resolvedTemplate.fhir_questionnaire, formDataToSave, patient_id);
     }
 
     const result = await pool.query(
@@ -666,7 +688,7 @@ router.post('/submissions', async (req, res) => {
        RETURNING *`,
       [resolvedTemplateId, pinnedName, pinnedVersion,
        patient_id || null, appointment_id || null, intake_flow_id || null,
-       actorId || null, actorRole || null, JSON.stringify(form_data || {}),
+       actorId || null, actorRole || null, JSON.stringify(formDataToSave || {}),
        status || 'draft', language || 'en', expires_at || null,
        JSON.stringify(metadata || {}), fhirResponse ? JSON.stringify(fhirResponse) : null]
     );
@@ -684,8 +706,8 @@ router.post('/submissions', async (req, res) => {
 
 router.put('/submissions/:id', async (req, res) => {
   const { form_data, status, reviewed_by, reviewer_notes, language, metadata } = req.body;
-  const actorId = req.headers['x-user-id'];
-  const actorRole = req.headers['x-user-role'];
+  const actorId = (req.user && req.user.id);
+  const actorRole = (req.user && req.user.role);
 
   try {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
@@ -695,11 +717,19 @@ router.put('/submissions/:id', async (req, res) => {
     if (prev.rows.length === 0) return res.status(404).json({ error: 'Submission not found' });
     const previous = prev.rows[0];
 
+    // Completing a requested form (status -> submitted): check the answers it will hold.
+    let formDataToSave = form_data;
+    if (status === 'submitted') {
+      const v = await checkSubmission(pool, previous.template_id, form_data !== undefined ? form_data : previous.form_data, actorRole);
+      if (!v.ok) return res.status(400).json({ error: 'Some answers need attention.', fieldErrors: v.errors });
+      if (form_data !== undefined) formDataToSave = v.cleaned;
+    }
+
     const updateFields = [];
     const params = [];
     let pi = 1;
 
-    if (form_data !== undefined) { updateFields.push(`form_data = $${pi++}`); params.push(JSON.stringify(form_data)); }
+    if (form_data !== undefined) { updateFields.push(`form_data = $${pi++}`); params.push(JSON.stringify(formDataToSave)); }
     if (status !== undefined) {
       updateFields.push(`status = $${pi++}`); params.push(status);
       if (status === 'submitted') updateFields.push('submitted_at = NOW()');
@@ -730,8 +760,8 @@ router.put('/submissions/:id', async (req, res) => {
 });
 
 router.delete('/submissions/:id', async (req, res) => {
-  const actorId = req.headers['x-user-id'];
-  const actorRole = req.headers['x-user-role'];
+  const actorId = (req.user && req.user.id);
+  const actorRole = (req.user && req.user.role);
   try {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     await ensureTables(pool);
@@ -755,8 +785,8 @@ router.delete('/submissions/:id', async (req, res) => {
 
 router.post('/submissions/:id/sign', async (req, res) => {
   const { signer_name, signer_role, relation, signature_data, signature_type, is_witness, ip_address, user_agent } = req.body;
-  const actorId = req.headers['x-user-id'];
-  const actorRole = req.headers['x-user-role'];
+  const actorId = (req.user && req.user.id);
+  const actorRole = (req.user && req.user.role);
 
   try {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
@@ -858,8 +888,8 @@ router.get('/intake-flows/:flowId/templates', async (req, res) => {
 // Assign templates to a flow
 router.post('/intake-flows/:flowId/templates', async (req, res) => {
   const { template_ids, template_assignments } = req.body;
-  const actorId = req.headers['x-user-id'];
-  const actorRole = req.headers['x-user-role'];
+  const actorId = (req.user && req.user.id);
+  const actorRole = (req.user && req.user.role);
 
   try {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
