@@ -76,7 +76,8 @@
     "test:forms-fill": "node backend/test/portal/forms-fill.test.js",
     "test:ncpdp": "node backend/test/integrations/ncpdp-script.test.js",
     "test:staff-notifications": "node backend/test/notifications/staff-notifications.test.js",
-    "test:clinic-settings": "node backend/test/security/clinic-settings-isolation.test.js"
+    "test:clinic-settings": "node backend/test/security/clinic-settings-isolation.test.js",
+    "test:eligibility": "node backend/test/rcm/eligibility.test.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.6.0",
