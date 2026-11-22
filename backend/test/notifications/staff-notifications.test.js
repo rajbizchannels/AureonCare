@@ -161,6 +161,9 @@ const report = (err) => {
   outbox.length = 0;
   await api('POST', '/inventory/items', B.admin.token, { name: `Syringes ${RUN}`, unitOfMeasure: 'box', itemType: 'supply', unitCost: 3, quantityOnHand: 1, reorderLevel: 4 });
   await sleep(800);
+  const soloSettings = await api('GET', '/notification-settings', B.admin.token);
+  const soloLow = obj(soloSettings.body).events && soloSettings.body.events.find((e) => e.key === 'inventory.low_stock');
+  check('solo practice: the page shows the admin receives low stock, and why', soloLow && soloLow.channels.in_app.enabled && /nobody else/.test(soloLow.note || '') && /because/.test(soloLow.note || ''));
   check('solo practice: the admin gets the bell alert', (await bell(B.T, B.admin.id, 'inventory')).some((m) => m.includes(`Syringes ${RUN}`)));
   check('...and the email', outbox.some((m) => m.to === B.admin.email && /Syringes/.test(m.subject)));
   check('practices are separate: the other practice heard nothing of it', !(await bell(A.T, A.admin.id, 'inventory')).some((m) => m.includes(`Syringes ${RUN}`)));

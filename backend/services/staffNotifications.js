@@ -117,23 +117,33 @@ async function settingsFor(db, user) {
   const events = [];
   for (const event of CATALOG) {
     if (!(await isEligible(db, event, user.role))) continue;
+    // An admin is the fallback when nobody else can act (a solo practice): then the defaults
+    // apply to them, and the page says why.
+    let fallback = false;
+    if (event.adminFallbackOnly && user.role === 'admin' && user.practiceId) {
+      fallback = !(await members(db, user.practiceId).then(async (ms) => {
+        for (const m of ms) if (m.role !== 'admin' && await isEligible(db, event, m.role)) return true;
+        return false;
+      }).catch(() => true));
+    }
     const channels = {};
     for (const ch of CHANNEL_KEYS) {
       if (!channelsOf(event).includes(ch)) { channels[ch] = { offered: false }; continue; }
       const row = saved.find((r) => r.event_key === event.key && r.channel === ch);
       channels[ch] = {
         offered: true,
-        enabled: row ? row.enabled : defaultFor(event, ch, user.role),
+        enabled: row ? row.enabled : (fallback ? Boolean((event.defaults || {})[ch]) : defaultFor(event, ch, user.role)),
         isDefault: !row,
         available: ch === 'in_app' ? true : ch === 'email' ? Boolean(user.email) : Boolean(user.phone),
       };
     }
-    events.push({
-      key: event.key, group: event.group, label: event.label, channels,
-      note: event.adminFallbackOnly && user.role === 'admin'
-        ? 'Admins receive this only when nobody else in the practice can act on stock, unless you switch it on here.'
-        : null,
-    });
+    let note = null;
+    if (event.adminFallbackOnly && user.role === 'admin') {
+      note = fallback
+        ? 'You receive this because nobody else in the practice can act on stock.'
+        : 'Admins receive this only when nobody else in the practice can act on stock, unless you switch it on here.';
+    }
+    events.push({ key: event.key, group: event.group, label: event.label, channels, note });
   }
   return { channels: CHANNELS, events };
 }

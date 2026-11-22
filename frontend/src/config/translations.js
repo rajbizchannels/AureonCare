@@ -326,6 +326,9 @@ export const translations = {
     // ── Practice setup (specialty wizard) ──
     setupTitle: "Practice Setup",
     setupNavDescription: "Specialty, starter services, forms and terminology",
+    mySettings: "My settings",
+    myNotifications: "My notifications",
+    myNotificationsDescription: "Choose what you are told about, and how",
     setupDescription: "Configure the product for how this practice actually works. Nothing is written until the last step, and every step can be skipped.",
     setupAdminOnly: "Only an administrator can configure the practice specialty.",
     setupSkip: "Skip for now",
@@ -2537,6 +2540,9 @@ export const translations = {
     // ── Practice setup (specialty wizard) ──
     setupTitle: "Configuración de la consulta",
     setupNavDescription: "Especialidad, servicios iniciales, formularios y terminología",
+    mySettings: "Mis ajustes",
+    myNotifications: "Mis notificaciones",
+    myNotificationsDescription: "Elija de qué se le avisa y cómo",
     setupDescription: "Configure el producto según cómo trabaja realmente esta consulta. No se escribe nada hasta el último paso, y todos los pasos pueden omitirse.",
     setupAdminOnly: "Solo un administrador puede configurar la especialidad de la consulta.",
     setupSkip: "Omitir por ahora",
@@ -4749,6 +4755,9 @@ export const translations = {
     // ── Practice setup (specialty wizard) ──
     setupTitle: "Configuration du cabinet",
     setupNavDescription: "Spécialité, services de départ, formulaires et terminologie",
+    mySettings: "Mes réglages",
+    myNotifications: "Mes notifications",
+    myNotificationsDescription: "Choisissez ce qui vous est signalé, et comment",
     setupDescription: "Configurez le produit selon le fonctionnement réel du cabinet. Rien n'est enregistré avant la dernière étape, et chaque étape peut être passée.",
     setupAdminOnly: "Seul un administrateur peut configurer la spécialité du cabinet.",
     setupSkip: "Passer pour le moment",
@@ -6961,6 +6970,9 @@ export const translations = {
     // ── Practice setup (specialty wizard) ──
     setupTitle: "Praxiseinrichtung",
     setupNavDescription: "Fachrichtung, Startleistungen, Formulare und Terminologie",
+    mySettings: "Meine Einstellungen",
+    myNotifications: "Meine Benachrichtigungen",
+    myNotificationsDescription: "Wählen Sie, worüber und wie Sie informiert werden",
     setupDescription: "Richten Sie das Produkt so ein, wie diese Praxis tatsächlich arbeitet. Bis zum letzten Schritt wird nichts geschrieben, und jeder Schritt lässt sich überspringen.",
     setupAdminOnly: "Nur ein Administrator kann die Fachrichtung der Praxis einrichten.",
     setupSkip: "Jetzt überspringen",
@@ -9173,6 +9185,9 @@ export const translations = {
     // ── Practice setup (specialty wizard) ──
     setupTitle: "إعداد العيادة",
     setupNavDescription: "التخصص والخدمات الأولية والنماذج والمصطلحات",
+    mySettings: "إعداداتي",
+    myNotifications: "إشعاراتي",
+    myNotificationsDescription: "اختر ما يتم إعلامك به وكيف",
     setupDescription: "اضبط النظام بحسب طريقة عمل هذه العيادة فعليًا. لا يُكتب أي شيء حتى الخطوة الأخيرة، ويمكن تخطي كل خطوة.",
     setupAdminOnly: "يمكن للمسؤول فقط إعداد تخصص العيادة.",
     setupSkip: "التخطي الآن",

@@ -54,6 +54,7 @@ import {
   HardDrive,
   Archive,
   ScrollText,
+  Bell,
 } from 'lucide-react';
 
 import { ADMIN_TABS } from '../constants/adminConstants';
@@ -751,6 +752,21 @@ export const getNavigation = (t = {}) => [
     color: 'from-slate-500 to-slate-700',
     placement: 'bottom',
     sections: [
+      {
+        id: 'settings.personal',
+        label: t.mySettings || 'My settings',
+        items: [
+          {
+            // Every staff member: which notifications they receive, per channel. The page
+            // lists only what their role is eligible for (the server decides).
+            id: 'settings.notifications',
+            label: t.myNotifications || 'My notifications',
+            description: t.myNotificationsDescription || 'Choose what you are told about, and how',
+            icon: Bell,
+            module: 'notificationSettings',
+          },
+        ],
+      },
       {
         id: 'settings.practice',
         label: t.practice || 'Practice',

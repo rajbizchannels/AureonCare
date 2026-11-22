@@ -4314,6 +4314,21 @@ const api = {
     if (!r.ok) throw new Error(data.error || 'Could not issue the sick note');
     return data;
   },
+  // Staff notification settings — per notification, per channel (in-app / email / WhatsApp).
+  getNotificationSettings: async () => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/notification-settings`);
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || 'Could not load your notification settings');
+    return data;
+  },
+  saveNotificationSettings: async (changes) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/notification-settings`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ changes }),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || 'Could not save your notification settings');
+    return data;
+  },
   getSickNotePdf: async (id) => {
     const r = await authenticatedFetch(`${API_BASE_URL}/sick-notes/${encodeURIComponent(id)}/pdf`);
     if (!r.ok) { const d = await r.json().catch(() => ({})); throw new Error(d.error || 'Could not prepare the sick note'); }

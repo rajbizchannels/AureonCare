@@ -20,7 +20,8 @@ router.use((req, res, next) => (req.user && req.user.role === 'patient'
 async function me(req) {
   const db = req.db || req.app.locals.pool;
   const { rows } = await db.query('SELECT id, email, phone FROM public.users WHERE id = $1', [req.user.id]);
-  return { id: req.user.id, role: req.user.role, email: rows[0] && rows[0].email, phone: rows[0] && rows[0].phone };
+  return { id: req.user.id, role: req.user.role, practiceId: (req.tenant && req.tenant.practiceId) || req.user.practiceId || null,
+    email: rows[0] && rows[0].email, phone: rows[0] && rows[0].phone };
 }
 
 router.get('/', async (req, res) => {
