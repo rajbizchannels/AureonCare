@@ -589,6 +589,7 @@ function App() {
             tasks={tasks}
             setTasks={setTasks}
             currency={currency}
+            user={user}
           />
         );
       case 'accounts':
