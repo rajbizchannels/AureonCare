@@ -31,6 +31,10 @@ import { StaffBillingScreen } from '@/screens/staff/BillingScreen';
 import { StaffChartScreen } from '@/screens/staff/ChartScreen';
 import { TasksScreen } from '@/screens/staff/TasksScreen';
 import { ActivePatientProvider } from '@/context/ActivePatientContext';
+import { FindPracticeScreen } from '@/screens/FindPracticeScreen';
+import { PatientSickNotesScreen } from '@/screens/patient/SickNotesScreen';
+import { PatientProfileScreen } from '@/screens/patient/ProfileScreen';
+import { ChartSickNotesScreen } from '@/screens/staff/ChartSickNotesScreen';
 import { Loading } from '@/components/ui';
 import { palette } from '@/theme/tokens';
 
@@ -296,6 +300,10 @@ const MORE_ROWS: {
     tab: 'tasks',
     requires: (c) => c.role !== 'patient' && c.can('practiceManagement'),
   },
+  // The patient's own things, then finding another practice.
+  { key: 'profile', label: 'My profile', screen: 'Profile', requires: (c) => c.role === 'patient' },
+  { key: 'sickNotes', label: 'Sick notes', screen: 'SickNotes', requires: (c) => c.role === 'patient' },
+  { key: 'findPractice', label: 'Find a practice', screen: 'FindPractice', requires: (c) => c.role === 'patient' },
   { key: 'notifications', label: 'Notifications', screen: 'Notifications' },
   {
     key: 'forms',
@@ -391,6 +399,10 @@ const DETAIL_SCREENS: { name: string; title: string; component: React.ComponentT
   { name: 'Forms', title: 'Forms', component: FormsScreen },
   { name: 'Practice', title: 'Practice', component: AdminScreen },
   { name: 'Security', title: 'Two-factor', component: SecurityScreen },
+  { name: 'Profile', title: 'My profile', component: PatientProfileScreen },
+  { name: 'SickNotes', title: 'Sick notes', component: PatientSickNotesScreen },
+  { name: 'FindPractice', title: 'Find a practice', component: FindPracticeScreen },
+  { name: 'ChartSickNotes', title: 'Sick notes', component: ChartSickNotesScreen },
 ];
 
 export const RootNavigator: React.FC = () => {
@@ -404,9 +416,17 @@ export const RootNavigator: React.FC = () => {
         <Stack.Navigator screenOptions={{ headerShown: false }}>
           <Stack.Screen name="SignIn">
             {({ navigation }: { navigation: Nav }) => (
-              <SignInScreen onOpenServer={() => navigation.navigate('Server')} />
+              <SignInScreen
+                onOpenServer={() => navigation.navigate('Server')}
+                onOpenFindPractice={() => navigation.navigate('FindPractice')}
+              />
             )}
           </Stack.Screen>
+          <Stack.Screen
+            name="FindPractice"
+            component={FindPracticeScreen}
+            options={{ headerShown: true, title: 'Find a practice' }}
+          />
           <Stack.Screen
             name="Server"
             component={ServerScreen}

@@ -1,5 +1,8 @@
 import { credentials } from './storage';
 import type { RedeemResponse } from './socialSignIn';
+import type { DirectoryAnswer } from './directory';
+import type { PortalProfile } from './profile';
+import type { SickNote } from './sickNotes';
 
 /**
  * Client for the AureonCare API.
@@ -1005,6 +1008,54 @@ export class ApiClient {
 
   markNotificationRead(id: string): Promise<Notification> {
     return this.request(`/notifications/${id}/read`, { method: 'PUT' });
+  }
+
+  // ── Find a practice (public directory; works signed out) ──────────────────
+
+  /** The query goes in the body, never the URL (no search logs — see routes/directory.js). */
+  searchDirectory(q: string): Promise<DirectoryAnswer> {
+    return this.request('/directory/search', { method: 'POST', body: JSON.stringify({ q }) });
+  }
+
+  // ── The patient's own profile (portal) ────────────────────────────────────
+
+  getPortalProfile(patientId: string): Promise<PortalProfile> {
+    return this.request(`/patient-portal/${patientId}/profile`);
+  }
+
+  updatePortalProfile(patientId: string, patch: Record<string, unknown>): Promise<PortalProfile> {
+    return this.request(`/patient-portal/${patientId}/profile`, { method: 'PUT', body: JSON.stringify(patch) });
+  }
+
+  // ── Sick notes ────────────────────────────────────────────────────────────
+  // A patient reads their own through the portal; clinicians use /sick-notes.
+
+  listMySickNotes(patientId: string): Promise<SickNote[]> {
+    return this.request(`/patient-portal/${patientId}/sick-notes`);
+  }
+
+  getMySickNoteDocument(patientId: string, noteId: string): Promise<{ html: string; reference: string }> {
+    return this.request(`/patient-portal/${patientId}/sick-notes/${encodeURIComponent(noteId)}/document`);
+  }
+
+  listSickNotes(patientId: string): Promise<{ notes: SickNote[]; canIssue: boolean; adjustments: Record<string, string>; maxDays: number }> {
+    return this.request(`/sick-notes?patientId=${encodeURIComponent(patientId)}`);
+  }
+
+  issueSickNote(body: Record<string, unknown>): Promise<{ note: SickNote }> {
+    return this.request('/sick-notes', { method: 'POST', body: JSON.stringify(body) });
+  }
+
+  getSickNoteDocument(noteId: string): Promise<{ html: string; reference: string }> {
+    return this.request(`/sick-notes/${encodeURIComponent(noteId)}/document`);
+  }
+
+  emailSickNote(noteId: string): Promise<{ emailed: boolean; to: string }> {
+    return this.request(`/sick-notes/${encodeURIComponent(noteId)}/email`, { method: 'POST', body: '{}' });
+  }
+
+  voidSickNote(noteId: string, reason: string): Promise<{ note: SickNote }> {
+    return this.request(`/sick-notes/${encodeURIComponent(noteId)}/void`, { method: 'POST', body: JSON.stringify({ reason }) });
   }
 }
 

@@ -1703,6 +1703,11 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
 
       {editingProfile ? (
         <form onSubmit={handleUpdateProfile} className={`p-6 rounded-xl border ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-gray-100/50 border-gray-300'}`}>
+          {/* Name, date of birth and email identify the patient to the practice and to sign-in:
+              the practice changes them, not the portal (the server refuses changes too). */}
+          <p id="identity-note" className={`mb-4 text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+            {t.profileIdentityNote || 'To change your name, date of birth or email, contact your practice — they are how your practice and sign-in recognise you.'}
+          </p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className={`block text-sm mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
@@ -1711,8 +1716,9 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
               <input
                 type="text"
                 value={profileData.first_name || ''}
-                onChange={(e) => setProfileData({ ...profileData, first_name: e.target.value })}
-                className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                readOnly
+                aria-describedby="identity-note"
+                className={`w-full px-4 py-2 border rounded-lg cursor-not-allowed ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-slate-300' : 'bg-gray-100 border-gray-300 text-gray-700'}`}
               />
             </div>
             <div>
@@ -1722,8 +1728,9 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
               <input
                 type="text"
                 value={profileData.last_name || ''}
-                onChange={(e) => setProfileData({ ...profileData, last_name: e.target.value })}
-                className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                readOnly
+                aria-describedby="identity-note"
+                className={`w-full px-4 py-2 border rounded-lg cursor-not-allowed ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-slate-300' : 'bg-gray-100 border-gray-300 text-gray-700'}`}
               />
             </div>
             <div>
@@ -1744,8 +1751,9 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
               <input
                 type="email"
                 value={profileData.email || ''}
-                onChange={(e) => setProfileData({ ...profileData, email: e.target.value })}
-                className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                readOnly
+                aria-describedby="identity-note"
+                className={`w-full px-4 py-2 border rounded-lg cursor-not-allowed ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-slate-300' : 'bg-gray-100 border-gray-300 text-gray-700'}`}
               />
             </div>
             <div className="col-span-2">
@@ -1763,8 +1771,9 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
               <input
                 type="date"
                 value={((profileData.date_of_birth || profileData.dob) || '').split('T')[0]}
-                onChange={(e) => setProfileData({ ...profileData, date_of_birth: e.target.value, dob: e.target.value })}
-                className={`w-full px-4 py-2 border rounded-lg ${theme === 'dark' ? 'bg-slate-700 border-slate-600 text-white' : 'bg-white border-gray-300 text-gray-900'}`}
+                readOnly
+                aria-describedby="identity-note"
+                className={`w-full px-4 py-2 border rounded-lg cursor-not-allowed ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-slate-300' : 'bg-gray-100 border-gray-300 text-gray-700'}`}
               />
             </div>
             <div>

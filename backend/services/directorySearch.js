@@ -127,6 +127,8 @@ async function loadCorpus(pool) {
     }));
     corpus.push({
       practiceId: p.practice_id, slug: p.slug, name: p.display_name || p.practice_name,
+      // Both the name on the profile and the practice's own (legal) name are searchable.
+      names: [...new Set([p.display_name, p.practice_name].filter(Boolean))],
       specialtyCodes: codes, ownSpecialtyCodes: p.specialty_codes || [],
       specialtyText: norm([...codes.map((c) => specialties.get(c)), ...providers.map((x) => x.specialization)].filter(Boolean).join(' ')),
       locations, logoPhotoId: p.logo_photo_id,
@@ -203,9 +205,30 @@ async function search(pool, { q = '', lat = null, lng = null, radiusKm = 100, li
   const parsed = parseQuery(q, specialties, places);
   const here = Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : null;
 
+  // Practice name first. "Springfield Family Clinic" would otherwise be read as the
+  // specialty Family Medicine in the place Springfield — two REQUIRED filters that can drop
+  // the very clinic typed in. A strong match of the whole query against a practice's name
+  // therefore bypasses those filters and ranks first.
+  const qFull = norm(q).slice(0, 200);
+  const qCore = qFull.split(' ').filter((w) => w && !STOP.has(w)).join(' ');
+  const practiceNameScore = (c) => {
+    if (qCore.length < 3) return 0;
+    let best = 0;
+    for (const n of c.names || [c.name]) best = Math.max(best, similarity(qFull, n), bestWithin(qCore, n));
+    return best;
+  };
+  const PRACTICE_HIT = 0.75;
+
   let nameMatched = false;
+  let practiceMatched = false;
   const scored = [];
   for (const c of corpus) {
+    const pScore = practiceNameScore(c);
+    if (pScore >= PRACTICE_HIT) {
+      practiceMatched = true;
+      scored.push({ c, score: 100 + pScore * 50, nameScore: pScore, distanceKm: null, matchedProviders: c.providers, placeHit: null, byPracticeName: true });
+      continue;
+    }
     let score = 0;
     // Specialty: required when asked for.
     let matchedProviders = c.providers;
@@ -229,7 +252,7 @@ async function search(pool, { q = '', lat = null, lng = null, radiusKm = 100, li
     // Names: practice or listed provider.
     let nameScore = 0;
     if (parsed.name) {
-      nameScore = bestWithin(parsed.name, c.name);
+      for (const n of c.names || [c.name]) nameScore = Math.max(nameScore, bestWithin(parsed.name, n));
       for (const x of c.providers) {
         const s = bestWithin(parsed.name, x.name.replace(/^Dr\.?\s*/, ''));
         if (s > nameScore) nameScore = s;
@@ -249,8 +272,8 @@ async function search(pool, { q = '', lat = null, lng = null, radiusKm = 100, li
   // Name words that match nothing are treated as noise ("best", typos of nothing) rather
   // than emptying the results; when they do match, they filter.
   let rows = scored;
-  if (parsed.name && nameMatched) rows = scored.filter((r) => r.nameScore >= 0.5);
-  rows = rows.map((r) => ({ ...r, total: r.score + (nameMatched ? r.nameScore * 40 : 0) }));
+  if (parsed.name && nameMatched) rows = scored.filter((r) => r.byPracticeName || r.nameScore >= 0.5);
+  rows = rows.map((r) => ({ ...r, total: r.byPracticeName ? r.score : r.score + (nameMatched ? r.nameScore * 40 : 0) }));
   rows.sort((a, b) => (b.total - a.total)
     || ((a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity))
     || a.c.name.localeCompare(b.c.name));
@@ -268,6 +291,7 @@ async function search(pool, { q = '', lat = null, lng = null, radiusKm = 100, li
       distanceKm: r.distanceKm == null ? null : Math.round(r.distanceKm * 10) / 10,
       providers: r.matchedProviders.slice(0, 3).map((x) => ({ name: x.name, specialization: x.specialization })),
       moreProviders: Math.max(0, r.matchedProviders.length - 3),
+      matchedBy: r.byPracticeName ? 'practice-name' : undefined,
     };
   });
   return {
@@ -277,6 +301,7 @@ async function search(pool, { q = '', lat = null, lng = null, radiusKm = 100, li
       specialties: parsed.specialtyCodes.map((code) => specialties.get(code)).filter(Boolean),
       place: parsed.place,
       name: parsed.name && nameMatched ? parsed.name : null,
+      practiceName: practiceMatched,
       nearby: Boolean(here),
     },
   };

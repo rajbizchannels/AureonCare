@@ -5,6 +5,7 @@ import {
 } from 'lucide-react-native';
 import { useSession } from '@/context/SessionContext';
 import { useActivePatient } from '@/context/ActivePatientContext';
+import { useNavigation } from '@react-navigation/native';
 import { Chip, EmptyState, ErrorNote, Loading } from '@/components/ui';
 import { formatDate, fullName, humanStatus, useResource } from '@/lib/useResource';
 import { useLayout } from '@/lib/device';
@@ -36,6 +37,7 @@ const ORDER: ChartKind[] = ['visit', 'diagnosis', 'medication', 'lab', 'document
 export const StaffChartScreen: React.FC = () => {
   const { api } = useSession();
   const { patient } = useActivePatient();
+  const navigation = useNavigation();
   const { gutter } = useLayout();
   const [filter, setFilter] = useState<ChartKind | 'all'>('all');
 
@@ -80,7 +82,18 @@ export const StaffChartScreen: React.FC = () => {
   return (
     <View style={styles.fill}>
       <View style={[styles.header, { paddingHorizontal: gutter }]}>
-        <Text style={styles.name}>{fullName(patient.first_name, patient.last_name)}</Text>
+        <View style={styles.nameRow}>
+          <Text style={[styles.name, styles.nameGrow]}>{fullName(patient.first_name, patient.last_name)}</Text>
+          <Pressable
+            onPress={() => navigation.navigate('ChartSickNotes' as never)}
+            accessibilityRole="button"
+            accessibilityLabel="Sick notes"
+            style={styles.sickNotes}
+          >
+            <FileText size={14} color={palette.accent} />
+            <Text style={styles.sickNotesText}>Sick notes</Text>
+          </Pressable>
+        </View>
         <Text style={styles.meta}>
           {[patient.mrn, formatDate(patient.dob ?? patient.date_of_birth)].filter(Boolean).join(' · ')}
         </Text>
@@ -190,6 +203,10 @@ const styles = StyleSheet.create({
     backgroundColor: palette.surface,
   },
   name: { ...type.xl, color: palette.text, fontWeight: '700' },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  nameGrow: { flex: 1 },
+  sickNotes: { flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 36, paddingHorizontal: space.sm },
+  sickNotesText: { ...type.sm, color: palette.accent, fontWeight: '600' },
   meta: { ...type.sm, color: palette.textSecondary },
   allergy: {
     flexDirection: 'row',
