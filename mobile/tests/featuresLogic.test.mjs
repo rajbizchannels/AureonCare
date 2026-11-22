@@ -87,3 +87,29 @@ test('the search says what it understood', () => {
   assert.equal(understoodLine({ specialties: [], place: null, name: 'riverside', practiceName: true, nearby: false }), 'Showing a practice name');
   assert.equal(understoodLine({ specialties: [], place: null, name: null, nearby: false }), null);
 });
+
+// ── sick note requests ─────────────────────────────────────────────────────────────
+import { blankRequest, requestProblem, draftFromRequest, toRequest as toNoteRequest } from '../src/lib/sickNotes.ts';
+
+test('a request follows the server rules', () => {
+  const r = { ...blankRequest(TODAY), reason: 'Flu with fever since Saturday' };
+  assert.equal(requestProblem(r, TODAY), null);
+  assert.match(requestProblem({ ...r, reason: 'ill' }, TODAY), /at least 10/);
+  assert.match(requestProblem({ ...r, startDate: '2026-11-01' }, TODAY), /14 days/);
+  assert.equal(requestProblem({ ...r, startDate: '2026-11-08' }, TODAY), null);
+  assert.match(requestProblem({ ...r, startDate: '2026-12-23', endDate: '2026-12-24' }, TODAY), /30 days ahead/);
+  assert.match(requestProblem({ ...r, endDate: '2026-11-21' }, TODAY), /before the first day/);
+});
+
+test('answering a request pre-fills the note and links it', () => {
+  const req = { id: 'r1', patientId: 'p1', purpose: 'school', startDate: '2026-11-20', endDate: '2026-11-26', days: 7, reason: 'x', status: 'pending', sickNoteId: null, decisionReason: null, createdAt: '' };
+  const d = draftFromRequest(req, TODAY);
+  assert.equal(d.purpose, 'school'); assert.equal(d.startDate, '2026-11-20'); assert.equal(d.requestId, 'r1');
+  assert.equal(toNoteRequest('p1', d).requestId, 'r1');
+  assert.ok(!('requestId' in toNoteRequest('p1', { ...d, requestId: undefined })));
+});
+
+test('request dates read naturally', async () => {
+  const { dateRange } = await import('../src/lib/sickNotes.ts');
+  assert.equal(dateRange('2026-11-22', '2026-11-28', 7), '22 Nov – 28 Nov 2026 (7 days)');
+});

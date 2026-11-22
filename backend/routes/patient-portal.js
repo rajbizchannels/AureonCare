@@ -1134,6 +1134,58 @@ router.get('/:patientId/sick-notes/:noteId/document', async (req, res) => {
   }
 });
 
+// The patient's requests for a sick note (a clinician issues or declines each one).
+router.get('/:patientId/sick-note-requests', async (req, res) => {
+  try {
+    const { rows } = await portalDb(req).query(
+      'SELECT * FROM sick_note_requests WHERE patient_id = $1 ORDER BY created_at DESC LIMIT 50', [req.params.patientId]);
+    res.json(rows.map(require('../services/sickNotes').requestToApi));
+  } catch (error) {
+    if (error.code === '42P01') return res.json([]);
+    console.error('[portal] sick note requests:', error.message);
+    res.status(500).json({ error: 'Failed to load your requests' });
+  }
+});
+
+router.post('/:patientId/sick-note-requests', async (req, res) => {
+  try {
+    const SN = require('../services/sickNotes');
+    const v = SN.validateRequest(req.body);
+    if (v.error) return res.status(400).json({ error: v.error });
+    const db = portalDb(req);
+    // One open request at a time: a second one while the first waits only adds to the queue.
+    const { rows: open } = await db.query(
+      `SELECT id FROM sick_note_requests WHERE patient_id = $1 AND status = 'pending'`, [req.params.patientId]);
+    if (open.length) {
+      return res.status(409).json({ error: 'You already have a request waiting for your clinician. Cancel it to send a different one.' });
+    }
+    const { rows: [r] } = await db.query(
+      `INSERT INTO sick_note_requests (patient_id, purpose, start_date, end_date, reason)
+       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+      [req.params.patientId, v.value.purpose, v.value.startDate, v.value.endDate, v.value.reason]);
+    console.log(`[portal] sick note requested by patient ${req.params.patientId}`);
+    res.status(201).json(SN.requestToApi(r));
+  } catch (error) {
+    if (error.code === '42P01') return res.status(503).json({ error: 'Sick note requests are not available at this practice yet.' });
+    console.error('[portal] sick note request:', error.message);
+    res.status(500).json({ error: 'Could not send your request' });
+  }
+});
+
+router.post('/:patientId/sick-note-requests/:requestId/cancel', async (req, res) => {
+  try {
+    const { rows: [r] } = await portalDb(req).query(
+      `UPDATE sick_note_requests SET status = 'cancelled', decided_at = now()
+        WHERE id::text = $1 AND patient_id = $2 AND status = 'pending' RETURNING *`,
+      [req.params.requestId, req.params.patientId]);
+    if (!r) return res.status(404).json({ error: 'That request is no longer waiting.' });
+    res.json(require('../services/sickNotes').requestToApi(r));
+  } catch (error) {
+    console.error('[portal] cancel sick note request:', error.message);
+    res.status(500).json({ error: 'Could not cancel the request' });
+  }
+});
+
 // Active prescriptions on the patient's own chart.
 router.get('/:patientId/prescriptions/active', async (req, res) => {
   try {

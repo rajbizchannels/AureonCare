@@ -64,6 +64,8 @@ export interface Draft {
   adjustments: string[];
   comments: string;
   followUp: boolean;
+  /** Set when the note answers a patient's request. */
+  requestId?: string;
 }
 
 export function blankDraft(today: string = todayIso()): Draft {
@@ -92,7 +94,14 @@ export function toRequest(patientId: string, d: Draft) {
     startDate: d.startDate, endDate: d.endDate, conditionText: d.conditionText.trim() || undefined,
     adjustments: d.fitness === 'may_be_fit' ? d.adjustments.filter((a) => ADJUSTMENT_LABELS[a]) : [],
     comments: d.comments.trim() || undefined, followUp: d.followUp,
+    ...(d.requestId ? { requestId: d.requestId } : {}),
   };
+}
+
+/** "22 Nov – 28 Nov 2026 (7 days)". */
+export function dateRange(start: string, end: string, days: number): string {
+  const fmt = (iso: string, year: boolean) => at(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', ...(year ? { year: 'numeric' } : {}), timeZone: 'UTC' });
+  return `${fmt(start, false)} – ${fmt(end, true)} (${days} day${days === 1 ? '' : 's'})`;
 }
 
 /** One line for a list row: "Not fit for work · 3 Mar – 9 Mar 2027 (7 days)". */
@@ -100,4 +109,54 @@ export function summary(n: Pick<SickNote, 'fitness' | 'purpose' | 'startDate' | 
   const what = `${n.fitness === 'not_fit' ? 'Not fit' : 'May be fit'} for ${PURPOSE_LABELS[n.purpose].toLowerCase()}`;
   const fmt = (iso: string, year: boolean) => at(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', ...(year ? { year: 'numeric' } : {}), timeZone: 'UTC' });
   return `${what} · ${fmt(n.startDate, false)} – ${fmt(n.endDate, true)} (${n.days} day${n.days === 1 ? '' : 's'})`;
+}
+
+// ── requests from patients ─────────────────────────────────────────────────────────
+
+export interface SickNoteRequest {
+  id: string;
+  patientId: string;
+  purpose: Purpose;
+  startDate: string;
+  endDate: string;
+  days: number;
+  reason: string;
+  status: 'pending' | 'issued' | 'declined' | 'cancelled';
+  sickNoteId: string | null;
+  decisionReason: string | null;
+  createdAt: string;
+  patientName?: string;
+}
+
+export interface RequestDraft { purpose: Purpose; startDate: string; endDate: string; reason: string }
+
+export const REQUEST_BACKDATE_DAYS = 14;
+export const REQUEST_AHEAD_DAYS = 30;
+
+export function blankRequest(today: string = todayIso()): RequestDraft {
+  return { purpose: 'work', startDate: today, endDate: plusDays(today, 6), reason: '' };
+}
+
+/** The same rules as the server (backend/services/sickNotes.js validateRequest). */
+export function requestProblem(r: RequestDraft, today: string = todayIso()): string | null {
+  if (!ISO.test(r.startDate) || !ISO.test(r.endDate)) return 'Enter the first and last day as YYYY-MM-DD.';
+  const days = dayCount(r.startDate, r.endDate);
+  if (days === null) return 'The last day cannot be before the first day.';
+  if (days > MAX_DAYS) return `A request can cover at most ${MAX_DAYS} days.`;
+  if (r.startDate < plusDays(today, -REQUEST_BACKDATE_DAYS)) return `A request can go back at most ${REQUEST_BACKDATE_DAYS} days.`;
+  if (r.startDate > plusDays(today, REQUEST_AHEAD_DAYS)) return `A request can start at most ${REQUEST_AHEAD_DAYS} days ahead.`;
+  if (r.reason.trim().length < 10) return 'Tell your clinician briefly why you need the note (at least 10 characters).';
+  return null;
+}
+
+export const REQUEST_STATUS: Record<SickNoteRequest['status'], string> = {
+  pending: 'Waiting for your clinician',
+  issued: 'Issued — see your sick notes',
+  declined: 'Not issued',
+  cancelled: 'Cancelled',
+};
+
+/** A clinician answering a request: the note form opens with the patient's dates and purpose. */
+export function draftFromRequest(r: SickNoteRequest, today: string = todayIso()): Draft {
+  return { ...blankDraft(today), purpose: r.purpose, startDate: r.startDate, endDate: r.endDate, requestId: r.id };
 }

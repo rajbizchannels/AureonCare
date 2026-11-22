@@ -18,19 +18,43 @@ const blank = () => ({
  * print or email one. Notes are never edited: a wrong one is voided with a reason and a
  * new one issued, so a note someone was handed always matches the record.
  */
-const SickNotesPanel = ({ patientId, theme = 'light', api, addNotification }) => {
+const SickNotesPanel = ({ patientId, theme = 'light', api, addNotification, initialRequestId = null, onChanged }) => {
   const dark = theme === 'dark';
   const [data, setData] = useState(null);
   const [error, setError] = useState('');
   const [form, setForm] = useState(null);
   const [voiding, setVoiding] = useState(null);   // { id, reason }
   const [saving, setSaving] = useState(false);     // stops a double click issuing two notes
+  const [declining, setDeclining] = useState(null); // { id, reason }
+  const [openedRequest, setOpenedRequest] = useState(false);
 
   const load = useCallback(async () => {
     try { setData(await api.getSickNotes(patientId)); setError(''); }
     catch (e) { setError(e.message); }
   }, [api, patientId]);
   useEffect(() => { if (patientId) load(); }, [patientId, load]);
+
+  // Answer a patient's request: the form opens with their dates and purpose; the reason
+  // they gave is shown for the clinician, not copied onto the note.
+  const fromRequest = useCallback((r) => setForm({ ...blank(), purpose: r.purpose, startDate: r.startDate, endDate: r.endDate, requestId: r.id, requestReason: r.reason }), []);
+  useEffect(() => {
+    if (!data || openedRequest || !initialRequestId || !data.canIssue) return;
+    const r = (data.requests || []).find((x) => x.id === initialRequestId && x.status === 'pending');
+    if (r) fromRequest(r);
+    setOpenedRequest(true);
+  }, [data, initialRequestId, openedRequest, fromRequest]);
+
+  const decline = async (e) => {
+    e.preventDefault();
+    if (saving) return;
+    setSaving(true);
+    try {
+      await api.declineSickNoteRequest(declining.id, declining.reason);
+      addNotification?.('success', 'Request declined; the patient has been told');
+      setDeclining(null); await load(); onChanged?.();
+    } catch (err) { addNotification?.('alert', err.message); }
+    finally { setSaving(false); }
+  };
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
   const toggleAdj = (k) => setForm((f) => ({ ...f, adjustments: f.adjustments.includes(k) ? f.adjustments.filter((a) => a !== k) : [...f.adjustments, k] }));
@@ -45,11 +69,13 @@ const SickNotesPanel = ({ patientId, theme = 'light', api, addNotification }) =>
     if (saving) return;
     setSaving(true);
     try {
-      const { note } = await api.issueSickNote({ ...form, patientId });
-      addNotification?.('success', `Sick note ${note.reference} issued`);
+      const { requestReason, ...body } = form;   // eslint-disable-line no-unused-vars
+      const { note } = await api.issueSickNote({ ...body, patientId });
+      addNotification?.('success', form.requestId ? `Sick note ${note.reference} issued; the patient has been told` : `Sick note ${note.reference} issued`);
       setForm(null);
       await load();
-      await print(note.id);
+      await print(note.id);   // before onChanged: a queue may close this panel once the request is answered
+      onChanged?.();
     } catch (err) {
       addNotification?.('alert', err.message);
     } finally {
@@ -97,8 +123,36 @@ const SickNotesPanel = ({ patientId, theme = 'light', api, addNotification }) =>
       </div>
       {!data.canIssue && <p className={`text-sm ${muted}`}>Only a clinician (doctor or nurse) can issue a sick note. You can print or email existing ones.</p>}
 
+      {(data.requests || []).filter((r) => r.status === 'pending').map((r) => (
+        <div key={r.id} className={`p-4 rounded-xl border ${dark ? 'border-amber-500/40 bg-amber-500/10' : 'border-amber-200 bg-amber-50'}`}>
+          <div className={`font-medium ${strong}`}>Requested by the patient: {PURPOSE[r.purpose]} · {nice(r.startDate)} – {nice(r.endDate)} ({r.days} day{r.days === 1 ? '' : 's'})</div>
+          <p className={`text-sm mt-1 ${dark ? 'text-slate-300' : 'text-gray-700'}`}>“{r.reason}”</p>
+          {data.canIssue ? (
+            declining && declining.id === r.id ? (
+              <form onSubmit={decline} className="mt-3 flex flex-wrap gap-2 items-center">
+                <input autoFocus className={`${input} flex-1 min-w-[200px]`} required maxLength={500} aria-label="Reason for declining"
+                       placeholder="Reason the patient will see (e.g. please book an appointment)"
+                       value={declining.reason} onChange={(e) => setDeclining({ ...declining, reason: e.target.value })} />
+                <BusyButton type="submit" busy={saving} busyLabel="Declining…" className={`${btn} bg-red-600 hover:bg-red-700 text-white`}>Decline</BusyButton>
+                <button type="button" className={ghost} onClick={() => setDeclining(null)}>Cancel</button>
+              </form>
+            ) : (
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button type="button" className={`${btn} bg-teal-700 hover:bg-teal-800 text-white`} onClick={() => fromRequest(r)} disabled={Boolean(form)}>
+                  <Plus className="w-4 h-4" /> Issue from request
+                </button>
+                <button type="button" className={ghost} onClick={() => setDeclining({ id: r.id, reason: '' })}><Ban className="w-4 h-4" /> Decline</button>
+              </div>
+            )
+          ) : <p className={`text-xs mt-2 ${muted}`}>A clinician will review this request.</p>}
+        </div>
+      ))}
+
       {form && (
         <form onSubmit={issue} className={`p-4 rounded-xl border space-y-4 ${card}`} aria-label="Issue sick note">
+          {form.requestId && (
+            <p className={`text-sm ${muted}`}>Answering the patient’s request — their reason: “{form.requestReason}”. Check the dates and advice before issuing.</p>
+          )}
           <div className="flex justify-between items-center">
             <h4 className={`font-semibold ${strong}`}>New sick note</h4>
             <button type="button" onClick={() => setForm(null)} aria-label="Cancel" className={muted}><X className="w-5 h-5" /></button>

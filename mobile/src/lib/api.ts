@@ -2,7 +2,7 @@ import { credentials } from './storage';
 import type { RedeemResponse } from './socialSignIn';
 import type { DirectoryAnswer } from './directory';
 import type { PortalProfile } from './profile';
-import type { SickNote } from './sickNotes';
+import type { SickNote, SickNoteRequest } from './sickNotes';
 
 /**
  * Client for the AureonCare API.
@@ -1038,7 +1038,23 @@ export class ApiClient {
     return this.request(`/patient-portal/${patientId}/sick-notes/${encodeURIComponent(noteId)}/document`);
   }
 
-  listSickNotes(patientId: string): Promise<{ notes: SickNote[]; canIssue: boolean; adjustments: Record<string, string>; maxDays: number }> {
+  listMySickNoteRequests(patientId: string): Promise<SickNoteRequest[]> {
+    return this.request(`/patient-portal/${patientId}/sick-note-requests`);
+  }
+
+  requestSickNote(patientId: string, body: Record<string, unknown>): Promise<SickNoteRequest> {
+    return this.request(`/patient-portal/${patientId}/sick-note-requests`, { method: 'POST', body: JSON.stringify(body) });
+  }
+
+  cancelSickNoteRequest(patientId: string, requestId: string): Promise<SickNoteRequest> {
+    return this.request(`/patient-portal/${patientId}/sick-note-requests/${encodeURIComponent(requestId)}/cancel`, { method: 'POST', body: '{}' });
+  }
+
+  declineSickNoteRequest(requestId: string, reason: string): Promise<{ request: SickNoteRequest }> {
+    return this.request(`/sick-notes/requests/${encodeURIComponent(requestId)}/decline`, { method: 'POST', body: JSON.stringify({ reason }) });
+  }
+
+  listSickNotes(patientId: string): Promise<{ notes: SickNote[]; requests?: SickNoteRequest[]; canIssue: boolean; adjustments: Record<string, string>; maxDays: number }> {
     return this.request(`/sick-notes?patientId=${encodeURIComponent(patientId)}`);
   }
 

@@ -10,8 +10,8 @@ import { fullName, useResource } from '@/lib/useResource';
 import { useLayout } from '@/lib/device';
 import { printDocument } from '@/lib/print';
 import {
-  ADJUSTMENT_LABELS, blankDraft, dayCount, draftProblem, plusDays, summary, toRequest,
-  type Draft, type Fitness, type Purpose, type SickNote,
+  ADJUSTMENT_LABELS, PURPOSE_LABELS, blankDraft, dateRange, dayCount, draftFromRequest, draftProblem, plusDays, summary, toRequest,
+  type Draft, type Fitness, type Purpose, type SickNote, type SickNoteRequest,
 } from '@/lib/sickNotes';
 import { palette, radius, space, type } from '@/theme/tokens';
 
@@ -51,7 +51,7 @@ export const ChartSickNotesScreen: React.FC = () => {
     try {
       const { note } = await api.issueSickNote(toRequest(id, draft));
       setDraft(null);
-      setInfo(`Sick note ${note.reference} issued.`);
+      setInfo(draft.requestId ? `Sick note ${note.reference} issued; the patient has been told.` : `Sick note ${note.reference} issued.`);
       await data.reload();
       await print(note.id);
     } catch (e) {
@@ -84,6 +84,23 @@ export const ChartSickNotesScreen: React.FC = () => {
     ]);
   }, [api, data]);
 
+  const declineRequest = useCallback((r: SickNoteRequest) => {
+    // The patient sees this reason (and gets it by email). Alert.prompt is iOS-only, so a
+    // short list of the usual answers works on every phone.
+    const go = async (reason: string) => {
+      setBusy(r.id); setError(null);
+      try { await api.declineSickNoteRequest(r.id, reason); setInfo('Request declined; the patient has been told.'); await data.reload(); }
+      catch (e) { setError(e instanceof Error ? e.message : 'Could not decline the request.'); }
+      finally { setBusy(null); }
+    };
+    Alert.alert('Decline this request?', 'The patient will be emailed the reason you choose.', [
+      { text: 'Please book an appointment', onPress: () => void go('Please book an appointment so we can assess you.') },
+      { text: 'Dates need discussing', onPress: () => void go('The dates need discussing — please contact the practice.') },
+      { text: 'Not appropriate', onPress: () => void go('A sick note is not appropriate for this — please contact the practice.') },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  }, [api, data]);
+
   if (!patient) {
     return <EmptyState icon={<FileText size={34} color={palette.textFaint} />} title="No patient selected" hint="Choose someone in Patients first." />;
   }
@@ -104,6 +121,20 @@ export const ChartSickNotesScreen: React.FC = () => {
         {error ? <ErrorNote message={error} /> : null}
         {info && !error ? <Text style={styles.info}>{info}</Text> : null}
 
+        {(data.data?.requests ?? []).filter((r) => r.status === 'pending').map((r) => (
+          <Card key={r.id} style={styles.request}>
+            <Text style={styles.noteTitle}>Requested: {PURPOSE_LABELS[r.purpose]} · {dateRange(r.startDate, r.endDate, r.days)}</Text>
+            <Text style={styles.meta}>“{r.reason}”</Text>
+            {canIssue ? (
+              <View style={styles.actions}>
+                <Action icon={<Plus size={16} color={palette.accent} />} label="Issue from request" disabled={Boolean(draft) || busy === r.id}
+                  onPress={() => { setInfo(null); setDraft(draftFromRequest(r)); }} />
+                <Action icon={<Ban size={16} color={palette.danger} />} label="Decline" danger disabled={busy === r.id} onPress={() => declineRequest(r)} />
+              </View>
+            ) : <Text style={styles.hint}>A clinician will review this request.</Text>}
+          </Card>
+        ))}
+
         {canIssue && !draft ? (
           <PrimaryButton label="Issue sick note" icon={<Plus size={16} color={palette.text} />} onPress={() => { setInfo(null); setDraft(blankDraft()); }} />
         ) : null}
@@ -111,7 +142,7 @@ export const ChartSickNotesScreen: React.FC = () => {
 
         {draft ? (
           <Card style={styles.form}>
-            <SectionLabel>New sick note</SectionLabel>
+            <SectionLabel>{draft.requestId ? 'Answering the patient’s request' : 'New sick note'}</SectionLabel>
             <Text style={styles.label}>For</Text>
             <Segmented<Purpose>
               value={draft.purpose}
@@ -217,6 +248,7 @@ const styles = StyleSheet.create({
   cancel: { minHeight: 40, alignItems: 'center', justifyContent: 'center' },
   cancelText: { ...type.sm, color: palette.textSecondary },
   note: { gap: space.xs },
+  request: { gap: space.xs, borderColor: palette.warningText },
   voided: { opacity: 0.7 },
   headRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm, justifyContent: 'space-between' },
   noteTitle: { ...type.md, color: palette.text, fontWeight: '600', flex: 1 },

@@ -926,3 +926,20 @@ to the verified address is accepted), "no account — ask for an invitation", bl
 
 SEC-48 (in the same deploy): Google/Microsoft re-linking now requires a provider-verified
 email, and a Microsoft `mail` value counts as verified only in the UPN's own domain.
+
+## Patients can request a sick note (web portal and mobile app)
+
+1. Paste `backend/migrations/099_sick_note_requests.sql` into the SQL editor as postgres (safe to
+   re-run; it creates the table in `template` and every practice and registers it for new ones).
+2. Deploy; ship a new app build for the mobile part.
+
+What changes:
+- Patients: Sick Notes tab (portal) / More → Sick notes (app) → "Request a sick note": what it
+  is for, first and last day (up to 14 days back, 30 days ahead, max 92 days) and why. One open
+  request at a time; it can be cancelled while it waits. They see Waiting / Issued / Not issued
+  (with the clinician's note) and are emailed when it is answered.
+- Clinicians: "Sick note requests" above the calendar (Scheduling → Calendar) lists open requests
+  across the practice; "Review" opens the patient's sick notes with the request. Also on the
+  patient's Sick Notes tab, and in the app (Patients → patient → Sick notes). "Issue from
+  request" pre-fills the dates and purpose; "Decline" needs a reason the patient sees. Nothing is
+  issued automatically. Same permission as sick notes (reception does not see requests by default).

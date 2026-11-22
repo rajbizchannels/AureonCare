@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import SickNoteRequestPanel from '../components/patients/SickNoteRequestPanel';
 import { printHtml } from '../utils/printHtml';
 import { Calendar, FileText, User, Edit, Check, X, Lock, Trash2, XCircle, Upload, Printer, MessageCircle, Activity, Pill, Plus, Heart, Star, Clock, ClipboardList, AlertCircle, ChevronRight, Search, Stethoscope, ToggleLeft, ToggleRight } from 'lucide-react';
 import DynamicFormRenderer from '../components/forms/DynamicFormRenderer';
@@ -1384,6 +1385,8 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
   const renderSickNotes = () => (
     <div className="space-y-6">
       <h2 className={`text-2xl font-bold ${theme === 'dark' ? 'text-white' : 'text-gray-900'}`}>{t.sickNotes || 'Sick Notes'}</h2>
+      <SickNoteRequestPanel patientId={user.id} theme={theme} api={api} addNotification={addNotification}
+                            onChanged={() => api.portalGetSickNotes(user.id).then(setSickNotes).catch(() => {})} />
       {sickNotes.length === 0 ? (
         <div className={`text-center py-12 rounded-xl border ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>
           <FileText className={`w-12 h-12 mx-auto mb-4 ${theme === 'dark' ? 'text-slate-600' : 'text-gray-400'}`} />
