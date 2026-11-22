@@ -207,13 +207,13 @@ async function routeChecks(stub) {
   const miss = await call('POST', `/api/prescriptions/${rxNoNdc}/send-erx`, token, { pharmacyId: ph.id });
   check(`missing NDC → 422 naming it (got ${miss.status})`, miss.status === 422 && Array.isArray(miss.body.missing) && miss.body.missing.some((m) => /NDC/.test(m)));
   check('...nothing posted to the network and it is not marked sent',
-    stub.seen.length === before && !(await pool.query(`SELECT erx_status FROM ${S}.prescriptions WHERE id=$1`, [rxNoNdc])).rows[0].erx_status);
+    stub.seen.length === before && (await pool.query(`SELECT erx_status FROM ${S}.prescriptions WHERE id=$1`, [rxNoNdc])).rows[0].erx_status === 'draft');
 
   stub.setMode('error');
   const rxE = await mkRx();
   const err = await call('POST', `/api/prescriptions/${rxE}/send-erx`, token, { pharmacyId: ph.id });
   check(`a network Error → 422 with its description (got ${err.status})`, err.status === 422 && /Pharmacy not found/.test(err.body.error));
-  check('...and it is not marked sent', !(await pool.query(`SELECT erx_status FROM ${S}.prescriptions WHERE id=$1`, [rxE])).rows[0].erx_status);
+  check('...and it is not marked sent (still draft, error recorded)', await pool.query(`SELECT erx_status, erx_error_message FROM ${S}.prescriptions WHERE id=$1`, [rxE]).then((r) => r.rows[0].erx_status === 'draft' && /Pharmacy not found/.test(r.rows[0].erx_error_message)));
 
   stub.setMode('status');
   const rx1 = await mkRx();

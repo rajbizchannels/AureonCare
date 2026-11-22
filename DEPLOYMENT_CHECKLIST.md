@@ -982,3 +982,41 @@ No migration. Deploy the API and ship a new app build.
   set the practice time zone if patients book from older app builds.
 - Bookings already made from the app before this fix are still stored an hour out; the practice
   should check upcoming app bookings (nothing records which ones came from the app).
+
+## Surescripts NCPDP SCRIPT
+
+No migration. Deploy the API.
+
+What is built:
+- `backend/services/ncpdp/script.js` builds NCPDP SCRIPT 2017071 **NewRx** and **CancelRx** and
+  reads the network's **Status / Verify / Error** answers. It refuses to build when data is
+  missing and lists what is missing (pharmacy NCPDP ID, prescriber SPI/NPI/address/phone, patient
+  gender/DOB/address, NDC, quantity, directions).
+- The Surescripts client posts the XML (`application/xml`, HTTP Basic) to the practice's endpoint
+  (Settings → Integrations → Surescripts → base URL) and marks a prescription sent only when the
+  network accepts it. Missing data and network Errors come back to the prescriber as a 422 with
+  the reason; nothing is marked sent.
+- **Send eRx / Cancel eRx answered 501 for every practice** (the schema check looked for
+  `pharmacies` in `public`). Fixed. With Surescripts off, Send eRx still records the send, and now
+  says plainly it was not transmitted.
+- Cancel sends a CancelRx pointing at the NewRx; the prescription reads `cancel_requested` until
+  the pharmacy confirms.
+- Test: `npm run test:ncpdp` (52 checks, incl. route checks against a stub endpoint).
+
+Still required before go-live (none of this can be done in code alone):
+- [ ] Surescripts **certification** of AureonCare (their test scripts will likely ask for changes
+      to element details) and a Surescripts **account** for the practice.
+- [ ] An **SPI** for each prescriber, plus NPI. Until users have NPI/SPI fields, enter them in the
+      Surescripts settings JSON: `settings.prescribers = { "<user id>": { "spi", "npi", "dea" } }`
+      (`settings.spi` / `settings.npi` for a single-prescriber practice), and
+      `settings.practice_address` `{ line1, city, state, postalCode }` + `settings.practice_phone`.
+- [ ] The network **endpoint and credentials** from Surescripts (base URL, username/password) and
+      the **client TLS certificate**: set `AC_SURESCRIPTS_TLS_CERT` and `AC_SURESCRIPTS_TLS_KEY`
+      (PEM) in the server environment — the key is deliberately not stored in practice settings.
+- [ ] **EPCS** for controlled substances (identity proofing, two-factor signing, signed messages).
+      Until then Schedule II–V prescriptions are refused with a clear message.
+- [ ] An **inbound** endpoint for pharmacy messages (Status/Verify after the fact, CancelRxResponse,
+      RxRenewalRequest, RxChangeRequest, RxFill). Not built: AureonCare only sends today, and has
+      no renewal-request record to answer, so RxRenewalResponse is not built either.
+- [ ] Pharmacy directory search via Surescripts is a separate licensed product; the practice's own
+      pharmacy list is used.
