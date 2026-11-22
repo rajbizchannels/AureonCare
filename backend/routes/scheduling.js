@@ -593,9 +593,12 @@ router.get('/booking-config/slug/:slug', optionalAuth, publicBookingTenant, asyn
         // presentation only, and the rest of that settings record stays private.
         let currency = 'USD';
         try {
+            // SEC-53: this practice's currency, not the one row every practice shared.
+            // The public booking page has no signed-in practice, only the practice's schema.
             const org = await pool.query(
-                `SELECT settings ->> 'currency' AS currency FROM organization_settings LIMIT 1`
-            );
+                `SELECT p.currency FROM public.practices p
+                   JOIN control.tenants t ON t.practice_id = p.id
+                  WHERE t.schema_name = current_schema() LIMIT 1`);
             if (org.rows[0]?.currency) currency = org.rows[0].currency;
         } catch (error) {
             console.error('Could not read practice currency, defaulting to USD:', error.message);

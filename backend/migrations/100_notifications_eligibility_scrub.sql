@@ -19,6 +19,30 @@
 
 SET search_path TO public;
 
+-- SEC-53: Clinic Settings read and wrote ONE shared organization_settings row (name, NPI, website,
+-- currency) and the OLDEST row of public.practices, whichever practice the admin belonged to. The
+-- practice's own row now carries its NPI, website and currency. The values everyone saw so far are
+-- copied across: currency to every practice (it is what each of them displayed), NPI and website
+-- only when there is a single practice (otherwise there is no telling whose they were).
+ALTER TABLE public.practices ADD COLUMN IF NOT EXISTS npi varchar(10);
+ALTER TABLE public.practices ADD COLUMN IF NOT EXISTS website varchar(200);
+ALTER TABLE public.practices ADD COLUMN IF NOT EXISTS currency varchar(3);
+DO $sec53$
+DECLARE org jsonb; n int;
+BEGIN
+  IF to_regclass('public.organization_settings') IS NULL THEN RETURN; END IF;
+  SELECT settings INTO org FROM public.organization_settings ORDER BY id LIMIT 1;
+  IF org IS NULL THEN RETURN; END IF;
+  UPDATE public.practices SET currency = upper(org->>'currency')
+   WHERE currency IS NULL AND COALESCE(org->>'currency', '') ~ '^[A-Za-z]{3}$';
+  SELECT count(*) INTO n FROM public.practices;
+  IF n = 1 THEN
+    UPDATE public.practices SET
+      npi = COALESCE(npi, NULLIF(org->>'npi', '')),
+      website = COALESCE(website, NULLIF(org->>'website', ''));
+  END IF;
+END $sec53$;
+
 INSERT INTO control.tenant_tables (table_name, sort_order) VALUES
   ('staff_notification_preferences', 550),
   ('eligibility_checks', 560)
