@@ -4,6 +4,8 @@ const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const lockout = require('../services/loginLockout');
 const { validateFormData } = require('../utils/formValidation');
+const { toWallClock, validZone } = require('../utils/wallClock');
+const OFFSET_TIME = /(?:Z|[+-]\d{2}(?::?\d{2})?)$/i;
 const rateLimit = require('express-rate-limit');
 const { storeFor } = require('../middleware/rateLimitStore');
 const { getTimezoneFromCountry } = require('../utils/timezoneUtils');
@@ -1339,10 +1341,23 @@ router.get('/:patientId/offerings', async (req, res) => {
 // provider must belong to the practice, and an overlapping booking is refused.
 router.post('/:patientId/appointments', async (req, res) => {
   const patientId = req.params.patientId;
-  const { provider_id, start_time, end_time, duration_minutes, appointment_type, reason, offering_id } = req.body || {};
+  const { provider_id, duration_minutes, appointment_type, reason, offering_id } = req.body || {};
+  let { start_time, end_time } = req.body || {};
   if (!start_time || !end_time) return res.status(400).json({ error: 'start_time and end_time are required' });
   try {
     const db = portalDb(req);
+    // Times are stored as wall-clock times. Older mobile builds sent UTC instants ("…Z"), which
+    // Postgres saved as the UTC clock reading — an hour early in UTC+1. Convert those to the
+    // patient's zone (else the practice's) first; wall-clock values pass through unchanged.
+    if (OFFSET_TIME.test(String(start_time)) || OFFSET_TIME.test(String(end_time))) {
+      const { rows: [z] } = await db.query(
+        `SELECT p.timezone AS patient_tz, pr.timezone AS practice_tz
+           FROM patients p LEFT JOIN public.practices pr ON pr.id::text = $2::text
+          WHERE p.id::text = $1::text`, [patientId, req.tenant.practiceId]);
+      const tz = [z?.patient_tz, z?.practice_tz].find(validZone) || null;
+      start_time = toWallClock(start_time, tz);
+      end_time = toWallClock(end_time, tz);
+    }
     let providerId = provider_id || null;
     if (providerId) {
       const ok = await req.app.locals.pool.query(

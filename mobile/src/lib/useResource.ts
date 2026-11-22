@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { timeOf, toDate } from './time.ts';
 
 /**
  * Load something from the API with the states every screen needs.
@@ -78,16 +79,14 @@ export const useResource = <T,>(
 // ── Formatting shared by the clinical screens ──────────────────────────────
 
 export const formatDate = (iso: string | null | undefined): string => {
-  if (!iso) return '';
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return '';
+  const date = toDate(iso);
+  if (!date) return '';
   return date.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
 };
 
 export const formatTime = (iso: string | null | undefined): string => {
-  if (!iso) return '';
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return '';
+  const date = toDate(iso);
+  if (!date) return '';
   return date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
 };
 
@@ -97,7 +96,7 @@ export const fullName = (
   fallback = 'Unknown'
 ): string => [first, last].filter(Boolean).join(' ') || fallback;
 
-export const isUpcoming = (iso: string): boolean => new Date(iso).getTime() >= Date.now();
+export const isUpcoming = (iso: string): boolean => timeOf(iso) >= Date.now();
 
 /**
  * `checked_in` → `checked in`.
@@ -110,6 +109,17 @@ export const humanStatus = (value: string | null | undefined): string =>
   (value ?? '').replace(/_/g, ' ');
 
 /**
+ * A due DATE as the calendar day it names, at local midnight — whether it arrives as
+ * "2026-11-22" or the older "2026-11-22T00:00:00.000Z". Read as an instant, UTC midnight is the
+ * previous evening west of UTC, and every task due today showed as overdue there.
+ */
+const calendarDayOf = (due: string | null | undefined): Date | null => {
+  if (!due) return null;
+  const day = /^\d{4}-\d{2}-\d{2}/.exec(due);
+  return toDate(day ? day[0] : due);
+};
+
+/**
  * Is this due date in the past?
  *
  * Compared by calendar day, not by instant. `due_date` is a DATE column, so
@@ -119,22 +129,18 @@ export const humanStatus = (value: string | null | undefined): string =>
  * red.
  */
 export const isPastDue = (due: string | null | undefined): boolean => {
-  if (!due) return false;
-  const date = new Date(due);
-  if (Number.isNaN(date.getTime())) return false;
+  const date = calendarDayOf(due);
+  if (!date) return false;
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  // The timestamp is midnight UTC for a DATE; read the date parts in the same
-  // frame the string carries rather than shifting it into local time first.
   const dueDay = new Date(date.getFullYear(), date.getMonth(), date.getDate());
   return dueDay.getTime() < today.getTime();
 };
 
 /** Due today, which deserves its own word rather than silence. */
 export const isDueToday = (due: string | null | undefined): boolean => {
-  if (!due) return false;
-  const date = new Date(due);
-  if (Number.isNaN(date.getTime())) return false;
+  const date = calendarDayOf(due);
+  if (!date) return false;
   const today = new Date();
   return (
     date.getFullYear() === today.getFullYear() &&
@@ -149,9 +155,8 @@ export const isDueToday = (due: string | null | undefined): boolean => {
  * timestamps in another.
  */
 export const isToday = (iso: string | null | undefined): boolean => {
-  if (!iso) return false;
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return false;
+  const date = toDate(iso);
+  if (!date) return false;
   const now = new Date();
   return (
     date.getFullYear() === now.getFullYear() &&

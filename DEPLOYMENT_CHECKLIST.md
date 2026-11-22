@@ -968,3 +968,17 @@ Forms:
   user as the actor (SEC-51). A form that previously "submitted" empty now asks for the
   missing answers.
 - Signing an uploaded *document* (a PDF the practice attaches) still happens in the web portal.
+
+## Mobile bookings an hour early (UTC+1 and similar)
+
+No migration. Deploy the API and ship a new app build.
+
+- Cause: appointment times are stored as wall-clock times (`timestamp without time zone`). The web
+  sends "2026-11-23 10:00:00"; the app sent a UTC instant ("…T09:00:00.000Z"), and Postgres
+  keeps the clock reading and drops the `Z` — 10:00 in Paris was saved and shown as 09:00.
+- The app now sends the local wall-clock time and reads server times the same way.
+- The API converts an instant from an app not yet updated into the patient's time zone, else the
+  practice's (`practices.timezone`), before saving. With neither set it is stored as before, so
+  set the practice time zone if patients book from older app builds.
+- Bookings already made from the app before this fix are still stored an hour out; the practice
+  should check upcoming app bookings (nothing records which ones came from the app).

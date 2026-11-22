@@ -10,6 +10,7 @@ import { canUseCamps } from '@/lib/permissions';
 import { formatTime, fullName, humanStatus, isPastDue, isToday } from '@/lib/useResource';
 import { hasLiveBoard } from '@/lib/camps';
 import { palette, radius, space, tint, type } from '@/theme/tokens';
+import { timeOf } from '@/lib/time';
 
 /** What this screen needs from the navigator it is mounted in. */
 interface Nav {
@@ -135,7 +136,7 @@ export const StaffTodayScreen: React.FC<{ navigation?: Nav }> = ({ navigation })
     () =>
       appointments
         .filter((a) => isToday(a.start_time))
-        .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime()),
+        .sort((a, b) => timeOf(a.start_time) - timeOf(b.start_time)),
     [appointments]
   );
 
