@@ -27,30 +27,50 @@ const toCamelCase = (obj) => {
   return newObj;
 };
 
-// Helper function to check if ePrescribing schema is available
-let ePrescribingAvailable = null;
-const checkEPrescribingSchema = async (pool) => {
-  if (ePrescribingAvailable !== null) {
-    return ePrescribingAvailable;
-  }
-
+// Is the ePrescribing schema (pharmacies etc.) available to THIS request?
+// Resolved through the request's own search_path: since the schema-per-tenant cutover the
+// tables live in each practice's schema, and the old `table_schema = 'public'` test answered
+// false for every practice — so Send/Cancel eRx always returned 501. Only a positive answer is
+// cached (per schema), so a practice migrated later is picked up without a restart.
+const ePrescribingSchemas = new Set();
+const checkEPrescribingSchema = async (pool, req) => {
+  const key = (req && req.tenant && req.tenant.schemaName) || 'default';
+  if (ePrescribingSchemas.has(key)) return true;
   try {
-    // Check if pharmacies table exists
-    const result = await pool.query(`
-      SELECT EXISTS (
-        SELECT FROM information_schema.tables
-        WHERE table_schema = 'public'
-        AND table_name = 'pharmacies'
-      );
-    `);
-    ePrescribingAvailable = result.rows[0].exists;
-    return ePrescribingAvailable;
+    const result = await pool.query(`SELECT to_regclass('pharmacies') IS NOT NULL AS ok`);
+    const ok = Boolean(result.rows[0] && result.rows[0].ok);
+    if (ok) ePrescribingSchemas.add(key);
+    return ok;
   } catch (error) {
     console.error('Error checking ePrescribing schema:', error);
-    ePrescribingAvailable = false;
     return false;
   }
 };
+
+/**
+ * The records a SCRIPT message is built from: the chart (patients), the prescriber (users)
+ * and the chosen pharmacy. The patient is read from `patients`; the old create path read
+ * `users`, which holds staff, so every NewRx went out without the patient's details.
+ */
+async function loadRxRecords(pool, prescription, pharmacyId) {
+  const [patient, provider, pharmacy] = await Promise.all([
+    pool.query('SELECT * FROM patients WHERE id::text = $1::text', [prescription.patient_id]).then((r) => r.rows[0] || {}),
+    pool.query('SELECT id, first_name, last_name, phone, email FROM users WHERE id::text = $1::text', [prescription.provider_id]).then((r) => r.rows[0] || {}),
+    pharmacyId
+      ? pool.query('SELECT * FROM pharmacies WHERE id::text = $1::text', [pharmacyId]).then((r) => r.rows[0] || null)
+      : Promise.resolve(null),
+  ]);
+  return { patient, provider, pharmacy };
+}
+
+/** A Surescripts refusal or missing data as a 422 body a prescriber can act on. */
+const erxProblem = (vendorResponse) => ({
+  error: vendorResponse.missing
+    ? 'This prescription cannot be sent electronically yet.'
+    : `Surescripts did not accept the prescription: ${vendorResponse.error || 'unknown error'}`,
+  missing: vendorResponse.missing || undefined,
+  vendorErrors: vendorResponse.errors || undefined,
+});
 
 // Helper function to ensure diagnosis_id column exists
 let diagnosisIdColumnChecked = false;
@@ -65,7 +85,7 @@ router.get('/', async (req, res) => {
   try {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { patient_id, provider_id, status, erx_status } = req.query;
-    const hasEPrescribing = await checkEPrescribingSchema(pool);
+    const hasEPrescribing = await checkEPrescribingSchema(pool, req);
 
     let query;
     if (hasEPrescribing) {
@@ -279,46 +299,12 @@ router.post('/', async (req, res) => {
     // Send to Surescripts if enabled and send_to_vendor is requested
     if (req.body.sendToVendor && (await vendorsFor(req)).isVendorEnabled('surescripts')) {
       try {
-        // Get full patient and provider details for Surescripts
-        const patientResult = await pool.query(
-          'SELECT * FROM users WHERE id = $1',
-          [patientId]
-        );
-        const providerResult = await pool.query(
-          'SELECT * FROM users WHERE id = $1',
-          [providerId]
-        );
-
-        // Get pharmacy details if pharmacy_id is provided
-        let pharmacyInfo = null;
-        if (req.body.pharmacyId) {
-          const pharmacyResult = await pool.query(
-            'SELECT * FROM pharmacies WHERE id = $1',
-            [req.body.pharmacyId]
-          );
-          if (pharmacyResult.rows.length > 0) {
-            pharmacyInfo = pharmacyResult.rows[0];
-          }
-        }
-
+        const { patient: rxPatient, provider: rxProvider, pharmacy: pharmacyInfo } =
+          await loadRxRecords(pool, prescription, req.body.pharmacyId);
         const surescripts = (await vendorsFor(req)).getSurescripts();
-
-        const vendorPrescription = {
-          ...prescription,
-          patient_id: patientId,
-          provider_id: providerId,
-          patient: patientResult.rows[0],
-          provider: providerResult.rows[0],
-          pharmacy: pharmacyInfo,
-          ndc_code: ndcCode,
-          medication_name: medicationName,
-          quantity: quantity,
-          refills: refills,
-          instructions: instructions,
-          allow_substitutions: substitutionAllowed
-        };
-
+        const vendorPrescription = { prescription, patient: rxPatient, provider: rxProvider, pharmacy: pharmacyInfo || {} };
         const vendorResponse = await surescripts.sendPrescription(vendorPrescription);
+        if (vendorResponse.missing) prescription.vendor_missing = vendorResponse.missing;
 
         if (vendorResponse.success) {
           // Update prescription with vendor information
@@ -328,7 +314,8 @@ router.post('/', async (req, res) => {
               vendor_prescription_id = $1,
               vendor_status = $2,
               sent_to_vendor_at = $3,
-              vendor_response = $4
+              vendor_response = $4,
+              erx_message_id = $1
             WHERE id = $5
           `, [
             vendorResponse.vendorId,
@@ -343,7 +330,7 @@ router.post('/', async (req, res) => {
 
           // Log transaction
           await (await vendorsFor(req)).logTransaction('surescripts', 'prescription_send', {
-            request: vendorPrescription,
+            request: { messageId: vendorResponse.messageId, xml: vendorResponse.request },
             response: vendorResponse.response,
             status: 'success',
             externalId: vendorResponse.vendorId,
@@ -368,7 +355,7 @@ router.post('/', async (req, res) => {
         } else {
           // Log failed transaction
           await (await vendorsFor(req)).logTransaction('surescripts', 'prescription_send', {
-            request: vendorPrescription,
+            request: { messageId: vendorResponse.messageId, xml: vendorResponse.request || null, missing: vendorResponse.missing || null },
             response: vendorResponse.response,
             status: 'failed',
             error: vendorResponse.error,
@@ -521,7 +508,7 @@ router.delete('/:id', async (req, res) => {
 router.post('/:id/send-erx', async (req, res) => {
   try {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
-    const hasEPrescribing = await checkEPrescribingSchema(pool);
+    const hasEPrescribing = await checkEPrescribingSchema(pool, req);
 
     if (!hasEPrescribing) {
       return res.status(501).json({
@@ -548,19 +535,59 @@ router.post('/:id/send-erx', async (req, res) => {
 
     const prescription = prescriptionResult.rows[0];
 
+    // With Surescripts switched on, the prescription is sent as an NCPDP SCRIPT NewRx and is
+    // only marked sent when the network accepts it. Missing data or a network Error is a 422
+    // the prescriber can act on, and nothing is marked sent. Without Surescripts the old
+    // behaviour stays: the send is recorded and queued, and the answer says it was not
+    // transmitted.
+    const vendors = await vendorsFor(req);
+    let transmitted = null;
+    if (vendors.isVendorEnabled('surescripts')) {
+      const records = await loadRxRecords(pool, prescription, pharmacyId || prescription.pharmacy_id);
+      const vendorResponse = await vendors.getSurescripts().sendPrescription({
+        ...records, pharmacy: records.pharmacy || {}, prescription, prescriberDea: prescriberDeaNumber,
+      });
+      await vendors.logTransaction('surescripts', 'prescription_send', {
+        request: { messageId: vendorResponse.messageId || null, xml: vendorResponse.request || null, missing: vendorResponse.missing || null },
+        response: vendorResponse.response || null,
+        status: vendorResponse.success ? 'success' : 'failed',
+        error: vendorResponse.success ? null : vendorResponse.error,
+        externalId: vendorResponse.messageId || null,
+        internalReferenceId: prescription.id,
+        patientId: prescription.patient_id,
+      });
+      if (!vendorResponse.success) {
+        await pool.query(
+          `UPDATE prescriptions SET erx_error_message = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2`,
+          [vendorResponse.error || null, req.params.id]);
+        if (vendorResponse.missing || vendorResponse.errors) return res.status(422).json(erxProblem(vendorResponse));
+        return res.status(502).json({ error: vendorResponse.error || 'Could not reach Surescripts. Nothing was sent.' });
+      }
+      transmitted = vendorResponse;
+    }
+
     // Update prescription with pharmacy and eRx status
-    const erxMessageId = `ERX-${Date.now()}-${req.params.id}`;
+    const erxMessageId = transmitted ? transmitted.messageId : `ERX-${Date.now()}-${req.params.id}`;
     const result = await pool.query(`
       UPDATE prescriptions SET
         pharmacy_id = $1,
         prescriber_dea_number = $2,
         erx_message_id = $3,
-        erx_status = 'sent',
+        erx_status = $5,
         erx_sent_date = CURRENT_TIMESTAMP,
+        erx_error_message = NULL,
+        vendor_prescription_id = COALESCE($6, vendor_prescription_id),
+        vendor_status = COALESCE($7, vendor_status),
+        sent_to_vendor_at = CASE WHEN $6::text IS NULL THEN sent_to_vendor_at ELSE CURRENT_TIMESTAMP END,
+        vendor_response = COALESCE($8::jsonb, vendor_response),
         updated_at = CURRENT_TIMESTAMP
       WHERE id = $4
       RETURNING *
-    `, [pharmacyId, prescriberDeaNumber, erxMessageId, req.params.id]);
+    `, [pharmacyId, prescriberDeaNumber, erxMessageId, req.params.id,
+        transmitted ? transmitted.status : 'sent',
+        transmitted ? transmitted.messageId : null,
+        transmitted ? transmitted.status : null,
+        transmitted ? JSON.stringify(transmitted.response) : null]);
 
     // Log in prescription history
     await pool.query(`
@@ -580,8 +607,8 @@ router.post('/:id/send-erx', async (req, res) => {
       'NewRx',
       'outbound',
       pharmacyId,
-      JSON.stringify({ prescriptionId: req.params.id, erxMessageId }),
-      'pending'
+      JSON.stringify({ prescriptionId: req.params.id, erxMessageId, standard: transmitted ? 'NCPDP SCRIPT 2017071' : null }),
+      transmitted ? 'sent' : 'pending'
     ]);
 
     // Send WhatsApp notification if enabled
@@ -632,7 +659,10 @@ router.post('/:id/send-erx', async (req, res) => {
 
     res.json({
       ...toCamelCase(result.rows[0]),
-      message: 'Prescription sent electronically to pharmacy'
+      transmitted: Boolean(transmitted),
+      message: transmitted
+        ? (transmitted.status === 'delivered' ? 'Prescription delivered to the pharmacy' : 'Prescription sent electronically to the pharmacy')
+        : 'Prescription recorded as sent. Electronic transmission (Surescripts) is not switched on for this practice, so give it to the pharmacy by your usual route.'
     });
   } catch (error) {
     console.error('Error sending eRx:', error);
@@ -646,7 +676,7 @@ router.post('/:id/send-erx', async (req, res) => {
 router.post('/:id/cancel-erx', async (req, res) => {
   try {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
-    const hasEPrescribing = await checkEPrescribingSchema(pool);
+    const hasEPrescribing = await checkEPrescribingSchema(pool, req);
 
     if (!hasEPrescribing) {
       return res.status(501).json({
@@ -661,9 +691,36 @@ router.post('/:id/cancel-erx', async (req, res) => {
 
     const { reason, cancelledBy } = req.body;
 
+    // A prescription that went out over Surescripts is cancelled with a CancelRx pointing at
+    // its NewRx; the pharmacy confirms later (CancelRxResponse), so it reads cancel_requested.
+    const vendors = await vendorsFor(req);
+    let cancelStatus = 'cancelled';
+    const current = (await pool.query('SELECT * FROM prescriptions WHERE id = $1', [req.params.id])).rows[0];
+    if (!current) return res.status(404).json({ error: 'Prescription not found' });
+    if (current.vendor_prescription_id && vendors.isVendorEnabled('surescripts')) {
+      const records = await loadRxRecords(pool, current, current.pharmacy_id);
+      const vendorResponse = await vendors.getSurescripts().cancelPrescription(current.vendor_prescription_id, {
+        ...records, pharmacy: records.pharmacy || {}, prescription: current, reason,
+      });
+      await vendors.logTransaction('surescripts', 'prescription_cancel', {
+        request: { messageId: vendorResponse.messageId || null, relatesTo: current.vendor_prescription_id, missing: vendorResponse.missing || null },
+        response: vendorResponse.response || null,
+        status: vendorResponse.success ? 'success' : 'failed',
+        error: vendorResponse.success ? null : vendorResponse.error,
+        externalId: vendorResponse.messageId || null,
+        internalReferenceId: current.id,
+        patientId: current.patient_id,
+      });
+      if (!vendorResponse.success) {
+        if (vendorResponse.missing || vendorResponse.errors) return res.status(422).json(erxProblem(vendorResponse));
+        return res.status(502).json({ error: vendorResponse.error || 'Could not reach Surescripts. The prescription was not cancelled.' });
+      }
+      cancelStatus = 'cancel_requested';
+    }
+
     const result = await pool.query(`
       UPDATE prescriptions SET
-        erx_status = 'cancelled',
+        erx_status = $4,
         status = 'Cancelled',
         cancelled_reason = $1,
         cancelled_by = $2,
@@ -671,18 +728,18 @@ router.post('/:id/cancel-erx', async (req, res) => {
         updated_at = CURRENT_TIMESTAMP
       WHERE id = $3
       RETURNING *
-    `, [reason, cancelledBy, req.params.id]);
+    `, [reason, cancelledBy, req.params.id, cancelStatus]);
 
     if (result.rows.length === 0) {
       return res.status(404).json({ error: 'Prescription not found' });
     }
 
-    // Log cancellation
+    // Log cancellation (old status = what it was before this request)
     await pool.query(`
       INSERT INTO prescription_history (
         prescription_id, action, action_by, old_status, new_status, notes
       ) VALUES ($1, $2, $3, $4, $5, $6)
-    `, [req.params.id, 'cancelled', cancelledBy, result.rows[0].erx_status, 'cancelled', reason]);
+    `, [req.params.id, 'cancelled', cancelledBy, current.erx_status, cancelStatus, reason]);
 
     res.json(toCamelCase(result.rows[0]));
   } catch (error) {
@@ -697,7 +754,7 @@ router.post('/:id/cancel-erx', async (req, res) => {
 router.get('/:id/history', async (req, res) => {
   try {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
-    const hasEPrescribing = await checkEPrescribingSchema(pool);
+    const hasEPrescribing = await checkEPrescribingSchema(pool, req);
 
     if (!hasEPrescribing) {
       return res.status(501).json({
@@ -733,7 +790,7 @@ router.get('/:id/history', async (req, res) => {
 router.post('/check-safety', async (req, res) => {
   try {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
-    const hasEPrescribing = await checkEPrescribingSchema(pool);
+    const hasEPrescribing = await checkEPrescribingSchema(pool, req);
 
     if (!hasEPrescribing) {
       return res.status(501).json({
@@ -809,7 +866,7 @@ router.post('/check-safety', async (req, res) => {
 router.get('/patient/:patientId/active', async (req, res) => {
   try {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
-    const hasEPrescribing = await checkEPrescribingSchema(pool);
+    const hasEPrescribing = await checkEPrescribingSchema(pool, req);
 
     let query;
     if (hasEPrescribing) {
@@ -860,7 +917,7 @@ router.get('/diagnosis/:diagnosisId', async (req, res) => {
   try {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     await ensureDiagnosisIdColumn(pool);
-    const hasEPrescribing = await checkEPrescribingSchema(pool);
+    const hasEPrescribing = await checkEPrescribingSchema(pool, req);
 
     let query;
     if (hasEPrescribing) {
@@ -907,7 +964,7 @@ router.get('/diagnosis/:diagnosisId', async (req, res) => {
 router.post('/:id/refill', async (req, res) => {
   try {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
-    const hasEPrescribing = await checkEPrescribingSchema(pool);
+    const hasEPrescribing = await checkEPrescribingSchema(pool, req);
 
     if (!hasEPrescribing) {
       return res.status(501).json({

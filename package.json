@@ -73,7 +73,8 @@
     "test:mobile-oauth": "node backend/test/security/mobile-oauth.test.js",
     "test:mobile-features": "node backend/test/portal/mobile-features.test.js",
     "test:sick-note-requests": "node backend/test/records/sick-note-requests.test.js",
-    "test:forms-fill": "node backend/test/portal/forms-fill.test.js"
+    "test:forms-fill": "node backend/test/portal/forms-fill.test.js",
+    "test:ncpdp": "node backend/test/integrations/ncpdp-script.test.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.6.0",
