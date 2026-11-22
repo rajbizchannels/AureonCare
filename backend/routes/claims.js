@@ -14,6 +14,57 @@ const { vendorsFor } = require('../services/vendorIntegrations');
 const notificationService = require('../services/notificationService');
 const { insertNumbered } = require('../utils/recordNumbers');
 const { sendDbError } = require('../utils/dbErrors');
+const scrubber = require('../services/claimScrubber'); // pre-submission checks (rules + AI review)
+
+// ── Pre-submission check ("scrubbing") ──────────────────────────────────────────────────────
+// POST /scrub            a claim not saved yet (the claim form, before saving): { ...claim, ai? }
+// POST /:id/scrub        a saved claim; the result is stored and gates submission
+// POST /:id/scrub/override { reason } — admin / billing manager accept a failed check, recorded
+router.post('/scrub', async (req, res) => {
+  try {
+    const body = req.body || {};
+    res.json({ scrub: await scrubber.scrub(req, { ...body, id: body.id || null }, { ai: body.ai !== false }) });
+  } catch (error) {
+    console.error('Error checking claim:', error);
+    res.status(500).json({ error: 'The claim could not be checked.' });
+  }
+});
+
+router.post('/:id/scrub', async (req, res) => {
+  try {
+    const pool = req.db || req.app.locals.pool;
+    const { rows: [claim] } = await pool.query('SELECT * FROM claims WHERE id::text = $1::text', [req.params.id]);
+    if (!claim) return res.status(404).json({ error: 'Claim not found' });
+    const result = await scrubber.scrub(req, { ...claim, payer_id: (req.body && req.body.payer_id) || null }, { ai: !(req.body && req.body.ai === false) });
+    await scrubber.record(pool, claim.id, result);
+    res.json({ scrub: result });
+  } catch (error) {
+    console.error('Error checking claim:', error);
+    res.status(500).json({ error: 'The claim could not be checked.' });
+  }
+});
+
+router.post('/:id/scrub/override', async (req, res) => {
+  try {
+    const role = req.user && req.user.role;
+    if (!['admin', 'billing_manager'].includes(role)) return res.status(403).json({ error: 'Only an admin or billing manager can override a failed claim check.' });
+    const reason = String((req.body && req.body.reason) || '').trim();
+    if (reason.length < 10) return res.status(400).json({ error: 'Give a reason (at least 10 characters) — it is kept with the claim.' });
+    const pool = req.db || req.app.locals.pool;
+    const { rows: [c] } = await pool.query('SELECT scrub_status, scrubbed_at, updated_at FROM claims WHERE id::text = $1::text', [req.params.id]);
+    if (!c) return res.status(404).json({ error: 'Claim not found' });
+    if (!c.scrubbed_at || (c.updated_at && new Date(c.updated_at) > new Date(c.scrubbed_at))) {
+      return res.status(409).json({ error: 'Check the claim first — it has changed since its last check.' });
+    }
+    if (c.scrub_status !== 'failed') return res.status(409).json({ error: 'Only a failed check needs an override.' });
+    await pool.query('UPDATE claims SET scrub_override_by = $1, scrub_override_reason = $2 WHERE id::text = $3::text',
+      [req.user.id, reason.slice(0, 1000), req.params.id]);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error overriding claim check:', error);
+    res.status(500).json({ error: 'Could not record the override.' });
+  }
+});
 
 // Get all claims
 router.get('/', async (req, res) => {
@@ -89,17 +140,32 @@ router.post('/', async (req, res) => {
 
     const claim = result.rows[0];
 
+    // Submitting straight away: the claim is checked first (rules; the AI review runs from the
+    // claim screen), and a claim with errors is saved but NOT sent.
+    let gate = null;
+    if (req.body.submitToClearinghouse) {
+      const result = await scrubber.scrub(req, { ...claim, payer_id: req.body.payer_id || null }, { ai: false });
+      await scrubber.record(pool, claim.id, result);
+      claim.scrub = result;
+      if (result.status === 'failed') {
+        gate = result;
+        claim.clearinghouse_error = 'Not submitted: the claim check found errors. Fix them and submit again.';
+      }
+    }
+
     // Submit to Optum clearinghouse if enabled and submit_to_clearinghouse is requested
-    if (req.body.submitToClearinghouse && (await vendorsFor(req)).isVendorEnabled('optum')) {
+    if (!gate && req.body.submitToClearinghouse && (await vendorsFor(req)).isVendorEnabled('optum')) {
       try {
         // Get patient, provider, and payer details
+        // The chart is in `patients` (users holds staff logins) — reading users sent the claim
+        // without the patient's details.
         const patientResult = await pool.query(
-          'SELECT * FROM users WHERE id = $1',
+          'SELECT * FROM patients WHERE id::text = $1::text',
           [patient_id]
         );
         const providerResult = await pool.query(
-          'SELECT * FROM users WHERE id = $1',
-          [req.body.provider_id || req.userId] // Use provider from request or current user
+          'SELECT id, first_name, last_name, email, phone FROM users WHERE id::text = $1::text',
+          [req.body.provider_id || (req.user && req.user.id)] // Use provider from request or current user
         );
         const payerResult = await pool.query(
           'SELECT * FROM insurance_payers WHERE id = $1',
@@ -215,6 +281,18 @@ router.put('/:id', async (req, res) => {
 
   try {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
+
+    // Marking a claim Submitted needs a clean check of what is being submitted: no changes in
+    // the same request, and a check since the last change with no errors (or an override).
+    if (status && /^submitted$/i.test(String(status))) {
+      const { rows: [cur] } = await pool.query('SELECT status FROM claims WHERE id::text = $1::text', [req.params.id]);
+      if (cur && !/^submitted$/i.test(String(cur.status || ''))) {
+        const changing = [patient_id, payer, amount, service_date, diagnosis_codes, procedure_codes].some((v) => v !== undefined && v !== null);
+        if (changing) return res.status(409).json({ error: 'Save the changes and check the claim before submitting it.', scrubRequired: true });
+        const blocked = await scrubber.requireCleanScrub(pool, req.params.id);
+        if (blocked) return res.status(blocked.status).json(blocked.body);
+      }
+    }
 
     const result = await pool.query(
       `UPDATE claims
