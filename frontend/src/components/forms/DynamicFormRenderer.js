@@ -318,7 +318,7 @@ const DynamicFormRenderer = ({
                 onClick={() => handleChange(field.id, n)}
                 disabled={readOnly}
                 className={`w-9 h-9 rounded-lg text-sm font-medium border transition-colors ${
-                  Number(value) === n
+                  (value !== '' && value !== null && value !== undefined && Number(value) === n)
                     ? 'bg-blue-600 border-blue-600 text-white'
                     : dark ? 'border-slate-600 text-slate-300 hover:bg-slate-700' : 'border-gray-300 text-gray-700 hover:bg-gray-50'
                 }`}

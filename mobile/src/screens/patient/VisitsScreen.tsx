@@ -7,6 +7,7 @@ import { formatTime, fullName, humanStatus, isUpcoming, useResource } from '@/li
 import { useLayout } from '@/lib/device';
 import { palette, radius, space, type } from '@/theme/tokens';
 import type { Appointment } from '@/lib/api';
+import { timeOf, toDate } from '@/lib/time';
 
 /** Upcoming and past, split by a segmented control rather than two screens. */
 export const PatientVisitsScreen: React.FC = () => {
@@ -22,8 +23,8 @@ export const PatientVisitsScreen: React.FC = () => {
   const rows = (visits.data ?? [])
     .filter((a) => (segment === 'upcoming' ? isUpcoming(a.start_time) : !isUpcoming(a.start_time)))
     .sort((a, b) => {
-      const at = new Date(a.start_time).getTime();
-      const bt = new Date(b.start_time).getTime();
+      const at = timeOf(a.start_time);
+      const bt = timeOf(b.start_time);
       // Upcoming reads soonest-first; past reads most-recent-first.
       return segment === 'upcoming' ? at - bt : bt - at;
     });
@@ -71,7 +72,7 @@ export const PatientVisitsScreen: React.FC = () => {
           />
         }
         renderItem={({ item }) => {
-          const date = new Date(item.start_time);
+          const date = toDate(item.start_time) ?? new Date(NaN);
           return (
             <Card style={styles.row}>
               <View style={styles.dateCol}>

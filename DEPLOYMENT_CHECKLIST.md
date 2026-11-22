@@ -943,3 +943,42 @@ What changes:
   patient's Sick Notes tab, and in the app (Patients → patient → Sick notes). "Issue from
   request" pre-fills the dates and purpose; "Decline" needs a reason the patient sees. Nothing is
   issued automatically. Same permission as sick notes (reception does not see requests by default).
+
+## Sick-note PDF and form filling on phones and tablets
+
+No migration. Deploy (the API now depends on `pdfkit`; `vercel.json` bundles its font files via
+`includeFiles`), and ship a new app build for the mobile part.
+
+Sick notes:
+- "Issue" only issues (it no longer prints). Print stays on each note's card and opens a PDF.
+- The PDF is AES-256 encrypted with printing allowed and editing, copying and annotating
+  switched off (a random owner password nobody holds). Voided notes print with a VOID mark.
+- "Email" attaches the same PDF (`sick-note-<reference>.pdf`).
+- Check after deploy: issue a note, Print → the PDF opens; in a PDF viewer's document
+  properties, Security shows editing not allowed. If Print returns 500 with a font error, the
+  `includeFiles` entry for `node_modules/pdfkit/js/data/**` did not make it into the build.
+
+Forms:
+- Patients fill requested forms in the app (More → Forms → "Fill in"); staff fill a requested
+  form or a new one with the patient on a tablet (Patients → patient → "Fill a form"). Every
+  field type the web designer offers works, including drawing a signature.
+- The web portal now shows the practice's own form (it used a few built-in forms before) and
+  lists any unfinished request — not only "draft" — under Forms Requested.
+- The server now checks completed forms against the template (SEC-52) and records the signed-in
+  user as the actor (SEC-51). A form that previously "submitted" empty now asks for the
+  missing answers.
+- Signing an uploaded *document* (a PDF the practice attaches) still happens in the web portal.
+
+## Mobile bookings an hour early (UTC+1 and similar)
+
+No migration. Deploy the API and ship a new app build.
+
+- Cause: appointment times are stored as wall-clock times (`timestamp without time zone`). The web
+  sends "2026-11-23 10:00:00"; the app sent a UTC instant ("…T09:00:00.000Z"), and Postgres
+  keeps the clock reading and drops the `Z` — 10:00 in Paris was saved and shown as 09:00.
+- The app now sends the local wall-clock time and reads server times the same way.
+- The API converts an instant from an app not yet updated into the patient's time zone, else the
+  practice's (`practices.timezone`), before saving. With neither set it is stored as before, so
+  set the practice time zone if patients book from older app builds.
+- Bookings already made from the app before this fix are still stored an hour out; the practice
+  should check upcoming app bookings (nothing records which ones came from the app).

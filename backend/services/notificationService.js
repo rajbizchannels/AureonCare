@@ -284,7 +284,7 @@ function buildEmailHtml(title, headerColor, greeting, intro, rows, extra, opts =
  * went out (an invite, say, where a silently dropped message means the invitee is simply
  * never onboarded) can do so. Callers that only fire-and-forget can ignore it.
  */
-async function sendEmail(to, subject, html) {
+async function sendEmail(to, subject, html, { attachments } = {}) {
   if (!to) return { sent: false, reason: 'no recipient' };
   // Both halves, not just the username. With AC_SM_U set and AC_SM_W missing, nodemailer
   // builds a transport it cannot authenticate and fails at send time with
@@ -304,7 +304,8 @@ async function sendEmail(to, subject, html) {
   try {
     const t = getTransporter();
     const from = `"${process.env.AC_CLN || 'AureonCare'}" <${process.env.AC_SM_U}>`;
-    await t.sendMail({ from, to, subject, html });
+    // attachments: [{ filename, content: Buffer, contentType }] — e.g. a sick note's locked PDF.
+    await t.sendMail({ from, to, subject, html, ...(Array.isArray(attachments) && attachments.length ? { attachments } : {}) });
     return { sent: true };
   } catch (e) {
     console.error(`NotificationService: email to ${to} failed:`, e.message);

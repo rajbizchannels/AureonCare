@@ -35,6 +35,8 @@ import { FindPracticeScreen } from '@/screens/FindPracticeScreen';
 import { PatientSickNotesScreen } from '@/screens/patient/SickNotesScreen';
 import { PatientProfileScreen } from '@/screens/patient/ProfileScreen';
 import { ChartSickNotesScreen } from '@/screens/staff/ChartSickNotesScreen';
+import { FormFillScreen } from '@/screens/forms/FormFillScreen';
+import { FormTemplatesScreen } from '@/screens/forms/FormTemplatesScreen';
 import { Loading } from '@/components/ui';
 import { palette } from '@/theme/tokens';
 
@@ -403,6 +405,8 @@ const DETAIL_SCREENS: { name: string; title: string; component: React.ComponentT
   { name: 'SickNotes', title: 'Sick notes', component: PatientSickNotesScreen },
   { name: 'FindPractice', title: 'Find a practice', component: FindPracticeScreen },
   { name: 'ChartSickNotes', title: 'Sick notes', component: ChartSickNotesScreen },
+  { name: 'FormFill', title: 'Form', component: FormFillScreen },
+  { name: 'FormTemplates', title: 'Fill a form', component: FormTemplatesScreen },
 ];
 
 export const RootNavigator: React.FC = () => {

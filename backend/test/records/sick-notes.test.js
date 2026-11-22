@@ -16,7 +16,7 @@ const BASE = `http://127.0.0.1:${process.env.PORT}`;
 
 const outbox = [];
 const notify = require(path.join(BACKEND, 'services/notificationService.js'));
-notify.sendEmail = async (to, subject, html) => { outbox.push({ to, subject, html }); return { sent: true }; };
+notify.sendEmail = async (to, subject, html, opts = {}) => { outbox.push({ to, subject, html, attachments: opts.attachments || [] }); return { sent: true }; };
 
 const pool = require(path.join(BACKEND, 'db.js'));
 const { expandLink, firstLinkIn, tokenOf } = require(path.join(__dirname, '..', 'helpers', 'links.js'));
@@ -117,6 +117,22 @@ const day = (offset) => new Date(Date.now() + offset * 86400000).toISOString().s
   outbox.length = 0;
   const em = await api('POST', `/api/sick-notes/${note.id}/email`, { token: A.nurse.token });
   check(`email it to the patient (got ${em.status})`, em.status === 200 && outbox.some((m) => m.to === pEmail && m.subject.includes(note.reference)));
+  const att = (outbox.find((m) => m.to === pEmail && m.subject.includes(note.reference)) || {}).attachments || [];
+  check('...WITH THE PDF ATTACHED', att.length === 1 && att[0].contentType === 'application/pdf' && att[0].filename === `sick-note-${note.reference}.pdf`
+    && Buffer.isBuffer(att[0].content) && att[0].content.slice(0, 5).toString() === '%PDF-');
+
+  // ── the locked PDF ───────────────────────────────────────────────────────────────
+  const pdfRes = await fetch(`${BASE}/api/sick-notes/${note.id}/pdf`, { headers: { Authorization: 'Bearer ' + A.doctor.token } });
+  const pdfBuf = Buffer.from(await pdfRes.arrayBuffer());
+  check(`staff get the note as a PDF (got ${pdfRes.status} ${pdfRes.headers.get('content-type')})`,
+    pdfRes.status === 200 && pdfRes.headers.get('content-type') === 'application/pdf' && pdfBuf.slice(0, 5).toString() === '%PDF-');
+  check('...ENCRYPTED (AES-256) so it cannot be edited', pdfBuf.includes('/Encrypt') && pdfBuf.includes('/AESV3'));
+  // /P permission bits (PDF 32000-1 table 22): bit 3 print, 4 modify, 5 copy, 6 annotate.
+  const P = Number((/\/P (-?\d+)/.exec(pdfBuf.toString('latin1')) || [])[1]);
+  const bit = (n) => Boolean(P & (1 << (n - 1)));
+  check(`...printing allowed; modifying, copying and annotating not (P=${P})`, bit(3) && !bit(4) && !bit(5) && !bit(6));
+  check('another practice cannot get the PDF (404)',
+    (await fetch(`${BASE}/api/sick-notes/${note.id}/pdf`, { headers: { Authorization: 'Bearer ' + B.doctor.token } })).status === 404);
 
   // ── voiding ──────────────────────────────────────────────────────────────────────
   check('a nurse cannot void the doctor\'s note (403)', (await api('POST', `/api/sick-notes/${note.id}/void`, { token: A.nurse.token, body: { reason: 'x' } })).status === 403);
@@ -142,6 +158,8 @@ const day = (offset) => new Date(Date.now() + offset * 86400000).toISOString().s
   check(`the patient sees their notes in the portal (got ${pl.status})`, pl.status === 200 && Array.isArray(pl.body) && pl.body.length === 3);
   const pd = await api('GET', `/api/patient-portal/${patientId}/sick-notes/${obj(mbf.body).note.id}/document`, { headers: jar });
   check('...and can print one', pd.status === 200 && (obj(pd.body).html || '').includes('Rosa Parks'));
+  const ppdf = await fetch(`${BASE}/api/patient-portal/${patientId}/sick-notes/${obj(mbf.body).note.id}/pdf`, { headers: jar });
+  check(`...as the same locked PDF (got ${ppdf.status})`, ppdf.status === 200 && Buffer.from(await ppdf.arrayBuffer()).includes('/AESV3'));
   check('a staff token cannot use the patient routes for another chart',
     (await api('GET', `/api/patient-portal/${patientId}/sick-notes`, { token: B.doctor.token })).status >= 400);
 

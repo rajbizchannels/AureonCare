@@ -10,6 +10,7 @@ import {
 } from '@/components/ui';
 import { bookableDays, clashesWith, slotsForDay, toDateInput, type Slot } from '@/lib/booking';
 import { palette, radius, space, tint, type } from '@/theme/tokens';
+import { toDate } from '@/lib/time';
 
 /**
  * A patient booking their own appointment.
@@ -127,7 +128,7 @@ export const PatientBookScreen: React.FC = () => {
             <Text style={styles.confirmedTitle}>Booked</Text>
             <Text style={styles.confirmedBody}>
               {formatDate(booked.start_time)} at{' '}
-              {new Date(booked.start_time).toLocaleTimeString(undefined, {
+              {(toDate(booked.start_time) ?? new Date(NaN)).toLocaleTimeString(undefined, {
                 hour: '2-digit',
                 minute: '2-digit',
               })}

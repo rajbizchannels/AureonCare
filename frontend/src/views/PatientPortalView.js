@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import SickNoteRequestPanel from '../components/patients/SickNoteRequestPanel';
-import { printHtml } from '../utils/printHtml';
+import { openPdf } from '../utils/openPdf';
 import { Calendar, FileText, User, Edit, Check, X, Lock, Trash2, XCircle, Upload, Printer, MessageCircle, Activity, Pill, Plus, Heart, Star, Clock, ClipboardList, AlertCircle, ChevronRight, Search, Stethoscope, ToggleLeft, ToggleRight } from 'lucide-react';
 import DynamicFormRenderer from '../components/forms/DynamicFormRenderer';
 import { FORM_TEMPLATES } from '../data/formTemplates';
@@ -25,6 +25,11 @@ const providerSpecialtyOf = (provider) =>
 
 const providerNameOf = (provider) =>
   `${provider.firstName || provider.first_name || ''} ${provider.lastName || provider.last_name || ''}`.trim();
+
+// A request is waiting for the patient until it is completed — the same rule the server
+// (PUT /portal/:id/form-requests/:sid) and the mobile app use.
+const FORM_DONE = ['submitted', 'reviewed', 'approved', 'completed'];
+const isFormOutstanding = (f) => !FORM_DONE.includes(String(f.status || '').toLowerCase());
 
 const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shellTab, onTabChange, requestedTab = null }) => {
   const { language, setLanguage } = useApp();
@@ -80,6 +85,7 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
   const [loadingForms, setLoadingForms] = useState(false);
   const [activePendingForm, setActivePendingForm] = useState(null);
   const [activeFormData, setActiveFormData] = useState({});
+  const [activeFormErrors, setActiveFormErrors] = useState({});
   const [submittingForm, setSubmittingForm] = useState(false);
 
   // Appointment booking state
@@ -1374,13 +1380,10 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
   );
 
   // Sick notes the practice issued — view and print. A voided one prints marked VOID.
-  const printSickNote = async (noteId) => {
-    try {
-      const d = await api.portalGetSickNoteDocument(user.id, noteId);
-      printHtml(d.html, `Sick note ${d.reference}`);
-    } catch (e) {
-      addNotification('alert', e.message);
-    }
+  // The locked PDF (print only), in a new tab.
+  const printSickNote = (n) => {
+    openPdf(() => api.portalGetSickNotePdf(user.id, n.id), `sick-note-${n.reference}.pdf`)
+      .catch((e) => addNotification('alert', e.message));
   };
   const renderSickNotes = () => (
     <div className="space-y-6">
@@ -1403,7 +1406,7 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
                 </div>
                 <div className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{n.reference} · {n.issuerName}</div>
               </div>
-              <button type="button" onClick={() => printSickNote(n.id)}
+              <button type="button" onClick={() => printSickNote(n)}
                       className="self-start inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-teal-700 hover:bg-teal-800 text-white">
                 <FileText className="w-4 h-4" /> View / print
               </button>
@@ -1609,13 +1612,13 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
       </div>
 
       {/* Pending Forms Alert */}
-      {!editingProfile && pendingForms.filter(f => f.status === 'draft').length > 0 && (
+      {!editingProfile && pendingForms.filter(f => isFormOutstanding(f)).length > 0 && (
         <div className={`p-4 rounded-xl border flex items-center justify-between ${theme === 'dark' ? 'bg-teal-900/20 border-teal-700/50' : 'bg-teal-50 border-teal-200'}`}>
           <div className="flex items-center gap-3">
             <AlertCircle className="w-5 h-5 text-teal-500 flex-shrink-0" />
             <div>
               <p className={`font-semibold text-sm ${theme === 'dark' ? 'text-teal-300' : 'text-teal-800'}`}>
-                You have {pendingForms.filter(f => f.status === 'draft').length} form{pendingForms.filter(f => f.status === 'draft').length > 1 ? 's' : ''} requested — please complete them
+                You have {pendingForms.filter(f => isFormOutstanding(f)).length} form{pendingForms.filter(f => isFormOutstanding(f)).length > 1 ? 's' : ''} requested — please complete them
               </p>
               <p className={`text-xs mt-0.5 ${theme === 'dark' ? 'text-teal-400' : 'text-teal-600'}`}>
                 Forms sent by your care team are waiting in your "Forms Requested" tab
@@ -2963,7 +2966,18 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
     </div>
   );
 
-  const handleOpenForm = (submission) => {
+  // The practice's own questions come from the server (portal form-request detail); the
+  // built-in list is only a fallback for an older server.
+  const handleOpenForm = async (submission) => {
+    setActiveFormErrors({});
+    try {
+      const d = await api.portalGetFormRequest(user.id, submission.id);
+      if (d && Array.isArray(d.fields) && d.fields.length) {
+        setActivePendingForm({ submission, fields: d.fields });
+        setActiveFormData(d.submission?.form_data || submission.form_data || {});
+        return;
+      }
+    } catch (e) { /* fall back below */ }
     const template = FORM_TEMPLATES.find(t =>
       t.name === submission.template_name ||
       (submission.metadata?.template_slug && t.id === submission.metadata.template_slug)
@@ -2982,10 +2996,17 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
       ));
       setActivePendingForm(null);
       setActiveFormData({});
+      setActiveFormErrors({});
       addNotification('success', `"${activePendingForm.submission.template_name}" submitted successfully`);
     } catch (err) {
       console.error('Error submitting form:', err);
-      addNotification('alert', 'Failed to submit form. Please try again.');
+      if (err.fieldErrors) {
+        // The server checked the answers: show each problem next to its question.
+        setActiveFormErrors(err.fieldErrors);
+        addNotification('alert', `Some answers need attention (${Object.keys(err.fieldErrors).length}).`);
+      } else {
+        addNotification('alert', err.message || 'Failed to submit form. Please try again.');
+      }
     } finally {
       setSubmittingForm(false);
     }
@@ -3028,8 +3049,8 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
   };
 
   const renderForms = () => {
-    const draft = pendingForms.filter(f => f.status === 'draft');
-    const submitted = pendingForms.filter(f => f.status !== 'draft');
+    const draft = pendingForms.filter(f => isFormOutstanding(f));
+    const submitted = pendingForms.filter(f => !isFormOutstanding(f));
 
     return (
       <div className="space-y-6">
@@ -3165,7 +3186,8 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
                   <DynamicFormRenderer
                     fields={activePendingForm.fields}
                     formData={activeFormData}
-                    onChange={setActiveFormData}
+                    onChange={(d) => { setActiveFormData(d); if (Object.keys(activeFormErrors).length) setActiveFormErrors({}); }}
+                    errors={activeFormErrors}
                     theme={theme}
                     language="en"
                     userRole="patient"
@@ -3421,7 +3443,7 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
           { id: 'prescriptions', label: t.prescriptionsTab || 'Prescriptions', icon: Pill, count: prescriptions.length },
           { id: 'records', label: t.recordsTab || 'Records', icon: FileText, count: medicalRecords.length },
           { id: 'sickNotes', label: t.sickNotes || 'Sick Notes', icon: FileText, count: sickNotes.length || null },
-          { id: 'forms', label: 'Forms Requested', icon: ClipboardList, count: pendingForms.filter(f => f.status === 'draft').length || null, highlight: pendingForms.filter(f => f.status === 'draft').length > 0 },
+          { id: 'forms', label: 'Forms Requested', icon: ClipboardList, count: pendingForms.filter(f => isFormOutstanding(f)).length || null, highlight: pendingForms.filter(f => isFormOutstanding(f)).length > 0 },
           { id: 'messages', label: t.messages || 'Messages', icon: MessageCircle, count: unreadMessages || null, highlight: unreadMessages > 0 }
         ].map((tab) => (
           <button

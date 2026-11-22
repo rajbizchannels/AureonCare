@@ -7,8 +7,10 @@ import { formatTime, humanStatus, useResource } from '@/lib/useResource';
 import { useLayout } from '@/lib/device';
 import { palette, space, type } from '@/theme/tokens';
 import type { Appointment } from '@/lib/api';
+import { localDay, timeOf, toDate } from '@/lib/time';
 
-const dayKey = (d: Date): string => d.toISOString().slice(0, 10);
+// The device's calendar day — toISOString() gave UTC's, filing late-evening/early-morning visits under the wrong day.
+const dayKey = (d: Date | null): string => (d ? localDay(d) : '');
 const addDays = (d: Date, n: number): Date => new Date(d.getTime() + n * 86400000);
 
 /**
@@ -34,15 +36,15 @@ export const StaffScheduleScreen: React.FC = () => {
   const byDay = useMemo(() => {
     const map = new Map<string, number>();
     for (const a of appointments.data ?? []) {
-      const key = dayKey(new Date(a.start_time));
+      const key = dayKey(toDate(a.start_time));
       map.set(key, (map.get(key) ?? 0) + 1);
     }
     return map;
   }, [appointments.data]);
 
   const rows = (appointments.data ?? [])
-    .filter((a) => dayKey(new Date(a.start_time)) === dayKey(anchor))
-    .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
+    .filter((a) => dayKey(toDate(a.start_time)) === dayKey(anchor))
+    .sort((a, b) => timeOf(a.start_time) - timeOf(b.start_time));
 
   if (appointments.loading) return <Loading />;
 

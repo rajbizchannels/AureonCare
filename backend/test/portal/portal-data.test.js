@@ -158,6 +158,23 @@ const report = (err) => {
   check("a provider from outside the practice is refused (400)",
     (await send('POST', '/appointments', { provider_id: foreignDoc.id, start_time: iso(new Date(start.getTime() + 864e5)), end_time: iso(new Date(end.getTime() + 864e5)) })).status === 400);
   check('the booking shows in their appointments', (await get('/appointments')).body.some((a) => a.id === book.body.id));
+
+  // Times are wall-clock. The web sends "YYYY-MM-DD HH:MM:SS"; mobile builds before the fix sent a
+  // UTC instant ("…T09:00:00.000Z" for 10:00 in Paris), which was saved — and shown — an hour early.
+  check('a wall-clock booking is stored exactly as sent', String(book.body.start_time).slice(0, 16) === iso(start).slice(0, 16));
+  await pool.query(`UPDATE ${schema}.patients SET timezone = NULL WHERE id = $1`, [P]);
+  await pool.query('UPDATE public.practices SET timezone = $1 WHERE id::text = $2', ['Europe/Paris', t.practiceId]);
+  const wday = new Date(Date.now() + 9 * 864e5); const day = wday.toISOString().slice(0, 10);
+  const old = await send('POST', '/appointments', { provider_id: doc.id, start_time: `${day}T09:00:00.000Z`, end_time: `${day}T09:30:00.000Z` });
+  check(`an older app's UTC instant is saved as the practice's local time (10:00 Paris, got ${old.body.start_time})`,
+    old.status === 201 && String(old.body.start_time).startsWith(`${day} 10:00`) && String(old.body.end_time).startsWith(`${day} 10:30`));
+  check('an instant that lands on an existing booking is still refused (409)',
+    (await send('POST', '/appointments', { provider_id: doc.id, start_time: `${day}T09:00:00Z`, end_time: `${day}T09:30:00Z` })).status === 409);
+  await pool.query(`UPDATE ${schema}.patients SET timezone = 'America/New_York' WHERE id = $1`, [P]);
+  const day2 = new Date(Date.now() + 10 * 864e5).toISOString().slice(0, 10);
+  const ny = await send('POST', '/appointments', { provider_id: doc.id, start_time: `${day2}T15:00:00Z`, end_time: `${day2}T15:30:00Z` });
+  check(`...the patient's own time zone wins over the practice's (got ${ny.body.start_time})`,
+    ny.status === 201 && /^\d{4}-\d{2}-\d{2} 1[01]:00/.test(String(ny.body.start_time)));
   check('CSRF is enforced on portal writes (no header → 403)',
     (await call('POST', `/api/patient-portal/${P}/waitlist`, { cookie: jar, body: { preferredDate: '2030-01-01' } })).status === 403);
   const wl = await send('POST', '/waitlist', { providerId: doc.id, preferredDate: '2030-01-02', reason: 'sooner' });
@@ -170,7 +187,11 @@ const report = (err) => {
   check('notification preferences save', np.status === 200 && np.body.is_enabled === false && np.body.patient_id === P);
   const prof = await send('PUT', '/profile', { height: '170 cm', allergies: 'Penicillin' });
   check('profile health details save', prof.status === 200 && prof.body.height === '170 cm' && prof.body.allergies === 'Penicillin');
-  const { rows: [tpl] } = await pool.query(`SELECT id FROM ${schema}.form_templates LIMIT 1`);
+  // A one-question template, so the answer below is a complete form (completed forms are now
+  // checked against their template — SEC-52; the full rules are in forms-fill.test.js).
+  const { rows: [tpl] } = await pool.query(
+    `INSERT INTO ${schema}.form_templates (name, fields) VALUES ('Portal data check', $1::jsonb) RETURNING id`,
+    [JSON.stringify([{ id: 'q1', type: 'text', label: 'Question 1', required: true }])]);
   check('(the practice has a form template to request)', Boolean(tpl));
   const { rows: [fs] } = await pool.query(`INSERT INTO ${schema}.form_submissions (template_id, template_name, patient_id, status, form_data) VALUES ($2, 'Intake', $1, 'pending', '{}') RETURNING id`, [P, tpl.id]);
   const sub = await send('PUT', `/form-requests/${fs.id}`, { form_data: { q1: 'yes' } });

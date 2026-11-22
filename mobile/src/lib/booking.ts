@@ -7,6 +7,8 @@
  * are the checks worth making before the round trip, not instead of it.
  */
 
+import { timeOf, wallClock } from './time.ts';
+
 /** Days a practice will take a booking for, from tomorrow. */
 export const BOOKING_HORIZON_DAYS = 28;
 
@@ -32,6 +34,10 @@ export const bookableDays = (horizon = BOOKING_HORIZON_DAYS): Date[] =>
 export interface Slot {
   /** Local wall-clock label, e.g. "09:30". */
   label: string;
+  /**
+   * Local wall-clock time, "2026-11-23 09:30:00" — the form the server stores appointment times
+   * in (see lib/time.ts). Not an ISO instant: "…Z" was saved as the UTC clock reading.
+   */
   startIso: string;
   endIso: string;
 }
@@ -64,8 +70,8 @@ export const slotsForDay = (
     if (end > close) break;
     slots.push({
       label: t.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }),
-      startIso: t.toISOString(),
-      endIso: end.toISOString(),
+      startIso: wallClock(t),
+      endIso: wallClock(end),
     });
   }
   return slots;
@@ -80,12 +86,12 @@ export const clashesWith = (
   slot: Pick<Slot, 'startIso' | 'endIso'>,
   existing: { start_time: string; end_time: string; status: string }[]
 ): boolean => {
-  const start = new Date(slot.startIso).getTime();
-  const end = new Date(slot.endIso).getTime();
+  const start = timeOf(slot.startIso);
+  const end = timeOf(slot.endIso);
   return existing.some((a) => {
     if (/^(cancelled|canceled|completed)$/i.test(a.status ?? '')) return false;
-    const as = new Date(a.start_time).getTime();
-    const ae = new Date(a.end_time).getTime();
+    const as = timeOf(a.start_time);
+    const ae = timeOf(a.end_time);
     if (Number.isNaN(as) || Number.isNaN(ae)) return false;
     // Touching ends do not overlap: 09:00–09:30 and 09:30–10:00 are fine.
     return as < end && ae > start;

@@ -7,7 +7,7 @@ import { useSession } from '@/context/SessionContext';
 import { Card, Chip, EmptyState, ErrorNote, Field, Loading, PrimaryButton, SectionLabel, Segmented } from '@/components/ui';
 import { useResource } from '@/lib/useResource';
 import { useLayout } from '@/lib/device';
-import { printDocument } from '@/lib/print';
+import { printPdf } from '@/lib/print';
 import {
   ADJUSTMENT_LABELS, PURPOSE_LABELS, REQUEST_STATUS, blankRequest, dateRange, requestProblem, summary,
   type Purpose, type RequestDraft, type SickNote, type SickNoteRequest,
@@ -42,7 +42,7 @@ export const PatientSickNotesScreen: React.FC = () => {
   const print = useCallback(async (n: SickNote) => {
     if (!account) return;
     setBusyId(n.id); setError(null);
-    try { await printDocument((await api.getMySickNoteDocument(account.id, n.id)).html); }
+    try { await printPdf(api.sickNotePdfSource(n.id, account.id), `sick-note-${n.reference}.pdf`); }
     catch (e) { setError(e instanceof Error ? e.message : 'Could not open that sick note.'); }
     finally { setBusyId(null); }
   }, [api, account]);

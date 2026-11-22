@@ -3,10 +3,11 @@ import { Linking, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View 
 import { CalendarDays, ChevronRight, MessageSquare, Video } from 'lucide-react-native';
 import { useSession } from '@/context/SessionContext';
 import { Card, ErrorNote, Loading, PrimaryButton, SecondaryButton, SectionLabel } from '@/components/ui';
-import { formatTime, fullName, isUpcoming, useResource } from '@/lib/useResource';
+import { formatDate, formatTime, fullName, isUpcoming, useResource } from '@/lib/useResource';
 import { useLayout } from '@/lib/device';
 import { palette, radius, space, tint, type } from '@/theme/tokens';
 import type { Appointment } from '@/lib/api';
+import { timeOf } from '@/lib/time';
 
 /**
  * The patient's landing screen: the next thing that is going to happen, and
@@ -32,7 +33,7 @@ export const PatientHomeScreen: React.FC<{
 
   const next = (appointments.data ?? [])
     .filter((a) => isUpcoming(a.start_time) && a.status !== 'cancelled')
-    .sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())[0];
+    .sort((a, b) => timeOf(a.start_time) - timeOf(b.start_time))[0];
 
   const join = useCallback(async (url: string) => {
     // Prefer the provider's own app; the OS falls back to a browser when it is
@@ -151,7 +152,7 @@ export const PatientHomeScreen: React.FC<{
                 <View style={styles.grow}>
                   <Text style={styles.pastTitle}>{a.reason ?? a.appointment_type ?? 'Visit'}</Text>
                   <Text style={styles.emptyText}>
-                    {new Date(a.start_time).toLocaleDateString()} ·{' '}
+                    {formatDate(a.start_time)} ·{' '}
                     {fullName(a.provider?.first_name, a.provider?.last_name, 'Care team')}
                   </Text>
                 </View>
@@ -173,7 +174,7 @@ const greetingFor = (now: Date): string => {
 
 /** "in 40 minutes" reads better than a timestamp for something imminent. */
 const relativeTo = (iso: string): string => {
-  const minutes = Math.round((new Date(iso).getTime() - Date.now()) / 60000);
+  const minutes = Math.round((timeOf(iso) - Date.now()) / 60000);
   if (minutes < 0) return 'now';
   if (minutes < 60) return `in ${minutes} minutes`;
   const hours = Math.round(minutes / 60);

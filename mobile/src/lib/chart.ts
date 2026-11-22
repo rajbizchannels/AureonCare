@@ -1,4 +1,5 @@
 import type { Appointment, Diagnosis, LabOrder, MedicalRecord, Prescription } from './api';
+import { timeOf } from './time.ts';
 
 /**
  * Merging the clinical streams into one chronology.
@@ -38,7 +39,7 @@ const name = (first?: string | null, last?: string | null, fallback = 'Care team
  */
 const instant = (value: string | null | undefined): number => {
   if (!value) return -Infinity;
-  const ms = new Date(value).getTime();
+  const ms = timeOf(value);
   return Number.isFinite(ms) && ms > 0 ? ms : -Infinity;
 };
 

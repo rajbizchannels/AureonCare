@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { FlatList, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { AlertTriangle, ArrowLeft, FileText, Search, Users } from 'lucide-react-native';
+import { AlertTriangle, ArrowLeft, ClipboardList, FileText, Search, Users } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useSession } from '@/context/SessionContext';
 import { useActivePatient } from '@/context/ActivePatientContext';
@@ -142,6 +142,11 @@ const PatientSummary: React.FC<{ patient: PatientRow; onBack: () => void }> = ({
         <View style={styles.nameRow}>
           <Text style={[styles.detailName, styles.grow]}>{name}</Text>
           {/* Sick notes for this patient (clinical access only; on a phone Chart is not a tab). */}
+          <Pressable onPress={() => navigation.navigate('FormTemplates' as never)} accessibilityRole="button"
+                     accessibilityLabel="Fill a form" style={styles.sickNotes}>
+            <ClipboardList size={14} color={palette.accent} />
+            <Text style={styles.sickNotesText}>Fill a form</Text>
+          </Pressable>
           {canClinical ? (
             <Pressable onPress={() => navigation.navigate('ChartSickNotes' as never)} accessibilityRole="button"
                        accessibilityLabel="Sick notes" style={styles.sickNotes}>
@@ -281,7 +286,7 @@ const styles = StyleSheet.create({
   allergyCard: { backgroundColor: tint.dangerSoft, borderColor: tint.dangerBorder },
   allergyRow: { flexDirection: 'row', alignItems: 'center', gap: space.md },
   allergyLabel: { ...type.xs, color: palette.danger, fontWeight: '700', letterSpacing: 0.6 },
-  nameRow: { flexDirection: 'row', alignItems: 'center', gap: space.sm },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: space.xs, flexWrap: 'wrap' },
   sickNotes: { flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 36, paddingHorizontal: space.sm },
   sickNotesText: { ...type.sm, color: palette.accent, fontWeight: '600' },
   mutedLabel: { color: palette.textMuted },
