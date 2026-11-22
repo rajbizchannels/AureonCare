@@ -66,10 +66,14 @@
 
             <h2>Eligibility Verification</h2>
             <ol>
-                <li>Click <strong>Verify Coverage</strong> button</li>
-                <li>System contacts payer real-time</li>
-                <li>Returns: Coverage status, deductible, copay, coinsurance</li>
+                <li>Open the patient's record (Insurance Information) or the claim, and click <strong>Check eligibility</strong></li>
+                <li>AureonCare asks the payer through your clearinghouse (X12 270/271)</li>
+                <li>Shows: coverage active or not on the date of service, copay, deductible left, coinsurance, out-of-pocket left, plan dates</li>
             </ol>
+            <p>Needs your practice's clearinghouse connection (Settings → Integrations → Optum), the practice NPI in Clinic Settings, the payer's electronic payer ID and the patient's member ID — anything missing is named when you click.</p>
+
+            <h2>Claim Check Before Submission</h2>
+            <p>Every claim is checked when you save it and again when you submit it. <strong>Errors</strong> (missing member ID, a non-billable ICD-10 category code, past the filing limit, a duplicate, coverage inactive…) must be fixed before submitting; <strong>warnings</strong> can be submitted. With the AI Claim Scrubbing feature on, an AI review lists likely denial reasons — advisory only. An admin or billing manager can override errors with a recorded reason.</p>
 
             <h2>Submitting Claims</h2>
             <h3>Electronic (EDI 837)</h3>

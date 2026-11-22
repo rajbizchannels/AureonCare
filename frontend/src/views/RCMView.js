@@ -13,6 +13,7 @@ import NewCouponForm from '../components/forms/NewCouponForm';
 import NewBillingPaymentForm from '../components/forms/NewBillingPaymentForm';
 import ConfirmationModal from '../components/modals/ConfirmationModal';
 import { useAudit } from '../hooks/useAudit';
+import ClaimCheckDialog from '../components/rcm/ClaimCheckDialog';
 import { useShellTab } from '../hooks/useShellTab';
 
 const RCMView = ({
@@ -32,12 +33,82 @@ const RCMView = ({
   setTasks,
   t = {},
   currency = 'USD',
+  user = null,
 }) => {
   const [activeTab, setActiveTab, tabsInShell] = useShellTab(shellTab, onTabChange, 'claims');
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [showClaimForm, setShowClaimForm] = useState(false);
   const [showInsurancePayerForm, setShowInsurancePayerForm] = useState(false);
   const [showPreapprovalForm, setShowPreapprovalForm] = useState(false);
+  // Claim check before submission (services/claimScrubber.js on the server, which also enforces it).
+  const [claimCheck, setClaimCheck] = useState(null); // { claim, scrub, loading }
+  const canOverrideScrub = ['admin', 'billing_manager'].includes(user && user.role);
+  const startSubmit = async (claim) => {
+    setClaimCheck({ claim, scrub: null, loading: true });
+    try {
+      const scrub = await api.scrubClaim(claim.id, { payerId: claim.payer_id });
+      setClaimCheck({ claim, scrub, loading: false });
+    } catch (err) {
+      setClaimCheck(null);
+      addNotification('error', err.message || 'The claim could not be checked');
+    }
+  };
+  const overrideAndSubmit = async (reason) => {
+    const claim = claimCheck && claimCheck.claim;
+    try {
+      await api.overrideClaimScrub(claim.id, reason);
+    } catch (err) {
+      addNotification('error', err.message);
+      return;
+    }
+    setClaimCheck(null);
+    await submitNow(claim);
+  };
+  const submitNow = async (claim) => {
+    try {
+      // Try to submit to clearinghouse first
+      try {
+        const result = await api.submit837ToClearinghouse(claim.id);
+        addNotification('success', result.message);
+        // Refresh claims to update status
+        const updatedClaims = await api.getClaims();
+        setClaims(updatedClaims);
+      } catch (submitError) {
+        // If clearinghouse submission fails, offer to download
+        setConfirmModal({
+          isOpen: true,
+          title: 'Clearinghouse Submission Failed',
+          message: `${submitError.message}\n\nWould you like to download the EDI 837 file instead?`,
+          type: 'confirm',
+          onConfirm: async () => {
+            try {
+              const result = await api.generate837File(claim.id);
+
+              // Create a download link
+              const blob = new Blob([result.ediContent], { type: 'text/plain' });
+              const url = window.URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = result.fileName;
+              document.body.appendChild(a);
+              a.click();
+              window.URL.revokeObjectURL(url);
+              document.body.removeChild(a);
+
+              addNotification('success', 'EDI 837 file downloaded successfully');
+            } catch (err) {
+              addNotification('error', 'Failed to generate EDI 837 file');
+            }
+            setConfirmModal({ ...confirmModal, isOpen: false });
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Error with EDI 837:', error);
+      addNotification('error', error.message || 'Failed to process EDI 837');
+    }
+  };
+
   const [showPaymentPostingForm, setShowPaymentPostingForm] = useState(false);
   const [showDenialForm, setShowDenialForm] = useState(false);
   const [editingPayer, setEditingPayer] = useState(null);
@@ -353,52 +424,9 @@ const RCMView = ({
                             <Edit className={`w-4 h-4 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
                           </button>
                           <button
-                            onClick={async () => {
-                              try {
-                                // Try to submit to clearinghouse first
-                                try {
-                                  const result = await api.submit837ToClearinghouse(claim.id);
-                                  addNotification('success', result.message);
-                                  // Refresh claims to update status
-                                  const updatedClaims = await api.getClaims();
-                                  setClaims(updatedClaims);
-                                } catch (submitError) {
-                                  // If clearinghouse submission fails, offer to download
-                                  setConfirmModal({
-                                    isOpen: true,
-                                    title: 'Clearinghouse Submission Failed',
-                                    message: `${submitError.message}\n\nWould you like to download the EDI 837 file instead?`,
-                                    type: 'confirm',
-                                    onConfirm: async () => {
-                                      try {
-                                        const result = await api.generate837File(claim.id);
-
-                                        // Create a download link
-                                        const blob = new Blob([result.ediContent], { type: 'text/plain' });
-                                        const url = window.URL.createObjectURL(blob);
-                                        const a = document.createElement('a');
-                                        a.href = url;
-                                        a.download = result.fileName;
-                                        document.body.appendChild(a);
-                                        a.click();
-                                        window.URL.revokeObjectURL(url);
-                                        document.body.removeChild(a);
-
-                                        addNotification('success', 'EDI 837 file downloaded successfully');
-                                      } catch (err) {
-                                        addNotification('error', 'Failed to generate EDI 837 file');
-                                      }
-                                      setConfirmModal({ ...confirmModal, isOpen: false });
-                                    }
-                                  });
-                                }
-                              } catch (error) {
-                                console.error('Error with EDI 837:', error);
-                                addNotification('error', error.message || 'Failed to process EDI 837');
-                              }
-                            }}
+                            onClick={() => startSubmit(claim)}
                             className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-200'}`}
-                            title="Submit EDI 837 / Download"
+                            title="Check and submit (EDI 837)"
                           >
                             <svg className={`w-4 h-4 ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
@@ -2040,6 +2068,23 @@ const RCMView = ({
         type={confirmModal.type}
         confirmText={confirmModal.type === 'danger' ? 'Delete' : 'Confirm'}
         cancelText="Cancel"
+      />
+
+      {/* Claim check before submission */}
+      <ClaimCheckDialog
+        theme={theme}
+        isOpen={!!claimCheck}
+        loading={!!(claimCheck && claimCheck.loading)}
+        scrub={claimCheck && claimCheck.scrub}
+        title={`Check claim ${(claimCheck && claimCheck.claim && claimCheck.claim.claim_number) || ''}`.trim()}
+        confirmLabel="Submit to clearinghouse"
+        blockOnErrors
+        canOverride={canOverrideScrub}
+        note={claimCheck && claimCheck.scrub && claimCheck.scrub.status === 'failed' && !canOverrideScrub
+          ? 'Fix the errors (Edit the claim), then submit again. An admin or billing manager can override if the payer has confirmed it will accept the claim.' : null}
+        onClose={() => setClaimCheck(null)}
+        onOverride={overrideAndSubmit}
+        onConfirm={async () => { const c = claimCheck.claim; setClaimCheck(null); await submitNow(c); }}
       />
     </div>
   );

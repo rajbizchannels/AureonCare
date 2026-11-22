@@ -13,6 +13,7 @@ import {
   withFallback, bookableProviders, participantName,
 } from '../../utils/appointmentParticipants';
 import PortalInvitePanel from '../patients/PortalInvitePanel';
+import EligibilityCheck from '../rcm/EligibilityCheck';
 
 const ViewEditModal = ({
   theme,
@@ -1208,6 +1209,12 @@ const ViewEditModal = ({
                   )}
                 </div>
               </div>
+
+              {editData?.id && editData?.insurance_payer_id ? (
+                <div className="mt-4">
+                  <EligibilityCheck theme={theme} api={api} patientId={editData.id} payerId={editData.insurance_payer_id} />
+                </div>
+              ) : null}
 
               {/* Preferred Pharmacy Section */}
               <div className={`mt-6 pt-6 border-t ${theme === 'dark' ? 'border-slate-700' : 'border-gray-300'}`}>

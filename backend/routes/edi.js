@@ -326,6 +326,10 @@ router.post('/837/submit/:claimId', async (req, res) => {
     const { claimId } = req.params;
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
 
+    // Nothing reaches the clearinghouse without a clean pre-submission check (services/claimScrubber.js).
+    const blocked = await require('../services/claimScrubber').requireCleanScrub(pool, claimId);
+    if (blocked) return res.status(blocked.status).json({ ...blocked.body, message: blocked.body.error });
+
     // Check if clearinghouse integration is configured
     const settingsQuery = await pool.query(
       `SELECT is_enabled, settings FROM vendor_integration_settings WHERE vendor_type = 'optum'`

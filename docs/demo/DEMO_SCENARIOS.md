@@ -2,6 +2,13 @@
 
 Purpose: This document provides detailed patient scenarios and narratives to make the demo more engaging and realistic.
 
+> **What is live (checked 22 Nov 2026).** The prescribing, lab-order and claim screens all work, but
+> no outside network is connected in production: Surescripts (e-prescribing), Labcorp (labs) and
+> Optum (claims) connectors are built but switched off, and **insurance eligibility checks do not
+> exist yet**. Narrate the [TRANSMIT] and [SUBMIT] steps as "the connection a practice switches on",
+> or run them against a vendor sandbox. Skip or reword the [ELIGIBILITY] line. The AI scribe and
+> inventory parts can be shown as they are.
+
 ---
 
  Overview
@@ -322,7 +329,7 @@ Talk Track:
 > - Assigned the procedure code (99214 for an established patient visit)
 > - Generated a claim form
 >
-> [ELIGIBILITY] Before submitting, AureonCare verified Sarah's insurance eligibility with Blue Cross Blue Shield. Her coverage is active, and her $30 co-pay is noted.
+> [ELIGIBILITY — not available yet; skip, or say the practice confirmed coverage with the payer] Sarah's coverage with Blue Cross Blue Shield is active, and her $30 co-pay is noted.
 >
 > [SUBMIT] The billing team clicks 'Submit to Clearinghouse.' The claim is transmitted to Optum, which routes it to Blue Cross.
 >

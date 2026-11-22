@@ -25,16 +25,43 @@ function makeTenantDb(pool, schemaName, res) {
   let clientPromise = null;
   let client = null;
   let released = false;
+  // Statements in flight on the pinned client. The response can finish while work started by
+  // the handler is still running (a notification sent after res.json(), say): handing the
+  // client back to the pool at that moment let the NEXT request check it out mid-statement,
+  // and the two interleaved — one request's RESET or SET LOCAL landing in the other's
+  // transaction, failing at random with "relation … does not exist". Release now waits for
+  // in-flight statements, and anything issued after release runs on its own connection.
+  let active = 0;
+
+  const giveBack = () => {
+    if (!client) return;
+    const c = client; client = null;
+    Promise.resolve()
+      .then(() => c.query('RESET search_path'))
+      .catch(() => {})
+      .finally(() => { try { c.release(); } catch (_) { /* ignore */ } });
+  };
 
   const release = () => {
     if (released) return;
     released = true;
-    if (client) {
-      const c = client; client = null;
-      Promise.resolve()
-        .then(() => c.query('RESET search_path'))
-        .catch(() => {})
-        .finally(() => { try { c.release(); } catch (_) { /* ignore */ } });
+    if (active === 0) giveBack();
+  };
+
+  /** A statement issued after the response ended: its own connection, pinned the same way. */
+  const runDetached = async (text, params) => {
+    const c = await pool.connect();
+    try {
+      await c.query('BEGIN');
+      await c.query(`SET LOCAL search_path TO ${schemaName}, public, control`);
+      const result = await c.query(text, params);
+      await c.query('COMMIT');
+      return result;
+    } catch (err) {
+      await c.query('ROLLBACK').catch(() => {});
+      throw err;
+    } finally {
+      c.release();
     }
   };
 
@@ -49,8 +76,9 @@ function makeTenantDb(pool, schemaName, res) {
           throw e;
         }
         client = c;
-        // If the response already finished before the client was ready, release now.
-        if (released) { try { c.release(); } catch (_) {} client = null; }
+        // If the response already finished before the client was ready and nothing is
+        // waiting on it, give it back now; a statement in flight gives it back when done.
+        if (released && active === 0) giveBack();
         return c;
       })();
       if (res && typeof res.on === 'function') {
@@ -92,6 +120,22 @@ function makeTenantDb(pool, schemaName, res) {
      * need, but correctness must not depend on which connection string is configured.
      */
     query: async (text, params) => {
+      if (released && !inTx) return runDetached(text, params);
+      active += 1;
+      try {
+        return await runPinned(text, params);
+      } finally {
+        active -= 1;
+        if (released && active === 0 && !inTx) giveBack();
+      }
+    },
+    // For transaction blocks (BEGIN/COMMIT): reuse the request's client; do NOT release
+    // it yourself — it is released when the response ends.
+    getClient: ensure,
+    release,
+  };
+
+  async function runPinned(text, params) {
       const c = await ensure();
       const sql = String(text);
 
@@ -121,12 +165,7 @@ function makeTenantDb(pool, schemaName, res) {
         await c.query('ROLLBACK').catch(() => {});
         throw err;
       }
-    },
-    // For transaction blocks (BEGIN/COMMIT): reuse the request's client; do NOT release
-    // it yourself — it is released when the response ends.
-    getClient: ensure,
-    release,
-  };
+  }
 }
 
 module.exports = { makeTenantDb };

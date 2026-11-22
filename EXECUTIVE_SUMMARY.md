@@ -29,7 +29,7 @@
 | **Target Practices** | 150 medical practices |
 | **Platform Capacity** | 2M+ patient records |
 | **Core Modules** | 14 integrated systems |
-| **Supported Languages** | 8 languages |
+| **Supported Languages** | 5 languages (English, Spanish, French, German, Arabic) |
 | **Target Satisfaction** | 4.5+/5 ⭐ |
 | **System Uptime SLA** | 99.9% guaranteed |
 | **Projected ROI** | 650-750% (first year) |
@@ -164,7 +164,7 @@
    - OAuth integration built-in
 
 6. **Multi-Language Excellence**
-   - 8 languages with auto-switching
+   - 5 languages with auto-switching (English, Spanish, French, German, Arabic)
    - Competitors: Maximum 2-3 languages
 
 7. **Transparent Pricing**
@@ -295,7 +295,7 @@
 ### Clinical Management
 ✅ Patient Management with enhanced fields  
 ✅ Electronic Health Records (EHR)  
-✅ Prescriptions with ePrescribe  
+✅ Prescriptions with ePrescribe workflow (live Surescripts connection in progress)  
 ✅ Diagnosis with SOAP notes  
 ✅ Medical Records & Vital Signs  
 ✅ Laboratory Orders & Results  

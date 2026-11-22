@@ -15,6 +15,7 @@ export const planFeatures = {
   // ── Tier 1: Practice Essentials ───────────────────────────────────────────
   essentials: [
     'dashboard',
+    'notificationSettings', // every staff member's own notification choices
     'practiceManagement',
     'providerManagement',
     'ehr',
@@ -31,6 +32,7 @@ export const planFeatures = {
   // ── Tier 2: Clinical Pro ──────────────────────────────────────────────────
   clinical_pro: [
     'dashboard',
+    'notificationSettings', // every staff member's own notification choices
     'practiceManagement',
     'providerManagement',
     'ehr',
@@ -52,6 +54,7 @@ export const planFeatures = {
   // ── Tier 3: Enterprise ────────────────────────────────────────────────────
   enterprise: [
     'dashboard',
+    'notificationSettings', // every staff member's own notification choices
     'practiceManagement',
     'providerManagement',
     'ehr',
@@ -74,6 +77,7 @@ export const planFeatures = {
   // ── Tier 4: On-Premises / Customer Cloud ──────────────────────────────────
   onprem: [
     'dashboard',
+    'notificationSettings', // every staff member's own notification choices
     'practiceManagement',
     'providerManagement',
     'ehr',

@@ -85,8 +85,10 @@ async function notifyRoles(req, roles, type, message, { excludeUserId = null } =
       params.push(excludeUserId);
       where += ` AND u.id <> $${params.length}`;
     }
-    const { rows } = await db.query(`SELECT u.id FROM public.users u WHERE ${where} LIMIT 200`, params);
+    const { rows } = await db.query(`SELECT u.id, u.role FROM public.users u WHERE ${where} LIMIT 200`, params);
     for (const r of rows) {
+      // AI drafts respect the person's notification settings (in-app is the only channel).
+      if (type === 'ai_draft' && !(await wantsAiDraft(db, r.id, r.role))) continue;
       await db.query(
         `INSERT INTO notifications (user_id, type, message, read, created_at) VALUES ($1, $2, $3, false, NOW())`,
         [r.id, type, message]
@@ -99,10 +101,16 @@ async function notifyRoles(req, roles, type, message, { excludeUserId = null } =
   }
 }
 
+async function wantsAiDraft(db, userId, role) {
+  const ch = await require('../staffNotifications').channelsFor(db, { userId, role: role || 'doctor', eventKey: 'ai.draft_ready', fallback: true });
+  return ch.in_app;
+}
+
 async function notifyUser(req, userId, type, message) {
   const db = req.db || (req.app && req.app.locals && req.app.locals.pool);
   if (!db || !userId) return;
   try {
+    if (type === 'ai_draft' && !(await wantsAiDraft(db, userId, req.user && req.user.role))) return;
     await db.query(
       `INSERT INTO notifications (user_id, type, message, read, created_at) VALUES ($1, $2, $3, false, NOW())`,
       [userId, type, message]

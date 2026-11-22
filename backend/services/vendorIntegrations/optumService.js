@@ -82,20 +82,27 @@ class OptumService {
         return this.accessToken;
       }
 
-      // Request new token using OAuth2 client credentials flow
-      const tokenUrl = `${this.baseUrl}/oauth2/token`;
+      // OAuth2 client credentials. The path is configurable (settings.token_path): Optum's API
+      // gateway (formerly Change Healthcare) issues tokens at /apip/auth/v2/token and takes the
+      // credentials as a JSON body; other gateways take Basic auth on a form post.
+      const tokenPath = this.settings.token_path || '/oauth2/token';
+      const tokenUrl = `${this.baseUrl}${tokenPath}`;
       const credentials = Buffer.from(`${this.clientId}:${this.clientSecret}`).toString('base64');
 
-      const response = await axios.post(
-        tokenUrl,
-        'grant_type=client_credentials',
-        {
-          headers: {
-            'Authorization': `Basic ${credentials}`,
-            'Content-Type': 'application/x-www-form-urlencoded'
+      const response = /\/apip\/auth\//.test(tokenPath)
+        ? await axios.post(tokenUrl,
+          { client_id: this.clientId, client_secret: this.clientSecret, grant_type: 'client_credentials' },
+          { headers: { 'Content-Type': 'application/json' } })
+        : await axios.post(
+          tokenUrl,
+          'grant_type=client_credentials',
+          {
+            headers: {
+              'Authorization': `Basic ${credentials}`,
+              'Content-Type': 'application/x-www-form-urlencoded'
+            }
           }
-        }
-      );
+        );
 
       this.accessToken = response.data.access_token;
       // Set expiry to 5 minutes before actual expiry for safety
@@ -236,6 +243,30 @@ class OptumService {
         error: error.message,
         response: error.response?.data || null
       };
+    }
+  }
+
+  /**
+   * Real-time eligibility (X12 270/271 as JSON — "Medical Network Eligibility v3").
+   * `body` is built by services/eligibility/medicalNetwork.js. Returns the payer's 271 as JSON,
+   * or { success:false, error, response } when the gateway refuses or cannot be reached.
+   * Path configurable as settings.eligibility_path.
+   */
+  async checkEligibility(body) {
+    if (!this.isEnabled) return { success: false, error: 'Optum integration is not enabled' };
+    try {
+      await this.authenticate();
+      const path = this.settings.eligibility_path || '/medicalnetwork/eligibility/v3';
+      const response = await this.makeRequest(path, 'POST', body);
+      return { success: true, data: response.data };
+    } catch (error) {
+      // A 4xx from the eligibility API still carries a 271-style body with `errors` — the payer
+      // or gateway saying what is wrong (member not found, invalid ID…). Pass it on to be read.
+      const data = error.response && error.response.data;
+      if (data && typeof data === 'object' && (Array.isArray(data.errors) || data.planStatus)) {
+        return { success: true, data, httpStatus: error.response.status };
+      }
+      return { success: false, error: error.message, response: data || null };
     }
   }
 

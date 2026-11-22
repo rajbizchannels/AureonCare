@@ -417,6 +417,11 @@ async function isWhatsAppEnabledForPatient(pool, patientId) {
 
 // ─── Event dispatch ────────────────────────────────────────────────────────────
 
+// Which event a handler is running for, so notifyAll can apply the doctor's own notification
+// settings (services/staffNotifications.js) without every handler passing it along.
+const { AsyncLocalStorage } = require('async_hooks');
+const eventContext = new AsyncLocalStorage();
+
 async function dispatch(pool, eventType, data) {
   try {
     await initWhatsApp(pool);
@@ -425,7 +430,7 @@ async function dispatch(pool, eventType, data) {
       console.warn(`NotificationService: unknown event "${eventType}"`);
       return;
     }
-    await handler(pool, data);
+    await eventContext.run({ eventType }, () => handler(pool, data));
   } catch (e) {
     console.error(`NotificationService: dispatch error for "${eventType}":`, e.message);
   }
@@ -446,12 +451,26 @@ async function notifyAll(pool, { patient_id, provider_id }, buildMsg) {
     { role: 'admin', person: admin },
   ].filter(r => r.person);
 
+  const eventType = eventContext.getStore()?.eventType || null;
   for (const { role, person } of recipients) {
     const msg = buildMsg(role, person, { patient, provider, admin });
     if (!msg) continue;
 
-    if (person.email) {
-      await sendEmail(person.email, msg.subject, msg.html);
+    // The doctor is a staff member with their own notification settings (Profile →
+    // Notification settings). Patients and the practice contact address are unaffected.
+    let staff = null;
+    if (role === 'doctor' && person.id && eventType) {
+      staff = await require('./staffNotifications').channelsFor(pool, { userId: person.id, role: 'doctor', eventKey: eventType });
+      if (staff.in_app) {
+        try {
+          await pool.query('INSERT INTO notifications (user_id, type, message, read, created_at) VALUES ($1, $2, $3, false, NOW())',
+            [person.id, eventType, msg.subject]);
+        } catch (e) { console.error('NotificationService: in-app notification failed:', e.message); }
+      }
+    }
+
+    if (person.email && (!staff || staff.email)) {
+      await module.exports.sendEmail(person.email, msg.subject, msg.html);
     }
 
     // WhatsApp: patients require opt-in, staff/admin send directly if phone available
@@ -463,7 +482,7 @@ async function notifyAll(pool, { patient_id, provider_id }, buildMsg) {
       waPhone = person.phone;
     }
 
-    if (waPhone && msg.whatsapp) {
+    if (waPhone && msg.whatsapp && (!staff || staff.whatsapp)) {
       await sendWhatsApp(waPhone, msg.whatsapp, msg.whatsappTemplate || null);
     }
   }
@@ -660,6 +679,13 @@ const EVENTS = {
     const { claim, patient_id, old_status } = data;
     const admin = await getAdminInfo(pool);
     const patient = await getPatient(pool, patient_id);
+    // Billing staff, on the channels each has chosen (in-app by default).
+    const claimLine = `Claim ${claim.claim_number || ''} is now ${claim.status}${old_status ? ` (was ${old_status})` : ''}.`.replace('  ', ' ');
+    await require('./staffNotifications').notifyEligible(pool, null, 'claim.status_changed', {
+      type: 'claim', inApp: claimLine, subject: `Claim ${claim.claim_number || ''} – ${claim.status}`,
+      html: buildEmailHtml('Claim Status Changed', '#3B82F6', 'Hello,', escapeHtml(claimLine), '', null),
+      whatsappText: `*Claim update*\n\n${claimLine}`, whatsappSummary: claimLine,
+    });
 
     for (const { role, person } of [{ role: 'patient', person: patient }, { role: 'admin', person: admin }].filter(r => r.person)) {
       const greeting = `Dear ${person.first_name},`;
@@ -683,6 +709,12 @@ const EVENTS = {
     const { payment, patient_id } = data;
     const admin = await getAdminInfo(pool);
     const patient = await getPatient(pool, patient_id);
+    const payLine = `Payment of ${payment.amount != null ? payment.amount : 'an amount'} received${patient ? ` from ${patient.first_name} ${patient.last_name}` : ''}.`;
+    await require('./staffNotifications').notifyEligible(pool, null, 'payment.received', {
+      type: 'payment', inApp: payLine, subject: 'Payment received',
+      html: buildEmailHtml('Payment Received', '#10B981', 'Hello,', escapeHtml(payLine), '', null),
+      whatsappText: `*Payment received*\n\n${payLine}`, whatsappSummary: payLine,
+    });
 
     for (const { role, person } of [{ role: 'patient', person: patient }, { role: 'admin', person: admin }].filter(r => r.person)) {
       const greeting = `Dear ${person.first_name},`;
@@ -780,8 +812,14 @@ const EVENTS = {
   },
 };
 
+/** WhatsApp to one number, initialising the provider first (for senders outside dispatch). */
+async function sendWhatsAppTo(phone, message, template = null, pool = null) {
+  if (pool) await initWhatsApp(pool);
+  return sendWhatsApp(phone, message, template);
+}
+
 module.exports = {
-  dispatch, sendEmail, buildEmailHtml,
+  dispatch, sendEmail, sendWhatsAppTo, buildEmailHtml,
   // Building blocks for templates that need more than buildEmailHtml's fixed slots.
   detailRow, emailButton, emailParagraph, emailCallout, emailQr, escapeHtml, BRAND, TAGLINE,
 };

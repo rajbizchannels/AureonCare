@@ -71,7 +71,7 @@ AureonCare is a comprehensive, enterprise-grade medical practice management plat
 - Laboratory and pharmacy management
 - Email and WhatsApp notifications across every module
 - FHIR HL7 compliant for interoperability
-- Multi-language support (8 languages)
+- Multi-language support (5 languages: English, Spanish, French, German, Arabic)
 - Two-factor authentication and enforced session timeouts
 - HIPAA-ready security and compliance
 - Cloud, customer-cloud, and on-premises deployment
@@ -492,7 +492,7 @@ This manual is designed for:
 🆕 **Language Selection in User Profile**
 - Users can select preferred language in their profile
 - Automatic language switching on login
-- Supported languages: English, Spanish, French, German, Arabic, Hindi, Mandarin, Portuguese
+- Supported languages: English, Spanish, French, German, Arabic
 - Enhanced localization support
 
 🆕 **Themed Modals and Confirmations**
@@ -972,10 +972,10 @@ The following detailed guides are available in the documentation system:
 | **Clinical Notes** | Complete guide to clinical documentation with SOAP notes format, templates, macros, voice dictation, signing procedures, and addendums | `/docs/guides/clinical-notes.html` |
 | **Vital Signs** | Vital signs management including recording methods, normal ranges, color-coded alerts, trending, and graphs | `/docs/guides/vitals.html` |
 | **Telehealth** | Virtual care guide covering scheduling, video controls, billing with CPT codes and Modifier 95, privacy, security, and troubleshooting | `/docs/guides/telehealth.html` |
-| **Claims Management** | Insurance claims workflow including CPT codes, eligibility verification, submissions (EDI 837, CMS-1500), claim status, denials, and appeals | `/docs/guides/claims.html` |
+| **Claims Management** | Insurance claims workflow including CPT codes, submissions (EDI 837, CMS-1500), claim status, denials, and appeals | `/docs/guides/claims.html` |
 | **Payment Processing** | Complete payment guide with payment methods (Cash, Check, Card, ACH, Portal), payment types, posting to claims, refunds, and reports | `/docs/guides/payments.html` |
 | **Reports & Analytics** | Reports system covering clinical, operational, and financial reports with parameters, filters, exports (PDF, Excel, CSV), and scheduled reports | `/docs/guides/reports.html` |
-| **User Management** | User administration with v1.2 features including language selection (8 languages with auto-switching), inline forms, role assignment, and permissions for all 14 modules | `/docs/guides/user-management.html` |
+| **User Management** | User administration with v1.2 features including language selection (5 languages with auto-switching), inline forms, role assignment, and permissions for all 14 modules | `/docs/guides/user-management.html` |
 | **Practice Settings** | Practice configuration guide covering organization info, working hours, appointment settings, billing, communication, security, integrations, and OAuth cloud backups | `/docs/guides/practice-settings.html` |
 | **Common Issues** | Troubleshooting guide for login issues, performance problems, appointments, prescriptions, claims, telehealth, data entry, and browser compatibility | `/docs/troubleshooting/common-issues.html` |
 
@@ -1360,15 +1360,12 @@ Provides one-click access to common tasks based on your role:
 
 **Language Selection:**
 1. Click the **Language** dropdown in the top menu
-2. Select from 8 available languages:
+2. Select from 5 available languages:
    - English (EN)
    - Spanish (ES)
    - French (FR)
    - German (DE)
-   - Portuguese (PT)
-   - Chinese (ZH)
    - Arabic (AR)
-   - Hindi (HI)
 3. Interface updates immediately
 
 ### 4.3 Understanding Dashboard Metrics
@@ -2179,10 +2176,9 @@ The ePrescribe modal now supports edit mode:
 1. After creating prescription, click **Send to Pharmacy**
 2. Verify pharmacy information
 3. Click **Send e-Prescription**
-4. System transmits prescription electronically via HL7
-5. Patient and pharmacy receive notification
+4. With your practice's Surescripts connection switched on, the prescription is sent to the pharmacy as an NCPDP SCRIPT message and marked sent only when the network accepts it; if details are missing (pharmacy NCPDP ID, your SPI/NPI, the NDC…) you are told which. The patient is notified by WhatsApp.
 
-✅ **Note:** E-prescribing reduces errors and speeds up pharmacy fulfillment.
+⚠️ **Note:** Surescripts requires certification and an account for your practice before this goes live, and controlled substances need EPCS (refused until then). Until then, give the patient or pharmacy the prescription by your usual route.
 
 ### 9.3 Drug Interaction Checking
 
@@ -3807,7 +3803,7 @@ AureonCare sends automatic notifications for:
 - Patient portal messages
 - Claim status updates
 - Payment receipts and failures
-- Inventory low-stock and reorder alerts
+- Inventory low-stock alerts (to the people who can reorder; choose channels under Settings → My notifications)
 - Task assignments
 - System alerts
 
@@ -3976,9 +3972,6 @@ Tasks are action items assigned to users that require completion. Examples:
      - French (Français)
      - German (Deutsch)
      - Arabic (العربية)
-     - Hindi (हिन्दी)
-     - Mandarin (中文)
-     - Portuguese (Português)
    - **Automatic Language Switching:** When user logs in, interface automatically switches to their preferred language
    - User can change language anytime in their profile settings
 
@@ -4977,10 +4970,7 @@ A malformed or unreadable file is rejected at that point — you are never asked
    - Spanish (ES)
    - French (FR)
    - German (DE)
-   - Portuguese (PT)
-   - Chinese (ZH)
    - Arabic (AR)
-   - Hindi (HI)
 3. Interface updates immediately
 
 ### 20.5 Notification Preferences
@@ -5809,7 +5799,7 @@ Every movement is timestamped and attributed to the user who recorded it.
 
 **Low-Stock Alerts:**
 
-When stock falls to the reorder point, the system raises a notification to inventory managers by email and WhatsApp. The item is flagged on the overview until stock is replenished.
+When stock falls to the reorder point, everyone who can reorder — by default admins, billing managers and nurses, as your Roles & Permissions allow — is alerted in the app, by email and by WhatsApp (each person chooses under **Settings → My notifications**). In a practice where only the admin handles stock, the admin is alerted. One alert per dip: restocking above the level re-arms it. The item is also flagged on the Inventory overview and listed in **Reports → Low stock** until it is replenished.
 
 ### 26.4 Purchase Orders
 
@@ -6737,7 +6727,7 @@ Each can be switched on or off independently, with its own provider and model.
 
 | Feature | What it does |
 |---------|--------------|
-| **Claim Scrubbing** | Flags problems on a claim before submission |
+| **Claim Scrubbing** | Reviews a claim before submission for likely denial reasons (code pairing, modifiers, medical necessity) alongside the automatic rule checks, and on the denial form drafts an appeal. Advisory: the rule checks decide whether a claim can be submitted |
 | **Prior Authorisation** | Drafts a prior-authorisation request |
 
 **Operational**
@@ -7148,3 +7138,21 @@ Figures are scoped to the practice you are in, not the platform:
 *This manual is subject to updates. Please check for the latest version regularly.*
 
 *AureonCare - Empowering Healthcare Practices with Modern Technology*
+
+
+---
+
+## Release notes — 22 November 2026: notifications, eligibility and claim checks
+
+### My notifications (Settings → My settings → My notifications)
+Every staff member chooses, for each notification their role receives, whether it arrives **in the app**, by **email** and/or by **WhatsApp**. Each switch saves at once; **All on / All off** works per channel. A channel you cannot receive yet (no email or mobile number on your profile) is shown greyed out with the reason. Patients choose theirs in the patient portal.
+
+### Checking a patient's insurance eligibility
+Open the patient's record (Insurance Information) or a claim and click **Check eligibility**. AureonCare asks the payer through your practice's clearinghouse and shows whether coverage is active on the date of service, the copay, deductible left, coinsurance, out-of-pocket left and the plan dates. If something is missing — the practice NPI, the payer's electronic ID, the patient's member ID — it tells you exactly what to add. An admin switches the clearinghouse connection on under Settings → Integrations → Optum.
+
+### Claim checks before submission
+Saving a claim shows a check; **Submit** on the Claims list checks the claim again before anything is sent.
+- **Errors** (red) must be fixed before the claim can be submitted — e.g. a missing member ID, a category ICD-10 code such as E11 instead of a billable one, a date past the payer's filing limit, a duplicate of another claim, coverage reported inactive.
+- **Warnings** (amber) can be submitted — e.g. eligibility not checked, prior authorisation not linked, the payer has no electronic ID.
+- **AI review** (purple, when switched on under Settings → Integrations → AI → Claim Scrubbing) lists likely denial reasons. Check before acting; it never blocks a claim.
+- An **admin or billing manager** can override errors with a reason when the payer has confirmed it will accept the claim; the name and reason are kept on the claim.

@@ -10,20 +10,37 @@ This document provides a comprehensive comparison of AureonCare against four lea
 
 ---
 
+## Status update — 22 November 2026 (revised the same day after the build-out)
+
+Re-checked against the code and the production database for five areas. **Closed** means a
+practice can use it today; **partly closed** means the screens and records exist but the outside
+connection or automation is missing; **open** means it is still a gap.
+
+| Area | Status | What exists | What is still missing |
+|------|--------|-------------|------------------------|
+| **AI scribe** | ✅ Closed (text) | Drafts a SOAP note, ICD-10/CPT codes, medications and lab tests from the visit text on the diagnosis form. Clinician reviews and attests before anything is saved; PHI anonymised; every use audited. Needs an AI provider switched on under Settings → Integrations → AI. | Ambient **audio** capture (recording the consultation and transcribing it). Not in the mobile app. |
+| **Claim scrubbing** | ✅ Closed | Checked **before submission** (claim form and Submit): rule checks — identifiers, ICD-10/CPT validity and billability against the full code sets, date of service and payer timely filing, amount, duplicates, prior auth, eligibility — plus an AI review (de-identified, advisory). Errors block submission (also server-side, incl. the 837 send) unless an admin/billing manager overrides with a reason. Also the AI review on the denial form. | Payer-specific edit libraries (e.g. NCCI procedure-to-procedure and MUE tables, LCD/NCD coverage rules) are not loaded — the AI review covers pairing/modifiers advisorily. |
+| **Insurance eligibility checks** | 🟡 Built — needs a clearinghouse account | Real-time check (X12 270/271 via Optum's eligibility API) from the patient record and the claim form: active/inactive, copay, deductible left, coinsurance, out-of-pocket, plan and dates; stored per patient; feeds the claim check. Tested against a stub gateway. | Optum account and sandbox verification; no clearinghouse is switched on in production. Batch checks before appointment days are not built. |
+| **Lab integration** | 🟡 Partly closed | Lab orders and results inside AureonCare (order, track, file results, AI plain-language explanations); FHIR ServiceRequest/Observation. Orders now carry the patient's details (they read the wrong table before). | **Not usable with keys alone**: the Labcorp connector's endpoints and format are not Labcorp's; a live connection needs Labcorp's connectivity onboarding (typically HL7 v2 ORM/ORU), account and provider registration, and a results interface. Quest and in-house analysers not started. |
+| **E-prescribing networks** | 🟡 Built — needs certification | Guided ePrescribe workflow, allergy and drug-interaction checks, pharmacy list, refills. **NCPDP SCRIPT 2017071** NewRx and CancelRx built and sent to the Surescripts endpoint (XML, Basic auth + optional client certificate); Status/Verify/Error read; missing data named before sending. | Surescripts certification and account, prescriber SPIs, EPCS for controlled drugs (refused until then), an inbound endpoint for pharmacy messages (renewals, changes, fills), medication history (RxHistory). |
+| **Inventory** | ✅ Closed | Full module: items with SKU/barcode, lot and expiry; stock movements (receipt, issue, transfer, adjustment, return, write-off); suppliers; purchase orders received into stock and billed in Accounts; valuation; low-stock report and overview flag; **low-stock alerts** to the people who can reorder (admin as fallback in a solo practice), on each person's chosen channels; AI usage forecast; stock issued to medical camps. | Per-site stock (sites exist but stock is not split by site); stock used on an appointment added to its bill; stock check during a consultation. |
+
+---
+
 ## Executive Summary
 
 AureonCare currently provides a strong foundation with core EHR, appointment scheduling, billing, telehealth, and RBAC features. However, significant gaps exist in AI automation, clinical decision support, inventory management, laboratory integration, patient engagement tools, and revenue cycle optimization.
 
 **Key Gaps Identified:**
-- ❌ No AI-powered clinical documentation
+- ✅ AI-powered clinical documentation — AI scribe drafts notes from visit text (ambient audio capture still open)
 - ❌ No clinical decision support system (CDSS)
-- ❌ No inventory/supply chain management
-- ❌ No laboratory integration
+- ✅ Inventory/supply chain management — module live with low-stock alerts (per-site stock and appointment billing still open)
+- 🟡 Laboratory: orders and results in-app; no lab connected (Labcorp needs their onboarding, not just keys)
 - ❌ No automated appointment reminders
 - ❌ Limited patient engagement tools
-- ❌ No automated claim scrubbing
-- ❌ No real-time eligibility verification
-- ❌ No ePrescribe with medication history check
+- ✅ Claim scrubbing before submission: rule checks + AI review, enforced (payer edit libraries such as NCCI not loaded)
+- 🟡 Real-time eligibility verification built (270/271); needs the practice's clearinghouse account
+- 🟡 ePrescribe over NCPDP SCRIPT built; needs Surescripts certification, SPIs and EPCS; no medication history
 - ❌ No population health management
 
 ---
@@ -35,10 +52,10 @@ AureonCare currently provides a strong foundation with core EHR, appointment sch
 #### Missing from AthenaOne
 | Feature | Description | Priority | Competitor |
 |---------|-------------|----------|------------|
-| **AI Ambient Scribe** | AI-powered ambient digital scribe that automatically generates draft notes, diagnoses, and prescriptions during patient encounters | 🔴 High | AthenaOne |
+| **AI Ambient Scribe** ✅ *(text — audio capture open)* | AI-powered ambient digital scribe that automatically generates draft notes, diagnoses, and prescriptions during patient encounters | 🔴 High | AthenaOne |
 | **AI Clinical Copilot** | Digital assistant (like Sage) embedded in EHR that clinicians can query for patient information | 🔴 High | AthenaOne |
 | **AI Document Extraction** | AI enhancement that extracts relevant information from faxes and transforms unstructured data into discrete, reportable data elements | 🟡 Medium | AthenaOne |
-| **Automated Claim Scrubbing** | 30,000+ automated rules engine that checks claims before submission to reduce errors and denials | 🔴 High | AthenaOne |
+| **Automated Claim Scrubbing** ✅ *(rules + AI before submission; no payer edit libraries)* | 30,000+ automated rules engine that checks claims before submission to reduce errors and denials | 🔴 High | AthenaOne |
 | **Intelligent Billing Rules** | 4,500+ annual rule changes to help avoid costly claim errors | 🔴 High | AthenaOne |
 
 #### Missing from SimplePractice
@@ -76,7 +93,7 @@ AureonCare currently provides a strong foundation with core EHR, appointment sch
 #### Missing from SimplePractice
 | Feature | Description | Priority | Competitor |
 |---------|-------------|----------|------------|
-| **ePrescribe with Medication History** | Electronic prescribing with ability to check patient medication history | 🔴 High | SimplePractice |
+| **ePrescribe with Medication History** 🟡 *(NCPDP SCRIPT built; certification and history pending)* | Electronic prescribing with ability to check patient medication history | 🔴 High | SimplePractice |
 | **Order Refills Directly** | Allow patients to order prescription refills directly from platform | 🟡 Medium | SimplePractice |
 
 #### Missing from Cerner
@@ -84,7 +101,7 @@ AureonCare currently provides a strong foundation with core EHR, appointment sch
 |---------|-------------|----------|------------|
 | **Voice Dictation for Prescriptions** | Voice-enabled prescription entry | 🟢 Low | Cerner |
 
-**Note**: AureonCare has basic prescription management but lacks integration with pharmacy networks and medication history databases.
+**Note (updated 22 Nov 2026)**: The ePrescribe workflow, allergy and interaction checks and pharmacy directory are in place; a live Surescripts connection (NCPDP SCRIPT, certification) and medication history are still missing.
 
 ---
 
@@ -93,18 +110,18 @@ AureonCare currently provides a strong foundation with core EHR, appointment sch
 #### Missing from Medesk (Entire Module Missing)
 | Feature | Description | Priority | Competitor |
 |---------|-------------|----------|------------|
-| **Real-Time Inventory Tracking** | Track every item in real-time with automatic updates | 🔴 High | Medesk |
-| **Stock Level Management** | Monitor stock levels, set reorder points, avoid stockouts | 🔴 High | Medesk |
-| **Purchase/Transfer Recording** | Record every purchase, transfer, and use with automatic quantity updates | 🔴 High | Medesk |
-| **Multi-Location Inventory** | Manage inventory across multiple locations/branches from central system | 🟡 Medium | Medesk |
-| **Inventory-to-Appointment Integration** | Tie inventory usage to specific appointments for accurate billing | 🔴 High | Medesk |
+| **Real-Time Inventory Tracking** ✅ | Track every item in real-time with automatic updates | 🔴 High | Medesk |
+| **Stock Level Management** ✅ | Monitor stock levels, set reorder points, avoid stockouts | 🔴 High | Medesk |
+| **Purchase/Transfer Recording** ✅ | Record every purchase, transfer, and use with automatic quantity updates | 🔴 High | Medesk |
+| **Multi-Location Inventory** ❌ | Manage inventory across multiple locations/branches from central system | 🟡 Medium | Medesk |
+| **Inventory-to-Appointment Integration** ❌ | Tie inventory usage to specific appointments for accurate billing | 🔴 High | Medesk |
 | **Stock Turnover Reports** | Generate reports on stock turnover, profitability, and costs | 🟡 Medium | Medesk |
-| **Automated Reorder Alerts** | Automatic alerts when stock reaches reorder points | 🟡 Medium | Medesk |
+| **Automated Reorder Alerts** ✅ | Automatic alerts when stock reaches reorder points | 🟡 Medium | Medesk |
 | **Department/Office Cost Tracking** | Track expenses by department, category, and location | 🟡 Medium | Medesk |
-| **Medical Equipment Tracking** | Track medical equipment, supplies, and disposables | 🟡 Medium | Medesk |
-| **Medication Stock Integration** | Check medication stock during patient consultations | 🔴 High | Medesk |
+| **Medical Equipment Tracking** ✅ | Track medical equipment, supplies, and disposables | 🟡 Medium | Medesk |
+| **Medication Stock Integration** ❌ | Check medication stock during patient consultations | 🔴 High | Medesk |
 
-**Impact**: Complete absence of inventory management limits AureonCare's appeal to practices that need to track supplies, medications, and equipment.
+**Impact (updated 22 Nov 2026)**: The inventory module is live — items, lots and expiry, stock movements, suppliers, purchase orders and valuation. Remaining gaps are low-stock notifications, per-site stock, appointment billing and stock checks during consultations.
 
 ---
 
@@ -119,16 +136,16 @@ AureonCare currently provides a strong foundation with core EHR, appointment sch
 | **Automated Results to EHR** | Automatically add lab results to patient medical records | 🔴 High | Medesk |
 | **Lab Payment Integration** | Record lab payments and clinic payments together | 🟡 Medium | Medesk |
 | **Graphical Test Reports** | Generate graphical reports on test changes and treatment results | 🟡 Medium | Medesk |
-| **Lab Order Tracking** | Track lab orders from request to completion | 🟡 Medium | Medesk |
+| **Lab Order Tracking** ✅ | Track lab orders from request to completion | 🟡 Medium | Medesk |
 | **Lab Reminders** | Automated reminders for pending lab tests | 🟡 Medium | Medesk |
 
 #### Missing from Cerner
 | Feature | Description | Priority | Competitor |
 |---------|-------------|----------|------------|
-| **Lab Integration** | Direct integration with laboratory systems | 🔴 High | Cerner |
-| **Lab Results Interface** | Interface to receive and display lab results in EHR | 🔴 High | Cerner |
+| **Lab Integration** 🟡 *(Labcorp connector built, not connected)* | Direct integration with laboratory systems | 🔴 High | Cerner |
+| **Lab Results Interface** 🟡 *(results filed in-app; no live feed)* | Interface to receive and display lab results in EHR | 🔴 High | Cerner |
 
-**Impact**: No laboratory integration significantly limits AureonCare's usefulness for practices that perform in-house lab work or frequently order lab tests.
+**Impact (updated 22 Nov 2026)**: Lab orders and results are managed in AureonCare, but no laboratory is connected yet — results are filed by hand until the Labcorp (or another lab) connection is live.
 
 ---
 
@@ -159,8 +176,8 @@ AureonCare currently provides a strong foundation with core EHR, appointment sch
 #### Missing from AthenaOne
 | Feature | Description | Priority | Competitor |
 |---------|-------------|----------|------------|
-| **Real-Time Eligibility Verification** | Check patient insurance eligibility in real-time before appointment | 🔴 High | AthenaOne |
-| **Automated Claim Scrubbing** | Pre-submission claim validation with 30,000+ rules | 🔴 High | AthenaOne |
+| **Real-Time Eligibility Verification** 🟡 *(built; needs clearinghouse account)* | Check patient insurance eligibility in real-time before appointment | 🔴 High | AthenaOne |
+| **Automated Claim Scrubbing** ✅ *(rules + AI before submission; no payer edit libraries)* | Pre-submission claim validation with 30,000+ rules | 🔴 High | AthenaOne |
 | **Intelligent Billing Rules Engine** | Dynamic rules engine with 4,500+ annual updates | 🔴 High | AthenaOne |
 | **Revenue Cycle Analytics** | Deep insights across entire patient care spectrum from scheduling to payment | 🟡 Medium | AthenaOne |
 | **Denial Management** | Automated denial tracking and resubmission workflows | 🔴 High | AthenaOne |
@@ -183,9 +200,9 @@ AureonCare currently provides a strong foundation with core EHR, appointment sch
 #### Missing from Cerner
 | Feature | Description | Priority | Competitor |
 |---------|-------------|----------|------------|
-| **Medicare Eligibility Verification** | Real-time Medicare eligibility checking | 🔴 High | Cerner |
+| **Medicare Eligibility Verification** 🟡 *(same 270/271 path, with Medicare as the payer)* | Real-time Medicare eligibility checking | 🔴 High | Cerner |
 
-**Impact**: Missing automated claim validation and real-time eligibility verification leads to higher claim denial rates and payment delays.
+**Impact (updated 22 Nov 2026)**: AI claim review helps work denials, but claims are not checked before submission and eligibility cannot be verified, so avoidable denials remain likely.
 
 ---
 
@@ -555,7 +572,7 @@ AureonCare currently provides a strong foundation with core EHR, appointment sch
 - FHIR HL7 integration
 - More advanced RBAC system
 - Telehealth (SimplePractice has this too)
-- Multi-language support (8 languages)
+- Multi-language support (5 languages: English, Spanish, French, German, Arabic)
 
 ---
 

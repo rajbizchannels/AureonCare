@@ -3,6 +3,8 @@ import { DollarSign, X, Save, Bot, Search, Plus, Trash2, Shield } from 'lucide-r
 import ConfirmationModal from '../modals/ConfirmationModal';
 import { useAudit } from '../../hooks/useAudit';
 import ThemedSelect from './ThemedSelect';
+import EligibilityCheck from '../rcm/EligibilityCheck';
+import ClaimCheckDialog from '../rcm/ClaimCheckDialog';
 
 const NewClaimForm = ({ theme, api, patients, claims, editingClaim, onClose, onSuccess, addNotification, t }) => {
   const { logFormView, logCreate, logUpdate, logError, startAction } = useAudit();
@@ -15,6 +17,7 @@ const NewClaimForm = ({ theme, api, patients, claims, editingClaim, onClose, onS
     preapprovalId: editingClaim?.preapproval_id?.toString() || ''
   });
   const [showSubmitConfirmation, setShowSubmitConfirmation] = useState(false);
+  const [draftCheck, setDraftCheck] = useState(null); // { scrub, loading } — the claim checked before it is saved
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [insurancePayers, setInsurancePayers] = useState([]);
   const [, setLoadingPayers] = useState(true);
@@ -277,8 +280,25 @@ const NewClaimForm = ({ theme, api, patients, claims, editingClaim, onClose, onS
       return;
     }
 
-    // Show confirmation before submitting
+    // Check the claim before it is saved (the same checks gate submission later), then confirm.
     setShowSubmitConfirmation(true);
+    setDraftCheck({ scrub: null, loading: true });
+    try {
+      const scrub = await api.scrubClaimDraft({
+        id: editingClaim?.id || null,
+        patient_id: formData.patientId,
+        payer_id: formData.payerId,
+        amount: parseFloat(formData.amount),
+        service_date: formData.serviceDate,
+        diagnosis_codes: selectedDiagnoses.map(d => d.code || d),
+        procedure_codes: selectedProcedures.map(p => p.code || p),
+        preapproval_id: formData.preapprovalId || null,
+      });
+      setDraftCheck({ scrub, loading: false });
+    } catch (err) {
+      // The check is a help, not a gate, at this point: saving still works without it.
+      setDraftCheck({ scrub: null, loading: false, error: err.message });
+    }
   };
 
   const handleActualSubmit = async () => {
@@ -367,16 +387,19 @@ const NewClaimForm = ({ theme, api, patients, claims, editingClaim, onClose, onS
 
   return (
     <>
-      <ConfirmationModal
+      <ClaimCheckDialog
         theme={theme}
         isOpen={showSubmitConfirmation}
-        onClose={() => setShowSubmitConfirmation(false)}
-        onConfirm={handleActualSubmit}
+        loading={!!(draftCheck && draftCheck.loading)}
+        scrub={draftCheck && draftCheck.scrub}
         title={editingClaim ? 'Update Claim' : (t.createClaim || 'Create Claim')}
-        message={editingClaim ? 'Are you sure you want to update this claim?' : 'Are you sure you want to create this claim?'}
-        type="confirm"
-        confirmText={editingClaim ? 'Update Claim' : (t.createClaim || 'Create Claim')}
-        cancelText={t.cancel || 'Cancel'}
+        confirmLabel={editingClaim ? 'Update Claim' : 'Save claim'}
+        note={draftCheck && draftCheck.error
+          ? `The claim could not be checked (${draftCheck.error}). You can still save it; it will be checked before submission.`
+          : draftCheck && draftCheck.scrub && draftCheck.scrub.status === 'failed'
+            ? 'You can save the claim now, but it cannot be submitted until the errors are fixed.' : null}
+        onClose={() => { setShowSubmitConfirmation(false); setDraftCheck(null); }}
+        onConfirm={async () => { setDraftCheck(null); await handleActualSubmit(); }}
       />
       <ConfirmationModal
         theme={theme}
@@ -461,6 +484,13 @@ const NewClaimForm = ({ theme, api, patients, claims, editingClaim, onClose, onS
                     </p>
                   </div>
                 )}
+                {selectedPatientInsurer && formData.patientId ? (
+                  <div className="mt-3">
+                    {/* Coverage on the date of service — the pre-submission check reads this too. */}
+                    <EligibilityCheck theme={theme} api={api} patientId={formData.patientId} payerId={formData.payerId || null}
+                      serviceDate={formData.serviceDate || null} claimId={editingClaim?.id || null} />
+                  </div>
+                ) : null}
               </div>
 
               <div>

@@ -233,8 +233,10 @@ router.post('/', async (req, res) => {
     if (send_to_vendor && (await vendorsFor(req)).isVendorEnabled('labcorp')) {
       try {
         // Fetch full patient and provider details
+        // The chart lives in `patients` (users holds staff and portal logins) — reading users
+        // here sent the order with no patient name or date of birth.
         const patientResult = await pool.query(
-          'SELECT * FROM users WHERE id = $1',
+          'SELECT id, first_name, last_name, date_of_birth, gender, mrn, phone, address FROM patients WHERE id::text = $1::text',
           [patient_id]
         );
         const providerResult = await pool.query(

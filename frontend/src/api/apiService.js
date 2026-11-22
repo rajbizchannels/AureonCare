@@ -4314,6 +4314,64 @@ const api = {
     if (!r.ok) throw new Error(data.error || 'Could not issue the sick note');
     return data;
   },
+  // Claim checks before submission (rules + AI review).
+  scrubClaimDraft: async (claim) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/claims/scrub`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(claim),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || 'The claim could not be checked');
+    return data.scrub;
+  },
+  scrubClaim: async (claimId, { payerId, ai = true } = {}) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/claims/${encodeURIComponent(claimId)}/scrub`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ payer_id: payerId || undefined, ai }),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || 'The claim could not be checked');
+    return data.scrub;
+  },
+  overrideClaimScrub: async (claimId, reason) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/claims/${encodeURIComponent(claimId)}/scrub/override`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ reason }),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || 'Could not record the override');
+    return data;
+  },
+  // Insurance eligibility (X12 270/271 through the practice's clearinghouse).
+  checkEligibility: async (body) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/eligibility/check`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) { const e = new Error(data.error || 'The eligibility check could not be completed'); e.missing = data.missing; e.status = r.status; throw e; }
+    return data.check;
+  },
+  getLatestEligibility: async (patientId, { payerId, serviceDate } = {}) => {
+    const q = new URLSearchParams({ patientId });
+    if (payerId) q.set('payerId', payerId);
+    if (serviceDate) q.set('serviceDate', serviceDate);
+    const r = await authenticatedFetch(`${API_BASE_URL}/eligibility/latest?${q}`);
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || 'Could not read eligibility');
+    return data.check || null;
+  },
+  // Staff notification settings — per notification, per channel (in-app / email / WhatsApp).
+  getNotificationSettings: async () => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/notification-settings`);
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || 'Could not load your notification settings');
+    return data;
+  },
+  saveNotificationSettings: async (changes) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/notification-settings`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ changes }),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || 'Could not save your notification settings');
+    return data;
+  },
   getSickNotePdf: async (id) => {
     const r = await authenticatedFetch(`${API_BASE_URL}/sick-notes/${encodeURIComponent(id)}/pdf`);
     if (!r.ok) { const d = await r.json().catch(() => ({})); throw new Error(d.error || 'Could not prepare the sick note'); }

@@ -578,13 +578,18 @@ Payment:
   - Stripe (ready for integration)
   - Square (ready for integration)
 
-Lab Systems:
-  - HL7 interface engine
-  - FHIR DiagnosticReport
+Lab Systems (status 22 Nov 2026):
+  - Labcorp connector built and wired to lab orders; not yet run against Labcorp or switched on
+  - HL7 v2 interface engine: not built
+  - FHIR ServiceRequest / Observation: in place
 
-Pharmacy:
-  - Surescripts (e-prescribing)
-  - NCPDP SCRIPT standard
+Pharmacy (status 22 Nov 2026):
+  - NCPDP SCRIPT 2017071 NewRx / CancelRx built and sent to the Surescripts endpoint; not live
+  - Surescripts certification, account, prescriber SPIs and EPCS: still required
+
+Clearinghouse (status 22 Nov 2026):
+  - Optum: claims, and real-time eligibility (X12 270/271 JSON API) used by the patient record,
+    the claim form and the pre-submission claim check; not switched on in production
 ```
 
 ---

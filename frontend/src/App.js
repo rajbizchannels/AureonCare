@@ -57,6 +57,7 @@ import AccountsView from './views/AccountsView';
 import InventoryView from './views/InventoryView';
 import CampsManagementView from './views/CampsManagementView';
 import PracticeSetupWizardView from './views/PracticeSetupWizardView';
+import NotificationSettingsView from './views/NotificationSettingsView';
 import usePracticeSetup from './hooks/usePracticeSetup';
 
 // Public pages
@@ -588,6 +589,7 @@ function App() {
             tasks={tasks}
             setTasks={setTasks}
             currency={currency}
+            user={user}
           />
         );
       case 'accounts':
@@ -616,6 +618,8 @@ function App() {
             currency={currency}
           />
         );
+      case 'notificationSettings':
+        return <NotificationSettingsView theme={theme} t={t} api={api} addNotification={addNotification} />;
       case 'practiceSetup':
         return (
           <PracticeSetupWizardView

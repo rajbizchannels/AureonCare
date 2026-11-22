@@ -21,52 +21,27 @@ router.use(require('../middleware/planEnforcement').enforceActiveBilling); // SE
  */
 router.get('/info', async (req, res) => {
   try {
-    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
-
-    // Try to get organization name from organization_settings first
-    const orgResult = await pool.query(`
-      SELECT organization_name as name, settings
-      FROM organization_settings
-      LIMIT 1
-    `);
-
-    // If organization name exists, return it
-    if (orgResult.rows.length > 0 && orgResult.rows[0].name) {
-      return res.json({
-        name: orgResult.rows[0].name,
-        source: 'organization_settings'
-      });
-    }
-
-    // Fall back to practices table
-    const practiceResult = await pool.query(`
-      SELECT name, phone, email, address
-      FROM practices
-      ORDER BY created_at ASC
-      LIMIT 1
-    `);
-
-    // If practice exists, return it
-    if (practiceResult.rows.length > 0) {
-      return res.json({
-        name: practiceResult.rows[0].name,
-        phone: practiceResult.rows[0].phone,
-        email: practiceResult.rows[0].email,
-        address: practiceResult.rows[0].address,
-        source: 'practices'
-      });
-    }
-
-    // If neither exists, return default
-    res.json({
-      name: 'Medical Practice',
-      source: 'default'
-    });
+    // SEC-53: the caller's own practice. This used to return the one organization name shared
+    // by every practice (or the oldest practice's details), so practice B saw practice A's name.
+    const p = await ownPractice(req);
+    if (p) return res.json({ name: p.name, phone: p.phone, email: p.email, address: p.address, source: 'practice' });
+    res.json({ name: 'Medical Practice', source: 'default' });
   } catch (error) {
     console.error('Error fetching clinic info:', error);
     res.status(500).json({ error: 'Failed to fetch clinic info' });
   }
 });
+
+/** The signed-in user's practice row (public.practices), or null. */
+async function ownPractice(req) {
+  const practiceId = (req.tenant && req.tenant.practiceId) || (req.user && req.user.practiceId);
+  if (!practiceId) return null;
+  const pool = req.db || req.app.locals.pool;
+  const { rows } = await pool.query(
+    `SELECT id, name, tax_id, phone, email, address, npi, website, currency
+       FROM public.practices WHERE id::text = $1::text`, [practiceId]);
+  return rows[0] || null;
+}
 
 /**
  * Get full clinic settings
@@ -74,49 +49,18 @@ router.get('/info', async (req, res) => {
  */
 router.get('/', async (req, res) => {
   try {
-    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
-
-    // Get organization settings
-    const orgResult = await pool.query(`
-      SELECT organization_name, settings
-      FROM organization_settings
-      LIMIT 1
-    `);
-
-    // Get practice settings
-    const practiceResult = await pool.query(`
-      SELECT name, tax_id, phone, email, address, plan_tier
-      FROM practices
-      ORDER BY created_at ASC
-      LIMIT 1
-    `);
-
-    let settings = {};
-
-    // Merge organization and practice data
-    if (orgResult.rows.length > 0) {
-      const orgSettings = orgResult.rows[0].settings || {};
-      settings = {
-        name: orgResult.rows[0].organization_name || '',
-        website: orgSettings.website || '',
-        npi: orgSettings.npi || '',
-        currency: orgSettings.currency || 'USD',
-      };
-    }
-
-    if (practiceResult.rows.length > 0) {
-      const practice = practiceResult.rows[0];
-      settings = {
-        ...settings,
-        name: settings.name || practice.name || '',
-        taxId: practice.tax_id || '',
-        phone: practice.phone || '',
-        email: practice.email || '',
-        address: typeof practice.address === 'string' ? practice.address : (practice.address?.street || ''),
-      };
-    }
-
-    res.json(settings);
+    const p = await ownPractice(req);
+    if (!p) return res.json({ name: '', website: '', npi: '', currency: 'USD' });
+    res.json({
+      name: p.name || '',
+      website: p.website || '',
+      npi: p.npi || '',
+      currency: p.currency || 'USD',
+      taxId: p.tax_id || '',
+      phone: p.phone || '',
+      email: p.email || '',
+      address: typeof p.address === 'string' ? p.address : (p.address?.street || ''),
+    });
   } catch (error) {
     console.error('Error fetching clinic settings:', error);
     res.status(500).json({ error: 'Failed to fetch clinic settings' });
@@ -126,97 +70,31 @@ router.get('/', async (req, res) => {
 /**
  * Save clinic settings
  * POST /api/clinic-settings
+ *
+ * SEC-53: writes the caller's own practice only. It used to update one organization_settings row
+ * shared by every practice and the OLDEST practice in public.practices — so one practice's admin
+ * overwrote another practice's name, tax ID, phone, email, address, NPI and currency.
  */
 router.post('/', adminOnly, async (req, res) => {
   try {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
-    const { name, address, phone, email, website, taxId, npi, currency } = req.body;
+    const { name, address, phone, email, website, taxId, npi, currency } = req.body || {};
+    const practiceId = (req.tenant && req.tenant.practiceId) || (req.user && req.user.practiceId);
+    if (!practiceId) return res.status(400).json({ error: 'No practice selected.' });
+    if (!name || !String(name).trim()) return res.status(400).json({ error: 'Practice name is required.' });
+    if (npi && !/^\d{10}$/.test(String(npi))) return res.status(400).json({ error: 'NPI must be 10 digits.' });
+    if (currency && !/^[A-Za-z]{3}$/.test(String(currency))) return res.status(400).json({ error: 'Currency must be a 3-letter code.' });
 
-    // Start transaction
-    await pool.query('BEGIN');
-
-    try {
-      // Update or insert into organization_settings
-      const orgResult = await pool.query(`
-        SELECT id FROM organization_settings LIMIT 1
-      `);
-
-      if (orgResult.rows.length > 0) {
-        // Update existing organization settings
-        await pool.query(`
-          UPDATE organization_settings
-          SET organization_name = $1,
-              settings = jsonb_set(
-                jsonb_set(
-                  jsonb_set(
-                    COALESCE(settings, '{}'::jsonb),
-                    '{website}',
-                    $2::jsonb
-                  ),
-                  '{npi}',
-                  $3::jsonb
-                ),
-                '{currency}',
-                $4::jsonb
-              ),
-              updated_at = CURRENT_TIMESTAMP
-          WHERE id = $5
-        `, [name, JSON.stringify(website || ''), JSON.stringify(npi || ''), JSON.stringify(currency || 'USD'), orgResult.rows[0].id]);
-      } else {
-        // Insert new organization settings
-        await pool.query(`
-          INSERT INTO organization_settings (organization_name, settings)
-          VALUES ($1, $2)
-        `, [name, JSON.stringify({ website: website || '', npi: npi || '', currency: currency || 'USD' })]);
-      }
-
-      // Update or insert into practices table
-      const practiceResult = await pool.query(`
-        SELECT id FROM practices ORDER BY created_at ASC LIMIT 1
-      `);
-
-      if (practiceResult.rows.length > 0) {
-        // Update existing practice
-        await pool.query(`
-          UPDATE practices
-          SET name = $1,
-              tax_id = $2,
-              phone = $3,
-              email = $4,
-              address = $5::jsonb,
-              updated_at = CURRENT_TIMESTAMP
-          WHERE id = $6
-        `, [
-          name,
-          taxId || null,
-          phone || null,
-          email || null,
-          JSON.stringify({ street: address || '' }),
-          practiceResult.rows[0].id
-        ]);
-      } else {
-        // Insert new practice
-        await pool.query(`
-          INSERT INTO practices (name, tax_id, phone, email, address)
-          VALUES ($1, $2, $3, $4, $5::jsonb)
-        `, [
-          name,
-          taxId || null,
-          phone || null,
-          email || null,
-          JSON.stringify({ street: address || '' })
-        ]);
-      }
-
-      // Commit transaction
-      await pool.query('COMMIT');
-
-      res.json({ success: true, message: 'Clinic settings saved successfully' });
-    } catch (error) {
-      // Rollback on error
-      await pool.query('ROLLBACK');
-      throw error;
-    }
+    const { rowCount } = await pool.query(
+      `UPDATE public.practices
+          SET name = $1, tax_id = $2, phone = $3, email = $4, address = $5::jsonb,
+              npi = $6, website = $7, currency = $8, updated_at = CURRENT_TIMESTAMP
+        WHERE id::text = $9::text`,
+      [String(name).trim(), taxId || null, phone || null, email || null,
+       JSON.stringify({ street: address || '' }), npi || null, website || null,
+       (currency || 'USD').toUpperCase(), practiceId]);
+    if (!rowCount) return res.status(404).json({ error: 'Practice not found.' });
+    res.json({ success: true, message: 'Clinic settings saved successfully' });
   } catch (error) {
     console.error('Error saving clinic settings:', error);
     // A constraint the request broke is the caller's to fix, not a server fault.
