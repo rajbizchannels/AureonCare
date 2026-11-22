@@ -71,7 +71,7 @@ AureonCare is a comprehensive, enterprise-grade medical practice management plat
 - Laboratory and pharmacy management
 - Email and WhatsApp notifications across every module
 - FHIR HL7 compliant for interoperability
-- Multi-language support (8 languages)
+- Multi-language support (5 languages: English, Spanish, French, German, Arabic)
 - Two-factor authentication and enforced session timeouts
 - HIPAA-ready security and compliance
 - Cloud, customer-cloud, and on-premises deployment
@@ -492,7 +492,7 @@ This manual is designed for:
 🆕 **Language Selection in User Profile**
 - Users can select preferred language in their profile
 - Automatic language switching on login
-- Supported languages: English, Spanish, French, German, Arabic, Hindi, Mandarin, Portuguese
+- Supported languages: English, Spanish, French, German, Arabic
 - Enhanced localization support
 
 🆕 **Themed Modals and Confirmations**
@@ -972,10 +972,10 @@ The following detailed guides are available in the documentation system:
 | **Clinical Notes** | Complete guide to clinical documentation with SOAP notes format, templates, macros, voice dictation, signing procedures, and addendums | `/docs/guides/clinical-notes.html` |
 | **Vital Signs** | Vital signs management including recording methods, normal ranges, color-coded alerts, trending, and graphs | `/docs/guides/vitals.html` |
 | **Telehealth** | Virtual care guide covering scheduling, video controls, billing with CPT codes and Modifier 95, privacy, security, and troubleshooting | `/docs/guides/telehealth.html` |
-| **Claims Management** | Insurance claims workflow including CPT codes, eligibility verification, submissions (EDI 837, CMS-1500), claim status, denials, and appeals | `/docs/guides/claims.html` |
+| **Claims Management** | Insurance claims workflow including CPT codes, submissions (EDI 837, CMS-1500), claim status, denials, and appeals | `/docs/guides/claims.html` |
 | **Payment Processing** | Complete payment guide with payment methods (Cash, Check, Card, ACH, Portal), payment types, posting to claims, refunds, and reports | `/docs/guides/payments.html` |
 | **Reports & Analytics** | Reports system covering clinical, operational, and financial reports with parameters, filters, exports (PDF, Excel, CSV), and scheduled reports | `/docs/guides/reports.html` |
-| **User Management** | User administration with v1.2 features including language selection (8 languages with auto-switching), inline forms, role assignment, and permissions for all 14 modules | `/docs/guides/user-management.html` |
+| **User Management** | User administration with v1.2 features including language selection (5 languages with auto-switching), inline forms, role assignment, and permissions for all 14 modules | `/docs/guides/user-management.html` |
 | **Practice Settings** | Practice configuration guide covering organization info, working hours, appointment settings, billing, communication, security, integrations, and OAuth cloud backups | `/docs/guides/practice-settings.html` |
 | **Common Issues** | Troubleshooting guide for login issues, performance problems, appointments, prescriptions, claims, telehealth, data entry, and browser compatibility | `/docs/troubleshooting/common-issues.html` |
 
@@ -1360,15 +1360,12 @@ Provides one-click access to common tasks based on your role:
 
 **Language Selection:**
 1. Click the **Language** dropdown in the top menu
-2. Select from 8 available languages:
+2. Select from 5 available languages:
    - English (EN)
    - Spanish (ES)
    - French (FR)
    - German (DE)
-   - Portuguese (PT)
-   - Chinese (ZH)
    - Arabic (AR)
-   - Hindi (HI)
 3. Interface updates immediately
 
 ### 4.3 Understanding Dashboard Metrics
@@ -2179,10 +2176,9 @@ The ePrescribe modal now supports edit mode:
 1. After creating prescription, click **Send to Pharmacy**
 2. Verify pharmacy information
 3. Click **Send e-Prescription**
-4. System transmits prescription electronically via HL7
-5. Patient and pharmacy receive notification
+4. The prescription is marked as sent to that pharmacy, and the patient is notified by WhatsApp
 
-✅ **Note:** E-prescribing reduces errors and speeds up pharmacy fulfillment.
+⚠️ **Note:** Electronic transmission to the pharmacy over the Surescripts network is not live yet. Until your practice's Surescripts connection is switched on (Settings → Integrations), give the patient or pharmacy the prescription by your usual route.
 
 ### 9.3 Drug Interaction Checking
 
@@ -3807,7 +3803,7 @@ AureonCare sends automatic notifications for:
 - Patient portal messages
 - Claim status updates
 - Payment receipts and failures
-- Inventory low-stock and reorder alerts
+- Inventory low-stock alerts *(planned — today low stock is shown on the Inventory overview and in the low-stock report)*
 - Task assignments
 - System alerts
 
@@ -3976,9 +3972,6 @@ Tasks are action items assigned to users that require completion. Examples:
      - French (Français)
      - German (Deutsch)
      - Arabic (العربية)
-     - Hindi (हिन्दी)
-     - Mandarin (中文)
-     - Portuguese (Português)
    - **Automatic Language Switching:** When user logs in, interface automatically switches to their preferred language
    - User can change language anytime in their profile settings
 
@@ -4977,10 +4970,7 @@ A malformed or unreadable file is rejected at that point — you are never asked
    - Spanish (ES)
    - French (FR)
    - German (DE)
-   - Portuguese (PT)
-   - Chinese (ZH)
    - Arabic (AR)
-   - Hindi (HI)
 3. Interface updates immediately
 
 ### 20.5 Notification Preferences
@@ -5809,7 +5799,7 @@ Every movement is timestamped and attributed to the user who recorded it.
 
 **Low-Stock Alerts:**
 
-When stock falls to the reorder point, the system raises a notification to inventory managers by email and WhatsApp. The item is flagged on the overview until stock is replenished.
+When stock falls to the reorder point, the item is flagged on the Inventory overview and listed in **Reports → Low stock** until it is replenished. Email and WhatsApp notifications for low stock are not sent yet — check the overview or the report.
 
 ### 26.4 Purchase Orders
 
@@ -6737,7 +6727,7 @@ Each can be switched on or off independently, with its own provider and model.
 
 | Feature | What it does |
 |---------|--------------|
-| **Claim Scrubbing** | Flags problems on a claim before submission |
+| **Claim Scrubbing** | Reviews a denied claim for likely causes, suggests fixes and drafts an appeal letter (on the denial form; claims are not yet checked before submission) |
 | **Prior Authorisation** | Drafts a prior-authorisation request |
 
 **Operational**

@@ -47,7 +47,7 @@ AureonCare now includes a comprehensive role-based access control system with su
 
 ### 3. **Multi-Language Support**
 - User-specific language preferences
-- Supported languages: English, Spanish, French, German, Portuguese, Arabic, Hindi
+- Supported languages: English, Spanish, French, German, Arabic
 - Language persists across sessions
 
 ## Database Schema

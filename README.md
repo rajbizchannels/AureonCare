@@ -36,7 +36,7 @@ AureonCare is an all-in-one healthcare management solution that combines Electro
 
 - ✅ **FHIR R4 Compliant** - Full interoperability support
 - ✅ **HIPAA Ready** - Built with security and compliance in mind
-- ✅ **Multi-Language Support** - 8 languages (EN, ES, FR, DE, PT, ZH, AR, HI)
+- ✅ **Multi-Language Support** - 5 languages (EN, ES, FR, DE, AR)
 - ✅ **Cloud-Based** - Accessible anywhere, anytime
 - ✅ **Role-Based Access Control** - Granular permissions system
 - ✅ **Flexible Subscription Plans** - Free to Enterprise tiers
@@ -424,7 +424,7 @@ AureonCare is an all-in-one healthcare management solution that combines Electro
 
 **Modern Interface**
 - Dark mode / Light mode toggle
-- Multi-language support (8 languages)
+- Multi-language support (5 languages)
 - Responsive design
 - Mobile-friendly interface
 - Quick actions dashboard

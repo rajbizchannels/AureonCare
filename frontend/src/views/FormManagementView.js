@@ -610,7 +610,7 @@ const FormManagementView = ({
             <div>
               <label className={`block text-xs font-medium mb-1 ${dark ? 'text-slate-400' : 'text-gray-600'}`}>Languages</label>
               <div className="flex flex-wrap gap-2">
-                {[{code:'en',label:'English'},{code:'es',label:'Español'},{code:'fr',label:'Français'},{code:'de',label:'Deutsch'},{code:'pt',label:'Português'}].map(({code,label}) => (
+                {[{code:'en',label:'English'},{code:'es',label:'Español'},{code:'fr',label:'Français'},{code:'de',label:'Deutsch'},{code:'ar',label:'العربية'}].map(({code,label}) => (
                   <label key={code} className="flex items-center gap-1 text-xs cursor-pointer">
                     <input type="checkbox" checked={(builderSettings.languages || []).includes(code)}
                       onChange={e => {

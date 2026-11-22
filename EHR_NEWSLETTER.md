@@ -78,15 +78,15 @@ AureonCare's prescription module is one of its most sophisticated components —
 
 - **Drug allergy screening** — Before a prescription is written, the system checks it against the patient's known allergies
 - **Drug-drug interaction checking** — Cross-references the new medication against the patient's current medications
-- **Electronic prescribing (ePrescribing)** via **Surescripts**, the nation's largest e-prescribing network, covering 99% of U.S. pharmacies
-- **Pharmacy network integration** — Patients select their preferred pharmacy; prescriptions route there directly
+- **Electronic prescribing (ePrescribing) workflow** — a guided prescribe-and-send flow. Transmission over the **Surescripts** network is being prepared: the connector is built, but a live connection needs NCPDP SCRIPT support and Surescripts certification, so prescriptions are not yet sent over the network
+- **Pharmacy directory** — Patients select their preferred pharmacy, recorded on the prescription
 - **Prescription status lifecycle**: Draft → Active → Cancelled
 - **Refill management** — Track refills authorized and remaining
 - **Full audit history** — Every change to a prescription is logged with timestamp, provider, and action type
-- **Prescription cancellation** with electronic notification to the dispensing pharmacy
+- **Prescription cancellation**, recorded in the prescription history
 - **Patient notifications** via WhatsApp when prescriptions are sent
 
-This closes the loop between the clinical decision to prescribe and the patient actually receiving their medication — with a verifiable audit trail at every step.
+Every step is in the audit trail. Once the Surescripts connection is live, the prescription will also reach the pharmacy electronically.
 
 ---
 
@@ -207,9 +207,9 @@ How does AureonCare's EHR compare to established players?
 | Capability | Epic | Cerner | Athenahealth | **AureonCare** |
 |---|---|---|---|---|
 | Longitudinal patient record | Yes | Yes | Yes | **Yes** |
-| ePrescribing (Surescripts) | Yes | Yes | Yes | **Yes** |
+| ePrescribing (Surescripts) | Yes | Yes | Yes | **Workflow yes; network connection in progress** |
 | Drug interaction checking | Yes | Yes | Yes | **Yes** |
-| Lab order integration | Yes | Yes | Yes | **Yes (Labcorp)** |
+| Lab order integration | Yes | Yes | Yes | **Orders and results in-app; Labcorp connection in progress** |
 | FHIR R4 compliance | Yes | Yes | Yes | **Yes** |
 | Patient portal | Yes | Yes | Yes | **Yes** |
 | SOAP notes | Yes | Yes | Yes | **Yes** |
@@ -240,7 +240,7 @@ How does AureonCare's EHR compare to established players?
 | API endpoints | 40+ |
 | Medical codes (ICD, CPT, LOINC) | 28,000+ |
 | FHIR resource types supported | 7 |
-| Integration partners | Surescripts, Labcorp, Optum |
+| Integration partners | Surescripts, Labcorp, Optum — connectors built, not yet live |
 | Patient portal features | 8+ |
 | RBAC roles | 8 |
 
@@ -267,7 +267,7 @@ An EHR is only as good as the clinical outcomes it supports. Here's how AureonCa
 AureonCare's EHR foundation is built for where healthcare is going:
 
 - **AI-assisted clinical decision support** — the structured, coded data already in place is the training substrate for predictive models
-- **Expanded lab integrations** — beyond Labcorp to Quest, in-house analyzers, and point-of-care devices
+- **Live lab integrations** — first Labcorp, then Quest, in-house analyzers, and point-of-care devices
 - **Real-time population health dashboards** — aggregate insights from individual patient data
 - **Expanded FHIR resource coverage** — toward full US Core compliance for federal program participation
 

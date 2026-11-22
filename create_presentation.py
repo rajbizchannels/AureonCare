@@ -366,7 +366,7 @@ add_content_slide(
         "🤖 AI Assistant - Natural language Q&A, context-aware",
         "📖 12 Comprehensive Guides - Clinical, Billing, Admin",
         "📝 50+ Help Articles - Searchable, categorized, role-based",
-        "🌍 Multi-Language - 8 languages supported",
+        "🌍 Multi-Language - 5 languages supported",
         "",
         "Projected Impact:",
         "• 55-60% reduction in support tickets",
@@ -403,7 +403,7 @@ add_table_slide(
         ["Implementation Time", "30 days (goal)", "90-180 days"],
         ["Universal Search", "14 modules", "2-3 modules"],
         ["AI Help Assistant", "✓ Included", "✗ Not available"],
-        ["Languages Supported", "8 languages", "2-3 languages"],
+        ["Languages Supported", "5 languages", "2-3 languages"],
         ["Technology Stack", "Modern (React 18)", "Legacy (2010s)"],
         ["Customer Target", "4.5+/5", "3.8/5 typical"]
     ],
