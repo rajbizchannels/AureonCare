@@ -8,7 +8,12 @@
   "builds": [
     {
       "src": "backend/server.js",
-      "use": "@vercel/node"
+      "use": "@vercel/node",
+      "config": {
+        "includeFiles": [
+          "node_modules/pdfkit/js/data/**"
+        ]
+      }
     },
     {
       "src": "frontend/package.json",

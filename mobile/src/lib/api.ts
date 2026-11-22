@@ -1062,6 +1062,16 @@ export class ApiClient {
     return this.request('/sick-notes', { method: 'POST', body: JSON.stringify(body) });
   }
 
+  /** Where to download a sick note's locked PDF, with this session's credential. */
+  sickNotePdfSource(noteId: string, patientId?: string): { url: string; headers: Record<string, string> } {
+    const path = this.credential?.kind === 'portal' && patientId
+      ? `/patient-portal/${patientId}/sick-notes/${encodeURIComponent(noteId)}/pdf`
+      : `/sick-notes/${encodeURIComponent(noteId)}/pdf`;
+    const headers = this.headers();
+    delete headers['Content-Type'];
+    return { url: `${this.baseUrl}/api${path}`, headers };
+  }
+
   getSickNoteDocument(noteId: string): Promise<{ html: string; reference: string }> {
     return this.request(`/sick-notes/${encodeURIComponent(noteId)}/document`);
   }

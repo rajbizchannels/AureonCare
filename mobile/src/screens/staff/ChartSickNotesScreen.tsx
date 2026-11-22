@@ -8,7 +8,7 @@ import { useActivePatient } from '@/context/ActivePatientContext';
 import { Card, Chip, EmptyState, ErrorNote, Field, Loading, PrimaryButton, SectionLabel, Segmented } from '@/components/ui';
 import { fullName, useResource } from '@/lib/useResource';
 import { useLayout } from '@/lib/device';
-import { printDocument } from '@/lib/print';
+import { printPdf } from '@/lib/print';
 import {
   ADJUSTMENT_LABELS, PURPOSE_LABELS, blankDraft, dateRange, dayCount, draftFromRequest, draftProblem, plusDays, summary, toRequest,
   type Draft, type Fitness, type Purpose, type SickNote, type SickNoteRequest,
@@ -36,9 +36,9 @@ export const ChartSickNotesScreen: React.FC = () => {
 
   const set = (patch: Partial<Draft>) => { setError(null); setDraft((d) => (d ? { ...d, ...patch } : d)); };
 
-  const print = useCallback(async (noteId: string) => {
+  const print = useCallback(async (noteId: string, reference = 'sick-note') => {
     setBusy(noteId); setError(null);
-    try { await printDocument((await api.getSickNoteDocument(noteId)).html); }
+    try { await printPdf(api.sickNotePdfSource(noteId), `sick-note-${reference}.pdf`); }
     catch (e) { setError(e instanceof Error ? e.message : 'Could not open the note.'); }
     finally { setBusy(null); }
   }, [api]);
@@ -53,7 +53,6 @@ export const ChartSickNotesScreen: React.FC = () => {
       setDraft(null);
       setInfo(draft.requestId ? `Sick note ${note.reference} issued; the patient has been told.` : `Sick note ${note.reference} issued.`);
       await data.reload();
-      await print(note.id);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not issue the sick note.');
     } finally {
@@ -191,7 +190,7 @@ export const ChartSickNotesScreen: React.FC = () => {
               <Text style={styles.switchLabel}>Review needed at the end of this period</Text>
               <Switch value={draft.followUp} onValueChange={(v) => set({ followUp: v })} accessibilityLabel="Review needed" />
             </View>
-            <PrimaryButton label="Issue and print" onPress={() => void issue()} busy={busy === 'issue'} />
+            <PrimaryButton label="Issue" onPress={() => void issue()} busy={busy === 'issue'} />
             <Pressable onPress={() => setDraft(null)} accessibilityRole="button" style={styles.cancel}><Text style={styles.cancelText}>Cancel</Text></Pressable>
           </Card>
         ) : null}
@@ -206,7 +205,7 @@ export const ChartSickNotesScreen: React.FC = () => {
             <Text style={styles.meta}>{[n.reference, n.issuerName, n.conditionText, n.emailedAt ? 'emailed' : null].filter(Boolean).join(' · ')}</Text>
             {n.status === 'voided' && n.voidReason ? <Text style={styles.voidReason}>Voided: {n.voidReason}</Text> : null}
             <View style={styles.actions}>
-              <Action icon={<Printer size={16} color={palette.accent} />} label="Print" onPress={() => void print(n.id)} disabled={busy === n.id} />
+              <Action icon={<Printer size={16} color={palette.accent} />} label="Print" onPress={() => void print(n.id, n.reference)} disabled={busy === n.id} />
               {n.status === 'issued' ? (
                 <>
                   <Action icon={<Mail size={16} color={palette.accent} />} label="Email" onPress={() => void email(n.id)} disabled={busy === n.id} />

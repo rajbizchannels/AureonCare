@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import SickNoteRequestPanel from '../components/patients/SickNoteRequestPanel';
-import { printHtml } from '../utils/printHtml';
+import { openPdf } from '../utils/openPdf';
 import { Calendar, FileText, User, Edit, Check, X, Lock, Trash2, XCircle, Upload, Printer, MessageCircle, Activity, Pill, Plus, Heart, Star, Clock, ClipboardList, AlertCircle, ChevronRight, Search, Stethoscope, ToggleLeft, ToggleRight } from 'lucide-react';
 import DynamicFormRenderer from '../components/forms/DynamicFormRenderer';
 import { FORM_TEMPLATES } from '../data/formTemplates';
@@ -1374,13 +1374,10 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
   );
 
   // Sick notes the practice issued — view and print. A voided one prints marked VOID.
-  const printSickNote = async (noteId) => {
-    try {
-      const d = await api.portalGetSickNoteDocument(user.id, noteId);
-      printHtml(d.html, `Sick note ${d.reference}`);
-    } catch (e) {
-      addNotification('alert', e.message);
-    }
+  // The locked PDF (print only), in a new tab.
+  const printSickNote = (n) => {
+    openPdf(() => api.portalGetSickNotePdf(user.id, n.id), `sick-note-${n.reference}.pdf`)
+      .catch((e) => addNotification('alert', e.message));
   };
   const renderSickNotes = () => (
     <div className="space-y-6">
@@ -1403,7 +1400,7 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
                 </div>
                 <div className={`text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>{n.reference} · {n.issuerName}</div>
               </div>
-              <button type="button" onClick={() => printSickNote(n.id)}
+              <button type="button" onClick={() => printSickNote(n)}
                       className="self-start inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-teal-700 hover:bg-teal-800 text-white">
                 <FileText className="w-4 h-4" /> View / print
               </button>

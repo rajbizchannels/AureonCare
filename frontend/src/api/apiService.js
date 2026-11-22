@@ -1182,6 +1182,13 @@ const api = {
     }
     return response.json();
   },
+  portalGetSickNotePdf: async (patientId, noteId) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/patient-portal/${patientId}/sick-notes/${encodeURIComponent(noteId)}/pdf`, {
+      headers: { ...api._getPortalAuthHeader() },
+    });
+    if (!r.ok) { const d = await r.json().catch(() => ({})); throw new Error(d.error || 'Failed to load the sick note'); }
+    return r.blob();
+  },
   portalGetSickNoteRequests: (patientId) => api._portalCall(patientId, '/sick-note-requests', { fail: 'Failed to load your requests' }),
   portalRequestSickNote: (patientId, body) => api._portalCall(patientId, '/sick-note-requests', { method: 'POST', body, fail: 'Could not send your request' }),
   portalCancelSickNoteRequest: (patientId, requestId) => api._portalCall(patientId, `/sick-note-requests/${encodeURIComponent(requestId)}/cancel`, { method: 'POST', body: {}, fail: 'Could not cancel the request' }),
@@ -4303,6 +4310,11 @@ const api = {
     const data = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(data.error || 'Could not issue the sick note');
     return data;
+  },
+  getSickNotePdf: async (id) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/sick-notes/${encodeURIComponent(id)}/pdf`);
+    if (!r.ok) { const d = await r.json().catch(() => ({})); throw new Error(d.error || 'Could not prepare the sick note'); }
+    return r.blob();
   },
   getSickNoteDocument: async (id) => {
     const r = await authenticatedFetch(`${API_BASE_URL}/sick-notes/${encodeURIComponent(id)}/document`);

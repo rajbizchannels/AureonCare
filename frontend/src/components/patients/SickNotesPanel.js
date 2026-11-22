@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { FileText, Plus, Printer, Mail, Ban, X } from 'lucide-react';
 import BusyButton from '../common/BusyButton';
-import { printHtml } from '../../utils/printHtml';
+import { openPdf } from '../../utils/openPdf';
 
 const today = () => new Date().toISOString().slice(0, 10);
 const plusDays = (iso, n) => { const d = new Date(`${iso}T12:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
@@ -59,9 +59,9 @@ const SickNotesPanel = ({ patientId, theme = 'light', api, addNotification, init
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
   const toggleAdj = (k) => setForm((f) => ({ ...f, adjustments: f.adjustments.includes(k) ? f.adjustments.filter((a) => a !== k) : [...f.adjustments, k] }));
 
-  const print = async (id) => {
-    try { const d = await api.getSickNoteDocument(id); printHtml(d.html, `Sick note ${d.reference}`); }
-    catch (e) { addNotification?.('alert', e.message); }
+  // The locked PDF (print only), in a new tab: the browser's viewer prints or saves it.
+  const print = (n) => {
+    openPdf(() => api.getSickNotePdf(n.id), `sick-note-${n.reference}.pdf`).catch((e) => addNotification?.('alert', e.message));
   };
 
   const issue = async (e) => {
@@ -74,7 +74,6 @@ const SickNotesPanel = ({ patientId, theme = 'light', api, addNotification, init
       addNotification?.('success', form.requestId ? `Sick note ${note.reference} issued; the patient has been told` : `Sick note ${note.reference} issued`);
       setForm(null);
       await load();
-      await print(note.id);   // before onChanged: a queue may close this panel once the request is answered
       onChanged?.();
     } catch (err) {
       addNotification?.('alert', err.message);
@@ -224,7 +223,7 @@ const SickNotesPanel = ({ patientId, theme = 'light', api, addNotification, init
           <div className="flex justify-end gap-2">
             <button type="button" className={ghost} onClick={() => setForm(null)}>Cancel</button>
             <BusyButton type="submit" busy={saving} className={`${btn} bg-teal-700 hover:bg-teal-800 text-white`} busyLabel="Issuing…">
-              <Printer className="w-4 h-4" /> Issue and print
+              <Plus className="w-4 h-4" /> Issue
             </BusyButton>
           </div>
         </form>
@@ -246,7 +245,7 @@ const SickNotesPanel = ({ patientId, theme = 'light', api, addNotification, init
                 </div>
               </div>
               <div className="flex flex-wrap items-start gap-2">
-                <button type="button" className={ghost} onClick={() => print(n.id)}><Printer className="w-4 h-4" /> Print</button>
+                <button type="button" className={ghost} onClick={() => print(n)}><Printer className="w-4 h-4" /> Print</button>
                 {n.status === 'issued' && (
                   <>
                     <BusyButton onClick={() => email(n.id)} className={ghost} busyLabel="Sending…"><Mail className="w-4 h-4" /> Email</BusyButton>

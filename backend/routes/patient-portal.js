@@ -1134,6 +1134,25 @@ router.get('/:patientId/sick-notes/:noteId/document', async (req, res) => {
   }
 });
 
+// The patient's own sick note as the locked PDF (print: yes; edit, copy: no).
+router.get('/:patientId/sick-notes/:noteId/pdf', async (req, res) => {
+  try {
+    const db = portalDb(req);
+    const { rows: [note] } = await db.query('SELECT * FROM sick_notes WHERE id::text = $1 AND patient_id = $2', [req.params.noteId, req.params.patientId]);
+    if (!note) return res.status(404).json({ error: 'Sick note not found' });
+    const { rows: [patient] } = await db.query('SELECT first_name, last_name, date_of_birth, mrn FROM patients WHERE id = $1', [req.params.patientId]);
+    const { rows: [practice] } = await req.app.locals.pool.query(
+      `SELECT p.name, p.address, p.phone, p.email FROM control.tenants t JOIN public.practices p ON p.id = t.practice_id
+        WHERE t.schema_name = $1`, [req.tenant && req.tenant.schemaName]);
+    const pdf = await require('../services/sickNotePdf').renderPdf(note, patient, practice || {});
+    res.set({ 'Content-Type': 'application/pdf', 'Content-Disposition': `inline; filename="sick-note-${note.reference}.pdf"`, 'Cache-Control': 'no-store' });
+    res.send(pdf);
+  } catch (error) {
+    console.error('[portal] sick note pdf:', error.message);
+    res.status(500).json({ error: 'Failed to load the sick note' });
+  }
+});
+
 // The patient's requests for a sick note (a clinician issues or declines each one).
 router.get('/:patientId/sick-note-requests', async (req, res) => {
   try {

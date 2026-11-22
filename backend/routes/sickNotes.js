@@ -3,6 +3,7 @@
 //   GET  /?patientId=        a patient's notes, newest first
 //   POST /                   issue one (clinicians only: doctors, nurses, or an admin who is a provider)
 //   GET  /:id/document       the printable certificate { html }
+//   GET  /:id/pdf            the same as a locked PDF (print only); attached when emailed
 //   POST /:id/email          email it to the patient's address on file
 //   POST /:id/void           { reason } — the issuer or an admin; notes are never edited or deleted
 //   GET  /requests           patients' open requests across the practice
@@ -16,6 +17,7 @@ const { authenticate } = require('../middleware/auth');
 const { requireModuleAccess } = require('../middleware/modulePermissions');
 const { auditPhiRead } = require('../middleware/phiAccessLog');
 const SN = require('../services/sickNotes');
+const { renderPdf } = require('../services/sickNotePdf');
 const { sendEmail, buildEmailHtml, escapeHtml } = require('../services/notificationService');
 
 const router = express.Router();
@@ -178,6 +180,22 @@ router.get('/:id/document', auditPhiRead('sick_note'), async (req, res) => {
   }
 });
 
+// The locked PDF (print: yes; edit, copy, annotate: no) — what Print opens.
+router.get('/:id/pdf', auditPhiRead('sick_note'), async (req, res) => {
+  if (!needDb(req, res)) return;
+  try {
+    const x = await load(req, req.params.id);
+    if (!x) return res.status(404).json({ error: 'Sick note not found' });
+    const practice = await practiceFor(req.app.locals.pool, req.user.practiceId);
+    const pdf = await renderPdf(x.note, x.patient, practice);
+    res.set({ 'Content-Type': 'application/pdf', 'Content-Disposition': `inline; filename="sick-note-${x.note.reference}.pdf"`, 'Cache-Control': 'no-store' });
+    res.send(pdf);
+  } catch (err) {
+    console.error('[sick-notes] pdf:', err.message);
+    res.status(500).json({ error: 'Could not prepare the PDF' });
+  }
+});
+
 router.post('/:id/email', async (req, res) => {
   if (!needDb(req, res)) return;
   try {
@@ -197,10 +215,12 @@ router.post('/:id/email', async (req, res) => {
       ['Issued by', [n.issuerName, n.issuerTitle].filter(Boolean).join(', ')],
     ];
     const html = buildEmailHtml('Your sick note', '#08B39C', `Hello ${escapeHtml(x.patient.first_name || '')},`,
-      'Here is the sick note issued to you. You can also view and print it in your patient portal.',
+      'Your sick note is attached as a PDF. You can also view and print it in your patient portal or the AureonCare app.',
       rows, `<p style="font-size:13px;color:#64748B">To check it is genuine, an employer or school can contact the practice and quote reference ${escapeHtml(n.reference)}.</p>`,
       { practiceName: practice.name });
-    const sent = await sendEmail(x.patient.email, `Your sick note (${n.reference})`, html);
+    const pdf = await renderPdf(x.note, x.patient, practice);
+    const sent = await sendEmail(x.patient.email, `Your sick note (${n.reference})`, html,
+      { attachments: [{ filename: `sick-note-${n.reference}.pdf`, content: pdf, contentType: 'application/pdf' }] });
     if (sent && sent.sent === false) return res.status(502).json({ error: 'The email could not be sent. Print the note instead.' });
     await req.db.query('UPDATE sick_notes SET emailed_at = now() WHERE id = $1', [x.note.id]);
     res.json({ emailed: true, to: x.patient.email });
