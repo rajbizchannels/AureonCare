@@ -5,6 +5,8 @@
 //   GET  /:id/document       the printable certificate { html }
 //   POST /:id/email          email it to the patient's address on file
 //   POST /:id/void           { reason } — the issuer or an admin; notes are never edited or deleted
+//   GET  /requests           patients' open requests across the practice
+//   POST /requests/:id/decline { reason } — clinicians; issuing with { requestId } answers one
 //
 // Permissions: Clinical Records → sick_notes (doctors all, nurses read/write, reception none
 // by default — see utils/permissionRegistry.js).
@@ -49,10 +51,62 @@ router.get('/', async (req, res) => {
   try {
     const { rows } = await req.db.query(
       'SELECT * FROM sick_notes WHERE patient_id::text = $1 ORDER BY created_at DESC LIMIT 200', [String(req.query.patientId)]);
-    res.json({ notes: rows.map(SN.toApi), canIssue: Boolean(await issuer(req)), adjustments: SN.ADJUSTMENTS, maxDays: SN.MAX_DAYS });
+    const requests = await req.db.query(
+      'SELECT * FROM sick_note_requests WHERE patient_id::text = $1 ORDER BY created_at DESC LIMIT 50', [String(req.query.patientId)])
+      .then((r) => r.rows.map(SN.requestToApi)).catch((e) => { if (e.code === '42P01') return []; throw e; });
+    res.json({ notes: rows.map(SN.toApi), requests, canIssue: Boolean(await issuer(req)), adjustments: SN.ADJUSTMENTS, maxDays: SN.MAX_DAYS });
   } catch (err) {
     console.error('[sick-notes] list:', err.message);
     res.status(500).json({ error: 'Could not load sick notes' });
+  }
+});
+
+// ── requests from patients ───────────────────────────────────────────────────────────
+// Open requests across the practice, oldest first (the queue a clinician works through).
+router.get('/requests', async (req, res) => {
+  if (!needDb(req, res)) return;
+  try {
+    const { rows } = await req.db.query(
+      `SELECT r.*, p.first_name, p.last_name, p.mrn FROM sick_note_requests r JOIN patients p ON p.id = r.patient_id
+        WHERE r.status = 'pending' ORDER BY r.created_at ASC LIMIT 200`);
+    res.json({ requests: rows.map(SN.requestToApi), canIssue: Boolean(await issuer(req)) });
+  } catch (err) {
+    if (err.code === '42P01') return res.json({ requests: [], canIssue: false });   // migration 099 not applied yet
+    console.error('[sick-notes] requests:', err.message);
+    res.status(500).json({ error: 'Could not load sick note requests' });
+  }
+});
+
+async function tellPatient(req, patientId, { subject, title, colour, intro, rows }) {
+  try {
+    const { rows: [pt] } = await req.db.query('SELECT first_name, email FROM patients WHERE id = $1', [patientId]);
+    if (!pt || !pt.email) return;
+    const practice = await practiceFor(req.app.locals.pool, req.user.practiceId);
+    const html = buildEmailHtml(title, colour, `Hello ${escapeHtml(pt.first_name || '')},`, intro, rows, null, { practiceName: practice.name });
+    await sendEmail(pt.email, subject, html);
+  } catch (e) { console.warn('[sick-notes] could not email the patient:', e.message); }
+}
+
+router.post('/requests/:id/decline', async (req, res) => {
+  if (!needDb(req, res)) return;
+  const reason = String((req.body || {}).reason || '').trim().slice(0, 500);
+  if (!reason) return res.status(400).json({ error: 'Give the patient a reason.' });
+  try {
+    if (!(await issuer(req))) return res.status(403).json({ error: 'Only a clinician can decline a sick note request.' });
+    const { rows: [r] } = await req.db.query(
+      `UPDATE sick_note_requests SET status = 'declined', decision_reason = $2, decided_by = $3, decided_at = now()
+        WHERE id::text = $1 AND status = 'pending' RETURNING *`, [req.params.id, reason, req.user.id]);
+    if (!r) return res.status(404).json({ error: 'That request is no longer waiting.' });
+    await tellPatient(req, r.patient_id, {
+      subject: 'About your sick note request', title: 'Your sick note request', colour: '#F59E0B',
+      intro: 'Your clinician has reviewed your request and has not issued a sick note.',
+      rows: [['Dates asked for', `${SN.longDate(r.start_date)} – ${SN.longDate(r.end_date)}`], ['Reason given', reason],
+        ['What next', 'Contact your practice or book an appointment if you need to discuss it.']],
+    });
+    res.json({ request: SN.requestToApi(r) });
+  } catch (err) {
+    console.error('[sick-notes] decline:', err.message);
+    res.status(500).json({ error: 'Could not decline the request' });
   }
 });
 
@@ -66,6 +120,13 @@ router.post('/', async (req, res) => {
     const n = v.value;
     const { rows: [patient] } = await req.db.query('SELECT id FROM patients WHERE id::text = $1', [n.patientId]);
     if (!patient) return res.status(404).json({ error: 'Patient not found' });
+    // Issued in answer to a patient's request: it must be this patient's, and still open.
+    const requestId = (req.body || {}).requestId ? String(req.body.requestId) : null;
+    if (requestId) {
+      const { rows: [open] } = await req.db.query(
+        `SELECT id FROM sick_note_requests WHERE id::text = $1 AND patient_id = $2 AND status = 'pending'`, [requestId, patient.id]);
+      if (!open) return res.status(409).json({ error: 'That request is no longer waiting (or is for another patient).' });
+    }
     let row;
     for (let i = 0; i < 3 && !row; i++) {   // a reference clash is astronomically rare; retry anyway
       try {
@@ -78,7 +139,17 @@ router.post('/', async (req, res) => {
       } catch (e) { if (e.code !== '23505') throw e; }
     }
     console.log(`[sick-notes] ${row.reference} issued by ${who.id} for patient ${patient.id}`);
-    res.status(201).json({ note: SN.toApi(row) });
+    if (requestId) {
+      await req.db.query(
+        `UPDATE sick_note_requests SET status = 'issued', sick_note_id = $2, decided_by = $3, decided_at = now()
+          WHERE id::text = $1 AND status = 'pending'`, [requestId, row.id, who.id]);
+      await tellPatient(req, patient.id, {
+        subject: `Your sick note is ready (${row.reference})`, title: 'Your sick note is ready', colour: '#08B39C',
+        intro: 'Your clinician has issued the sick note you asked for. You can view and print it in your patient portal or the AureonCare app.',
+        rows: [['Reference', row.reference], ['Covers', `${SN.longDate(row.start_date)} – ${SN.longDate(row.end_date)}`]],
+      });
+    }
+    res.status(201).json({ note: SN.toApi(row), requestId: requestId || undefined });
   } catch (err) {
     console.error('[sick-notes] issue:', err.message);
     res.status(500).json({ error: 'Could not issue the sick note' });

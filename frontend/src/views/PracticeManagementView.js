@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { showToast } from '../utils/toast';
 import BookingRequestsPanel from '../components/scheduling/BookingRequestsPanel';
+import SickNoteRequestsQueue from '../components/scheduling/SickNoteRequestsQueue';
 import { Plus, List, Calendar, Eye, Edit, Trash2, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Search, Filter, X, Clock, User, CheckCircle, Bell, Video, Loader2, RefreshCw } from 'lucide-react';
 import { formatDate, formatTime } from '../utils/formatters';
 import { isProvider, isPatient } from '../utils/rolePermissions';
@@ -397,6 +398,7 @@ const PracticeManagementView = ({
       {/* Guest bookings from the public booking page, waiting to be confirmed. */}
       <BookingRequestsPanel theme={theme} api={api} addNotification={addNotification}
         onChanged={() => api.getAppointments().then((a) => setAppointments && setAppointments(a)).catch(() => {})} />
+      <SickNoteRequestsQueue theme={theme} api={api} addNotification={addNotification} />
       <div className="flex items-center justify-end flex-wrap gap-4">
         <div className="flex items-center gap-3">
           {/* View Type Toggle */}

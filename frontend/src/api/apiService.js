@@ -1182,6 +1182,9 @@ const api = {
     }
     return response.json();
   },
+  portalGetSickNoteRequests: (patientId) => api._portalCall(patientId, '/sick-note-requests', { fail: 'Failed to load your requests' }),
+  portalRequestSickNote: (patientId, body) => api._portalCall(patientId, '/sick-note-requests', { method: 'POST', body, fail: 'Could not send your request' }),
+  portalCancelSickNoteRequest: (patientId, requestId) => api._portalCall(patientId, `/sick-note-requests/${encodeURIComponent(requestId)}/cancel`, { method: 'POST', body: {}, fail: 'Could not cancel the request' }),
   portalGetSickNotes: (patientId) => api._portalCall(patientId, '/sick-notes', { fail: 'Failed to load sick notes' }),
   portalGetSickNoteDocument: (patientId, noteId) => api._portalCall(patientId, `/sick-notes/${encodeURIComponent(noteId)}/document`, { fail: 'Failed to load the sick note' }),
   portalGetDiagnoses: (patientId) => api._portalCall(patientId, '/diagnoses', { fail: 'Failed to load diagnoses' }),
@@ -4311,6 +4314,19 @@ const api = {
     const r = await authenticatedFetch(`${API_BASE_URL}/sick-notes/${encodeURIComponent(id)}/email`, { method: 'POST', body: JSON.stringify({}) });
     const data = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(data.error || 'Could not email the sick note');
+    return data;
+  },
+  getSickNoteRequests: async () => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/sick-notes/requests`);
+    const data = await r.json().catch(() => ({}));
+    if (r.status === 403) return { requests: [], canIssue: false, forbidden: true };
+    if (!r.ok) throw new Error(data.error || 'Could not load sick note requests');
+    return data;
+  },
+  declineSickNoteRequest: async (id, reason) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/sick-notes/requests/${encodeURIComponent(id)}/decline`, { method: 'POST', body: JSON.stringify({ reason }) });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || 'Could not decline the request');
     return data;
   },
   voidSickNote: async (id, reason) => {

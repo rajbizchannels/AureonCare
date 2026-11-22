@@ -147,4 +147,32 @@ This note is for the patient to give to an employer, school or benefits office; 
 </div></body></html>`;
 }
 
-module.exports = { formatAddress, ADJUSTMENTS, PURPOSES, MAX_DAYS, validate, toApi, renderDocument, newReference, adviceText, longDate, daysBetween };
+// ── requests from patients ───────────────────────────────────────────────────────────
+const REQUEST_BACKDATE_DAYS = 14;   // a request can cover days already missed, up to two weeks back
+const REQUEST_AHEAD_DAYS = 30;      // and can start up to a month ahead (e.g. after planned surgery)
+
+/** Check a patient's request. Returns { value } or { error }. */
+function validateRequest(body, today = new Date().toISOString().slice(0, 10)) {
+  const b = body || {};
+  const re = /^\d{4}-\d{2}-\d{2}$/;
+  if (!re.test(b.startDate || '') || !re.test(b.endDate || '')) return { error: 'Give the first and last day you need the note to cover.' };
+  if (b.endDate < b.startDate) return { error: 'The last day cannot be before the first day.' };
+  const days = daysBetween(b.startDate, b.endDate);
+  if (days > MAX_DAYS) return { error: `A request can cover at most ${MAX_DAYS} days.` };
+  if (daysBetween(b.startDate, today) - 1 > REQUEST_BACKDATE_DAYS) return { error: `A request can go back at most ${REQUEST_BACKDATE_DAYS} days. Contact your practice about earlier dates.` };
+  if (daysBetween(today, b.startDate) - 1 > REQUEST_AHEAD_DAYS) return { error: `A request can start at most ${REQUEST_AHEAD_DAYS} days ahead.` };
+  const reason = String(b.reason || '').trim();
+  if (reason.length < 10) return { error: 'Tell your clinician briefly why you need the note (at least 10 characters).' };
+  return { value: { purpose: PURPOSES[b.purpose] ? b.purpose : 'work', startDate: b.startDate, endDate: b.endDate, reason: reason.slice(0, 1000) } };
+}
+
+function requestToApi(r) {
+  return {
+    id: r.id, patientId: r.patient_id, purpose: r.purpose, startDate: isoDate(r.start_date), endDate: isoDate(r.end_date),
+    days: daysBetween(r.start_date, r.end_date), reason: r.reason, status: r.status, sickNoteId: r.sick_note_id || null,
+    decisionReason: r.decision_reason || null, decidedAt: r.decided_at || null, createdAt: r.created_at,
+    ...(r.first_name !== undefined ? { patientName: `${r.first_name || ''} ${r.last_name || ''}`.trim(), mrn: r.mrn || null } : {}),
+  };
+}
+
+module.exports = { validateRequest, requestToApi, REQUEST_BACKDATE_DAYS, REQUEST_AHEAD_DAYS, formatAddress, ADJUSTMENTS, PURPOSES, MAX_DAYS, validate, toApi, renderDocument, newReference, adviceText, longDate, daysBetween };
