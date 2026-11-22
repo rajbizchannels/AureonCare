@@ -4314,6 +4314,24 @@ const api = {
     if (!r.ok) throw new Error(data.error || 'Could not issue the sick note');
     return data;
   },
+  // Insurance eligibility (X12 270/271 through the practice's clearinghouse).
+  checkEligibility: async (body) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/eligibility/check`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) { const e = new Error(data.error || 'The eligibility check could not be completed'); e.missing = data.missing; e.status = r.status; throw e; }
+    return data.check;
+  },
+  getLatestEligibility: async (patientId, { payerId, serviceDate } = {}) => {
+    const q = new URLSearchParams({ patientId });
+    if (payerId) q.set('payerId', payerId);
+    if (serviceDate) q.set('serviceDate', serviceDate);
+    const r = await authenticatedFetch(`${API_BASE_URL}/eligibility/latest?${q}`);
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || 'Could not read eligibility');
+    return data.check || null;
+  },
   // Staff notification settings — per notification, per channel (in-app / email / WhatsApp).
   getNotificationSettings: async () => {
     const r = await authenticatedFetch(`${API_BASE_URL}/notification-settings`);

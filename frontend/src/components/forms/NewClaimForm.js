@@ -3,6 +3,7 @@ import { DollarSign, X, Save, Bot, Search, Plus, Trash2, Shield } from 'lucide-r
 import ConfirmationModal from '../modals/ConfirmationModal';
 import { useAudit } from '../../hooks/useAudit';
 import ThemedSelect from './ThemedSelect';
+import EligibilityCheck from '../rcm/EligibilityCheck';
 
 const NewClaimForm = ({ theme, api, patients, claims, editingClaim, onClose, onSuccess, addNotification, t }) => {
   const { logFormView, logCreate, logUpdate, logError, startAction } = useAudit();
@@ -461,6 +462,13 @@ const NewClaimForm = ({ theme, api, patients, claims, editingClaim, onClose, onS
                     </p>
                   </div>
                 )}
+                {selectedPatientInsurer && formData.patientId ? (
+                  <div className="mt-3">
+                    {/* Coverage on the date of service — the pre-submission check reads this too. */}
+                    <EligibilityCheck theme={theme} api={api} patientId={formData.patientId} payerId={formData.payerId || null}
+                      serviceDate={formData.serviceDate || null} claimId={editingClaim?.id || null} />
+                  </div>
+                ) : null}
               </div>
 
               <div>
