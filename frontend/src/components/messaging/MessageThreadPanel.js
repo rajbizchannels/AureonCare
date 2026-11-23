@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { formatDateTime } from '../../utils/formatters';
 import AIAssistButton from '../integrations/AIAssistButton';
+import { guidelineText } from '../../utils/uploadGuidelines';
 
 /**
  * Right pane: one conversation, its transcript, and the composer.
@@ -408,6 +409,7 @@ const MessageThreadPanel = ({
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
+              title={`Attach a file — ${guidelineText('messageAttachment')}`}
               aria-label="Attach a file"
               className={`p-2.5 rounded-lg transition-colors ${dark ? 'text-slate-400 hover:bg-slate-800' : 'text-gray-500 hover:bg-gray-100'}`}
             >
