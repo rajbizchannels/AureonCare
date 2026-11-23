@@ -62,7 +62,7 @@ if /i not "%CONFIRM%"=="Y" (
 
 echo.
 echo Loading medication data...
-psql -U %DB_USER% -h %DB_HOST% -p %DB_PORT% -d %DB_NAME% -f "%~dp0015_medications_sample_data.sql" >nul 2>&1
+psql -U %DB_USER% -h %DB_HOST% -p %DB_PORT% -d %DB_NAME% -f "%~dp0..\migrations\history\global\015_medications_sample_data.sql" >nul 2>&1
 if errorlevel 1 (
     echo [ERROR] Failed to load medication data
     echo Check the error messages above for details

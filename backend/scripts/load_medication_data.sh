@@ -46,7 +46,7 @@ echo -e "${YELLOW}Checking if medications table exists...${NC}"
 if ! psql -U "$DB_USER" -h "$DB_HOST" -p "$DB_PORT" -d "$DB_NAME" -c "SELECT 1 FROM medications LIMIT 1;" > /dev/null 2>&1; then
     echo -e "${RED}✗ Medications table not found${NC}"
     echo -e "${YELLOW}Please run migration 015 first:${NC}"
-    echo "  psql -U $DB_USER -d $DB_NAME -f backend/migrations/015_add_eprescribing_pharmacy_network.sql"
+    echo "  psql -U $DB_USER -d $DB_NAME -f npm run migrate"
     exit 1
 fi
 
@@ -76,7 +76,7 @@ echo -e "${YELLOW}Loading medication data...${NC}"
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 # Load the medication data
-if psql -U "$DB_USER" -h "$DB_HOST" -p "$DB_PORT" -d "$DB_NAME" -f "$SCRIPT_DIR/015_medications_sample_data.sql" > /dev/null 2>&1; then
+if psql -U "$DB_USER" -h "$DB_HOST" -p "$DB_PORT" -d "$DB_NAME" -f "$SCRIPT_DIR/../migrations/history/global/015_medications_sample_data.sql" > /dev/null 2>&1; then
     echo -e "${GREEN}✓ Medication data loaded successfully${NC}"
 else
     echo -e "${RED}✗ Failed to load medication data${NC}"
