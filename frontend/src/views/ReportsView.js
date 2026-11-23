@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   BarChart3, TrendingUp, DollarSign, Users, Calendar, FileText,
   Download, ArrowLeft, ChevronRight, ChevronDown, X,
@@ -1451,7 +1451,8 @@ const CustomReportResultView = ({ result, config, theme, onBack, currency = 'USD
 
 const ReportsView = ({ theme, patients = [], appointments = [], claims = [], payments = [], addNotification, setCurrentModule, api, currency = 'USD', activeTab: shellTab, onTabChange, user = null }) => {
   // Compliance reports read the audit trail: administrators only (the API refuses others too).
-  const categories = REPORT_CATEGORIES.filter((c) => c.id !== 'compliance' || (user && user.role === 'admin'));
+  const isAdmin = Boolean(user && user.role === 'admin');
+  const categories = useMemo(() => REPORT_CATEGORIES.filter((c) => c.id !== 'compliance' || isAdmin), [isAdmin]);
   // The app shell lists the report catalogue in its secondary pane and passes
   // the selection down as "<categoryId>:<reportId>" (or "custom"). Rendered
   // outside the shell the view keeps its own sidebar.
@@ -1535,7 +1536,7 @@ const ReportsView = ({ theme, patients = [], appointments = [], claims = [], pay
     if (!cat || !rep) return;
     if (selectedReport?.id === rep.id && selectedCategory?.id === cat.id) return;
     selectReport(cat, rep);
-  }, [tabsInShell, shellTab, selectReport, selectedReport, selectedCategory]);
+  }, [tabsInShell, shellTab, selectReport, selectedReport, selectedCategory, categories]);
 
   const toggleCategory = (catId) => {
     setExpandedCategories(prev => ({ ...prev, [catId]: !prev[catId] }));
