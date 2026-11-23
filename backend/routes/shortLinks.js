@@ -28,7 +28,7 @@ function page(title, text) {
 <meta name="robots" content="noindex"><title>${esc(title)} · AureonCare</title></head>
 <body style="margin:0;background:#0F172A;font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#E2E8F0;display:flex;min-height:100vh;align-items:center;justify-content:center">
 <div style="max-width:420px;margin:24px;padding:28px;background:#1E293B;border-radius:14px;border-top:4px solid #08B39C">
-<div style="font-size:22px;font-weight:700"><span style="color:#F9BD00">Aureon</span><span style="color:#08B39C">Care</span></div>
+<a href="${esc(app || '/')}" aria-label="AureonCare — sign in, or your home page when signed in" style="display:inline-block;font-size:22px;font-weight:700;text-decoration:none"><span style="color:#F9BD00">Aureon</span><span style="color:#08B39C">Care</span></a>
 <h1 style="font-size:18px;margin:18px 0 8px">${esc(title)}</h1>
 <p style="margin:0 0 18px;line-height:1.5;color:#94A3B8">${esc(text)}</p>
 ${app ? `<a href="${esc(app)}" style="color:#5EEAD4">Go to AureonCare</a>` : ''}

@@ -91,6 +91,9 @@ const report = (err) => {
   const fromApp = await form(`${base}/join`, { firstName: 'Ori', lastName: 'Same', email: `orisame_${RUN}@example.com`, role: 'nurse' }, { Origin: BASE });
   check(`a same-origin form post is accepted (got ${fromApp.status})`, fromApp.status === 200);
   check('the form page sends its origin with the post', /same-origin/.test(f.referrer || ''));
+  check('the confirmation page links to the sign-in page', /<a class="btn" href="\/">Go to the AureonCare sign-in page<\/a>/.test(r1.html));
+  check('the logo on the join pages links to the app', /<header><a href="\/"/.test(r1.html) && /<header><a href="\/"/.test(f.html));
+  check('the logo on the profile page links to the app', /<header class="top">.*?<a href="\/"/.test(page.html));
   const row = (await pool.query(`SELECT * FROM public.join_requests WHERE practice_id = $1 AND email = $2`, [t.practiceId, email])).rows;
   check('...one row, UNVERIFIED, from the profile, no account', row.length === 1 && row[0].status === 'unverified' && row[0].source === 'profile' && row[0].user_id === null);
   check('...asking for "admin" falls back to staff', row[0] && row[0].requested_role === 'staff');
@@ -115,6 +118,7 @@ const report = (err) => {
   // ── confirm the email ────────────────────────────────────────────────────────────
   outbox.length = 0;
   const v = await get(pathOf(newUrl));
+  check('"Request sent" links to the sign-in page', /Go to the AureonCare sign-in page/.test(v.html));
   check(`clicking the link sends the request (got ${v.status})`, v.status === 200 && /Request sent/.test(v.html));
   check('...admins are emailed', outbox.some((m) => m.to === admin.email && /Request to join/.test(m.subject)));
   check('...but not the nurse', !outbox.some((m) => m.to === nurse.email));

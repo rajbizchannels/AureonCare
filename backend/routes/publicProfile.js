@@ -25,7 +25,7 @@ function notFound(res) {
 <meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Page not found · AureonCare</title>
 <style>body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#0F172A;color:#E2E8F0;display:flex;min-height:100vh;align-items:center;justify-content:center}
 .c{max-width:420px;margin:24px;padding:28px;background:#1E293B;border-radius:14px;border-top:4px solid #08B39C}.g{color:#F9BD00}.t{color:#08B39C}</style></head>
-<body><main class="c"><div style="font-size:22px;font-weight:700"><span class="g">Aureon</span><span class="t">Care</span></div>
+<body><main class="c"><a href="/" aria-label="AureonCare — sign in, or your home page when signed in" style="display:inline-block;font-size:22px;font-weight:700;text-decoration:none"><span class="g">Aureon</span><span class="t">Care</span></a>
 <h1 style="font-size:18px">This page isn't available</h1><p style="color:#94A3B8">The practice profile you are looking for does not exist or is not public.</p></main></body></html>`);
 }
 
@@ -100,7 +100,7 @@ footer{max-width:960px;margin:24px auto;padding:0 16px 32px;font-size:.85rem;col
 </style>
 ${jsonLd ? `<script type="application/ld+json">${jsonLd}</script>` : ''}
 </head><body>
-<header class="top"><div class="w" style="display:flex;justify-content:space-between;align-items:center"><span><span class="g">Aureon</span><span class="t">Care</span></span><a href="/find" style="color:#CBD5E1;font-weight:500;font-size:.9rem;text-decoration:none">Find a practice</a></div></header>
+<header class="top"><div class="w" style="display:flex;justify-content:space-between;align-items:center"><a href="/" aria-label="AureonCare — sign in, or your home page when signed in" style="text-decoration:none"><span class="g">Aureon</span><span class="t">Care</span></a><a href="/find" style="color:#CBD5E1;font-weight:500;font-size:.9rem;text-decoration:none">Find a practice</a></div></header>
 <main>
 <section class="hero" aria-labelledby="practice-name">
 ${p.cover_photo_id ? `<img class="cover" src="${photoUrl(p.cover_photo_id)}" alt="">` : ''}
@@ -190,6 +190,8 @@ const joinLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 10, standardHeade
   // Same two-condition test switch as middleware/rateLimiters.js.
   skip: () => process.env.AC_RL_TEST_BYPASS === '1' && process.env.NODE_ENV !== 'production' });
 const JOIN_ROLES = { doctor: 'Doctor', nurse: 'Nurse', staff: 'Staff (front desk, admin team)' };
+// The app's root shows the sign-in page when signed out and the home page when signed in.
+const SIGN_IN_LINK = '<a class="btn" href="/">Go to the AureonCare sign-in page</a>';
 const sha = (t) => crypto.createHash('sha256').update(String(t)).digest('hex');
 
 function shell(title, inner) {
@@ -202,8 +204,8 @@ header{background:#0F172A;padding:12px 16px;font-weight:700}.g{color:#F9BD00}.t{
 main{max-width:480px;margin:24px auto;padding:0 16px}.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:20px}
 label{display:block;font-weight:600;margin:12px 0 4px}input,select{width:100%;padding:10px;border:1px solid var(--line);border-radius:8px;font:inherit;background:var(--bg);color:var(--text)}
 button{margin-top:16px;width:100%;padding:11px;border:0;border-radius:8px;background:var(--teal);color:#fff;font-weight:600;font:inherit;cursor:pointer}
-.muted{color:var(--muted);font-size:.92rem}a{color:var(--teal)}.err{color:#DC2626}</style></head>
-<body><header><span class="g">Aureon</span><span class="t">Care</span></header><main><div class="card">${inner}</div></main></body></html>`;
+.muted{color:var(--muted);font-size:.92rem}a{color:var(--teal)}a.btn{display:block;margin-top:16px;padding:11px;border-radius:8px;background:var(--teal);color:#fff;font-weight:600;text-align:center;text-decoration:none}.err{color:#DC2626}</style></head>
+<body><header><a href="/" aria-label="AureonCare — sign in, or your home page when signed in" style="text-decoration:none"><span class="g">Aureon</span><span class="t">Care</span></a></header><main><div class="card">${inner}</div></main></body></html>`;
 }
 const send = (res, status, title, inner) => {
   res.set('Cache-Control', 'no-store');
@@ -245,7 +247,7 @@ router.post('/:slug/join', joinLimiter, express.urlencoded({ extended: false, li
   }
   const done = () => send(res, 200, 'Check your email', `<h1 style="margin:0 0 8px;font-size:1.3rem">Check your email</h1>
 <p>If ${esc(vals.email)} can receive mail, we have sent it a link to confirm your request to join ${esc(p.display_name || p.practice_name)}. The link works for 24 hours.</p>
-<p class="muted">The practice sees your request only after you confirm it.</p>`);
+<p class="muted">The practice sees your request only after you confirm it.</p>${SIGN_IN_LINK}`);
   try {
     // Already a member, or a request already confirmed: same answer, nothing new.
     const { rows: member } = await pool.query(
@@ -296,7 +298,7 @@ router.get('/:slug/join/verify', joinLimiter, async (req, res) => {
         RETURNING email, first_name, last_name, requested_role`, [sha(req.query.t || ''), p.practice_id]);
     if (!r) {
       return send(res, 410, 'Link expired', `<h1 style="margin:0 0 8px;font-size:1.3rem">This link has expired or was already used</h1>
-<p><a href="/p/${esc(encodeURIComponent(req.params.slug))}/join">Ask again</a></p>`);
+<p><a href="/p/${esc(encodeURIComponent(req.params.slug))}/join">Ask again</a></p>${SIGN_IN_LINK}`);
     }
     // Tell the practice's admins.
     try {
@@ -311,7 +313,7 @@ router.get('/:slug/join/verify', joinLimiter, async (req, res) => {
       for (const a of admins) await sendEmail(a.email, `Request to join ${practiceName}`, html).catch(() => {});
     } catch (_) { /* the request stands */ }
     send(res, 200, 'Request sent', `<h1 style="margin:0 0 8px;font-size:1.3rem">Request sent</h1>
-<p>Thanks — ${esc(practiceName)}'s administrators will review your request. If they approve it, you will get an invitation by email.</p>`);
+<p>Thanks — ${esc(practiceName)}'s administrators will review your request. If they approve it, you will get an invitation by email.</p>${SIGN_IN_LINK}`);
   } catch (e) {
     console.error('[profile-join] verify failed:', e.message);
     send(res, 500, 'Ask to join', '<p>Something went wrong. Please try the link again later.</p>');
