@@ -55,7 +55,7 @@ const checkEPrescribingSchema = async (pool, req) => {
 async function loadRxRecords(pool, prescription, pharmacyId) {
   const [patient, provider, pharmacy] = await Promise.all([
     pool.query('SELECT * FROM patients WHERE id::text = $1::text', [prescription.patient_id]).then((r) => r.rows[0] || {}),
-    pool.query('SELECT id, first_name, last_name, phone, email FROM users WHERE id::text = $1::text', [prescription.provider_id]).then((r) => r.rows[0] || {}),
+    pool.query('SELECT id, first_name, last_name, phone, email, npi, dea_number FROM users WHERE id::text = $1::text', [prescription.provider_id]).then((r) => r.rows[0] || {}),
     pharmacyId
       ? pool.query('SELECT * FROM pharmacies WHERE id::text = $1::text', [pharmacyId]).then((r) => r.rows[0] || null)
       : Promise.resolve(null),

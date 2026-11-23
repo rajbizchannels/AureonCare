@@ -6,6 +6,8 @@ const { authenticate, authorize } = require('../middleware/auth');
 const adminOnly = authorize('admin');
 const { sendDbError } = require('../utils/dbErrors');
 const router = express.Router();
+const { usIdentifiersApply, normaliseCountry } = require('../utils/practiceRegion');
+const { isValidNpi } = require('../services/eligibility/medicalNetwork');
 router.use(authenticate);
 router.use(require('../middleware/planEnforcement').enforceActiveBilling); // SEC-05 S11: read-only when subscription past_due/canceled
 
@@ -38,7 +40,7 @@ async function ownPractice(req) {
   if (!practiceId) return null;
   const pool = req.db || req.app.locals.pool;
   const { rows } = await pool.query(
-    `SELECT id, name, tax_id, phone, email, address, npi, website, currency
+    `SELECT id, name, tax_id, phone, email, address, npi, website, currency, country
        FROM public.practices WHERE id::text = $1::text`, [practiceId]);
   return rows[0] || null;
 }
@@ -50,7 +52,7 @@ async function ownPractice(req) {
 router.get('/', async (req, res) => {
   try {
     const p = await ownPractice(req);
-    if (!p) return res.json({ name: '', website: '', npi: '', currency: 'USD' });
+    if (!p) return res.json({ name: '', website: '', npi: '', currency: 'USD', country: '', usIdentifiers: false });
     res.json({
       name: p.name || '',
       website: p.website || '',
@@ -60,6 +62,9 @@ router.get('/', async (req, res) => {
       phone: p.phone || '',
       email: p.email || '',
       address: typeof p.address === 'string' ? p.address : (p.address?.street || ''),
+      country: p.country || '',
+      // NPI, DEA, X12 eligibility and Surescripts apply only in the US (utils/practiceRegion.js).
+      usIdentifiers: usIdentifiersApply(p),
     });
   } catch (error) {
     console.error('Error fetching clinic settings:', error);
@@ -78,21 +83,26 @@ router.get('/', async (req, res) => {
 router.post('/', adminOnly, async (req, res) => {
   try {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
-    const { name, address, phone, email, website, taxId, npi, currency } = req.body || {};
+    const { name, address, phone, email, website, taxId, npi, currency, country } = req.body || {};
     const practiceId = (req.tenant && req.tenant.practiceId) || (req.user && req.user.practiceId);
     if (!practiceId) return res.status(400).json({ error: 'No practice selected.' });
     if (!name || !String(name).trim()) return res.status(400).json({ error: 'Practice name is required.' });
     if (npi && !/^\d{10}$/.test(String(npi))) return res.status(400).json({ error: 'NPI must be 10 digits.' });
     if (currency && !/^[A-Za-z]{3}$/.test(String(currency))) return res.status(400).json({ error: 'Currency must be a 3-letter code.' });
+    const countryCode = country === undefined ? undefined : normaliseCountry(country);
+    if (country && !countryCode) return res.status(400).json({ error: 'Country must be a 2-letter ISO code (e.g. US, DE).' });
+    if (npi && !isValidNpi(npi)) return res.status(400).json({ error: 'That is not a valid NPI (10 digits with a check digit).' });
 
     const { rowCount } = await pool.query(
       `UPDATE public.practices
           SET name = $1, tax_id = $2, phone = $3, email = $4, address = $5::jsonb,
-              npi = $6, website = $7, currency = $8, updated_at = CURRENT_TIMESTAMP
+              npi = $6, website = $7, currency = $8,
+              country = CASE WHEN $10::boolean THEN $11 ELSE country END,
+              updated_at = CURRENT_TIMESTAMP
         WHERE id::text = $9::text`,
       [String(name).trim(), taxId || null, phone || null, email || null,
        JSON.stringify({ street: address || '' }), npi || null, website || null,
-       (currency || 'USD').toUpperCase(), practiceId]);
+       (currency || 'USD').toUpperCase(), practiceId, country !== undefined, countryCode || null]);
     if (!rowCount) return res.status(404).json({ error: 'Practice not found.' });
     res.json({ success: true, message: 'Clinic settings saved successfully' });
   } catch (error) {

@@ -131,6 +131,36 @@ router.get('/:id', isSelfOrAdmin, async (req, res) => {
   }
 });
 
+
+// Personal NPI and DEA number (US clinicians). '' clears a value; anything else must be valid.
+const { isValidDea } = require('../utils/practiceRegion');
+const { isValidNpi } = require('../services/eligibility/medicalNetwork');
+function clinicianIds(body = {}) {
+  const out = {};
+  const npi = body.npi !== undefined ? body.npi : body.NPI;
+  const dea = body.dea_number !== undefined ? body.dea_number : body.deaNumber;
+  if (npi !== undefined) {
+    const v = String(npi || '').trim();
+    if (v && !isValidNpi(v)) return { error: 'That is not a valid NPI — 10 digits with a check digit.' };
+    out.npi = v || null;
+  }
+  if (dea !== undefined) {
+    const v = String(dea || '').trim().toUpperCase();
+    if (v && !isValidDea(v)) return { error: 'That is not a valid DEA number — 2 letters and 7 digits with a check digit.' };
+    out.dea = v || null;
+  }
+  return out;
+}
+async function saveClinicianIds(pool, userId, ids) {
+  if (!('npi' in ids) && !('dea' in ids)) return null;
+  const { rows: [u] } = await pool.query(
+    `UPDATE users SET npi = CASE WHEN $2 THEN $3 ELSE npi END,
+                      dea_number = CASE WHEN $4 THEN $5 ELSE dea_number END, updated_at = NOW()
+      WHERE id::text = $1::text RETURNING *`,
+    [userId, 'npi' in ids, ids.npi ?? null, 'dea' in ids, ids.dea ?? null]);
+  return u;
+}
+
 // Create new user — admin only (quota + provider-seat checks run after)
 router.post('/', authorize('admin'), enforceUserQuota, enforceProviderQuota, async (req, res) => {
   const { firstName, lastName, first_name, last_name, role, practice, avatar, email, phone, license, specialty, preferences, status, password } = req.body;
@@ -138,6 +168,8 @@ router.post('/', authorize('admin'), enforceUserQuota, enforceProviderQuota, asy
   try {
     const pool = req.app.locals.pool;
     const bcrypt = require('bcryptjs');
+    const ids = clinicianIds(req.body);
+    if (ids.error) return res.status(400).json({ error: ids.error });
 
     // SEC-05: table/column creation moved to migrations (see migrations/tenant/001 and 072).
 
@@ -178,7 +210,8 @@ router.post('/', authorize('admin'), enforceUserQuota, enforceProviderQuota, asy
       ]
     );
 
-    const newUser = result.rows[0];
+    let newUser = result.rows[0];
+    newUser = (await saveClinicianIds(pool, newUser.id, ids)) || newUser;
 
     // Auto-create ancillary role records — non-fatal so the user creation
     // response always succeeds even if these steps fail.
@@ -362,6 +395,9 @@ router.put('/:id', isSelfOrAdmin, async (req, res) => {
     // Their default practice is another one only when they are shared (handled above);
     // for a single-practice member, role on the account and the membership are the same.
 
+    const ids = clinicianIds(req.body);
+    if (ids.error) return res.status(400).json({ error: ids.error });
+
     const result = await pool.query(
       `UPDATE users
        SET first_name = COALESCE($1, first_name),
@@ -402,7 +438,7 @@ router.put('/:id', isSelfOrAdmin, async (req, res) => {
       ]
     );
 
-    const updatedUser = result.rows[0];
+    let updatedUser = result.rows[0];
 
     // Handle role-based table synchronization
     if (oldRole !== newRole) {
@@ -467,6 +503,7 @@ router.put('/:id', isSelfOrAdmin, async (req, res) => {
       }
     }
 
+    updatedUser = (await saveClinicianIds(pool, updatedUser.id, ids)) || updatedUser;
     res.json(toCamelCase(updatedUser));
   } catch (error) {
     console.error('Error updating user:', error);

@@ -173,6 +173,22 @@ END $seeded$;
  * rather than asserted. Parses the jsonb literals out of the SQL and compares every field
  * id, type and required flag.
  */
+// Changes made to the library AFTER tenant/008 ran, each shipped by its own migration. The
+// check applies them to what 008 recorded before comparing, so 008 stays an exact record of
+// what ran and the source can still move on. Add an entry with every such migration.
+const AMENDMENTS = [
+  // migration 101: Portuguese removed from the communication-language question
+  { slug: 'communication-preferences', field: 'preferred_language', removeOptions: ['Portuguese (Português)'] },
+];
+
+function amend(slug, fields) {
+  for (const a of AMENDMENTS.filter((x) => x.slug === slug)) {
+    const f = fields.find((x) => x.id === a.field);
+    if (f && Array.isArray(f.options) && a.removeOptions) f.options = f.options.filter((o) => !a.removeOptions.includes(o));
+  }
+  return fields;
+}
+
 function verify({ FORM_TEMPLATES, FORM_CATEGORIES }) {
   if (!fs.existsSync(OUTPUT)) {
     console.error(`FAIL: ${path.relative(process.cwd(), OUTPUT)} does not exist — generate it first`);
@@ -200,7 +216,7 @@ function verify({ FORM_TEMPLATES, FORM_CATEGORIES }) {
     if (!m) { fail(`${t.slug}: could not recover the fields array from the SQL`); continue; }
     let parsed;
     try {
-      parsed = JSON.parse(m[1].replace(/''/g, "'"));
+      parsed = amend(t.slug, JSON.parse(m[1].replace(/''/g, "'")));
     } catch (e) {
       fail(`${t.slug}: generated fields jsonb does not parse (${e.message})`);
       continue;

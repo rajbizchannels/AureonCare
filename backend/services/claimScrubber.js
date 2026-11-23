@@ -18,6 +18,7 @@
 
 const { isValidNpi } = require('./eligibility/medicalNetwork');
 const { latestFor } = require('./eligibility');
+const { usIdentifiersApply } = require('../utils/practiceRegion');
 
 const ICD10 = /^[A-TV-Z][0-9][0-9A-Z](\.[0-9A-Z]{1,4})?$/;
 const CPT_HCPCS = /^(\d{4}[0-9A-Z]|[A-V]\d{4})(-[0-9A-Z]{2})*$/;
@@ -94,9 +95,12 @@ async function ruleIssues(db, claim, { practiceId }) {
 
   // ── billing provider ──
   const practice = practiceId
-    ? (await db.query('SELECT name, npi, tax_id FROM public.practices WHERE id::text = $1::text', [practiceId])).rows[0]
+    ? (await db.query('SELECT name, npi, tax_id, country, currency FROM public.practices WHERE id::text = $1::text', [practiceId])).rows[0]
     : null;
-  if (!practice || !isValidNpi(practice.npi)) add('error', 'NPI', 'provider', "The practice's NPI is missing or not a valid NPI.", 'Set it in Clinic Settings.');
+  // US identifiers only where they exist (utils/practiceRegion.js): a practice outside the US
+  // has no NPI and is not told to add one.
+  const us = usIdentifiersApply(practice);
+  if (us && (!practice || !isValidNpi(practice.npi))) add('error', 'NPI', 'provider', "The practice's NPI is missing or not a valid NPI.", 'Set it in Clinic Settings.');
   if (practice && !practice.tax_id) add('warning', 'TAX_ID', 'provider', "The practice's tax ID is missing; it is required on most claims.", 'Set it in Clinic Settings.');
 
   // ── codes ──
@@ -159,7 +163,7 @@ async function ruleIssues(db, claim, { practiceId }) {
   }
 
   // ── eligibility ──
-  if (patient && payer && /^\d{4}-\d{2}-\d{2}$/.test(sd)) {
+  if (us && patient && payer && /^\d{4}-\d{2}-\d{2}$/.test(sd)) {
     const elig = await latestFor(db, patient.id, { payerId: payer.id, serviceDate: sd, maxAgeDays: 30 }).catch(() => null);
     if (!elig) add('warning', 'ELIGIBILITY_UNCHECKED', 'eligibility', 'Eligibility has not been checked for this date of service.', 'Run "Check eligibility".');
     else if (elig.status === 'inactive') add('error', 'ELIGIBILITY_INACTIVE', 'eligibility', `${payer.name} reported coverage NOT active on ${elig.serviceDate}.`, 'Confirm coverage with the patient; bill another payer or the patient.');

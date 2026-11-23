@@ -1,3 +1,4 @@
+import { usIdentifiersApply } from './practiceRegion';
 /**
  * Input Validation Utilities
  * Provides validation functions for user inputs to prevent XSS, injection attacks,
@@ -265,7 +266,8 @@ export const validateClinicSettings = (settings) => {
     errors.taxId = taxIdValidation.error;
   }
 
-  const npiValidation = validateNPI(settings.npi);
+  // NPI is a US identifier: only checked where it applies (utils/practiceRegion.js).
+  const npiValidation = usIdentifiersApply(settings) ? validateNPI(settings.npi) : { isValid: true, error: null };
   if (!npiValidation.isValid) {
     errors.npi = npiValidation.error;
   }

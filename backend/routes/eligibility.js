@@ -38,7 +38,10 @@ router.post('/check', staff, async (req, res) => {
 router.get('/latest', staff, auditPhiRead('eligibility', (req) => req.query.patientId), async (req, res) => {
   try {
     if (!req.query.patientId) return res.status(400).json({ error: 'patientId is required.' });
-    res.json({ check: await E.latestFor(dbOf(req), req.query.patientId, {
+    const practiceId = (req.tenant && req.tenant.practiceId) || (req.user && req.user.practiceId);
+    // applicable:false tells the screens to hide eligibility for a practice outside the US.
+    if (!(await E.usIdentifiersApplyFor(dbOf(req), practiceId))) return res.json({ check: null, applicable: false });
+    res.json({ applicable: true, check: await E.latestFor(dbOf(req), req.query.patientId, {
       payerId: req.query.payerId || null, serviceDate: req.query.serviceDate || null,
     }) });
   } catch (err) {

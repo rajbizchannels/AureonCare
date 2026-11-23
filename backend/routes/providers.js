@@ -238,9 +238,10 @@ router.put('/:id', authenticate, async (req, res) => {
     const provider = providerCheck.rows[0];
 
     // Check access permissions
-    if (userRole === 'doctor') {
-      // Doctors can only update their own provider record
-      if (provider.user_id && provider.user_id.toString() !== userId.toString()) {
+    if (userRole === 'doctor' || userRole === 'provider') {
+      // Clinicians can only update their own provider record. providers.id IS the user's id —
+      // the old check compared a user_id column that does not exist, so it never refused.
+      if (String(provider.id) !== String(userId)) {
         return res.status(403).json({
           error: 'Access denied',
           message: 'You can only update your own provider information'

@@ -10,8 +10,9 @@
  * AC_SURESCRIPTS_TLS_CERT and AC_SURESCRIPTS_TLS_KEY (PEM text) — not from the settings row,
  * so a private key is never stored in, or returned from, the practice's settings.
  *
- * Prescriber identifiers live in the vendor settings JSON, because users have no NPI/SPI
- * columns:  settings.prescribers = { "<user id>": { spi, npi, dea } }, with settings.spi /
+ * Prescriber NPI and DEA number come from the user record (users.npi / users.dea_number,
+ * entered in User Management); the SPI, which Surescripts assigns on enrolment, lives in the
+ * vendor settings JSON, as do the older per-prescriber fallbacks:  settings.prescribers = { "<user id>": { spi, npi, dea } }, with settings.spi /
  * settings.npi as the default for a single-prescriber practice, and settings.practice_address
  * { line1, city, state, postalCode } / settings.practice_phone for the prescriber's address.
  *
@@ -63,6 +64,10 @@ class SurescriptsService {
    */
   toScript({ prescription = {}, patient = {}, provider = {}, pharmacy = {}, prescriberDea } = {}) {
     const ids = this.prescriberIds(prescription.provider_id || provider.id);
+    // The clinician's own NPI and DEA number (User Management) come first; the settings JSON
+    // stays as the fallback for practices that entered them there before the fields existed.
+    if (provider.npi) ids.npi = provider.npi;
+    if (provider.dea_number) ids.dea = provider.dea_number;
     const pa = this.settings.practice_address || {};
     const sig = prescription.instructions
       || [prescription.dosage, prescription.frequency, prescription.duration ? `for ${prescription.duration}` : null].filter(Boolean).join(' ');

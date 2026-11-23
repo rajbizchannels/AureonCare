@@ -4355,7 +4355,8 @@ const api = {
     const r = await authenticatedFetch(`${API_BASE_URL}/eligibility/latest?${q}`);
     const data = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(data.error || 'Could not read eligibility');
-    return data.check || null;
+    // { check, applicable } — applicable:false for practices outside the US.
+    return { check: data.check || null, applicable: data.applicable !== false };
   },
   // Staff notification settings — per notification, per channel (in-app / email / WhatsApp).
   getNotificationSettings: async () => {

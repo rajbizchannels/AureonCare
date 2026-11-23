@@ -16,6 +16,7 @@ const DEFAULT_CLINIC_SETTINGS = {
   taxId: '',
   npi: '',
   currency: 'USD',
+  country: '',
 };
 
 /**
