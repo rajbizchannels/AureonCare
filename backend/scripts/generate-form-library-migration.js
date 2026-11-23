@@ -179,12 +179,18 @@ END $seeded$;
 const AMENDMENTS = [
   // migration 101: Portuguese removed from the communication-language question
   { slug: 'communication-preferences', field: 'preferred_language', removeOptions: ['Portuguese (Português)'] },
+  // migration 102: Arabic added before "Other"
+  { slug: 'communication-preferences', field: 'preferred_language', insertBefore: { option: 'Arabic (العربية)', before: 'Other' } },
 ];
 
 function amend(slug, fields) {
   for (const a of AMENDMENTS.filter((x) => x.slug === slug)) {
     const f = fields.find((x) => x.id === a.field);
     if (f && Array.isArray(f.options) && a.removeOptions) f.options = f.options.filter((o) => !a.removeOptions.includes(o));
+    if (f && Array.isArray(f.options) && a.insertBefore && !f.options.includes(a.insertBefore.option)) {
+      const i = f.options.indexOf(a.insertBefore.before);
+      f.options.splice(i === -1 ? f.options.length : i, 0, a.insertBefore.option);
+    }
   }
   return fields;
 }

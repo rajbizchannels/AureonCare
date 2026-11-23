@@ -776,7 +776,7 @@ export const FORM_TEMPLATES = [
         options: ['Yes, I would like to receive these','No, please do not send these'] },
       { id: 'heading_language', type: 'heading', label: 'Language Preference' },
       { id: 'preferred_language', type: 'select', label: 'Preferred language for communications', required: false,
-        options: ['English','Spanish (Español)','French (Français)','German (Deutsch)','Other'] },
+        options: ['English','Spanish (Español)','French (Français)','German (Deutsch)','Arabic (العربية)','Other'] },
       { id: 'interpreter_needed', type: 'select', label: 'Do you need an interpreter for in-person visits?', required: false,
         options: ['No','Yes – Spanish','Yes – Other language'] },
     ],

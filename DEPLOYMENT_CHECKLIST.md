@@ -1098,3 +1098,9 @@ What changes:
 - **SEC-56:** a doctor could edit any other provider's record in the practice; now only their own.
 - The language API and the form designer offer only the five translated languages.
 - Audit trail (SEC-55): readable by administrators only; Insights → Compliance hidden from others.
+
+## Migration 102 — Arabic in the communication-language question
+
+Paste `backend/migrations/102_communication_language_arabic.sql` into the SQL editor as postgres (safe to
+re-run). It adds "Arabic (العربية)" before "Other" in the Communication Preferences form of every practice,
+so the options match the five languages the app is translated into. Forms already filled in are unchanged.
