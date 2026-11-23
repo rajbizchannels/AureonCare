@@ -90,7 +90,7 @@ async function checkAuditSetup() {
       console.log('   ❌ audit_logs table DOES NOT EXIST\n');
       console.log('   📝 You need to run the migration:');
       console.log('   Run this command:');
-      console.log('   psql -U aureoncare_app -d aureoncare -f backend/migrations/040_create_audit_logs_table.sql\n');
+      console.log('   npm run migrate && npm run migrate:tenants\n');
     }
 
     console.log('\n✅ Diagnostic complete!');

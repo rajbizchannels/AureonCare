@@ -11,8 +11,6 @@
     "migrate:tenants": "node backend/run-tenant-migrations.js",
     "packs:load": "node backend/scripts/load-specialty-packs.js",
     "platform:operator": "node backend/scripts/create-platform-operator.js",
-    "migrate:preauth": "node backend/scripts/run-preapprovals-migration.js",
-    "migrate:messaging": "node backend/scripts/migrate-messaging.js",
     "reset-db": "node backend/scripts/reset-and-seed.js",
     "check:tenant-scoping": "node backend/scripts/check-tenant-scoping.js",
     "check:db-role": "node backend/scripts/check-db-role.js",
@@ -78,7 +76,8 @@
     "test:staff-notifications": "node backend/test/notifications/staff-notifications.test.js",
     "test:clinic-settings": "node backend/test/security/clinic-settings-isolation.test.js",
     "test:eligibility": "node backend/test/rcm/eligibility.test.js",
-    "test:claim-scrubbing": "node backend/test/rcm/claim-scrubbing.test.js"
+    "test:claim-scrubbing": "node backend/test/rcm/claim-scrubbing.test.js",
+    "test:audit-access": "node backend/test/security/audit-access.test.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.6.0",

@@ -436,9 +436,9 @@ Comprehensive timeline for assembling the final video in DaVinci Resolve or simi
 ## 📚 Additional Resources
 
 ### Documentation
-- [AureonCare User Manual](../user-manual/)
-- [API Documentation](../api/)
-- [FHIR Implementation Guide](../FHIR_TRACKING.md)
+- [AureonCare User Manual](../product/USER_MANUAL.md)
+- API routes: mounted under `/api` in `backend/server.js` (there is no separate API reference)
+- [FHIR Implementation Guide](../engineering/FHIR_TRACKING.md)
 
 ### Support
 - **GitHub Issues:** [AureonCare Issues](https://github.com/rajbizchannels/AureonCare/issues)

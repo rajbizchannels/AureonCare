@@ -2,6 +2,8 @@ const express = require('express');
 const { authenticate } = require('../middleware/auth');
 const router = express.Router();
 router.use(authenticate);
+// Compliance reports read the audit trail: administrators only, like /api/audit.
+const complianceReader = require('../middleware/auth').authorize('admin');
 
 const getDateRange = (query) => {
   const { startDate, endDate, days } = query;
@@ -1014,7 +1016,7 @@ router.get('/provider/telehealth-usage', async (req, res) => {
 // COMPLIANCE REPORTS
 // ─────────────────────────────────────────────
 
-router.get('/compliance/audit-logs', async (req, res) => {
+router.get('/compliance/audit-logs', complianceReader, async (req, res) => {
   try {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { startDate, endDate } = getDateRange(req.query);
@@ -1048,7 +1050,7 @@ router.get('/compliance/audit-logs', async (req, res) => {
   }
 });
 
-router.get('/compliance/access-logs', async (req, res) => {
+router.get('/compliance/access-logs', complianceReader, async (req, res) => {
   try {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { startDate, endDate } = getDateRange(req.query);
@@ -1085,7 +1087,7 @@ router.get('/compliance/access-logs', async (req, res) => {
   }
 });
 
-router.get('/compliance/hipaa', async (req, res) => {
+router.get('/compliance/hipaa', complianceReader, async (req, res) => {
   try {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { startDate, endDate } = getDateRange(req.query);
@@ -1132,7 +1134,7 @@ router.get('/compliance/hipaa', async (req, res) => {
   }
 });
 
-router.get('/compliance/data-access-history', async (req, res) => {
+router.get('/compliance/data-access-history', complianceReader, async (req, res) => {
   try {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { startDate, endDate } = getDateRange(req.query);

@@ -149,10 +149,11 @@ async function main() {
   }
 
   // 4. Tenant migration files recorded per schema.
-  const tenantDir = path.join(__dirname, '..', 'migrations', 'tenant');
-  const files = fs.existsSync(tenantDir)
-    ? fs.readdirSync(tenantDir).filter((f) => /^\d+_.*\.sql$/.test(f)).sort()
-    : [];
+  // Current tenant files plus the historical ones folded into the baseline — every schema must
+  // have recorded all of them.
+  const tenantDirs = [path.join(__dirname, '..', 'migrations', 'history', 'tenant'), path.join(__dirname, '..', 'migrations', 'tenant')];
+  const files = tenantDirs.flatMap((d) => (fs.existsSync(d)
+    ? fs.readdirSync(d).filter((f) => /^\d+_.*\.sql$/.test(f)) : [])).sort();
   for (const schema of schemas) {
     const { rows: has } = await pool.query(
       `SELECT 1 FROM information_schema.tables

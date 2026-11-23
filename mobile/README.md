@@ -2,7 +2,7 @@
 
 Native companion app for patients and clinicians, built against the same
 backend and the same authorisation model as `frontend/`. Scope and rationale
-live in [`../MOBILE_APP_SCOPE.md`](../MOBILE_APP_SCOPE.md); the screen designs
+live in [`../docs/product/MOBILE_APP_SCOPE.md`](../docs/product/MOBILE_APP_SCOPE.md); the screen designs
 are the published design canvas.
 
 ## Why React Native

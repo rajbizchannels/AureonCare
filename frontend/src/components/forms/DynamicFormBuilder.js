@@ -225,7 +225,7 @@ const DynamicFormBuilder = ({
                   <div className="col-span-2">
                     <label className={labelCls}>Translations</label>
                     <div className="grid grid-cols-2 gap-2">
-                      {['es', 'fr', 'de', 'pt'].map(lang => (
+                      {['es', 'fr', 'de', 'ar'].map(lang => (
                         <input key={lang} type="text" placeholder={`${lang.toUpperCase()} label`}
                           value={(field.translations || {})[lang] || ''}
                           onChange={e => updateField(field.id, { translations: { ...(field.translations || {}), [lang]: e.target.value } })}

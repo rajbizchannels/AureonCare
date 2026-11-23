@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   BarChart3, TrendingUp, DollarSign, Users, Calendar, FileText,
   Download, ArrowLeft, ChevronRight, ChevronDown, X,
@@ -1449,7 +1449,10 @@ const CustomReportResultView = ({ result, config, theme, onBack, currency = 'USD
 // MAIN REPORTS VIEW COMPONENT
 // ─────────────────────────────────────────────────────────────
 
-const ReportsView = ({ theme, patients = [], appointments = [], claims = [], payments = [], addNotification, setCurrentModule, api, currency = 'USD', activeTab: shellTab, onTabChange }) => {
+const ReportsView = ({ theme, patients = [], appointments = [], claims = [], payments = [], addNotification, setCurrentModule, api, currency = 'USD', activeTab: shellTab, onTabChange, user = null }) => {
+  // Compliance reports read the audit trail: administrators only (the API refuses others too).
+  const isAdmin = Boolean(user && user.role === 'admin');
+  const categories = useMemo(() => REPORT_CATEGORIES.filter((c) => c.id !== 'compliance' || isAdmin), [isAdmin]);
   // The app shell lists the report catalogue in its secondary pane and passes
   // the selection down as "<categoryId>:<reportId>" (or "custom"). Rendered
   // outside the shell the view keeps its own sidebar.
@@ -1528,12 +1531,12 @@ const ReportsView = ({ theme, patients = [], appointments = [], claims = [], pay
     }
 
     const [catId, repId] = String(shellTab || '').split(':');
-    const cat = REPORT_CATEGORIES.find(c => c.id === catId);
+    const cat = categories.find(c => c.id === catId);
     const rep = cat?.reports.find(r => r.id === repId);
     if (!cat || !rep) return;
     if (selectedReport?.id === rep.id && selectedCategory?.id === cat.id) return;
     selectReport(cat, rep);
-  }, [tabsInShell, shellTab, selectReport, selectedReport, selectedCategory]);
+  }, [tabsInShell, shellTab, selectReport, selectedReport, selectedCategory, categories]);
 
   const toggleCategory = (catId) => {
     setExpandedCategories(prev => ({ ...prev, [catId]: !prev[catId] }));
@@ -1654,7 +1657,7 @@ const ReportsView = ({ theme, patients = [], appointments = [], claims = [], pay
 
         {/* Category List */}
         <div className="flex-1 overflow-y-auto py-2">
-          {REPORT_CATEGORIES.map(cat => {
+          {categories.map(cat => {
             const Icon = cat.icon;
             const color = catColor[cat.id];
             const isExpanded = expandedCategories[cat.id] !== false; // default expanded
@@ -1778,7 +1781,7 @@ const ReportsView = ({ theme, patients = [], appointments = [], claims = [], pay
                 </div>
               </div>
               <div className="grid grid-cols-3 gap-3">
-                {REPORT_CATEGORIES.map(cat => {
+                {categories.map(cat => {
                   const Icon = cat.icon;
                   const color = catColor[cat.id];
                   return (

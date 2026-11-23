@@ -629,8 +629,8 @@ router.put('/:id/language', isSelfOrAdmin, async (req, res) => {
       return res.status(400).json({ error: 'Language is required' });
     }
 
-    // Supported languages
-    const supportedLanguages = ['en', 'es', 'fr', 'de', 'pt', 'zh', 'ar', 'hi'];
+    // The languages the app is translated into (frontend/src/config/translations.js).
+    const supportedLanguages = ['en', 'es', 'fr', 'de', 'ar'];
     if (!supportedLanguages.includes(language)) {
       return res.status(400).json({
         error: 'Unsupported language',

@@ -715,14 +715,15 @@ export const getNavigation = (t = {}) => [
           id: `insights.${category.id}`,
           label: category.name,
           icon: category.icon,
-          access: 'reports',
+          // Compliance reports read the audit trail — administrators only (server-enforced too).
+          access: category.id === 'compliance' ? 'adminPanel' : 'reports',
           children: category.reports.map((report) => ({
             id: `insights.${category.id}.${report.id}`,
             label: report.name,
             icon: report.icon,
             module: 'reports',
             tab: `${category.id}:${report.id}`,
-            access: 'reports',
+            access: category.id === 'compliance' ? 'adminPanel' : 'reports',
           })),
         })),
       },

@@ -890,7 +890,7 @@ CREATE SCHEMA public;
 **Documentation:**
 - AureonCare User Manual: `/docs/user-manual/`
 - API Documentation: `/docs/api/`
-- FHIR Implementation: `/docs/FHIR_TRACKING.md`
+- FHIR Implementation: `docs/engineering/FHIR_TRACKING.md`
 
 **Support:**
 - GitHub Issues: https://github.com/rajbizchannels/AureonCare/issues

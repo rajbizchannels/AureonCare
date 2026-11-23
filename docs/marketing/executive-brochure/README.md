@@ -33,7 +33,7 @@ went in. A few were reworded on the way because the first draft went further
 than the code: the claim form *picks up the diagnoses already on the chart*,
 which is not the same as coding a claim automatically.
 
-**What was left out on purpose.** `EXECUTIVE_SUMMARY.md` at the repository root
+**What was left out on purpose.** `docs/product/EXECUTIVE_SUMMARY.md`
 is a pre-launch document, and several of its claims cannot go in front of an
 executive audience as they stand:
 
@@ -43,7 +43,7 @@ executive audience as they stand:
   printing one that cannot be produced on request is a serious problem.
 - **Compliance badges** — "HIPAA Compliant", "FDA 21 CFR Part 11", "compliant
   with all 50 states" and "$5M breach coverage secured". The repository's own
-  `SEC-05_MULTI_TENANCY_PLAN.md` describes tenant isolation as an open gap, so a
+  `docs/security/SEC-05_MULTI_TENANCY_PLAN.md` describes tenant isolation as an open gap, so a
   compliance badge would contradict the project's security record.
 - **Projected ROI** — $1.0–1.2M per practice at 567–710%, attributed to pilot
   data from before the beta began.

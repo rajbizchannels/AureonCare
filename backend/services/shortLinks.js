@@ -1,4 +1,4 @@
-// Short links — /s/<code> on our own domain (see migrations/091_short_links.sql).
+// Short links — /s/<code> on our own domain (see migrations/history/global/091_short_links.sql).
 //
 // shorten(url, { expiresAt, kind }) returns the short URL, or the ORIGINAL url when the
 // feature is unavailable (table missing, database error). A message is never held back

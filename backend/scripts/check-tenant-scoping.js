@@ -16,7 +16,8 @@ const fs = require('fs');
 const path = require('path');
 
 const ROUTES = path.join(__dirname, '..', 'routes');
-const MIGRATIONS = path.join(__dirname, '..', 'migrations');
+// The SEC-05 table lists live in the historical migrations (folded into the baseline).
+const MIGRATIONS = path.join(__dirname, '..', 'migrations', 'history', 'global');
 
 // Files allowed to use the raw shared pool: identity (public + practice_id scoping),
 // global shared master data, and control-plane config. These do NOT route through a
@@ -59,7 +60,7 @@ function tenantTables() {
 // migrations. These files still contain legacy runtime DDL and are allowlisted; the list
 // must only ever SHRINK as their DDL moves into migrations. New entries are not allowed.
 // Now EMPTY: all legacy runtime DDL has moved into migrations
-// (migrations/tenant/001_adopt_runtime_created_tables.sql and 072_global_runtime_ddl.sql).
+// (migrations/history/tenant/001_adopt_runtime_created_tables.sql and 072_global_runtime_ddl.sql).
 // Do not add entries — schema changes belong in migrations.
 const RUNTIME_DDL_ALLOWLIST = new Set([]);
 const DDL_RE = /\b(CREATE\s+(TABLE|EXTENSION|INDEX|SCHEMA)|ALTER\s+TABLE|DROP\s+TABLE)\b/i;

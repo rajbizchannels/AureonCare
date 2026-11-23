@@ -1,727 +1,229 @@
 # AureonCare
 
-**Modern Healthcare Practice Management System**
+**Practice management for clinics — EHR, scheduling, billing, telehealth and patient engagement
+in one multi-tenant platform, with a web app for staff, a patient portal and a mobile app.**
 
-AureonCare is a comprehensive, enterprise-grade medical practice management platform designed to streamline healthcare operations, enhance patient care, and optimize revenue cycles. Built with modern web technologies and HIPAA compliance in mind.
-
----
-
-## Table of Contents
-
-- [Overview](#overview)
-- [Key Highlights](#key-highlights)
-- [Core Features](#core-features)
-- [Technical Architecture](#technical-architecture)
-- [Getting Started](#getting-started)
-- [Security & Compliance](#security--compliance)
-- [License](#license)
+Production: `app.aureoncare.tech` (Vercel + Supabase Postgres). Each practice has its own
+database schema (schema-per-tenant); one sign-in can belong to several practices.
 
 ---
 
-## Overview
+## Contents
 
-AureonCare is an all-in-one healthcare management solution that combines Electronic Health Records (EHR), Practice Management, Revenue Cycle Management (RCM), Telehealth, and Patient Engagement tools into a single, integrated platform. Designed for healthcare practices of all sizes, from solo practitioners to large multi-specialty groups.
-
-### Built For
-
-- Private Medical Practices
-- Multi-Specialty Clinics
-- Healthcare Groups
-- Telehealth Providers
-- Ambulatory Care Centers
-
----
-
-## Key Highlights
-
-- ✅ **FHIR R4 Compliant** - Full interoperability support
-- ✅ **HIPAA Ready** - Built with security and compliance in mind
-- ✅ **Multi-Language Support** - 5 languages (EN, ES, FR, DE, AR)
-- ✅ **Cloud-Based** - Accessible anywhere, anytime
-- ✅ **Role-Based Access Control** - Granular permissions system
-- ✅ **Flexible Subscription Plans** - Free to Enterprise tiers
-- ✅ **Modern UI/UX** - Responsive design with dark mode
-- ✅ **Real-Time Updates** - Live notifications and updates
+- [What is in this repository](#what-is-in-this-repository)
+- [Features](#features)
+- [Integrations — what is live and what needs a vendor account](#integrations--what-is-live-and-what-needs-a-vendor-account)
+- [Getting started](#getting-started)
+- [Database and migrations](#database-and-migrations)
+- [Tests](#tests)
+- [Deploying](#deploying)
+- [Documentation](#documentation)
+- [Security](#security)
+- [Contributing](#contributing)
 
 ---
 
-## Core Features
-
-### 1. 🔐 Authentication & User Management
-
-**Advanced Authentication**
-- Email/password authentication with bcrypt encryption
-- OAuth social login (Google, Microsoft, Facebook)
-- Password reset flow with secure tokens (1-hour expiration)
-- Session management and tracking
-- Two-portal system (Staff Portal + Patient Portal)
-
-**User Management**
-- Complete user lifecycle management (CRUD operations)
-- Multiple user roles: Admin, Doctor, Patient, Nurse, Receptionist, Billing Manager, CRM Manager, Staff
-- User status control (Active, Pending, Blocked)
-- Avatar support and user preferences
-- License number and specialty tracking
-- Multi-language user preferences
-
-### 2. 🛡️ Role-Based Access Control (RBAC)
-
-**Comprehensive Permission System**
-- 8 predefined system roles (cannot be deleted)
-- Custom role creation and management
-- 24 granular permissions across modules
-- Multi-role support (users can have multiple roles simultaneously)
-- Active role switching
-- Role assignment history and tracking
-- Module-based permissions: Patients, Appointments, Billing, CRM, EHR, Reports, Admin
-- Action-based permissions: View, Create, Edit, Delete, Manage, Process, Export
-
-**Role Management Features**
-- Role activation/deactivation
-- Role user count tracking
-- Role permission count tracking
-- Cannot remove last role from user (safety check)
-
-### 3. 💼 Subscription Plans & Organization Settings
-
-**Flexible Subscription Tiers**
-- **Free Plan** - Get started with basic features
-- **Starter Plan** - Essential features for small practices
-- **Professional Plan** - Advanced features for growing practices
-- **Enterprise Plan** - Complete feature set for large organizations
-
-**Plan Management**
-- User and patient limits per plan
-- Feature gates and access control
-- Billing cycle management (monthly/yearly)
-- Auto-renewal settings
-- Plan comparison and upgrades
-- Usage tracking and limits enforcement
-
-**Organization Settings**
-- Custom organization configuration
-- Plan assignment and tracking
-- Plan start/end date management
-- Flexible settings stored as JSONB
-
-### 4. 👥 Patient Management
-
-**Comprehensive Patient Records**
-- Complete demographics (name, DOB, gender, contact info)
-- Unique Medical Record Number (MRN)
-- Address management (street, city, state, zip)
-- Insurance information (carrier, policy ID)
-- Patient status tracking (Active, Inactive)
-
-**Medical Profile**
-- Height and weight tracking
-- Blood type
-- Allergies documentation
-- Past medical history
-- Family history
-- Current medications list
-- Automatic patient portal account creation
-
-**Patient Search & Filtering**
-- Advanced search capabilities
-- Status-based filtering
-- Quick patient lookup
-
-### 5. 📅 Appointment Management
-
-**Smart Scheduling**
-- Complete appointment lifecycle management
-- Patient-provider association
-- Multiple appointment types
-- Date and time scheduling with duration tracking
-- Start time and end time management
-- Appointment reason and notes
-
-**Scheduling Intelligence**
-- Double-booking prevention
-- Scheduling conflict detection
-- Multiple view types (list, calendar)
-- Calendar views (day, week, month)
-- Provider-specific scheduling
-
-**Appointment Status**
-- Scheduled
-- Completed
-- Cancelled
-- No-Show
-
-### 6. 👨‍⚕️ Provider Management
-
-**Provider Directory**
-- Provider CRUD operations
-- Specialization tracking
-- Contact information management
-- Provider-user linking
-- Active provider filtering
-- Provider association with appointments
-- License number and credentials
-
-### 7. 📋 Electronic Health Records (EHR)
-
-**Medical Records Management**
-- Complete medical record lifecycle
-- Record types categorization
-- Record date tracking
-- Title and description
-- Diagnosis information
-- Treatment plans
-- Medications tracking (structured JSONB)
-- Attachments support
-- Provider association
-- Complete patient history view
-
-**Prescriptions Module**
-- Prescription CRUD operations
-- Medication name and dosage
-- Frequency and duration
-- Special instructions
-- Refill tracking
-- Prescription status (Active, Inactive, Discontinued)
-- Prescribed date tracking
-- Provider and patient association
-- Appointment linkage
-
-**Diagnosis Module**
-- Diagnosis CRUD operations
-- ICD diagnosis codes support
-- Diagnosis name and description
-- Severity levels
-- Status tracking (Active, Resolved, Chronic)
-- Diagnosed date
-- Clinical notes
-- Provider and patient association
-- Appointment linkage
-
-### 8. 🎥 Telehealth
-
-**Integrated Video Consultations**
-- Telehealth session management
-- Virtual room creation with unique IDs
-- Secure meeting URL generation
-- Session status tracking (Scheduled, In Progress, Completed, Cancelled)
-- Start and end time tracking
-- Duration tracking
-- Recording capability toggle
-- Recording URL storage
-- Participant tracking
-- Join session functionality
-- Session notes
-- Provider and patient association
-- Appointment integration
-
-### 9. 💰 Revenue Cycle Management (RCM)
-
-**Claims Management**
-- Complete claims lifecycle management
-- Unique claim numbers
-- Patient and payer association
-- Amount tracking
-- Service date tracking
-- Diagnosis codes support (JSONB)
-- Procedure codes support (JSONB)
-- Claim status (Pending, Submitted, Approved, Denied, Paid)
-- Claim notes and documentation
-
-**Payment Processing**
-- Payment CRUD operations
-- Unique payment numbers
-- Multiple payment methods:
-  - Credit Card
-  - Debit Card
-  - Cash
-  - Check
-  - Bank Transfer
-  - Insurance
-- Payment status tracking (Pending, Completed, Failed, Refunded)
-- Transaction ID storage
-- Card information storage (last 4 digits, brand)
-- Payment date tracking
-- Patient and claim association
-- Payment descriptions and notes
-
-### 10. 🔄 FHIR HL7 Integration
-
-**FHIR R4 Compliance**
-- FHIR resource CRUD operations
-- FHIR R4 standard compliance
-- Resource types support: Patient, Observation, Condition, etc.
-- Patient to FHIR conversion
-- Resource data stored as JSONB
-- Patient-resource association
-- FHIR bundle generation
-- Resource versioning with timestamps
-- FHIR sync functionality
-
-**Interoperability**
-- Standards-based data exchange
-- External system connectivity
-- Healthcare data integration
-
-### 11. 🏥 Patient Portal
-
-**Patient Self-Service Features**
-- Dedicated patient portal authentication
-- Patient login with email/password
-- Social login support for patients
-- Session token management (24-hour expiration)
-- Portal enable/disable per patient
-- Patient registration
-
-**Patient Portal Capabilities**
-- View appointments
-- View medical records
-- Profile management
-- View prescriptions
-- View diagnosis information
-- Secure messaging (framework ready)
-
-**Security Features**
-- IP address tracking
-- User agent tracking
-- Session management
-- Secure token-based authentication
-
-### 12. 🔔 Notifications
-
-**Real-Time Notification System**
-- Notification CRUD operations
-- Multiple notification types
-- Read/unread status tracking
-- Timestamp tracking
-- Mark as read functionality
-- Clear individual notifications
-- Clear all notifications
-- Latest 50 notifications display
-- Real-time notification delivery
-
-### 13. ✅ Tasks & Workflow
-
-**Task Management**
-- Task CRUD operations
-- Task title and description
-- Priority levels:
-  - High
-  - Medium
-  - Low
-- Due date tracking
-- Status tracking:
-  - Pending
-  - In Progress
-  - Completed
-  - Cancelled
-- Priority-based sorting
-- Task completion tracking
-
-### 14. 📊 Reports & Analytics
-
-**Reporting Module**
-- Revenue reports
-- Appointment analytics
-- Patient statistics
-- Claims analytics
-- Report export capability
-- Date range filtering
-- Multiple report formats
-- Performance metrics
-- Trend analysis
-
-### 15. 🤝 Customer Relationship Management (CRM)
-
-**CRM Features**
-- Customer interaction tracking
-- CRM record management
-- Customer data management
-- CRM permissions system
-- Integration with patient data
-- Communication history
-- Relationship tracking
-
-### 16. 🔌 Integrations
-
-**Integration Hub**
-- FHIR HL7 integration
-- OAuth provider integration:
-  - Google
-  - Microsoft
-  - Facebook
-- Social authentication
-- API integration framework
-- External system connectivity
-- Third-party service integration
-
-### 17. ⚙️ Admin Panel
-
-**Administrative Features**
-- User management interface
-- Role management
-- Permission management
-- Plan management
-- Organization settings
-- User status control
-- User role assignment
-- Bulk operations
-- System configuration
-- Plan selection and upgrades
-
-**System Management**
-- Health check endpoints
-- Database management
-- Migration tools
-- Seed data scripts
-- System monitoring
-
-### 18. 🏕️ Medical Camps
-
-- Plan and run outreach camps: stations, staffing, supplies and the station board
-- On-site registration and the attendee queue
-- Clinical and sponsor reports per camp
-- Gated by the `camps` plan feature (Clinical Pro and above)
-
-### 19. 🩺 Specialty Configuration
-
-- A setup wizard that configures a practice for its specialty
-- 36 starter content packs (appointment types, service categories, offerings, forms,
-  inventory categories, terminology, module visibility and scheduling defaults)
-- Packs are declarative JSON, validated before loading, with preview, seed and upgrade
-- Every pack version carries a clinical review status; applying an unreviewed one needs an
-  explicit acknowledgement
-
-### 20. 📍 Multi-Location
-
-- Several sites under one practice, with a primary site
-- Appointments, patients and camps carry the site they belong to
-
-### 21. 📦 Inventory & 💷 Accounts
-
-- Stock items, categories, suppliers, stock movements and purchase orders
-- Receivables, payables, journal, reconciliations and statements
-- Both covered by the fine-grained permissions below
-
-### 22. 🤖 AI Integrations
-
-- Bring-your-own-key, per practice, with per-feature switches
-- Patient identifiers are replaced with placeholders before anything leaves the practice,
-  and restored in the draft the reviewer sees
-- Nothing is applied without a person: role check, sign-off, reject reason and expiry
-- A cloud provider without a BAA/DPA cannot be enabled for a feature that handles patient
-  data
-
-### 23. 🔑 Fine-Grained Permissions
-
-- Per module, per resource, per role, across six actions (view, create, edit, delete,
-  approve, export) — 11 modules and 32 resources
-- Enforced by middleware across sixteen routers, not only reflected in the interface
-- A practice with nothing saved falls back to the built-in role defaults, so switching it
-  on changes nobody's access until an administrator edits something
-- Administrators are never denied, and the API refuses an attempt to restrict them
-
-### 24. 🎨 UI/UX Features
-
-**Modern Interface**
-- Dark mode / Light mode toggle
-- Multi-language support (5 languages)
-- Responsive design
-- Mobile-friendly interface
-- Quick actions dashboard
-- Customizable quick actions
-- Stat cards with trend indicators
-- Module cards
-
-**Dashboard Components**
-- Today's appointments counter
-- Pending tasks counter
-- Total patients counter
-- Monthly revenue counter
-- Upcoming appointments list
-- Recent tasks list
-- Revenue quick view
-- Patients quick view
-
-**UI Components**
-- Search functionality
-- AI Assistant panel (framework)
-- Notifications panel
-- Settings modal
-- User profile modal
-- Confirmation modals
-- View/Edit modals
-- Form modals for data entry
-- Calendar views (day, week, month)
-- List views
-- Quick view panels
-
-### 25. 🔒 Security & Compliance
-
-**Security Features**
-- Password hashing with bcrypt
-- JWT token support
-- Session management
-- HIPAA compliance indicators
-- Role-based access control
-- Permission checking
-- Password reset tokens with expiration
-- Secure API endpoints
-- CORS configuration
-- Helmet security headers
-- SQL injection prevention (parameterized queries)
-
-**Audit & Tracking**
-- Created_at timestamps on all records
-- Updated_at timestamps on all records
-- User activity tracking
-- Role assignment tracking
-- Last login tracking
-- Portal session tracking with IP/user agent
-- Complete audit trail
-
-### 26. 🗄️ Database Architecture
-
-**PostgreSQL Database**
-- UUID support for record IDs
-- JSONB for flexible data storage
-- Foreign key constraints
-- Cascade delete configurations
-- Indexes for performance optimization
-- Multi-role user support
-- Historical data preservation
-- Data integrity enforcement
-
-**20+ Database Tables:**
-- users
-- patients
-- providers
-- appointments
-- claims
-- payments
-- prescriptions
-- diagnosis
-- medical_records
-- telehealth_sessions
-- fhir_resources
-- patient_portal_sessions
-- social_auth
-- notifications
-- tasks
-- roles
-- permissions
-- role_permissions
-- user_roles
-- subscription_plans
-- organization_settings
-
-### 27. 🚀 API Architecture
-
-**RESTful API Design**
-- 100+ API endpoints
-- Consistent error handling
-- Snake_case to camelCase conversion
-- Query parameter support
-- Filtering capabilities
-- Sorting capabilities
-- Relationship loading (JOIN queries)
-- Validation
-- Standard HTTP status codes
-- JSON response format
+## What is in this repository
+
+| Path | What it is |
+|---|---|
+| `backend/` | Node.js / Express API (`backend/server.js`; routes under `/api`), PostgreSQL via `node-postgres` |
+| `frontend/` | React web app — staff app and patient portal (Create React App) |
+| `mobile/` | Expo (SDK 54) app for patients and staff, phone and tablet — see [`mobile/README.md`](mobile/README.md) |
+| `backend/migrations/` | database baseline + new migrations — see [`backend/migrations/README.md`](backend/migrations/README.md) |
+| `backend/test/` | API test suites (`npm run test:<name>`) |
+| `docs/` | product, engineering, security and integration documentation — [`docs/README.md`](docs/README.md) |
+| `DEPLOYMENT_CHECKLIST.md` | the release-by-release checklist: migrations to run and settings to change |
+| `vercel.json` | production hosting (API as a serverless function, web app as static files) |
+| `docker/`, `docker-compose.yml`, `helm/`, `deployment/` | container, Kubernetes and on-premises installs |
 
 ---
 
-## Technical Architecture
+## Features
 
-### Backend Stack
-- **Runtime**: Node.js
-- **Framework**: Express.js
-- **Database**: PostgreSQL
-- **ORM**: Direct SQL queries with node-postgres
-- **Authentication**: bcrypt, JWT, OAuth 2.0
-- **Security**: Helmet, CORS
+**Clinical**
+- Patient records, medical history, vitals, diagnoses with SOAP notes, ICD-10 / CPT coding
+- e-Prescribing with allergy and drug-interaction checks; NCPDP SCRIPT (Surescripts) messaging
+- Lab orders and results; FHIR R4 resources and exchange tracking
+- Sick notes (fit notes): issue, print as a locked PDF, email; patients can request them
+- Forms designer (14 field types, conditions, role-only questions, signatures); patients and staff
+  fill forms on web, phone or tablet, checked by the server
+- Telehealth (Zoom, Google Meet, Microsoft Teams, Webex) with short join links
+- AI assistance, each feature switched on per practice and reviewed by a person: scribe (SOAP note
+  from visit text), coding suggestions, claim review, prior-auth letters, chart questions,
+  document extraction, lab explanations and more — PHI is anonymised before anything is sent
 
-### Frontend Stack
-- **Framework**: React
-- **Build Tool**: Modern bundler
-- **UI Components**: Custom component library
-- **State Management**: Context API ready
-- **Styling**: Modern CSS with theming
+**Scheduling and patients**
+- Calendar, appointment types, provider schedules, waitlist, booking requests
+- Public booking page and "Find a practice" directory (practice profiles: off / link-only / searchable)
+- Patient portal (web and mobile): appointments, records, forms, messages, sick notes, profile
+- Medical camps: planning, registration desk, station board, outcomes
+- Multi-location, practice specialty packs (dentistry, ophthalmology, paediatrics)
 
-### Infrastructure
-- **Cloud-Ready**: Designed for cloud deployment
-- **Scalable**: Modular architecture
-- **Real-Time Ready**: Redis configured for real-time features
-- **Multi-Tenant**: Organization-based data isolation
+**Billing and operations**
+- Claims with a **pre-submission check** (rules + optional AI review; errors block submission)
+- **Insurance eligibility checks** (X12 270/271) from the patient record and the claim form
+- Pre-authorisations, payments and payment posting (EDI 835), denials and appeals, EDI 837 files
+- Quotes, invoices, packages and promotions; Stripe for practice subscriptions
+- Double-entry accounting; inventory (items, lots and expiry, stock movements, purchase orders,
+  suppliers) with **low-stock alerts** to the people who can reorder
+- Reports: operational, financial, claims, patients, providers, compliance, inventory, custom
+
+**Practice administration**
+- Roles and fine-grained module permissions, enforced on the server
+- Users in several practices, practice chooser after sign-in, join requests and invitations
+- Sign-in with password (lockout after 4 failures, admin unlock), MFA, Google and Microsoft
+  (web and mobile)
+- **My notifications**: each staff member chooses, per notification and per channel (in the app,
+  email, WhatsApp), what they receive
+- Notifications by email and WhatsApp (approved templates), secure messaging
+- Audit log of PHI access and changes; backup, restore and archiving
+- 5 languages: English, Spanish, French, German, Arabic
 
 ---
 
-## Getting Started
+## Integrations — what is live and what needs a vendor account
 
-### Prerequisites
-- Node.js (v14 or higher)
-- PostgreSQL (v12 or higher)
-- npm or yarn
+| Integration | Status |
+|---|---|
+| Google / Microsoft sign-in (web and mobile) | Live |
+| Email (SMTP), WhatsApp (Meta / Twilio) | Live when the practice configures them |
+| Zoom / Google Meet / Teams / Webex | Live when configured |
+| Stripe (platform subscriptions) | Live — check `AC_STRIPE_SK` (see DEPLOYMENT_CHECKLIST) |
+| AI providers (Anthropic, OpenAI, Azure OpenAI, Gemini, Mistral, offline/self-hosted) | Live when an admin switches a feature on |
+| Optum clearinghouse — eligibility (270/271) | Built and tested against a stub; needs an Optum API account and a first sandbox run |
+| Optum clearinghouse — claims (837) | Connector present; 837 files can be generated and downloaded |
+| Surescripts e-prescribing (NCPDP SCRIPT 2017071) | Built; needs Surescripts certification, an account, prescriber SPIs, EPCS for controlled drugs |
+| Labcorp | **Not usable with keys alone** — needs Labcorp's connectivity onboarding (usually HL7 v2) |
+| Redis (shared rate limits) | Not provisioned — limits are per server instance until it is |
 
-### Installation
+---
 
-1. Clone the repository
+## Getting started
+
+**Prerequisites:** Node.js 20 or newer, PostgreSQL 14 or newer, npm.
+
 ```bash
 git clone https://github.com/rajbizchannels/AureonCare.git
 cd AureonCare
+npm install                      # backend (root package.json)
+(cd frontend && npm install)     # web app
+cp backend/.env.example backend/.env
+cp frontend/.env.example frontend/.env
 ```
 
-2. Install dependencies
-```bash
-npm install
-```
+Edit `backend/.env` — the essentials:
 
-3. Set up environment variables
-```bash
-cp .env.example .env
-# Edit .env with your configuration
-```
-
-4. Set up the database
-```bash
-npm run db:setup
-```
-
-5. Run migrations
-```bash
-npm run migrate
-```
-
-6. Start the development server
-```bash
-npm run dev
-```
-
-### Configuration
-
-AureonCare requires the following environment variables:
-
-- `DATABASE_URL` - PostgreSQL connection string
-- `JWT_SECRET` - Secret key for JWT tokens
-- `OAUTH_*` - OAuth provider credentials
-- `PORT` - Server port (default: 3000)
-
----
-
-## Security & Compliance
-
-### HIPAA Compliance
-- Encrypted data transmission (HTTPS)
-- Encrypted data at rest
-- Access control and authentication
-- Audit logging
-- Session management
-- Secure password handling
-
-### Data Protection
-- Role-based access control
-- Permission-based authorization
-- Audit trails for all actions
-- Secure session management
-- Password policies
-- Data encryption
-
-### Privacy
-- Patient data isolation
-- Configurable data retention
-- Secure patient portal
-- Privacy controls
-- Consent management ready
-
----
-
-## System Capabilities
-
-### Multi-Tenancy
-- Organization-based data isolation
-- Plan-based feature gates
-- Resource limits per organization
-- Usage tracking and enforcement
-
-### Scalability
-- Modular architecture
-- Separated concerns
-- Horizontal scaling ready
-- Database optimization
-- Caching support (Redis)
-
-### Extensibility
-- Plugin-style module system
-- Plan-based feature gates
-- API-first design
-- Integration framework
-- Custom field support (JSONB)
-
-### Standards Compliance
-- FHIR R4 for interoperability
-- HL7 integration support
-- ICD code support
-- RESTful API design
-- OAuth 2.0 authentication
-
----
-
-## Support & Documentation
-
-The documentation that exists, and what each is for:
-
-| Document | Use it for |
+| Variable | Purpose |
 |---|---|
-| [`SETUP.md`](SETUP.md) | getting a development environment running |
-| [`DATABASE_SETUP.md`](DATABASE_SETUP.md) | database creation and the migration runners |
-| [`DEPLOYMENT.md`](DEPLOYMENT.md) / [`DEPLOYMENT_CHECKLIST.md`](DEPLOYMENT_CHECKLIST.md) | deploying, and the ordered checklist to follow when you do |
-| [`USER_MANUAL.md`](USER_MANUAL.md) | how the product works, screen by screen |
-| [`ARCHITECTURE_DIAGRAM.md`](ARCHITECTURE_DIAGRAM.md) | how the pieces fit together |
-| [`SEC-05_MULTI_TENANCY_PLAN.md`](SEC-05_MULTI_TENANCY_PLAN.md) | the schema-per-tenant design |
-| [`FEATURE_IMPLEMENTATION_STEPS.md`](FEATURE_IMPLEMENTATION_STEPS.md) | adding a feature that needs tenant tables — read before writing a migration |
-| [`frontend/src/utils/PERMISSIONS_GUIDE.md`](frontend/src/utils/PERMISSIONS_GUIDE.md) | which permission layer actually stops a request |
-| [`backend/migrations/tenant/README.md`](backend/migrations/tenant/README.md) | the rules for a tenant migration |
-| [`backend/scripts/manual/README.md`](backend/scripts/manual/README.md) | applying migrations by hand, without node |
-| [`backend/data/specialty-packs/README.md`](backend/data/specialty-packs/README.md) | authoring and loading a specialty pack |
-| [`SSDLC.md`](SSDLC.md) / [`SAST.md`](SAST.md) | the security development lifecycle and static analysis |
-| [`OAUTH_SETUP.md`](OAUTH_SETUP.md) | configuring Google and Microsoft sign-in |
-| [`docs/FHIR_TRACKING.md`](docs/FHIR_TRACKING.md) | the FHIR exchange |
-| [`mobile/README.md`](mobile/README.md) / [`MOBILE_APP_SCOPE.md`](MOBILE_APP_SCOPE.md) | the mobile app |
+| `AC_DB_H`, `AC_DB_P`, `AC_DB_N`, `AC_DB_U`, `AC_DB_W` | PostgreSQL host, port, database, user, password — or `AC_PG_URI` for a connection string (Supabase) |
+| `AC_TK_S` | JWT signing secret, **at least 32 bytes** (the server refuses to start otherwise) |
+| `AC_MSG_KEY`, `AC_IDX_K` | encryption key for messages and documents; key for searchable (blind) indexes |
+| `AC_FE_URL`, `AC_BE_URL` | public addresses of the web app and the API |
+| `AC_SM_H`, `AC_SM_P`, `AC_SM_U`, `AC_SM_W` | SMTP for email (optional in development) |
+| `AC_GG_CSK`, `AC_MS_CSK` + `REACT_APP_GG_CID`, `REACT_APP_MS_CID` | Google / Microsoft sign-in |
+| `AC_STRIPE_SK`, `AC_STRIPE_WHS` | platform billing (optional) |
 
-API routes are mounted under `/api`; see `backend/server.js` for the full list.
+`docs/engineering/SETUP.md` lists every variable and the optional ones.
+
+Then create the database and start:
+
+```bash
+createdb aureoncare
+npm run migrate            # an empty database is built from the baseline
+npm run migrate:tenants
+npm run packs:load         # optional: specialty packs
+npm run platform:operator  # optional: a platform operator account for /platform
+npm run dev                # API (auto-restart) — set PORT=3001 in backend/.env: both default to 3000
+(cd frontend && npm start) # web app on http://localhost:3000
+```
+
+Mobile app: see [`mobile/README.md`](mobile/README.md) (`cd mobile && npm install && npx expo start`).
+
+---
+
+## Database and migrations
+
+- `npm run migrate` applies global migrations (`public` / `control` schemas); `npm run
+  migrate:tenants` applies per-practice migrations to every practice schema and the `template`
+  new practices are cloned from. Run both, in that order, on every deploy.
+- The full history (global 001–100, tenant 001–016) is one baseline,
+  `backend/migrations/baseline/000_baseline.sql`, used only for empty databases; the historical
+  files are kept in `backend/migrations/history/`. Next numbers: global **101**, tenant **017**.
+- Production is migrated by pasting the new migration into the Supabase SQL editor; migrations
+  that touch practice schemas are written to fan out to every schema themselves.
+- Health checks: `npm run check:schema-health`, `npm run check:tenant-scoping`, `npm run check:db-role`.
+
+Details and rules: [`backend/migrations/README.md`](backend/migrations/README.md).
+
+---
+
+## Tests
+
+55 API suites plus the React tests, each run on its own:
+
+```bash
+export AC_DB_H=localhost AC_DB_P=5432 AC_DB_N=<test db> AC_DB_U=<user> AC_DB_W=<password> AC_RL_TEST_BYPASS=1
+npm run test:claim-scrubbing     # any suite: npm run | grep test:
+npm run test:frontend            # React (163 tests)
+(cd mobile && npm test && npx tsc --noEmit)
+```
+
+The suites create their own practices in the database they are pointed at — use a test database.
+`npm run test:specialty` needs `npm run packs:load` first. `test:sec05` starts its own throwaway
+Postgres. Known failures that predate current work: `settings-authz` (4 checks that sign a patient
+in through the staff login, which is now refused by design), `vendor-tenancy` (1),
+`identity-backfill` (2).
+
+---
+
+## Deploying
+
+Production deploys from `main` on Vercel (`vercel.json`). For each release follow
+[`DEPLOYMENT_CHECKLIST.md`](DEPLOYMENT_CHECKLIST.md): it lists the migration to paste **before**
+deploying, settings to change, and what to verify afterwards. Other targets:
+[`docs/engineering/DEPLOYMENT.md`](docs/engineering/DEPLOYMENT.md) (Docker, Helm, on-premises).
+
+---
+
+## Documentation
+
+Start at [`docs/README.md`](docs/README.md). The most used:
+
+| Document | For |
+|---|---|
+| [`docs/product/USER_MANUAL.md`](docs/product/USER_MANUAL.md) | how the product works, screen by screen (also in-app help under `frontend/public/docs/`) |
+| [`docs/engineering/SETUP.md`](docs/engineering/SETUP.md) | development environment and every setting |
+| [`docs/engineering/ARCHITECTURE.md`](docs/engineering/ARCHITECTURE.md) | how the pieces fit together |
+| [`docs/security/SEC-05_MULTI_TENANCY_PLAN.md`](docs/security/SEC-05_MULTI_TENANCY_PLAN.md) | the schema-per-tenant design |
+| [`docs/security/AureonCare_Security_Audit_ToDos.xlsx`](docs/security/AureonCare_Security_Audit_ToDos.xlsx) | the security register (SEC-01 … SEC-54) |
+| [`docs/engineering/FEATURE_IMPLEMENTATION_STEPS.md`](docs/engineering/FEATURE_IMPLEMENTATION_STEPS.md) | adding a feature that needs per-practice tables |
+| [`docs/product/COMPETITIVE_ANALYSIS.md`](docs/product/COMPETITIVE_ANALYSIS.md) | feature status against competitors |
+| [`frontend/src/utils/PERMISSIONS_GUIDE.md`](frontend/src/utils/PERMISSIONS_GUIDE.md) | which permission layer stops a request |
+
+---
+
+## Security
+
+Schema-per-tenant isolation with a least-privilege database role; server-enforced role and module
+permissions; JWT with token versioning, MFA, account lockout; secrets encrypted at rest; PHI
+access audited; AI requests anonymised. The security register (54 entries, all fixed but the Redis
+deployment item) is in `docs/security/`. Report vulnerabilities to support@aureoncare.tech.
 
 ---
 
 ## Contributing
 
-We welcome contributions. There is no separate contributing guide; the conventions that
-matter are written down where they apply:
-
-- a feature that needs per-tenant tables — [`FEATURE_IMPLEMENTATION_STEPS.md`](FEATURE_IMPLEMENTATION_STEPS.md)
-- a tenant migration — [`backend/migrations/tenant/README.md`](backend/migrations/tenant/README.md)
-- security expectations — [`SSDLC.md`](SSDLC.md)
-
-Run `npm test` for the suite that covers the area you changed (`npm run` lists them; there
-are 23) and `npm run test:frontend` for the React tests.
-
----
+Conventions are written down where they apply: per-practice tables and migrations in
+[`backend/migrations/README.md`](backend/migrations/README.md), security expectations in
+[`docs/security/SSDLC.md`](docs/security/SSDLC.md). Run the suite for the area you change and
+`npm run test:frontend`; add a release note to `DEPLOYMENT_CHECKLIST.md` when a change needs a
+migration or a setting.
 
 ## License
 
-[License details to be added]
-
----
+Proprietary — all rights reserved (license details to be added).
 
 ## Contact
 
-For questions and support, please contact:
-- Email: support@aureoncare.tech
-- Website: https://aureoncare.tech
-- GitHub Issues: https://github.com/rajbizchannels/AureonCare/issues
-
----
-
-**AureonCare** - Empowering Healthcare Practices with Modern Technology
-
----
-
-*Built with ❤️ for Healthcare Professionals*
+support@aureoncare.tech · https://aureoncare.tech · https://github.com/rajbizchannels/AureonCare/issues

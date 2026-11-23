@@ -1,5 +1,5 @@
 // Practice profiles (directory Phase 2) — shared by the staff API and the public page.
-// See migrations/092_practice_profiles.sql for the model and the visibility rules.
+// See migrations/history/global/092_practice_profiles.sql for the model and the visibility rules.
 
 const crypto = require('crypto');
 const { withTenant } = require('../db/tenantClient');
