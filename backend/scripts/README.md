@@ -40,10 +40,9 @@ files outside the ledger, or deleted data. A database is built with `npm run mig
 `fix-address-column.js`, `fix-appointments-table.js`, `fix-lab-orders-schema.js`,
 `check-providers-schema.js`, `diagnose-patient-portal.js`, `inspect-schema.js`; and in `backend/`,
 `test-db.js` and `check-audit-setup.js`. They remain in git history.
-
-## Legacy SQL and shell — do not run against a current database
-
-Left from the same era and used only by the scripts above: `init-database.sh` / `.bat` (drops the
+Also removed with them: the SQL and shell they used — `init-database.sh` / `.bat` (dropped the
 `public` schema), `reset-and-seed*.sql`, `reset-database.sql`, `seed-data.sql`,
-`seed-test-data.sql`, `check-database.sql`, `fix-patient-names.sql`, `grant-permissions.sql`.
-Never run any reset or seed file against production: they delete data.
+`seed-test-data.sql`, `check-database.sql`, `fix-patient-names.sql`, `grant-permissions.sql` — and
+in `backend/`, the old schema dumps `schema.sql`, `schema2.sql`, `schema.old.sql` (superseded by
+`migrations/baseline/000_baseline.sql`) and `run_migrations.bat` (ran every migration file with
+`psql -f`, outside the ledger).

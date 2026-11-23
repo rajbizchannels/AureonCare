@@ -8,7 +8,7 @@
 // Plus: resolveTenantForUser maps a user to the right tenant, and withTenant does not
 // leak a tenant search_path back to the pool.
 //
-// Requires a database already migrated with schema.sql + SEC-05 migrations 063-068
+// Requires a database built by the migration runners (baseline + migrations; see backend/migrations/README.md)
 // (run.sh sets that up). Connects via AC_DB_* (same env as the app). Exits 0 on pass,
 // non-zero on any failure. No test framework — plain assertions so it runs anywhere.
 
