@@ -23,5 +23,11 @@ SQL here is applied **inside every tenant schema** and the golden `template` by
 1. `node run-migrations.js`         # global (public/control), incl. control plane
 2. `node run-tenant-migrations.js`  # fan out tenant migrations to every tenant + template
 
-The directory may be empty — the runner is a safe no-op when there are no tenant
-migrations yet.
+The directory may be empty — the runner is a safe no-op. Versions 001–016 were consolidated
+into `../baseline/000_baseline.sql` and moved to `../history/tenant/`; **the next tenant migration
+is `017_…`**. The runner still counts the historical versions, so a schema's recorded version never
+goes backwards.
+
+Production is migrated by pasting SQL into the Supabase editor, where a file like these resolves
+against `public` and fails. Ship each tenant change as a pair: this file for the runner, and a
+global migration that fans out to every schema itself (see `../README.md`).

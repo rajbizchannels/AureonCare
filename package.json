@@ -11,8 +11,6 @@
     "migrate:tenants": "node backend/run-tenant-migrations.js",
     "packs:load": "node backend/scripts/load-specialty-packs.js",
     "platform:operator": "node backend/scripts/create-platform-operator.js",
-    "migrate:preauth": "node backend/scripts/run-preapprovals-migration.js",
-    "migrate:messaging": "node backend/scripts/migrate-messaging.js",
     "reset-db": "node backend/scripts/reset-and-seed.js",
     "check:tenant-scoping": "node backend/scripts/check-tenant-scoping.js",
     "check:db-role": "node backend/scripts/check-db-role.js",

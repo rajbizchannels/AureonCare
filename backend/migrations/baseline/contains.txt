@@ -1,20 +1,7 @@
-# Migrations already represented in baseline/000_baseline.sql.
-#
-# The baseline is a pg_dump snapshot taken partway through the numbered series. Replaying
-# the files below on top of it is not merely redundant, it is destructive: several of them
-# (001_update_users_table, 014_create_rbac_and_plans, 024_create_appointments_table,
-# 025_merge_providers_id_with_user_id) begin with DROP TABLE ... CASCADE and rebuild the
-# table in its old integer-keyed shape, discarding everything the snapshot holds. Others
-# re-add triggers and indexes that already exist, or alter columns that have since been
-# rewritten. That is why the historical chain cannot simply be replayed from empty.
-#
-# This is a SKIP list, derived by diffing every pre-063 migration against the objects the
-# baseline already contains. A migration is listed here only if the baseline holds its
-# result. Files NOT listed -- including every future migration -- always run.
-#
-# On a fresh install the runner records these as applied without executing them. On an
-# existing database `--adopt` records every file, so this list is not consulted there.
-
+# Every migration the baseline (000_baseline.sql) already contains. On an EMPTY database the
+# runner applies the baseline and records these as applied without running them. Regenerated
+# 2026-11-22 to cover the whole history: global 001–100. (The tenant files 001–016 are inside the
+# baseline's template and tenant_default schemas, with their per-schema ledgers.)
 001_create_role_permissions.sql
 001_update_users_table.sql
 002_alter_users_add_names.sql
@@ -61,17 +48,75 @@
 035_add_fhir_tracking.sql
 035_create_preapprovals_table.sql
 036_create_payment_postings_table.sql
+037_add_stripe_integration.sql
 037_create_denials_table.sql
 038_create_claim_submissions_table.sql
 039_create_patient_intake_forms.sql
 040_create_audit_logs_table.sql
 041_create_archives_table.sql
+042_setup_archive_database.sql
 043_create_archive_rules_table.sql
 044_add_address_fields_to_patients.sql
 044_add_soap_notes_to_diagnosis.sql
 045_remove_notes_from_diagnosis.sql
 046_remove_description_from_diagnosis.sql
+047_create_billing_tables.sql
+047a_add_telehealth_integrations.sql
 048_add_zoom_oauth_columns.sql
 049_add_meeting_url_to_appointments.sql
 049_add_patient_telehealth_preference.sql
 050_create_social_auth_table.sql
+051_restore_users_id_default.sql
+052_add_last_login_to_users.sql
+053_create_accounts_tables.sql
+053_update_subscription_tiers.sql
+054_add_whatsapp_preferences.sql
+055_create_inventory_tables.sql
+056_add_currency_to_clinic_settings.sql
+056a_create_form_management.sql
+057_add_consent_form_id_to_offerings.sql
+058_sync_social_auth_user_patient_ids.sql
+059_create_secure_messaging.sql
+060_file_message_documents.sql
+060a_add_country_field.sql
+060b_add_patient_health_metrics.sql
+061_add_token_version_to_users.sql
+062_social_auth_cascade_on_user_delete.sql
+063_sec05_control_plane.sql
+064_sec05_template_schema.sql
+065_sec05_users_practice_id.sql
+066_sec05_cutover_default_tenant.sql
+067_sec05_provisioner_from_template.sql
+068_sec05_expand_tenant_set.sql
+069_sec05_control_plane_console.sql
+070_sec05_subscriptions.sql
+071_sec05_lazy_created_tenant_tables.sql
+072_global_runtime_ddl.sql
+073_sec05_least_privilege_role.sql
+074_sec05_portal_routing.sql
+075_self_serve_signup.sql
+076_plan_stripe_product.sql
+077_platform_billing_ledger.sql
+078_operator_roles_and_adjustments.sql
+079_platform_notifications.sql
+080_domain_join_requests.sql
+081_user_mfa_and_session_policy.sql
+082_fix_user_delete_references.sql
+083_locations_tenant_table.sql
+084_camps_tenant_tables.sql
+085_specialty_catalog.sql
+086_subscription_change_accounting.sql
+087_ai_integrations_tenant_tables.sql
+088_module_permissions_tenant_table.sql
+089_public_booking_routing.sql
+090_portal_invites.sql
+091_short_links.sql
+092_practice_profiles.sql
+093_memberships.sql
+094_profile_join_requests.sql
+095_login_lockouts.sql
+096_sick_notes.sql
+097_operator_last_login_grant.sql
+098_mobile_oauth_flows.sql
+099_sick_note_requests.sql
+100_notifications_eligibility_scrub.sql

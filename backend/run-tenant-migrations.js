@@ -128,7 +128,14 @@ async function runPool(items, limit, fn) {
   try {
     const migrations = loadMigrations();
     const schemas = await listTargetSchemas();
-    const targetVersion = migrations.length ? Math.max(...migrations.map((m) => m.version)) : 0;
+    // The historical files (migrations/history/tenant, folded into the baseline) still count
+    // toward the version a schema is at: with no new files the target is the last historical
+    // one, never 0 — 0 would overwrite every practice's recorded schema_version.
+    const historyDir = path.join(__dirname, 'migrations', 'history', 'tenant');
+    const historyMax = fs.existsSync(historyDir)
+      ? Math.max(0, ...fs.readdirSync(historyDir).filter((f) => /^\d+_.*\.sql$/.test(f)).map((f) => parseInt(f, 10)))
+      : 0;
+    const targetVersion = Math.max(historyMax, ...migrations.map((m) => m.version));
     console.log(
       `Tenant migrations: ${migrations.length} file(s); targets (${schemas.length}): ${schemas.join(', ')}; concurrency ${CONCURRENCY}`
     );

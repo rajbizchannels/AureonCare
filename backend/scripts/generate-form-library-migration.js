@@ -1,6 +1,6 @@
 // Generate the tenant migration that seeds the system form library.
 //
-// Usage:  node backend/scripts/generate-form-library-migration.js > backend/migrations/tenant/008_seed_form_library.sql
+// Usage:  node backend/scripts/generate-form-library-migration.js > backend/migrations/history/tenant/008_seed_form_library.sql
 //         node backend/scripts/generate-form-library-migration.js --verify
 //
 // WHY A GENERATOR. The library is 22 templates and 305 field definitions. Hand-copying
@@ -19,7 +19,7 @@ const crypto = require('crypto');
 
 const SOURCE = path.join(__dirname, '..', '..', 'frontend', 'src', 'data', 'formTemplates.js');
 const VERIFY = process.argv.includes('--verify');
-const OUTPUT = path.join(__dirname, '..', 'migrations', 'tenant', '008_seed_form_library.sql');
+const OUTPUT = path.join(__dirname, '..', 'migrations', 'history', 'tenant', '008_seed_form_library.sql');
 
 // --pack-forms <specialty>: emit the `formTemplates` array for a specialty pack, converted
 // from the seed file's column names to the pack format. These five templates are moving out
