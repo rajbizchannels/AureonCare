@@ -1,3 +1,5 @@
+-- DO NOT PASTE INTO THE SQL EDITOR. Tenant-runner file (npm run migrate:tenants): it runs inside each
+-- practice schema with unqualified names. For production, paste the matching global migration instead.
 -- Arabic added to the Communication Preferences language question (before "Other"). Global
 -- migration 102 does the same in every schema and is the one to paste into the SQL editor; this
 -- file is for the tenant runner. Unqualified names.
