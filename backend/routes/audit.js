@@ -1,8 +1,13 @@
 const express = require('express');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, authorize } = require('../middleware/auth');
 const { sendDbError } = require('../utils/dbErrors');
 const router = express.Router();
 router.use(authenticate);
+
+// Who may READ the audit trail: practice administrators only (the role table in
+// frontend/src/utils/rolePermissions.js: audit.view is admin-only). Every signed-in user may
+// still RECORD events — that is how their own actions are logged — but always as themselves.
+const auditReader = authorize('admin');
 
 // Cache for the table-existence check, keyed BY SCHEMA (expires after 5 minutes).
 //
@@ -167,13 +172,16 @@ router.post('/', checkAuditTableExists, async (req, res) => {
       });
     }
 
-    // Get user information - prefer body over session
-    const user_id = body_user_id || req.user?.id || null;
-    const user_email = body_user_email || req.user?.email || null;
-    const user_name = body_user_name ||
-      (req.user?.name) ||
-      (req.user?.first_name && req.user?.last_name ? `${req.user.first_name} ${req.user.last_name}` : null);
-    const user_role = body_user_role || req.user?.role || null;
+    // The actor is the signed-in user, always. The body's user_id/email/name/role used to win
+    // over the session, so anyone could write audit entries in someone else's name (SEC-55).
+    // Name and email fall back to the body only when the session does not carry them.
+    const user_id = req.user?.id || null;
+    const user_email = req.user?.email || body_user_email || null;
+    const user_name = (req.user?.name) ||
+      (req.user?.first_name && req.user?.last_name ? `${req.user.first_name} ${req.user.last_name}` : null) ||
+      body_user_name || null;
+    const user_role = req.user?.role || null;
+    void body_user_id; void body_user_role;
 
     // Get request metadata
     const ip_address = req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress;
@@ -242,7 +250,7 @@ router.post('/', checkAuditTableExists, async (req, res) => {
  * - sort: Sort field (default: created_at)
  * - order: Sort order (asc/desc, default: desc)
  */
-router.get('/', checkAuditTableExists, async (req, res) => {
+router.get('/', auditReader, checkAuditTableExists, async (req, res) => {
   try {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const {
@@ -384,7 +392,7 @@ router.get('/', checkAuditTableExists, async (req, res) => {
  * Get audit log by ID
  * GET /api/audit/:id
  */
-router.get('/:id', checkAuditTableExists, async (req, res) => {
+router.get('/:id', auditReader, checkAuditTableExists, async (req, res) => {
   try {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { id } = req.params;
@@ -409,7 +417,7 @@ router.get('/:id', checkAuditTableExists, async (req, res) => {
  *
  * Returns aggregated statistics for dashboards
  */
-router.get('/stats/summary', checkAuditTableExists, async (req, res) => {
+router.get('/stats/summary', auditReader, checkAuditTableExists, async (req, res) => {
   try {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { start_date, end_date } = req.query;
@@ -473,7 +481,7 @@ router.get('/stats/summary', checkAuditTableExists, async (req, res) => {
  * Get most active users
  * GET /api/audit/stats/top-users
  */
-router.get('/stats/top-users', checkAuditTableExists, async (req, res) => {
+router.get('/stats/top-users', auditReader, checkAuditTableExists, async (req, res) => {
   try {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { limit = 10, start_date, end_date } = req.query;
@@ -523,7 +531,7 @@ router.get('/stats/top-users', checkAuditTableExists, async (req, res) => {
  * Get most accessed resources
  * GET /api/audit/stats/top-resources
  */
-router.get('/stats/top-resources', checkAuditTableExists, async (req, res) => {
+router.get('/stats/top-resources', auditReader, checkAuditTableExists, async (req, res) => {
   try {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const { limit = 10, start_date, end_date } = req.query;
@@ -577,29 +585,10 @@ router.get('/stats/top-resources', checkAuditTableExists, async (req, res) => {
  * Query params:
  * - days: Number of days to retain (default: 90)
  */
-router.delete('/cleanup', async (req, res) => {
-  try {
-    const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
-    const { days = 90 } = req.query;
-
-    const query = `
-      DELETE FROM audit_logs
-      WHERE created_at < NOW() - INTERVAL '${parseInt(days)} days'
-      RETURNING id
-    `;
-
-    const result = await pool.query(query);
-
-    res.json({
-      message: `Deleted ${result.rowCount} audit log entries older than ${days} days`,
-      deleted_count: result.rowCount,
-    });
-  } catch (error) {
-    console.error('Error cleaning up audit logs:', error);
-    // A constraint the request broke is the caller's to fix, not a server fault.
-    if (sendDbError(res, error, 'Failed to cleanup audit logs')) return;
-    res.status(500).json({ error: 'Failed to cleanup audit logs' });
-  }
+router.delete('/cleanup', auditReader, (req, res) => {
+  // Retired: the audit trail is append-only (a database trigger refuses DELETE) and must be kept —
+  // HIPAA expects six years. Old entries are moved out by Archive Management, not deleted.
+  res.status(405).json({ error: 'Audit entries cannot be deleted. Use Archive Management to move old entries to the archive.' });
 });
 
 /**
@@ -608,7 +597,7 @@ router.delete('/cleanup', async (req, res) => {
  *
  * Uses same query params as GET /api/audit
  */
-router.get('/export/csv', async (req, res) => {
+router.get('/export/csv', auditReader, async (req, res) => {
   try {
     const pool = req.db || req.app.locals.pool; // SEC-05: tenant-scoped per request
     const {

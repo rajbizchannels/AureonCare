@@ -658,6 +658,7 @@ function App() {
             setCurrentModule={setCurrentModule}
             api={api}
             currency={currency}
+            user={user}
           />
         );
       case 'crm':
