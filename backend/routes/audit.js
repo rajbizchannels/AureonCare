@@ -50,11 +50,11 @@ const checkAuditTableExists = async (req, res, next) => {
             message: `Schema "${schema}" has no audit_logs table on the connection this request `
               + `used (tenantDb=${req.db ? 'yes' : 'no'}${fromCache ? ', cached' : ''}). `
               + 'If the schema does have the table, the request ran on the untenanted pool. '
-              + 'Otherwise run migration 040_create_audit_logs_table.sql.',
+              + 'Otherwise run the migrations: npm run migrate, then npm run migrate:tenants.',
             schema,
             tenantDb: Boolean(req.db),
             cached: fromCache,
-            migration: 'backend/migrations/040_create_audit_logs_table.sql',
+            migration: 'npm run migrate && npm run migrate:tenants',
           });
 
     // Check cache first
@@ -87,7 +87,7 @@ const checkAuditTableExists = async (req, res, next) => {
       return res.status(503).json({
         error: 'Audit logs table not found',
         message: `Schema "${schema}" has no audit_logs table.`,
-        migration: 'backend/migrations/040_create_audit_logs_table.sql',
+        migration: 'npm run migrate && npm run migrate:tenants',
       });
     }
 
@@ -368,8 +368,8 @@ router.get('/', checkAuditTableExists, async (req, res) => {
     if (error.message && error.message.includes('relation "audit_logs" does not exist')) {
       return res.status(503).json({
         error: 'Audit logs table not found',
-        message: 'Please run migration 040_create_audit_logs_table.sql to create the audit_logs table',
-        migration: 'backend/migrations/040_create_audit_logs_table.sql',
+        message: 'The audit_logs table is missing — run the migrations (npm run migrate, then npm run migrate:tenants).',
+        migration: 'npm run migrate && npm run migrate:tenants',
       });
     }
 
@@ -457,8 +457,8 @@ router.get('/stats/summary', checkAuditTableExists, async (req, res) => {
     if (error.message && error.message.includes('relation "audit_logs" does not exist')) {
       return res.status(503).json({
         error: 'Audit logs table not found',
-        message: 'Please run migration 040_create_audit_logs_table.sql to create the audit_logs table',
-        migration: 'backend/migrations/040_create_audit_logs_table.sql',
+        message: 'The audit_logs table is missing — run the migrations (npm run migrate, then npm run migrate:tenants).',
+        migration: 'npm run migrate && npm run migrate:tenants',
       });
     }
 

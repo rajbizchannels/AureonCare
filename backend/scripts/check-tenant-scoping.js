@@ -16,7 +16,8 @@ const fs = require('fs');
 const path = require('path');
 
 const ROUTES = path.join(__dirname, '..', 'routes');
-const MIGRATIONS = path.join(__dirname, '..', 'migrations');
+// The SEC-05 table lists live in the historical migrations (folded into the baseline).
+const MIGRATIONS = path.join(__dirname, '..', 'migrations', 'history', 'global');
 
 // Files allowed to use the raw shared pool: identity (public + practice_id scoping),
 // global shared master data, and control-plane config. These do NOT route through a

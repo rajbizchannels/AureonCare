@@ -349,17 +349,15 @@ success "Backend is healthy"
 # ── Step 8: Run database migrations ──────────────────────────────────────────
 section "Database Migrations"
 
-info "Running database migrations..."
-if docker compose exec -T backend node run_migrations.js; then
+info "Running database migrations (global, then every practice schema)..."
+# An empty database is built from backend/migrations/baseline/000_baseline.sql by the global runner.
+if docker compose exec -T backend node run-migrations.js && \
+   docker compose exec -T backend node run-tenant-migrations.js; then
   success "Migrations completed successfully"
 else
-  warn "Migration command failed — trying alternative path (run-migrations.js)"
-  if docker compose exec -T backend node run-migrations.js; then
-    success "Migrations completed successfully"
-  else
-    error "Migrations failed. You can run them manually with:"
-    error "  cd $INSTALL_DIR && docker compose exec backend node run_migrations.js"
-  fi
+  error "Migrations failed. You can run them manually with:"
+  error "  cd $INSTALL_DIR && docker compose exec backend node run-migrations.js"
+  error "  cd $INSTALL_DIR && docker compose exec backend node run-tenant-migrations.js"
 fi
 
 # ── Step 9: Verify frontend ───────────────────────────────────────────────────

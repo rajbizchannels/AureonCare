@@ -20,7 +20,7 @@ const pool = new Pool({
   user: process.env.AC_DB_U || 'postgres',
   host: process.env.AC_DB_H || 'localhost',
   database: process.env.AC_DB_N || 'aureoncare',
-  password: process.env.AC_DB_W || '*Smbz786#',
+  password: process.env.AC_DB_W, // no fallback: a password does not belong in source control
   port: process.env.AC_DB_P || 5432,
   // Explicitly set search_path to ensure tables are found
   options: '-c search_path=public',

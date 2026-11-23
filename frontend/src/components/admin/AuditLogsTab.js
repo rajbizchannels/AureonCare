@@ -589,7 +589,7 @@ const AuditLogsTab = ({ theme, api, addNotification }) => {
                     : 'bg-gray-100 text-gray-900'
                 }`}
               >
-                psql -U aureoncare_app -d aureoncare -f backend/migrations/040_create_audit_logs_table.sql
+                npm run migrate && npm run migrate:tenants
               </div>
               <p
                 className={`text-sm ${
