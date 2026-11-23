@@ -1111,7 +1111,9 @@ Paste `backend/migrations/103_practice_api_keys.sql` into the SQL editor as post
 adds `public.practice_api_keys` (hashed keys, `import` scope only). Then deploy.
 
 What ships with it:
-- **Settings → Import Data** (admins): download the patients/appointments CSV template, choose a file,
+- **Settings → Import Data** (admins): suppliers, products & stock, services & prices, insurers, patients
+  and appointments. Download each template as CSV or Excel (or one workbook with all of them), choose a
+  CSV or Excel file,
   see every problem by row and column before anything is saved, then import. All or nothing; re-running
   the same file adds nothing twice (patients match on MRN, appointments on patient + start time).
 - **API** for automated imports: `POST /api/import/{patients|appointments}` (JSON rows or CSV) with a

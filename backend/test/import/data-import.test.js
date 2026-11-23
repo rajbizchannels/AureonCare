@@ -181,6 +181,47 @@ const report = (err) => {
   check('...and the key stops at once', (await call('POST', '/api/import/patients', key, { dryRun: true, rows: oneRow })).status === 401);
   check('a made-up key is refused', (await call('POST', '/api/import/patients', `ack_${'a'.repeat(12)}_${'b'.repeat(32)}`, { rows: oneRow })).status === 401);
 
+  // ── suppliers → products → services → insurers ───────────────────────────────────
+  const supCsv = `name,contact_name,email,payment_terms\nMedSupply ${RUN},Lucia,orders_${RUN}@medsupply.example,net 30\nPharmaCo ${RUN},,,immediate`;
+  const sup = await call('POST', '/api/import/suppliers/csv', adminA.token, supCsv, { csv: true });
+  check(`suppliers import (got ${sup.status} ${JSON.stringify(sup.body).slice(0, 100)})`, sup.status === 200 && sup.body.created === 2);
+  check('..."net 30" is read as net_30', (await pool.query(`SELECT payment_terms FROM ${schemaA}.inventory_suppliers WHERE name = $1`, [`MedSupply ${RUN}`])).rows[0].payment_terms === 'net_30');
+  check('suppliers match on name, any case', (await call('POST', '/api/import/suppliers', adminA.token, { rows: [{ name: `medsupply ${RUN}`.toUpperCase(), phone: '+34 1' }] })).body.updated === 1);
+
+  const prodRows = [
+    { sku: `GLV-${RUN}`, name: 'Nitrile gloves, medium', item_type: 'consumable', unit_of_measure: 'box', unit_cost: '6,50', quantity_on_hand: '40', reorder_level: '10', category: 'Consumables', supplier: `MedSupply ${RUN}`, expiry_date: '2027-06-30', requires_refrigeration: 'no' },
+    { sku: `VAC-${RUN}`, name: 'Flu vaccine', item_type: 'medication', unit_of_measure: 'each', unit_cost: '9', selling_price: '25', quantity_on_hand: '5', category: 'consumables', requires_refrigeration: 'yes' },
+  ];
+  const badProd = await call('POST', '/api/import/products', adminA.token, { rows: [{ ...prodRows[0], supplier: 'Nobody Ltd', item_type: 'gadget', unit_cost: '-1' }] });
+  const pe = (badProd.body && badProd.body.errors) || [];
+  check('products: bad type, negative cost and unknown supplier are refused', badProd.status === 422 &&
+    ['item_type', 'unit_cost'].every((f) => pe.some((e) => e.field === f)));
+  const prod = await call('POST', '/api/import/products', adminA.token, { rows: prodRows });
+  check(`products import (got ${prod.status} ${JSON.stringify(prod.body).slice(0, 100)})`, prod.status === 200 && prod.body.created === 2);
+  const glv = (await pool.query(`SELECT i.*, c.name AS cat, s.name AS sup FROM ${schemaA}.inventory_items i LEFT JOIN ${schemaA}.inventory_categories c ON c.id = i.category_id LEFT JOIN ${schemaA}.inventory_suppliers s ON s.id = i.supplier_id WHERE sku = $1`, [`GLV-${RUN}`])).rows[0];
+  check('...decimal comma, opening stock, supplier and new category linked', glv && Number(glv.unit_cost) === 6.5 && Number(glv.quantity_on_hand) === 40 && glv.sup === `MedSupply ${RUN}` && glv.cat === 'Consumables' && /^[A-Z0-9-]+$/.test(glv.item_number));
+  check('...both products share one category (matched by name, any case)', (await pool.query(`SELECT count(DISTINCT category_id)::int AS n FROM ${schemaA}.inventory_items WHERE sku = ANY($1)`, [[`GLV-${RUN}`, `VAC-${RUN}`]])).rows[0].n === 1);
+  await call('POST', '/api/import/products', adminA.token, { rows: [{ ...prodRows[0], quantity_on_hand: '999', unit_cost: '7' }] });
+  const glv2 = (await pool.query(`SELECT unit_cost, quantity_on_hand FROM ${schemaA}.inventory_items WHERE sku = $1`, [`GLV-${RUN}`])).rows[0];
+  check('re-importing a product updates its cost but never overwrites stock', Number(glv2.unit_cost) === 7 && Number(glv2.quantity_on_hand) === 40);
+
+  const svc = await call('POST', '/api/import/services/csv', adminA.token, `name;price;duration_minutes;category;available_online\nInitial consultation ${RUN};60;30;Consultations;yes\nFollow-up ${RUN};45,50;20;Consultations;no`, { csv: true });
+  check(`services import (got ${svc.status} ${JSON.stringify(svc.body).slice(0, 100)})`, svc.status === 200 && svc.body.created === 2);
+  const priceOf = async (name) => (await pool.query(`SELECT p.base_price, o.available_online FROM ${schemaA}.healthcare_offerings o JOIN ${schemaA}.offering_pricing p ON p.offering_id = o.id AND p.pricing_type = 'standard' WHERE o.name = $1`, [name])).rows;
+  const fu = await priceOf(`Follow-up ${RUN}`);
+  check('...with a standard price and the online flag', fu.length === 1 && Number(fu[0].base_price) === 45.5 && fu[0].available_online === false);
+  await call('POST', '/api/import/services', adminA.token, { rows: [{ name: `follow-up ${RUN}`, price: '50' }] });
+  const fu2 = await priceOf(`Follow-up ${RUN}`);
+  check('re-importing a service updates its one standard price', fu2.length === 1 && Number(fu2[0].base_price) === 50);
+
+  const ins = await call('POST', '/api/import/insurers', adminA.token, { rows: [{ payer_id: `SAN-${RUN}`, name: 'Sanitas', timely_filing_limit: '90', prior_authorization_required: 'yes', status: 'inactive' }] });
+  const insRow = (await pool.query(`SELECT * FROM ${schemaA}.insurance_payers WHERE payer_id = $1`, [`SAN-${RUN}`])).rows[0];
+  check(`insurers import (got ${ins.status})`, ins.status === 200 && insRow && insRow.timely_filing_limit === 90 && insRow.prior_authorization_required === true && insRow.is_active === false);
+  check('a yes/no column refuses anything else', (await call('POST', '/api/import/insurers', adminA.token, { rows: [{ payer_id: 'X', name: 'X', prior_authorization_required: 'maybe' }] })).status === 422);
+  const tpl = await call('GET', '/api/import/templates/products.csv');
+  check('every kind has a template (products shown)', tpl.status === 200 && parseCsv(tpl.body)[0].includes('quantity_on_hand'));
+  check('the format lists the import order', JSON.stringify(fm.body.order) === JSON.stringify(['suppliers', 'products', 'services', 'insurers', 'patients', 'appointments']));
+
   // ── limits ───────────────────────────────────────────────────────────────────────
   check('more than 5,000 rows is refused (413)', (await call('POST', '/api/import/patients', adminA.token, { rows: new Array(5001).fill(oneRow[0]) })).status === 413);
   check('an unknown kind is 404', (await call('POST', '/api/import/claims', adminA.token, { rows: oneRow })).status === 404);

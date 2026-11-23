@@ -880,7 +880,7 @@ export const getNavigation = (t = {}) => [
           {
             id: 'settings.dataImport',
             label: t.dataImport || 'Import Data',
-            description: t.dataImportNavDescription || 'Patients and appointments, by CSV or API',
+            description: t.dataImportNavDescription || 'Patients, stock, services and more — CSV, Excel or API',
             icon: FileUp,
             module: 'admin',
             tab: ADMIN_TABS.IMPORT,
