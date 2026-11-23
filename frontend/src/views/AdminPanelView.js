@@ -3727,7 +3727,7 @@ const AdminPanelView = ({
             </div>
           )}
 
-          <p className={`text-xs mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>{guidelineText('backup')}</p>
+          <p className={`text-xs mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>{guidelineText('backup', language)}</p>
           <input
             type="file"
             accept=".json"

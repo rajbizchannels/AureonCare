@@ -3,14 +3,18 @@ import { Globe, Link2, Search, EyeOff, Save, Upload, Check, X, Trash2, RefreshCw
 import QrCodeButton from '../common/QrCodeButton';
 import { getTranslations } from '../../config/translations';
 import { useOptionalApp } from '../../context/AppContext';
-import { checkUpload, guidelineText, UPLOAD_GUIDELINES } from '../../utils/uploadGuidelines';
+import { checkUpload, guidelineText, noteFor } from '../../utils/uploadGuidelines';
 
 /** Size and format guidance under an upload control. */
-const UploadHint = ({ kind, dark }) => (
-  <p className={`text-xs mt-1 ${dark ? 'text-slate-400' : 'text-gray-500'}`}>
-    {guidelineText(kind)}{UPLOAD_GUIDELINES[kind] && UPLOAD_GUIDELINES[kind].note ? <><br />{UPLOAD_GUIDELINES[kind].note}</> : null}
-  </p>
-);
+const UploadHint = ({ kind, dark }) => {
+  const lang = useOptionalApp()?.language || 'en';
+  const note = noteFor(kind, lang);
+  return (
+    <p className={`text-xs mt-1 ${dark ? 'text-slate-400' : 'text-gray-500'}`}>
+      {guidelineText(kind, lang)}{note ? <><br />{note}</> : null}
+    </p>
+  );
+};
 
 const useT = () => getTranslations(useOptionalApp()?.language || 'en');
 
