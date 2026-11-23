@@ -6,8 +6,8 @@ This guide will help you set up the Pre-Authorization (Prior Authorization) feat
 > the database baseline, so `npm run migrate` followed by `npm run migrate:tenants` creates
 > them (see [`../engineering/SETUP.md`](../engineering/SETUP.md)). The per-feature runner
 > this guide originally described — `npm run migrate:preauth` and
-> `backend/scripts/run-preapprovals-migration.js` — has been removed (the root
-> `run-preapprovals-migration.bat` still calls it and no longer works); the source migrations are kept for reference in
+> `backend/scripts/run-preapprovals-migration.js`, with the root
+> `run-preapprovals-migration.bat` — has been removed; the source migrations are kept for reference in
 > `backend/migrations/history/global/` (031, 032, 035). The verification and
 > troubleshooting below still apply.
 
