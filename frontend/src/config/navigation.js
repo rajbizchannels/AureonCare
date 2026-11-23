@@ -54,6 +54,7 @@ import {
   HardDrive,
   Archive,
   ScrollText,
+  FileUp,
   Bell,
 } from 'lucide-react';
 
@@ -874,6 +875,15 @@ export const getNavigation = (t = {}) => [
             icon: Video,
             module: 'admin',
             tab: ADMIN_TABS.TELEHEALTH,
+            access: 'adminPanel',
+          },
+          {
+            id: 'settings.dataImport',
+            label: t.dataImport || 'Import Data',
+            description: t.dataImportNavDescription || 'Patients and appointments, by CSV or API',
+            icon: FileUp,
+            module: 'admin',
+            tab: ADMIN_TABS.IMPORT,
             access: 'adminPanel',
           },
           {

@@ -77,6 +77,9 @@ database schema (schema-per-tenant); one sign-in can belong to several practices
 - **My notifications**: each staff member chooses, per notification and per channel (in the app,
   email, WhatsApp), what they receive
 - Notifications by email and WhatsApp (approved templates), secure messaging
+- **Data import** of patients and appointments: CSV with published templates (Settings → Import Data)
+  or the API with practice API keys — checked first, all or nothing, re-runnable
+  ([`docs/integrations/DATA_IMPORT.md`](docs/integrations/DATA_IMPORT.md))
 - Audit log of PHI access and changes; backup, restore and archiving
 - 5 languages: English, Spanish, French, German, Arabic
 
@@ -149,7 +152,7 @@ Mobile app: see [`mobile/README.md`](mobile/README.md) (`cd mobile && npm instal
   new practices are cloned from. Run both, in that order, on every deploy.
 - The full history (global 001–100, tenant 001–016) is one baseline,
   `backend/migrations/baseline/000_baseline.sql`, used only for empty databases; the historical
-  files are kept in `backend/migrations/history/`. Next numbers: global **101**, tenant **017**.
+  files are kept in `backend/migrations/history/`. Next numbers: global **104**, tenant **019**.
 - Production is migrated by pasting the new migration into the Supabase SQL editor; migrations
   that touch practice schemas are written to fan out to every schema themselves.
 - Health checks: `npm run check:schema-health`, `npm run check:tenant-scoping`, `npm run check:db-role`.

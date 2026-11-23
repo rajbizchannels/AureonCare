@@ -1104,3 +1104,21 @@ What changes:
 Paste `backend/migrations/102_communication_language_arabic.sql` into the SQL editor as postgres (safe to
 re-run). It adds "Arabic (العربية)" before "Other" in the Communication Preferences form of every practice,
 so the options match the five languages the app is translated into. Forms already filled in are unchanged.
+
+## Migration 103 — data import by CSV and API (practice API keys)
+
+Paste `backend/migrations/103_practice_api_keys.sql` into the SQL editor as postgres (safe to re-run). It
+adds `public.practice_api_keys` (hashed keys, `import` scope only). Then deploy.
+
+What ships with it:
+- **Settings → Import Data** (admins): download the patients/appointments CSV template, choose a file,
+  see every problem by row and column before anything is saved, then import. All or nothing; re-running
+  the same file adds nothing twice (patients match on MRN, appointments on patient + start time).
+- **API** for automated imports: `POST /api/import/{patients|appointments}` (JSON rows or CSV) with a
+  practice API key (`Authorization: Bearer ack_…`). The format is published at `GET /api/import/formats`;
+  templates at `GET /api/import/templates/{kind}.csv`. Documentation: `docs/integrations/DATA_IMPORT.md`.
+- Without migration 103 the CSV screen still works; only creating API keys answers "API keys need
+  migration 103".
+
+Verify after deploying: open `https://app.aureoncare.tech/api/import/formats` (JSON, no sign-in), then in
+Settings → Import Data download the patients template and run a dry run with it.
