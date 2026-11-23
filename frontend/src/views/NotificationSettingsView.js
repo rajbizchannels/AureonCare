@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Bell, Mail, MessageCircle, Info, Loader2 } from 'lucide-react';
+import { Bell, Mail, MessageCircle, Info, Loader2, ToggleLeft, ToggleRight } from 'lucide-react';
 
 /**
  * My notifications — each staff member picks, per notification and per channel (in the app,
@@ -12,7 +12,9 @@ import { Bell, Mail, MessageCircle, Info, Loader2 } from 'lucide-react';
  */
 const CHANNEL_ICONS = { in_app: Bell, email: Mail, whatsapp: MessageCircle };
 
-const Switch = ({ on, disabled, busy, onClick, label, theme }) => (
+// Same switch as the Integrations page (ToggleRight green = on, ToggleLeft grey = off), kept
+// as a real switch for screen readers and the keyboard.
+const Switch = ({ on, disabled, busy, onClick, label }) => (
   <button
     type="button"
     role="switch"
@@ -20,11 +22,13 @@ const Switch = ({ on, disabled, busy, onClick, label, theme }) => (
     aria-label={label}
     disabled={disabled || busy}
     onClick={onClick}
-    className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500
-      ${on ? 'bg-cyan-500' : theme === 'dark' ? 'bg-slate-600' : 'bg-gray-300'}
-      ${disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}
+    title={disabled ? undefined : on ? 'Disable' : 'Enable'}
+    className={`relative inline-flex items-center transition-colors rounded focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500
+      ${disabled || busy ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-80 cursor-pointer'}`}
   >
-    <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${on ? 'translate-x-5' : 'translate-x-0.5'}`} />
+    {on
+      ? <ToggleRight className="w-6 h-6 text-green-400" />
+      : <ToggleLeft className={`w-6 h-6 ${disabled ? 'text-gray-600' : 'text-gray-400'}`} />}
     {busy ? <Loader2 className="absolute -right-6 w-4 h-4 animate-spin text-cyan-500" /> : null}
   </button>
 );
