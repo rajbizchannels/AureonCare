@@ -573,7 +573,7 @@ const AdminPanelView = ({
           (error.message.includes('telehealth_provider_settings') || error.message.includes('503'))
         ) {
           console.warn(
-            'Telehealth provider settings table does not exist. Please run the database migration: node backend/scripts/migrate-telehealth.js'
+            'Telehealth provider settings table does not exist. Please run the migrations: npm run migrate, then npm run migrate:tenants'
           );
           setTelehealthDbMissing(true);
           await addNotification(
@@ -3152,7 +3152,7 @@ const AdminPanelView = ({
             Database Migration Required
           </p>
           <p className={`text-sm mt-1 ${theme === 'dark' ? 'text-yellow-400/80' : 'text-yellow-600'}`}>
-            Please run: node backend/scripts/migrate-telehealth.js
+            Please run the migrations: npm run migrate, then npm run migrate:tenants
           </p>
         </div>
       )}

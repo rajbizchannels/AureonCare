@@ -11,7 +11,6 @@
     "migrate:tenants": "node backend/run-tenant-migrations.js",
     "packs:load": "node backend/scripts/load-specialty-packs.js",
     "platform:operator": "node backend/scripts/create-platform-operator.js",
-    "reset-db": "node backend/scripts/reset-and-seed.js",
     "check:tenant-scoping": "node backend/scripts/check-tenant-scoping.js",
     "check:db-role": "node backend/scripts/check-db-role.js",
     "check:schema-health": "node backend/scripts/check-schema-health.js",

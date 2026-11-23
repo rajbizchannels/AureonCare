@@ -26,26 +26,23 @@ Development setup, the migration runners and troubleshooting are in
 | `load_medication_data.sh` / `.bat` | — | optional medication sample data (applies `backend/migrations/history/global/015_medications_sample_data.sql`); reads `DB_NAME`, `DB_USER`, `DB_HOST`, `DB_PORT` |
 | `diagnose-archiving.js`, `clean-archive-database.js` | — | diagnose / reset the separate archive database |
 
-## Legacy — do not run against a current database
+## Removed (2026-11-23)
 
-These predate the schema-per-tenant cut-over (migration 066, which moved the clinical
-tables out of `public`) and the migration ledger. Most connect with `search_path=public`,
-where those tables no longer exist; several apply migration files directly, outside the
-ledger. A fresh database is built by `npm run migrate` then `npm run migrate:tenants`
-instead.
+These predated the schema-per-tenant cut-over (migration 066) and the migration ledger: they
+connected with `search_path=public`, where the clinical tables no longer live, applied migration
+files outside the ledger, or deleted data. A database is built with `npm run migrate` then
+`npm run migrate:tenants`; `npm run check:schema-health` and `GET /health` replace the diagnostics.
 
-- **Reset and seed:** `reset-and-seed.js` (`npm run reset-db`) — runs historical migrations
-  021, 022, 009 and 017 directly, deletes all data in `public`, then loads
-  `seed-test-data.sql`; `run-reset-simple.js`, `run-reset-and-seed-delete.js`,
-  `run-reset-and-seed.js` and their `reset-and-seed*.sql`; `reset-database.sql`;
-  `seed-test-data.sql`, `seed-data.sql`, `seed.js`. It also contains a hard-coded fallback
-  database password.
-- **Schema builders:** `migrate.js`, `migrate-enhanced.js`, `migrate-telehealth.js`,
-  `quick-setup.js`, `init-database.sh` / `.bat` (drops the `public` schema, applies
-  `backend/schema.sql`), `run-scheduling-migration.js`, `run-appointments-migrations.js`,
-  `run-single-migration.js`, `drop-tables.js`, `check-database.sql`.
-- **One-off repairs and diagnostics:** `fix-address-column.js`, `fix-appointments-table.js`,
-  `fix-lab-orders-schema.js`, `fix-patient-names.sql`, `check-providers-schema.js`,
-  `diagnose-patient-portal.js`, `inspect-schema.js`, `grant-permissions.sql`.
-
-Never run any reset or seed script against production: they delete data.
+`reset-and-seed.js` (and `npm run reset-db`), `run-reset-simple.js`, `run-reset-and-seed.js`,
+`run-reset-and-seed-delete.js`, `seed.js`, `migrate.js`, `migrate-enhanced.js`,
+`migrate-telehealth.js`, `quick-setup.js`, `run-scheduling-migration.js`,
+`run-appointments-migrations.js`, `run-single-migration.js`, `drop-tables.js`,
+`fix-address-column.js`, `fix-appointments-table.js`, `fix-lab-orders-schema.js`,
+`check-providers-schema.js`, `diagnose-patient-portal.js`, `inspect-schema.js`; and in `backend/`,
+`test-db.js` and `check-audit-setup.js`. They remain in git history.
+Also removed with them: the SQL and shell they used — `init-database.sh` / `.bat` (dropped the
+`public` schema), `reset-and-seed*.sql`, `reset-database.sql`, `seed-data.sql`,
+`seed-test-data.sql`, `check-database.sql`, `fix-patient-names.sql`, `grant-permissions.sql` — and
+in `backend/`, the old schema dumps `schema.sql`, `schema2.sql`, `schema.old.sql` (superseded by
+`migrations/baseline/000_baseline.sql`) and `run_migrations.bat` (ran every migration file with
+`psql -f`, outside the ledger).
