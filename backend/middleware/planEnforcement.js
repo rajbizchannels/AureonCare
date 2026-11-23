@@ -278,6 +278,9 @@ async function enforceActiveBilling(req, res, next) {
 }
 
 module.exports = {
+  loadPlan,          // also used by the data importer's patient-limit check
+  isPlanExpired,
+  UNLIMITED,
   enforceUserQuota,
   enforcePatientQuota,
   enforceProviderQuota,

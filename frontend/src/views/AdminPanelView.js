@@ -31,6 +31,7 @@ import AuditLogsTab from '../components/admin/AuditLogsTab';
 import ArchiveManagementTab from '../components/admin/ArchiveManagementTab';
 import LocationsTab from '../components/admin/LocationsTab';
 import PracticeProfileTab from '../components/admin/PracticeProfileTab';
+import DataImportTab from '../components/admin/DataImportTab';
 import ModulePermissionsTab from '../components/admin/ModulePermissionsTab';
 import BusyButton from '../components/common/BusyButton';
 import { useClinicSettings } from '../hooks/useClinicSettings';
@@ -441,6 +442,8 @@ const AdminPanelView = ({
       { id: ADMIN_TABS.TELEHEALTH, label: t.telehealthSetup || 'Telehealth Setup', icon: Video },
       { id: ADMIN_TABS.HOURS, label: t.workingHours || 'Working Hours', icon: Clock },
       { id: ADMIN_TABS.APPOINTMENTS, label: t.appointmentSettings || 'Appointment Settings', icon: Settings },
+      // Import is admin-only; the API refuses anyone else (authorize('admin') or an API key).
+      ...(isAdmin(user) ? [{ id: ADMIN_TABS.IMPORT, label: t.dataImport || 'Import Data', icon: Upload }] : []),
       { id: ADMIN_TABS.BACKUP, label: 'Backup & Restore', icon: HardDrive },
       { id: ADMIN_TABS.ARCHIVE, label: 'Archive Management', icon: Archive },
       { id: ADMIN_TABS.AUDIT, label: 'Audit Logs', icon: FileText },
@@ -3982,6 +3985,9 @@ const AdminPanelView = ({
           {activeTab === ADMIN_TABS.PROFILE && (
             <PracticeProfileTab theme={theme} api={api} addNotification={addNotification} />
           )}
+          {activeTab === ADMIN_TABS.IMPORT && (isAdmin(user)
+            ? <DataImportTab theme={theme} addNotification={addNotification} />
+            : <p className={theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}>Only practice administrators can import data.</p>)}
           {activeTab === ADMIN_TABS.USERS && renderUserManagementTab()}
           {activeTab === ADMIN_TABS.ROLES && renderRolesPermissionsTab()}
           {activeTab === ADMIN_TABS.PLANS && renderSubscriptionPlansTab()}

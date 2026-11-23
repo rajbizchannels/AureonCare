@@ -194,6 +194,7 @@ export const ADMIN_TABS = {
   CLINIC: 'clinic',
   LOCATIONS: 'locations',
   PROFILE: 'practiceProfile',
+  IMPORT: 'dataImport',
   USERS: 'users',
   ROLES: 'roles',
   PLANS: 'plans',
