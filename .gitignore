@@ -65,3 +65,6 @@ package.json
 # Python bytecode (from the docs/presentation generator scripts)
 __pycache__/
 *.pyc
+
+# Local agent worktrees
+.claude/worktrees/
