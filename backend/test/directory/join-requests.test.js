@@ -38,12 +38,12 @@ const call = async (method, url, token, body) => {
   const t = await r.text(); let b = null; try { b = JSON.parse(t); } catch { b = t; }
   return { status: r.status, body: b };
 };
-const form = async (url, fields) => {
-  const r = await fetch(BASE + url, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+const form = async (url, fields, extraHeaders = {}) => {
+  const r = await fetch(BASE + url, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded', ...extraHeaders },
     body: new URLSearchParams(fields).toString() });
   return { status: r.status, html: await r.text(), csp: r.headers.get('content-security-policy') || '' };
 };
-const get = async (url) => { const r = await fetch(BASE + url, { redirect: 'manual' }); return { status: r.status, html: await r.text() }; };
+const get = async (url) => { const r = await fetch(BASE + url, { redirect: 'manual' }); return { status: r.status, html: await r.text(), referrer: r.headers.get('referrer-policy') || '' }; };
 const report = (err) => {
   let failed = 0;
   for (const [n, c] of results) { console.log(`  ${c ? 'ok  ' : 'FAIL'} ${n}`); if (!c) failed += 1; }
@@ -84,6 +84,13 @@ const report = (err) => {
   const r1 = await form(`${base}/join`, { firstName: 'Maya', lastName: 'Lee', email: email.toUpperCase(), role: 'admin' });
   check(`a request is accepted (got ${r1.status})`, r1.status === 200 && /Check your email/.test(r1.html));
   check('...the page allows posting only to itself', /form-action 'self'/.test(r1.csp));
+  // A real browser posting the form sends "Origin: null" when the page's referrer policy is
+  // no-referrer — that must not be refused as a cross-origin call (it was a 500 in production).
+  const viaBrowser = await form(`${base}/join`, { firstName: 'Ori', lastName: 'Null', email: `orinull_${RUN}@example.com`, role: 'nurse' }, { Origin: 'null' });
+  check(`a browser form post with "Origin: null" is accepted (got ${viaBrowser.status})`, viaBrowser.status === 200 && /Check your email/.test(viaBrowser.html));
+  const fromApp = await form(`${base}/join`, { firstName: 'Ori', lastName: 'Same', email: `orisame_${RUN}@example.com`, role: 'nurse' }, { Origin: BASE });
+  check(`a same-origin form post is accepted (got ${fromApp.status})`, fromApp.status === 200);
+  check('the form page sends its origin with the post', /same-origin/.test(f.referrer || ''));
   const row = (await pool.query(`SELECT * FROM public.join_requests WHERE practice_id = $1 AND email = $2`, [t.practiceId, email])).rows;
   check('...one row, UNVERIFIED, from the profile, no account', row.length === 1 && row[0].status === 'unverified' && row[0].source === 'profile' && row[0].user_id === null);
   check('...asking for "admin" falls back to staff', row[0] && row[0].requested_role === 'staff');

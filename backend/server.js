@@ -82,7 +82,14 @@ app.use(cors((req, callback) => {
       }
     } catch { /* unparseable Origin — fall through to the rejection below */ }
   }
-  callback(new Error(`CORS: origin '${origin}' not allowed`));
+  // Outside /api (the server-rendered public pages: /p, /s, ...) nothing is shared
+  // cross-origin, so send no CORS headers rather than refusing. A browser posting a form on
+  // those pages may send "Origin: null" (it does whenever the page's referrer policy is
+  // no-referrer); refusing it turned the "Ask to join" form into a 500.
+  if (!String(req.path || req.url || '').startsWith('/api')) return callback(null, { origin: false });
+  const err = new Error(`CORS: origin '${origin}' not allowed`);
+  err.status = 403;
+  callback(err);
 }));
 // Stripe webhook MUST be mounted before express.json() so it receives the raw body.
 // Stripe-Signature verification fails if the body has been JSON-parsed first.
@@ -318,6 +325,10 @@ app.use((err, req, res, next) => {
   // Return 400 so clients get a useful signal rather than a generic 500.
   if (err instanceof SyntaxError && err.status === 400 && 'body' in err) {
     return res.status(400).json({ error: 'Invalid JSON in request body' });
+  }
+  // A refused cross-origin call is the caller's problem, not a server fault.
+  if (err && err.status === 403 && /^CORS:/.test(err.message || '')) {
+    return res.status(403).json({ error: 'Origin not allowed' });
   }
 
   console.error(err.stack);
