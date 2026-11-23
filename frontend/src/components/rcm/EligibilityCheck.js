@@ -27,12 +27,14 @@ const EligibilityCheck = ({ theme, api, patientId, payerId = null, serviceDate =
   const [loading, setLoading] = useState(false);
   const [running, setRunning] = useState(false);
   const [problem, setProblem] = useState(null); // { message, missing }
+  const [applicable, setApplicable] = useState(true); // false outside the US (X12 270/271 is US-only)
 
   const load = useCallback(async () => {
     if (!patientId) { setCheck(null); return; }
     setLoading(true);
     try {
-      const c = await api.getLatestEligibility(patientId, { payerId, serviceDate });
+      const { check: c, applicable: ok } = await api.getLatestEligibility(patientId, { payerId, serviceDate });
+      setApplicable(ok);
       setCheck(c); onResult && onResult(c);
     } catch { setCheck(null); }
     finally { setLoading(false); }
@@ -49,7 +51,7 @@ const EligibilityCheck = ({ theme, api, patientId, payerId = null, serviceDate =
     } finally { setRunning(false); }
   };
 
-  if (!patientId) return null;
+  if (!patientId || !applicable) return null;
   const muted = dark ? 'text-slate-400' : 'text-gray-600';
   const s = check ? (STATUS[check.status] || STATUS.unknown) : null;
   const cov = (check && check.coverage) || {};

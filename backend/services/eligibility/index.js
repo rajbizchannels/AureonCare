@@ -15,6 +15,7 @@
 
 const { buildRequest, parseResponse } = require('./medicalNetwork');
 const { vendorsFor } = require('../vendorIntegrations');
+const { usIdentifiersApplyFor } = require('../../utils/practiceRegion');
 
 const SERVICE_TYPES = {
   '30': 'Health benefit plan coverage', '1': 'Medical care', '33': 'Chiropractic', '35': 'Dental care',
@@ -47,6 +48,9 @@ async function runCheck(req, opts) {
   const serviceDate = /^\d{4}-\d{2}-\d{2}$/.test(String(opts.serviceDate || '')) ? opts.serviceDate : todayIso();
   const serviceType = SERVICE_TYPES[String(opts.serviceType || '30')] ? String(opts.serviceType || '30') : '30';
 
+  if (!(await usIdentifiersApplyFor(db, practiceId))) {
+    return { status: 422, error: 'Insurance eligibility checks (X12 270/271) are for US payers; they are not available for this practice.' };
+  }
   const { patient, payer, practice } = await loadContext(db, { patientId: opts.patientId, payerId: opts.payerId, practiceId });
   if (!patient) return { status: 404, error: 'Patient not found.' };
   if (opts.payerId && !payer) return { status: 404, error: 'Insurance payer not found.' };
@@ -127,4 +131,4 @@ async function history(db, patientId, limit = 20) {
   return rows.map(present);
 }
 
-module.exports = { runCheck, latestFor, history, SERVICE_TYPES };
+module.exports = { runCheck, latestFor, history, SERVICE_TYPES, usIdentifiersApplyFor };

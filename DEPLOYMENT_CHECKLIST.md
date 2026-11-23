@@ -1077,3 +1077,24 @@ table and went out with no patient details), but the Labcorp endpoints and messa
 team (usually HL7 v2 ORM/ORU, or a FHIR/aggregator route they specify), with an account number,
 ordering-provider registration and a results interface. Treat it as a project with Labcorp, not a
 setting.
+
+## Migration 101 — personal NPI / DEA, US-only identifiers by country, language option
+
+**Run before deploying:** paste `backend/migrations/101_us_identifiers_language_option.sql` into the
+SQL editor as postgres (safe to re-run). It adds `npi` and `dea_number` to `public.users` and removes
+"Portuguese (Português)" from the Communication Preferences form's language question in every
+practice (forms already filled in are unchanged).
+
+What changes:
+- **Clinic Settings → Country.** NPI, DEA, X12 eligibility and Surescripts apply only to US
+  practices (and US territories). With no country set, USD currency means US. Outside the US the
+  NPI field, the personal NPI/DEA fields, the eligibility panel and the claim check's NPI and
+  eligibility rules are hidden/off. **Production's practice has no country and uses EUR, so these
+  are off for it until a country is set.** Each practice should set its country.
+- **User Management → NPI (individual) and DEA number** for clinicians in US practices, validated
+  (NPI check digit; DEA format and check digit). E-prescriptions use the prescriber's own NPI/DEA
+  (the Surescripts settings JSON stays as a fallback). The Surescripts prescriber ID (SPI) is
+  assigned by Surescripts on enrolment and is not entered here.
+- **SEC-56:** a doctor could edit any other provider's record in the practice; now only their own.
+- The language API and the form designer offer only the five translated languages.
+- Audit trail (SEC-55): readable by administrators only; Insights → Compliance hidden from others.

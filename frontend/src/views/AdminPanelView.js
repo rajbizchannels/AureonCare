@@ -54,6 +54,7 @@ import {
   validateOptionalPhone,
 } from '../utils/validators';
 import { hasPermission, isAdmin } from '../utils/rolePermissions';
+import { usIdentifiersApply, countryOptions, isValidNpi, isValidDea } from '../utils/practiceRegion';
 import ThemedSelect from '../components/forms/ThemedSelect';
 
 /**
@@ -393,6 +394,8 @@ const AdminPanelView = ({
     country: '',
     timezone: '',
     license_number: '',
+    npi: '',
+    dea_number: '',
     language: '',
     whatsappNumber: '',
     whatsappNotifications: false,
@@ -780,6 +783,8 @@ const AdminPanelView = ({
             country: formData.country,
             timezone: formData.timezone,
             license_number: formData.license_number,
+            // Personal NPI and DEA number — US practices only; '' clears.
+            ...(usIdentifiersApply(clinicSettings) ? { npi: formData.npi || '', dea_number: formData.dea_number || '' } : {}),
             language: formData.language,
             preferences: {
               whatsappNumber: formData.whatsappNumber || '',
@@ -814,6 +819,8 @@ const AdminPanelView = ({
             country: formData.country,
             timezone: formData.timezone,
             license_number: formData.license_number,
+            // Personal NPI and DEA number — US practices only; '' clears.
+            ...(usIdentifiersApply(clinicSettings) ? { npi: formData.npi || '', dea_number: formData.dea_number || '' } : {}),
             language: formData.language,
             password: formData.password,
             preferences: {
@@ -836,7 +843,7 @@ const AdminPanelView = ({
         throw error; // Re-throw to keep form open
       }
     },
-    [editingUser, api, setUsers, t, addNotification]
+    [editingUser, api, setUsers, t, addNotification, clinicSettings]
   );
 
   // handleSaveRolePermissions bulk-saved the coarse module x role matrix through
@@ -1825,6 +1832,22 @@ const AdminPanelView = ({
         </div>
 
         <div>
+          <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+            {t.country || 'Country'}
+          </label>
+          {/* Decides which national identifiers apply — NPI and DEA are US-only. */}
+          <ThemedSelect
+            theme={theme}
+            value={clinicSettings.country || ''}
+            onChange={(e) => updateClinicSetting('country', e.target.value)}
+          >
+            <option value="">{t.notSet || 'Not set'}</option>
+            {countryOptions(language || 'en').map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}
+          </ThemedSelect>
+        </div>
+
+        {usIdentifiersApply(clinicSettings) && (
+        <div>
           <label
             className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}
           >
@@ -1846,6 +1869,7 @@ const AdminPanelView = ({
           />
           {validationErrors.npi && <p className="text-red-500 text-sm mt-1">{validationErrors.npi}</p>}
         </div>
+        )}
 
         <div>
           <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
@@ -1918,6 +1942,8 @@ const AdminPanelView = ({
         country: editingUser.country || '',
         timezone: editingUser.timezone || '',
         license_number: editingUser.license_number || '',
+        npi: editingUser.npi || '',
+        dea_number: editingUser.dea_number || editingUser.deaNumber || '',
         language: editingUser.language || '',
         whatsappNumber: editingUser.preferences?.whatsappNumber ?? editingUser.phone ?? '',
         whatsappNotifications: editingUser.preferences?.whatsappNotifications ?? false,
@@ -1938,6 +1964,8 @@ const AdminPanelView = ({
         country: '',
         timezone: '',
         license_number: '',
+        npi: '',
+        dea_number: '',
         language: '',
         whatsappNumber: '',
         whatsappNotifications: false,
@@ -2037,6 +2065,8 @@ const AdminPanelView = ({
       country: '',
       timezone: '',
       license_number: '',
+      npi: '',
+      dea_number: '',
       language: '',
       password: '',
       confirmPassword: '',
@@ -2461,6 +2491,48 @@ const AdminPanelView = ({
                 />
               </div>
             </div>
+
+            {/* Personal NPI and DEA number: US clinicians only (utils/practiceRegion.js). */}
+            {usIdentifiersApply(clinicSettings) && userFormData.role !== 'patient' && (
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                    {t.personalNpi || 'NPI (individual)'}
+                  </label>
+                  <input
+                    type="text" inputMode="numeric" maxLength={10}
+                    value={userFormData.npi || ''}
+                    onChange={(e) => handleUserFormChange('npi', e.target.value.replace(/\D/g, ''))}
+                    aria-invalid={Boolean(userFormData.npi) && !isValidNpi(userFormData.npi)}
+                    className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      userFormData.npi && !isValidNpi(userFormData.npi) ? 'border-red-500' : theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-gray-300 text-gray-900'
+                    }`}
+                    placeholder="10 digits"
+                  />
+                  {userFormData.npi && !isValidNpi(userFormData.npi)
+                    ? <p className="text-red-500 text-xs mt-1">{t.invalidNpi || 'Not a valid NPI (10 digits with a check digit).'}</p>
+                    : <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>{t.npiHelp || 'Needed for e-prescribing and on claims.'}</p>}
+                </div>
+                <div>
+                  <label className={`block text-sm font-medium mb-2 ${theme === 'dark' ? 'text-slate-300' : 'text-gray-700'}`}>
+                    {t.deaNumber || 'DEA number'}
+                  </label>
+                  <input
+                    type="text" maxLength={9}
+                    value={userFormData.dea_number || ''}
+                    onChange={(e) => handleUserFormChange('dea_number', e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
+                    aria-invalid={Boolean(userFormData.dea_number) && !isValidDea(userFormData.dea_number)}
+                    className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      userFormData.dea_number && !isValidDea(userFormData.dea_number) ? 'border-red-500' : theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-gray-300 text-gray-900'
+                    }`}
+                    placeholder="AB1234563"
+                  />
+                  {userFormData.dea_number && !isValidDea(userFormData.dea_number)
+                    ? <p className="text-red-500 text-xs mt-1">{t.invalidDea || 'Not a valid DEA number (2 letters, 7 digits).'}</p>
+                    : <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-500'}`}>{t.deaHelp || 'Only for prescribing controlled substances.'}</p>}
+                </div>
+              </div>
+            )}
 
             {/* Specialty, Country, Timezone, Language in 4 columns */}
             <div className="grid grid-cols-4 gap-4">

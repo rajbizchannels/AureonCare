@@ -110,10 +110,12 @@ const http = require('http');
   const active = await mkPatient('ACT123');
   const check = (n, c) => results.push([n, !!c]);
 
+  // Eligibility (X12 270/271) is for US practices only (utils/practiceRegion.js).
+  await pool.query("UPDATE public.practices SET country = 'US' WHERE id = ANY($1::uuid[])", [[A.t.practiceId, B.t.practiceId]]);
   // ── before the clearinghouse is connected, and before the NPI is set ──
   const r0 = await api('POST', '/eligibility/check', A.receptionist.token, { patientId: active, serviceDate: '2026-11-25' });
   check(`no NPI yet: refused naming what is missing (got ${r0.status})`, r0.status === 422 && obj(r0.body).missing.some((m) => /NPI/.test(m)));
-  await api('POST', '/clinic-settings', A.admin.token, { name: `Elig Clinic ${RUN}`, npi: '1234567893' });
+  await api('POST', '/clinic-settings', A.admin.token, { name: `Elig Clinic ${RUN}`, npi: '1234567893', country: 'US' });
   const r1 = await api('POST', '/eligibility/check', A.receptionist.token, { patientId: active, serviceDate: '2026-11-25' });
   check(`no clearinghouse connection: 409 saying where to switch it on (got ${r1.status})`, r1.status === 409 && /Settings → Integrations/.test(obj(r1.body).error));
 

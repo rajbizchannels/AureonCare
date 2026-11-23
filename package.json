@@ -77,7 +77,8 @@
     "test:clinic-settings": "node backend/test/security/clinic-settings-isolation.test.js",
     "test:eligibility": "node backend/test/rcm/eligibility.test.js",
     "test:claim-scrubbing": "node backend/test/rcm/claim-scrubbing.test.js",
-    "test:audit-access": "node backend/test/security/audit-access.test.js"
+    "test:audit-access": "node backend/test/security/audit-access.test.js",
+    "test:us-identifiers": "node backend/test/security/us-identifiers.test.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.6.0",
