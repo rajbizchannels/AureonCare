@@ -8,6 +8,7 @@ from docx.shared import Pt, Inches, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.enum.style import WD_STYLE_TYPE
 import re
+from pathlib import Path
 
 def parse_markdown_to_word(md_file, docx_file):
     """Convert markdown file to Word document with formatting"""
@@ -272,4 +273,6 @@ def apply_inline_formatting(paragraph):
         paragraph.add_run(current_text)
 
 if __name__ == '__main__':
-    parse_markdown_to_word('USER_MANUAL.md', 'USER_MANUAL.docx')
+    # Repository-relative: tools/docs/ -> repo root -> docs/product/
+    product = Path(__file__).resolve().parents[2] / 'docs' / 'product'
+    parse_markdown_to_word(str(product / 'USER_MANUAL.md'), str(product / 'USER_MANUAL.docx'))

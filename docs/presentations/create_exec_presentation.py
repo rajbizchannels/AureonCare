@@ -3,6 +3,8 @@
 Create a single-slide executive presentation for AureonCare
 """
 
+from pathlib import Path
+
 from pptx import Presentation
 from pptx.util import Inches, Pt
 from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
@@ -256,8 +258,10 @@ def create_executive_slide():
     footer_para.font.color.rgb = green
 
     # Save presentation
-    prs.save('AUREONCARE_EXECUTIVE_PRESENTATION.pptx')
-    print("✅ Successfully created AUREONCARE_EXECUTIVE_PRESENTATION.pptx")
+    # Written next to this script (docs/presentations/), whatever the working directory.
+    output = Path(__file__).resolve().parent / 'AUREONCARE_EXECUTIVE_PRESENTATION.pptx'
+    prs.save(str(output))
+    print(f"✅ Successfully created {output}")
 
 if __name__ == '__main__':
     create_executive_slide()

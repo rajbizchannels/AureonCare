@@ -11,7 +11,7 @@
 > yet."* That was true when written and is now wrong; it is corrected here rather than
 > deleted, because the sign-off state is part of the record.
 >
-> **Current architecture:** `ARCHITECTURE_DIAGRAM.md` §2 (Multi-Tenancy) and §3
+> **Current architecture:** [`ARCHITECTURE.md`](../engineering/ARCHITECTURE.md) §2 (Multi-Tenancy) and §3
 > (Database Schema Topology).
 
 **Original finding (High / P1, effort XL):** No route scopes PHI queries by an owning
@@ -37,7 +37,7 @@ policed by CI — not by the database.
 | Scoped handle `req.db` | `backend/db/requestTenantDb.js` (`makeTenantDb`) |
 | Where `req.db` is attached | `middleware/auth.js:99`, `middleware/messagingAuth.js:130`, `routes/patient-portal.js:81` |
 | Portal routing without a tenant context | `backend/utils/blindIndex.js` (HMAC-SHA256 + pepper) |
-| Least-privilege DB role | `migrations/073_sec05_least_privilege_role.sql`, asserted by `scripts/check-db-role.js` |
+| Least-privilege DB role | `migrations/history/global/073_sec05_least_privilege_role.sql`, asserted by `scripts/check-db-role.js` |
 | CI enforcement | `scripts/check-tenant-scoping.js`; `test/sec05/isolation.test.js` |
 
 **One implementation note worth carrying forward:** `search_path` is set per *statement*,
@@ -439,7 +439,7 @@ read-only.
 
 ---
 
-## 10c. Resolved data decisions (table triage) — see SEC-05_Table_Triage.xlsx
+## 10c. Resolved data decisions (table triage) — see the Table Triage sheets of SEC-05_MultiTenancy.xlsx
 
 All 93 tables classified: **78 TENANT** (move to tenant schema), **5 IDENTITY** (stay in
 public, scope by `practice_id`), **7 SHARED** (global master data), **3 CONTROL** (control
@@ -562,4 +562,4 @@ and gates CI (`backend/test/sec05/isolation.test.js`).
 
 **Still open:** the raw-pool allowlist described in §0.1 — 56 of 60 route files still
 touch `app.locals.pool`. Closing that is the remaining SEC-05 work; everything else in
-this plan is done. See `ARCHITECTURE_DIAGRAM.md` §2 for the current-state view.
+this plan is done. See `docs/engineering/ARCHITECTURE.md` §2 for the current-state view.

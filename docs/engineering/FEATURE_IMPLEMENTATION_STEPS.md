@@ -1,7 +1,7 @@
 # Implementation Steps — Medical Camps & Specialty Configuration Wizard
 
-Ordered runbook for the two proposals in `FEATURE_MEDICAL_CAMPS.md` and
-`FEATURE_SPECIALTY_WIZARD.md`. Each step names the files to create or edit and the
+Ordered runbook for the two proposals in [`FEATURE_MEDICAL_CAMPS.md`](../product/features/FEATURE_MEDICAL_CAMPS.md) and
+[`FEATURE_SPECIALTY_WIZARD.md`](../product/features/FEATURE_SPECIALTY_WIZARD.md). Each step names the files to create or edit and the
 acceptance check that proves it landed.
 
 Migration numbering as of this document: next global is **083**, next tenant is **004**.
@@ -42,8 +42,8 @@ migration.
 
 Do this first. Both features need it, and building it twice is the expensive mistake.
 
-**Shipped as:** `migrations/tenant/004_locations.sql`,
-`migrations/tenant/005_location_id_columns.sql`, `migrations/083_locations_tenant_table.sql`,
+**Shipped as:** `migrations/history/tenant/004_locations.sql`,
+`migrations/history/tenant/005_location_id_columns.sql`, `migrations/history/global/083_locations_tenant_table.sql`,
 `utils/locations.js`, `routes/locations.js`, the `locations` seed in
 `services/tenantProvisioning.js`, `components/admin/LocationsTab.js`, and
 `test/locations/sites.test.js` (`npm run test:locations` — 54 checks).
@@ -73,15 +73,15 @@ working hours are untouched, so single-site tenants behave exactly as before. Ma
 scheduling site-aware is B3's job.
 
 ### A1. Tenant migration — create the table
-**Create** `backend/migrations/tenant/004_locations.sql`
+**Create** `backend/migrations/history/tenant/004_locations.sql`
 
-- `CREATE TABLE IF NOT EXISTS locations (...)` per the DDL in `FEATURE_MEDICAL_CAMPS.md` §3.
+- `CREATE TABLE IF NOT EXISTS locations (...)` per the DDL in `docs/product/features/FEATURE_MEDICAL_CAMPS.md` §3.
 - Indexes on `is_active`, `location_type`.
 - Seed one `is_primary = true` row named from `practices.name` if the table is empty, so
   every existing tenant has a default site.
 
 ### A2. Global migration — register and clone
-**Create** `backend/migrations/083_locations_tenant_table.sql`
+**Create** `backend/migrations/history/global/083_locations_tenant_table.sql`
 
 - `SET search_path TO public;`
 - `INSERT INTO control.tenant_tables (table_name, sort_order) VALUES ('locations', 400) ON CONFLICT DO NOTHING;`
@@ -92,7 +92,7 @@ scheduling site-aware is B3's job.
 `check:schema-health` clean.
 
 ### A3. Tenant migration — additive `location_id` columns
-**Create** `backend/migrations/tenant/005_location_id_columns.sql`
+**Create** `backend/migrations/history/tenant/005_location_id_columns.sql`
 
 Nullable `location_id uuid REFERENCES locations(id) ON DELETE SET NULL` on:
 `appointments`, `inventory_stock_movements`, `doctor_availability`,
@@ -106,7 +106,7 @@ in the same file (row counts are small per tenant).
 **Create** `backend/routes/locations.js` (follow `routes/appointment-types.js` for shape:
 `authenticate`, then `enforceActiveBilling`, then `req.db`).
 **Edit** `backend/server.js` — `app.use('/api/locations', require('./routes/locations'));`
-**Edit** `backend/migrations/083_*.sql` or a follow-up — add `locations.view` /
+**Edit** `backend/migrations/history/global/083_*.sql` or a follow-up — add `locations.view` /
 `locations.manage` to `permissions` + `role_permissions` for admin.
 
 ### A5. Frontend — site selector
@@ -123,7 +123,7 @@ unchanged for single-site tenants (null `location_id` must behave exactly as tod
 
 # Part B — Medical Camps — ✅ IMPLEMENTED
 
-**Shipped as:** `migrations/tenant/006_camps.sql`, `migrations/084_camps_tenant_tables.sql`,
+**Shipped as:** `migrations/history/tenant/006_camps.sql`, `migrations/history/global/084_camps_tenant_tables.sql`,
 `services/camps.js`, `routes/camps.js`, `routes/camp-registrations.js`,
 `routes/camp-reports.js`, camp awareness in `routes/scheduling.js` and
 `routes/campaigns.js`, `views/CampsManagementView.js` with
@@ -174,7 +174,7 @@ this part.
 
 ## B1. Schema
 
-**Create** `backend/migrations/tenant/006_camps.sql`
+**Create** `backend/migrations/history/tenant/006_camps.sql`
 
 | Table | Key columns |
 |---|---|
@@ -193,7 +193,7 @@ this part.
   `prescriptions`, `lab_orders` — the camp stamp. **Do not** create camp-only clinical
   tables.
 
-**Create** `backend/migrations/084_camps_tenant_tables.sql` — register all seven in
+**Create** `backend/migrations/history/global/084_camps_tenant_tables.sql` — register all seven in
 `control.tenant_tables` (sort_order 410–416), clone into `template`, replicate FKs.
 
 **Accept:** `check:schema-health` clean; a freshly provisioned tenant has all seven tables.
@@ -290,8 +290,8 @@ lifecycle transitions, token uniqueness under concurrency, consent gate, promoti
 inventory reconciliation, staffing conflict, and the sponsor-report PHI assertion.
 
 ## B11. Docs
-**Edit** `USER_MANUAL.md`, `DEPLOYMENT_CHECKLIST.md` (new env/plan feature flag),
-`ARCHITECTURE_DIAGRAM.md`.
+**Edit** `docs/product/USER_MANUAL.md`, `DEPLOYMENT_CHECKLIST.md` (new env/plan feature flag),
+`docs/engineering/ARCHITECTURE.md`.
 
 > **Phase 4 (offline capture) is deliberately not in this list.** Revisit only on real
 > customer demand; if built, scope to registration/vitals/forms with server-pre-issued
@@ -301,8 +301,8 @@ inventory reconciliation, staffing conflict, and the sponsor-report PHI assertio
 
 # Part C — Specialty Configuration Wizard — ✅ IMPLEMENTED (C1–C10, C13–C14)
 
-**Shipped as:** `migrations/085_specialty_catalog.sql`,
-`migrations/tenant/007_pack_provenance.sql`, `utils/specialtyPackSchema.js`,
+**Shipped as:** `migrations/history/global/085_specialty_catalog.sql`,
+`migrations/history/tenant/007_pack_provenance.sql`, `utils/specialtyPackSchema.js`,
 `services/specialtyPack.js`, `scripts/load-specialty-packs.js`,
 `data/specialty-packs/{dentistry,ophthalmology,paediatrics}.v1.json` + its README,
 `routes/practiceSetup.js`, the `is_customised` stamps in four existing routes,
@@ -372,7 +372,7 @@ defects that had all been failing silently.** `form_templates` had been empty in
 tenant since the module shipped, so the UI rendered a hard-coded frontend array and sent
 forms with `template_id: null`. Now:
 
-- `migrations/tenant/008_seed_form_library.sql` seeds 22 templates, 14 categories and 283
+- `migrations/history/tenant/008_seed_form_library.sql` seeds 22 templates, 14 categories and 283
   field definitions into every tenant and into `template`, stamped `source_pack = 'base'`
   so the pack machinery protects them on upgrade. It is **generated** by
   `scripts/generate-form-library-migration.js`, whose `--verify` mode diffs the committed
@@ -471,7 +471,7 @@ Build the engine before the UI. Building the wizard first tends to bake pack sem
 React state, where they cannot be re-applied, upgraded or audited.
 
 ## C1. Global catalog tables
-**Create** `backend/migrations/085_specialty_catalog.sql` (`SET search_path TO public;`,
+**Create** `backend/migrations/history/global/085_specialty_catalog.sql` (`SET search_path TO public;`,
 fully qualified)
 
 - `public.specialties` — `code` PK, `name`, `parent_code`, `taxonomy_code`, `is_active`,
@@ -483,7 +483,7 @@ These are **catalog, not tenant data** — they belong in `public` next to
 `subscription_plans`, and must **not** be registered in `control.tenant_tables`.
 
 ## C2. Provenance columns
-**Create** `backend/migrations/tenant/007_pack_provenance.sql`
+**Create** `backend/migrations/history/tenant/007_pack_provenance.sql`
 
 Nullable `source_pack varchar(60)`, `source_pack_version integer`,
 `is_customised boolean DEFAULT false` on every pack-seeded table:
@@ -499,7 +499,9 @@ the column now is cheap and re-attributing thousands of rows later is not.
 work and cannot be retrofitted cheaply.**
 
 ## C3. `providers.specialty_code`
-**Create** `backend/migrations/tenant/008_provider_specialty_code.sql`
+**Create** `backend/migrations/tenant/008_provider_specialty_code.sql` *(as planned; it
+shipped instead inside global migration 085, `backend/migrations/history/global/085_specialty_catalog.sql`,
+because `providers` is a public table)*
 
 Add nullable `specialty_code varchar(60)`; backfill by best-effort match against
 `public.specialties` from the existing free-text `specialization`. Keep both columns for at
@@ -620,7 +622,7 @@ idempotency, upgrade-preserves-customisation, multi-pack merge conflicts, and th
 cannot widen plan or role visibility.
 
 ## C14. Docs
-**Edit** `USER_MANUAL.md`, `DEPLOYMENT_CHECKLIST.md`,
+**Edit** `docs/product/USER_MANUAL.md`, `DEPLOYMENT_CHECKLIST.md`,
 `backend/data/specialty-packs/README.md`.
 
 ---

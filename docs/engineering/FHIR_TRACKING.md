@@ -348,10 +348,12 @@ INSERT INTO fhir_error_actions (
 
 ## Migration
 
-Run the migration to set up tracking tables:
+The tracking tables come from migration 035 (`backend/migrations/history/global/035_add_fhir_tracking.sql`),
+which is part of the database baseline. Do not apply it with `psql -f`; build or update the
+database with the runners (see [`SETUP.md`](SETUP.md)):
 ```bash
-cd backend
-psql -U aureoncare_user -d aureoncare_db -f migrations/035_add_fhir_tracking.sql
+npm run migrate
+npm run migrate:tenants
 ```
 
 ## Monitoring & Maintenance

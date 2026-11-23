@@ -104,7 +104,7 @@ Introduce sites as a first-class tenant entity. This is the one change that unbl
 proposal), so it should be costed as platform work rather than camp work.
 
 ```sql
--- backend/migrations/tenant/004_locations.sql   (unqualified names, see tenant/README.md)
+-- backend/migrations/history/tenant/004_locations.sql   (unqualified names, see tenant/README.md)
 CREATE TABLE IF NOT EXISTS locations (
   id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   name          varchar(255) NOT NULL,
@@ -197,7 +197,7 @@ expensive item in the proposal and the easiest to get wrong; it should not be in
   `search_path` per schema), then add a **global** migration that inserts into
   `control.tenant_tables` and clones into the golden `template` via
   `control.clone_table` + `control.replicate_intra_fks` — exactly the pattern in
-  `migrations/071_sec05_lazy_created_tenant_tables.sql`. Skip this and newly provisioned
+  `migrations/history/global/071_sec05_lazy_created_tenant_tables.sql`. Skip this and newly provisioned
   tenants silently lack the tables, and routes that lazily `CREATE TABLE IF NOT EXISTS`
   will create empty shadow copies that read zero rows.
 - Tenant migrations run **inside a transaction** — no `CREATE INDEX CONCURRENTLY`.

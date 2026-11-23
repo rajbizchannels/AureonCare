@@ -1,742 +1,168 @@
-# Role-Based Access Control (RBAC) and Plan Management Guide
+# Roles, Permissions and Plans
 
-> ## Read this first: what is enforced, and what is not
->
-> This guide describes the `roles` / `permissions` / `role_permissions` tables. **Those
-> tables are empty on every installation checked, and no route reads them.** Access is
-> actually decided by two other things:
->
-> - **`module_permissions`** — a per-practice table, read by
->   `backend/middleware/modulePermissions.js` and mounted across sixteen routers. This is
->   the layer that refuses a request. Its modules, resources, roles and actions are
->   declared in `backend/utils/permissionRegistry.js`, which the admin screen, the write
->   endpoint and the enforcement all read, so they cannot disagree. Administrators manage
->   it under Admin Panel → Roles & Permissions.
-> - **`authorize('admin', ...)`** — the coarse role check in `middleware/auth.js`, still
->   the gate on administrative routes.
->
-> Plans, feature gates and usage limits below are accurate and live
-> (`middleware/planEnforcement.js`). The multi-language section is accurate.
->
-> Role *management* is live too, and was fixed recently: creating a role goes through
-> `POST /api/roles`, and the write routes on that router are admin-only — previously any
-> signed-in account could create, rename or delete a role. A role in use by an active user
-> can no longer be deleted out from under them.
->
-> The RBAC section is kept for the history of the design; treat the registry as the
-> current one.
+**Contents.** What actually decides whether a request is allowed (the `module_permissions`
+layer and the coarse `authorize()` role check), the role tables and role-management API,
+multiple roles per user and role switching, why changing a user's role never deletes their
+patient or provider record, per-user language, and subscription plans with their feature
+gates and usage limits. It merges the former `backend/RBAC_AND_PLANS_GUIDE.md` and
+`backend/MULTI_ROLE_SUPPORT.md`. The frontend side — which modules and buttons a role is
+*shown* — is in [`../../frontend/src/utils/PERMISSIONS_GUIDE.md`](../../frontend/src/utils/PERMISSIONS_GUIDE.md).
 
-## Overview
+---
 
-AureonCare now includes a comprehensive role-based access control system with subscription plan management and multi-language support. This guide covers all new features and how to use them.
+## 1. What is enforced
 
-## Features
+Access to a request is decided by two things:
 
-### 1. **Role-Based Access Control (RBAC)**
-- Predefined system roles (admin, doctor, patient, nurse, etc.)
-- Custom role creation
-- Granular permissions system
-- Multiple roles per user
-- Role switching functionality
+- **`module_permissions`** — a per-practice table, read by
+  `backend/middleware/modulePermissions.js` and mounted across seventeen routers. This is
+  the layer that refuses a request. Its modules, resources, roles and actions are declared
+  in `backend/utils/permissionRegistry.js`, which the admin screen, the write endpoint and
+  the enforcement all read, so they cannot disagree. Roles in the grid: `admin`, `doctor`,
+  `nurse`, `receptionist`, `billing_manager`, `crm_manager`, `staff`; actions: view, create,
+  edit, delete, approve, export. Administrators manage it under **Admin Panel → Roles &
+  Permissions**.
+  - *No stored row is not a denial*: a practice that has never edited the screen falls back
+    to the role defaults in the registry, which mirror how the application already behaved.
+  - *An administrator is never denied*, and the API refuses an attempt to restrict `admin`.
+  - A denial is a 403 that names the missing permission.
+- **`authorize('admin', ...)`** — the coarse role check in `backend/middleware/auth.js`,
+  still the gate on administrative routes.
 
-### 2. **Subscription Plans**
-- Multiple plan tiers (Free, Starter, Professional, Enterprise)
-- Plan management (admin only)
-- Feature gates based on plan
-- Usage limits (users, patients)
+The `roles` / `permissions` / `role_permissions` tables described in section 3 are the
+original RBAC design. **They are empty on every installation checked, and no route reads
+`role_permissions` to authorise a request**; the `checkPermission` query that the original
+guide suggested was never wired in. Treat the registry as the current design and section 3
+as the history of it — except role *management* (`/api/roles`) and role *assignment*
+(`/api/users/:id/roles`), which are live.
 
-### 3. **Multi-Language Support**
-- User-specific language preferences
-- Supported languages: English, Spanish, French, German, Arabic
-- Language persists across sessions
+## 2. System roles
 
-## Database Schema
+| Role | Scope |
+|---|---|
+| `admin` — Administrator | full access; manages users, roles, plans |
+| `doctor` — Doctor/Provider | patients, appointments, EHR, reports |
+| `patient` — Patient | own appointments and records (patient portal) |
+| `nurse` | patients, appointments, medical records (view/create/edit) |
+| `receptionist` | patients and appointments (view/create/edit) |
+| `billing_manager` — Billing Manager | billing; patients (view); reports |
+| `crm_manager` — CRM Manager | CRM; reports |
+| `staff` | limited access |
 
-### New Tables
+System roles (`is_system_role`) cannot be deleted. The per-module defaults that are
+actually enforced are the ones in `permissionRegistry.js`.
 
-#### `roles` - User Roles
+## 3. Role tables (original design — migration `014_create_rbac_and_plans.sql`)
+
+The migration is now kept for reference in `backend/migrations/history/global/`; its
+tables are part of the baseline every database is built from.
+
+| Table | Columns |
+|---|---|
+| `roles` | `id`, `name` (unique system identifier), `display_name`, `description`, `is_system_role`, `is_active` |
+| `permissions` | `id`, `name` (e.g. `patients.view`), `display_name`, `description`, `module`, `action` |
+| `role_permissions` | `role_id`, `permission_id` |
+| `user_roles` | `user_id`, `role_id`, `assigned_at`, `assigned_by` |
+| `subscription_plans` | `id`, `name`, `display_name`, `description`, `price`, `billing_cycle`, `max_users` / `max_patients` (`-1` = unlimited), `features` (JSONB) |
+| `organization_settings` | `id`, `organization_name`, `current_plan_id`, `plan_start_date`, `plan_end_date`, `auto_renew` |
+
+`users` gained `language` (default `en`) and `active_role`.
+
+## 4. Role management API — `backend/routes/roles.js`
+
+| Method and path | Who | Notes |
+|---|---|---|
+| `GET /api/roles` | signed in | roles with `user_count`, `permission_count` |
+| `GET /api/roles/:id` | signed in | role with its permissions |
+| `POST /api/roles` | admin | `{ name, display_name, description, permissions: [ids] }` |
+| `PUT /api/roles/:id` | admin | `{ display_name, description, permissions, is_active }` |
+| `DELETE /api/roles/:id` | admin | refused for system roles, and for a role held by any active user (checked against `users.role`) |
+| `GET /api/roles/permissions/all` | signed in | permissions grouped by module |
+
+The write routes were previously open to any signed-in account; they are now admin-only.
+
+## 5. Multiple roles per user
+
+### Assignment and switching — `backend/routes/users.js`
+
+| Method and path | Who | Notes |
+|---|---|---|
+| `GET /api/users/:id/roles` | self or admin | the user's roles, with `is_active` on the current one |
+| `POST /api/users/:id/roles` | admin | `{ role_id, assigned_by }` |
+| `DELETE /api/users/:id/roles/:role_id` | admin | "Cannot remove last role from user"; if the removed role was active, another becomes active |
+| `PUT /api/users/:id/switch-role` | self or admin | `{ role_name }` — returns the user and `new_role` |
+
+Assignments are stored in `user_roles`. The role that authorisation uses is `users.role`
+(it is what `req.user.role`, the permission registry and the enforcement read); switching
+sets `active_role` and, for the user's current practice, `role` and the practice membership
+role. A user who holds several roles (a doctor who is also a patient at the same clinic)
+switches between them; each role sees its own dashboard.
+
+### Changing a role never deletes the patient or provider record
+
+Earlier, changing a user from patient to doctor deleted their patient row (and the reverse
+deleted the provider row). That lost medical history and failed on foreign keys such as
+`fhir_resources_patient_id_fkey` ("update or delete on table "patients" violates foreign key
+constraint"). Now, in `PUT /api/users/:id`:
+
+- changing to `doctor` creates a `providers` row if none exists, with `providers.id =
+  users.id` (migration 025), and **keeps** any patient row;
+- changing to `patient` creates a `patients` row if none exists, with `patients.id =
+  users.id` (migration 023) and the next `MRN-NNNN` number, and **keeps** any provider row;
+- staff → doctor creates the provider row and deletes nothing.
+
+So records and history are preserved, appointments keep their provider, and FHIR
+resources stay linked. `ON DELETE CASCADE` is deliberately not used on clinical
+references: medical records must be retained (HIPAA, patient rights, patient safety).
+
+Because the ids are shared, a user who is both is found by id, not through a `user_id`
+column (there is none on either table):
+
 ```sql
-- id: SERIAL PRIMARY KEY
-- name: VARCHAR(100) UNIQUE -- System identifier (e.g., 'admin', 'doctor')
-- display_name: VARCHAR(100) -- Display name (e.g., 'Administrator')
-- description: TEXT
-- is_system_role: BOOLEAN -- System roles cannot be deleted
-- is_active: BOOLEAN
+SELECT u.id, u.first_name, u.last_name, u.role,
+       (pr.id IS NOT NULL) AS is_provider,
+       (pa.id IS NOT NULL) AS is_patient
+FROM users u
+LEFT JOIN providers pr ON pr.id = u.id
+LEFT JOIN patients  pa ON pa.id = u.id
+WHERE pr.id IS NOT NULL AND pa.id IS NOT NULL;
 ```
 
-#### `permissions` - Granular Permissions
-```sql
-- id: SERIAL PRIMARY KEY
-- name: VARCHAR(100) UNIQUE -- e.g., 'patients.view', 'billing.edit'
-- display_name: VARCHAR(100)
-- description: TEXT
-- module: VARCHAR(50) -- e.g., 'patients', 'billing', 'crm'
-- action: VARCHAR(50) -- e.g., 'view', 'create', 'edit', 'delete'
-```
-
-#### `role_permissions` - Role-Permission Mapping
-```sql
-- role_id: INTEGER (FK to roles)
-- permission_id: INTEGER (FK to permissions)
-```
-
-#### `subscription_plans` - Available Plans
-```sql
-- id: SERIAL PRIMARY KEY
-- name: VARCHAR(100) UNIQUE
-- display_name: VARCHAR(100)
-- description: TEXT
-- price: DECIMAL(10, 2)
-- billing_cycle: VARCHAR(20) -- 'monthly', 'yearly'
-- max_users: INTEGER -- -1 for unlimited
-- max_patients: INTEGER -- -1 for unlimited
-- features: JSONB
-```
-
-#### `organization_settings` - Current Plan
-```sql
-- id: SERIAL PRIMARY KEY
-- organization_name: VARCHAR(255)
-- current_plan_id: INTEGER (FK to subscription_plans)
-- plan_start_date: DATE
-- plan_end_date: DATE
-- auto_renew: BOOLEAN
-```
-
-#### `user_roles` - User-Role Assignments
-```sql
-- user_id: INTEGER (FK to users)
-- role_id: INTEGER (FK to roles)
-- assigned_at: TIMESTAMP
-- assigned_by: INTEGER (FK to users)
-```
-
-### Modified Tables
-
-#### `users` - Added Columns
-```sql
-- language: VARCHAR(10) DEFAULT 'en'
-- active_role: VARCHAR(100) -- Currently active role
-```
-
-## Predefined Roles
-
-### System Roles (Cannot be Deleted)
-
-1. **Administrator** (`admin`)
-   - Full system access
-   - Can manage plans
-   - Can manage all users and roles
-   - All permissions
-
-2. **Doctor/Provider** (`doctor`)
-   - Patient management
-   - Appointments
-   - Medical records (EHR)
-   - Reports
-
-3. **Patient** (`patient`)
-   - View appointments
-   - Create appointments
-   - View own medical records
-
-4. **Nurse** (`nurse`)
-   - Patient management (view, create, edit)
-   - Appointments (view, create, edit)
-   - Medical records (view, create, edit)
-
-5. **Receptionist** (`receptionist`)
-   - Patient management (view, create, edit)
-   - Appointments (view, create, edit)
-
-6. **Billing Manager** (`billing_manager`)
-   - Full billing access
-   - Patient information (view)
-   - Reports
-
-7. **CRM Manager** (`crm_manager`)
-   - Full CRM access
-   - Reports
-
-8. **Staff** (`staff`)
-   - Limited access
-   - Basic permissions
-
-## API Endpoints
-
-### Role Management
-
-#### Get All Roles
-```http
-GET /api/roles
-```
-
-Response:
-```json
-[
-  {
-    "id": 1,
-    "name": "admin",
-    "display_name": "Administrator",
-    "description": "Full system access",
-    "is_system_role": true,
-    "is_active": true,
-    "user_count": 5,
-    "permission_count": 24
-  }
-]
-```
-
-#### Get Role by ID (with permissions)
-```http
-GET /api/roles/:id
-```
-
-Response:
-```json
-{
-  "id": 1,
-  "name": "admin",
-  "display_name": "Administrator",
-  "permissions": [
-    {
-      "id": 1,
-      "name": "patients.view",
-      "display_name": "View Patients",
-      "module": "patients",
-      "action": "view"
-    }
-  ]
-}
-```
-
-#### Create Custom Role
-```http
-POST /api/roles
-Content-Type: application/json
-
-{
-  "name": "lab_technician",
-  "display_name": "Lab Technician",
-  "description": "Laboratory staff with limited access",
-  "permissions": [1, 2, 5, 10]
-}
-```
-
-#### Update Role
-```http
-PUT /api/roles/:id
-Content-Type: application/json
-
-{
-  "display_name": "Senior Lab Technician",
-  "description": "Updated description",
-  "permissions": [1, 2, 5, 10, 15],
-  "is_active": true
-}
-```
-
-#### Delete Custom Role
-```http
-DELETE /api/roles/:id
-```
-
-Note: Cannot delete system roles or roles assigned to users.
-
-#### Get All Permissions (Grouped by Module)
-```http
-GET /api/roles/permissions/all
-```
-
-Response:
-```json
-{
-  "patients": [
-    {"id": 1, "name": "patients.view", "display_name": "View Patients"},
-    {"id": 2, "name": "patients.create", "display_name": "Create Patients"}
-  ],
-  "billing": [
-    {"id": 10, "name": "billing.view", "display_name": "View Billing"}
-  ]
-}
-```
-
-### User Role Management
-
-#### Get User's Roles
-```http
-GET /api/users/:id/roles
-```
-
-Response:
-```json
-[
-  {
-    "id": 2,
-    "name": "doctor",
-    "display_name": "Doctor/Provider",
-    "description": "Medical provider",
-    "assigned_at": "2025-11-05T10:00:00Z",
-    "is_active": true
-  },
-  {
-    "id": 3,
-    "name": "patient",
-    "display_name": "Patient",
-    "is_active": false
-  }
-]
-```
-
-#### Assign Role to User
-```http
-POST /api/users/:id/roles
-Content-Type: application/json
-
-{
-  "role_id": 2,
-  "assigned_by": 1
-}
-```
-
-#### Remove Role from User
-```http
-DELETE /api/users/:id/roles/:role_id
-```
-
-Note: Cannot remove last role from user.
-
-#### Switch Active Role
-```http
-PUT /api/users/:id/switch-role
-Content-Type: application/json
-
-{
-  "role_name": "doctor"
-}
-```
-
-Response:
-```json
-{
-  "message": "Role switched successfully",
-  "user": { ... },
-  "new_role": {
-    "id": 2,
-    "name": "doctor",
-    "display_name": "Doctor/Provider"
-  }
-}
-```
-
-### Language Management
-
-#### Update User Language
-```http
-PUT /api/users/:id/language
-Content-Type: application/json
-
-{
-  "language": "es"
-}
-```
-
-Supported languages: `en`, `es`, `fr`, `de`, `pt`, `zh`, `ar`, `hi`
-
-### Plan Management
-
-#### Get All Plans
-```http
-GET /api/plans
-```
-
-Response:
-```json
-[
-  {
-    "id": 1,
-    "name": "free",
-    "display_name": "Free Plan",
-    "description": "Basic features for small practices",
-    "price": 0.00,
-    "billing_cycle": "monthly",
-    "max_users": 3,
-    "max_patients": 50,
-    "features": {
-      "ehr": true,
-      "appointments": true,
-      "billing": false,
-      "crm": false
-    },
-    "is_active": true
-  }
-]
-```
-
-#### Get Current Organization Plan
-```http
-GET /api/plans/current
-```
-
-Response:
-```json
-{
-  "id": 1,
-  "organization_name": "AureonCare Practice",
-  "current_plan_id": 2,
-  "plan_name": "starter",
-  "plan_display_name": "Starter Plan",
-  "plan_price": 99.00,
-  "billing_cycle": "monthly",
-  "max_users": 10,
-  "max_patients": 200,
-  "plan_start_date": "2025-11-01",
-  "plan_end_date": "2025-12-01",
-  "auto_renew": true,
-  "features": { ... }
-}
-```
-
-#### Update Plan (Admin Only)
-```http
-PUT /api/plans/current
-Content-Type: application/json
-
-{
-  "plan_id": 3,
-  "auto_renew": true
-}
-```
-
-#### Get Plan Features and Usage
-```http
-GET /api/plans/features
-```
-
-Response:
-```json
-{
-  "features": {
-    "ehr": true,
-    "appointments": true,
-    "billing": true,
-    "crm": true,
-    "telehealth": true,
-    "integrations": true
-  },
-  "limits": {
-    "users": {
-      "max": 25,
-      "current": 15,
-      "unlimited": false
-    },
-    "patients": {
-      "max": 1000,
-      "current": 450,
-      "unlimited": false
-    }
-  }
-}
-```
-
-## Usage Examples
-
-### Example 1: Creating a Custom Role
-
-```javascript
-// Step 1: Get all available permissions
-const permissions = await fetch('/api/roles/permissions/all');
-const permissionsData = await permissions.json();
-
-// Step 2: Select permissions for new role
-const selectedPermissions = [
-  1,  // patients.view
-  5,  // appointments.view
-  6,  // appointments.create
-  13  // ehr.view
-];
-
-// Step 3: Create the role
-const response = await fetch('/api/roles', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    name: 'medical_assistant',
-    display_name: 'Medical Assistant',
-    description: 'Assists doctors with patient care',
-    permissions: selectedPermissions
-  })
-});
-
-const newRole = await response.json();
-console.log('Created role:', newRole);
-```
-
-### Example 2: Assigning Multiple Roles to a User
-
-```javascript
-// Assign doctor role
-await fetch(`/api/users/${userId}/roles`, {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    role_id: 2,  // doctor
-    assigned_by: adminId
-  })
-});
-
-// Assign patient role (user can be both)
-await fetch(`/api/users/${userId}/roles`, {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    role_id: 3,  // patient
-    assigned_by: adminId
-  })
-});
-
-// User now has both doctor and patient roles
-```
-
-### Example 3: Role Switching
-
-```javascript
-// Get user's roles
-const rolesResponse = await fetch(`/api/users/${userId}/roles`);
-const roles = await rolesResponse.json();
-
-// Display role switcher in UI
-roles.forEach(role => {
-  console.log(role.display_name, role.is_active ? '(Active)' : '');
-});
-
-// Switch to different role
-await fetch(`/api/users/${userId}/switch-role`, {
-  method: 'PUT',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    role_name: 'patient'  // Switch from doctor to patient view
-  })
-});
-```
-
-### Example 4: Language Setting
-
-```javascript
-// Update user language preference
-await fetch(`/api/users/${userId}/language`, {
-  method: 'PUT',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    language: 'es'  // Spanish
-  })
-});
-
-// On next login, load translations based on user.language
-const user = await fetch(`/api/users/${userId}`).then(r => r.json());
-const translations = await import(`./i18n/${user.language}.json`);
-```
-
-### Example 5: Plan Upgrade (Admin Only)
-
-```javascript
-// Get available plans
-const plansResponse = await fetch('/api/plans');
-const plans = await plansResponse.json();
-
-// Display plans to admin
-plans.forEach(plan => {
-  console.log(`${plan.display_name} - $${plan.price}/${plan.billing_cycle}`);
-});
-
-// Upgrade to professional plan
-await fetch('/api/plans/current', {
-  method: 'PUT',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    plan_id: 3,  // Professional plan
-    auto_renew: true
-  })
-});
-
-// Check new features
-const features = await fetch('/api/plans/features').then(r => r.json());
-if (features.features.crm) {
-  // CRM module now available
-  enableCRMModule();
-}
-```
-
-## Security Considerations
-
-### Permission Checking
-
-Always check permissions before allowing actions:
-
-```javascript
-// Backend middleware example
-async function checkPermission(userId, permissionName) {
-  const result = await pool.query(`
-    SELECT COUNT(*) as has_permission
-    FROM user_roles ur
-    JOIN role_permissions rp ON ur.role_id = rp.role_id
-    JOIN permissions p ON rp.permission_id = p.id
-    WHERE ur.user_id = $1 AND p.name = $2
-  `, [userId, permissionName]);
-
-  return parseInt(result.rows[0].has_permission) > 0;
-}
-
-// Usage
-if (await checkPermission(userId, 'patients.delete')) {
-  // Allow patient deletion
-} else {
-  return res.status(403).json({ error: 'Insufficient permissions' });
-}
-```
-
-### Plan Feature Gates
-
-Check plan features before allowing access:
-
-```javascript
-async function hasFeature(featureName) {
-  const result = await pool.query(`
-    SELECT sp.features
-    FROM organization_settings os
-    JOIN subscription_plans sp ON os.current_plan_id = sp.id
-    LIMIT 1
-  `);
-
-  if (result.rows.length === 0) return false;
-
-  const features = result.rows[0].features || {};
-  return features[featureName] === true;
-}
-
-// Usage
-if (!await hasFeature('crm')) {
-  return res.status(403).json({
-    error: 'CRM module not available in your plan',
-    upgrade_url: '/admin/plans'
-  });
-}
-```
-
-## Migration
-
-### Applying the Migration
-
-```bash
-cd backend
-psql -h localhost -U aureoncare_user -d aureoncare -f migrations/014_create_rbac_and_plans.sql
-```
-
-### Expected Output
-
-```
-CREATE TABLE
-CREATE TABLE
-CREATE TABLE
-CREATE TABLE
-CREATE TABLE
-INSERT 0 8  (8 roles created)
-INSERT 0 24 (24 permissions created)
-NOTICE: Assigning permissions to roles...
-INSERT 0 4  (4 plans created)
-CREATE INDEX
-...
-┌─────────────────────────────────────────────────────────┬────────────┬───────────────────┬─────────────┐
-│ status                                                  │ total_roles│ total_permissions │ total_plans │
-├─────────────────────────────────────────────────────────┼────────────┼───────────────────┼─────────────┤
-│ Role-based access control system created successfully  │ 8          │ 24                │ 4           │
-└─────────────────────────────────────────────────────────┴────────────┴───────────────────┴─────────────┘
-```
-
-## Frontend Integration (Overview)
-
-The frontend implementation will be provided in separate commits. Here's what to expect:
-
-### Admin Panel Updates
-
-1. **Role Management Tab**
-   - List all roles
-   - Create custom roles
-   - Edit role permissions
-   - Delete custom roles
-
-2. **User Management Updates**
-   - Assign multiple roles to users
-   - View user's roles
-   - Role badges/chips display
-
-3. **Plan Management (Admin Only)**
-   - View current plan
-   - Compare available plans
-   - Upgrade/downgrade plan
-   - View usage limits
-
-### User Profile Updates
-
-1. **Language Selector**
-   - Dropdown with supported languages
-   - Saves to user profile
-   - Applies immediately
-
-2. **Role Switcher**
-   - Show when user has multiple roles
-   - Quick switch between roles
-   - Different dashboard per role
-
-## Benefits
-
-✅ **Security**: Granular permission control
-✅ **Flexibility**: Custom roles and multiple roles per user
-✅ **Scalability**: Plan-based features and limits
-✅ **User Experience**: Role switching and language preferences
-✅ **Compliance**: Audit trail for role assignments
-✅ **Revenue**: Subscription plan management
-
-## Troubleshooting
-
-### Issue: Cannot delete role
-
-**Error**: "Cannot delete system roles"
-
-**Solution**: Only custom roles can be deleted. System roles (admin, doctor, patient, etc.) are protected.
-
-### Issue: Cannot remove role from user
-
-**Error**: "Cannot remove last role from user"
-
-**Solution**: Users must have at least one role. Assign a different role first, then remove the unwanted one.
-
-### Issue: Plan limit reached
-
-**Error**: "Maximum users exceeded for current plan"
-
-**Solution**: Admin needs to upgrade the plan or remove inactive users.
-
-### Issue: Feature not available
-
-**Error**: "CRM module not available in your plan"
-
-**Solution**: Check current plan features. Upgrade to a plan that includes the desired feature.
-
-## Related Files
-
-- `migrations/014_create_rbac_and_plans.sql` - Database schema
-- `routes/roles.js` - Role management API
-- `routes/plans.js` - Plan management API
-- `routes/users.js` - Updated with language and role switching
-- `server.js` - Registered new routes
-
-## Next Steps
-
-1. Frontend implementation (Admin Panel UI for roles and plans)
-2. Permission middleware for route protection
-3. Feature gates based on subscription plan
-4. Multi-language support in frontend (i18n)
-5. Role switching UI component
-6. Plan comparison page
-7. Usage analytics and limits enforcement
+Ideas the original note listed for later, none implemented: a `status` column on
+patient/provider rows, and a role-change history table.
+
+## 6. Language
+
+`PUT /api/users/:id/language` (self or admin) with `{ "language": "es" }` stores the
+preference on the user; it persists across sessions. The product ships five languages:
+**English, Spanish, French, German and Arabic**. (The endpoint's validator also accepts
+`pt`, `zh` and `hi`, for which no translations ship.)
+
+## 7. Plans, feature gates and usage limits
+
+Enforced at the API boundary by `backend/middleware/planEnforcement.js`
+(`enforceUserQuota`, `enforcePatientQuota`, `enforceProviderQuota`, `enforceFeature`,
+`enforceActiveBilling`); every quota check counts in the database, so it cannot be bypassed
+from the frontend.
+
+- **Which plan applies.** For a request that carries a tenant, the plan comes from that
+  practice's control-plane subscription (`services/entitlements.js`). Otherwise — or for a
+  tenant with no subscription row — it falls back to the legacy single-tenant
+  `organization_settings` → `subscription_plans` row. With nothing configured it fails open.
+- **Seeded plans** (migration 014): `free` (3 users, 50 patients; EHR, appointments),
+  `starter` ($99/month; 10 users, 200 patients; + billing, telehealth), `professional`
+  ($299/month; 25 users, 1,000 patients; + CRM, integrations), `enterprise` ($999/month;
+  unlimited; + custom branding, API access). Plans sold on the signup page are configured
+  by the platform operator — see [`../../DEPLOYMENT_CHECKLIST.md`](../../DEPLOYMENT_CHECKLIST.md).
+
+| Method and path | Who | Notes |
+|---|---|---|
+| `GET /api/plans` | signed in | available plans |
+| `GET /api/plans/current` | signed in | the current plan, dates, limits, features |
+| `GET /api/plans/preview/:planId` | admin | preview a change |
+| `PUT /api/plans/current` | admin | `{ plan_id, auto_renew }` |
+| `GET /api/plans/features` | signed in | `features` plus `limits.users` / `limits.patients` (`max`, `current`, `unlimited`) |
+| `POST /api/plans/provider-seats` | admin | provider seats |
+
+Errors you will see: "Maximum users exceeded for current plan" (upgrade or deactivate
+users) and a feature-not-in-plan 403 (choose a plan that includes the module).

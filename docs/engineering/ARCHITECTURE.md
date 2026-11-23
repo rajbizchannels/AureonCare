@@ -148,7 +148,7 @@ A blind index keeps the shared routing table from being a readable "which patien
 | Allowlist rationale | identity plane, shared master data, control-plane billing |
 | CI gates | SEC-05 Tenant-Scoping Guard + Cross-Tenant Isolation Test |
 
-> `SEC-05_MULTI_TENANCY_PLAN.md` is the design record for this work and is now marked **superseded**; its §0.1 carries the shipped-state summary. Read it for *why* Model D was chosen over app-only scoping or RLS — not as a description of the system.
+> [`SEC-05_MULTI_TENANCY_PLAN.md`](../security/SEC-05_MULTI_TENANCY_PLAN.md) is the design record for this work and is now marked **superseded**; its §0.1 carries the shipped-state summary. Read it for *why* Model D was chosen over app-only scoping or RLS — not as a description of the system.
 
 ---
 

@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from pptx import Presentation
 from pptx.util import Inches, Pt
 from pptx.enum.text import PP_ALIGN, MSO_ANCHOR
@@ -482,6 +484,8 @@ add_stats_slide(
 )
 
 # Save presentation
-prs.save('/home/user/MedFlow/AureonCare_Executive_Presentation.pptx')
+# Written next to this script (docs/presentations/), whatever the working directory.
+OUTPUT = Path(__file__).resolve().parent / 'AureonCare_Executive_Presentation.pptx'
+prs.save(str(OUTPUT))
 print("✅ PowerPoint presentation created successfully!")
-print("📁 File: /home/user/MedFlow/AureonCare_Executive_Presentation.pptx")
+print(f"📁 File: {OUTPUT}")

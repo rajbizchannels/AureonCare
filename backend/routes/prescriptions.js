@@ -74,7 +74,7 @@ const erxProblem = (vendorResponse) => ({
 
 // Helper function to ensure diagnosis_id column exists
 let diagnosisIdColumnChecked = false;
-// SEC-05: schema creation moved to migrations/tenant/001_adopt_runtime_created_tables.sql.
+// SEC-05: schema creation moved to migrations/history/tenant/001_adopt_runtime_created_tables.sql.
 // Creating tables at request time made an empty copy inside the caller's tenant schema
 // (hiding the real data) and required DDL privileges the app should not hold. Kept as a
 // no-op so existing call sites are unchanged; run the migrations to provision the tables.

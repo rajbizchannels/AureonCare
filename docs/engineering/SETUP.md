@@ -134,27 +134,30 @@ npm run migrate:tenants  # node backend/run-tenant-migrations.js — every tenan
 ```
 
 - **`npm run migrate`** keeps a ledger in `public.schema_migrations` and applies only what
-  is new, each file in its own transaction. On an **empty** database it first loads
-  `backend/migrations/baseline/000_baseline.sql` and records the files the baseline already
-  contains as applied — the historical chain cannot be replayed from nothing.
-  `--dry-run` lists what would run; `--adopt` records every file as applied without running
-  it, for an existing, fully migrated database that predates the ledger.
-- **`npm run migrate:tenants`** applies `backend/migrations/tenant/*.sql` inside every
-  tenant schema and the golden `template`, with `search_path` set per schema and a ledger
-  per schema. One tenant's failure does not block the others; it is retried on the next
-  run. `TENANT_MIGRATE_CONCURRENCY` (default 5) bounds parallelism.
+  is new, each file in its own transaction. On an **empty** database (no `public.users`) it
+  builds the schema from `backend/migrations/baseline/000_baseline.sql` — one snapshot of the
+  whole history (global 001–100, tenant 001–016) — records every file listed in
+  `baseline/contains.txt` as applied, and runs only newer files. A database with a schema but
+  no ledger is refused; if it is fully migrated, `node backend/run-migrations.js --adopt`
+  records the current file set without executing anything. `--dry-run` lists what would run.
+- **`npm run migrate:tenants`** applies new `backend/migrations/tenant/*.sql` files inside
+  every tenant schema and the golden `template`, with `search_path` set per schema and a
+  ledger per schema. One tenant's failure does not block the others; it is retried on the
+  next run. `TENANT_MIGRATE_CONCURRENCY` (default 5) bounds parallelism.
 
 Both use the same connection settings as the app (`AC_PG_URI` or `AC_DB_*`), so they work
 against a managed database from a laptop — the only way to migrate a Vercel deployment.
 
-**Do not apply migration files by hand with `psql -f`**, and do not use
-`backend/run_migrations.sh` on a database with data in it: it loops `psql -f` over every
-file with no ledger and no `search_path` handling, and `001_update_users_table.sql` begins
-with `DROP TABLE IF EXISTS users CASCADE`. If you genuinely cannot run node against the
-database (e.g. the Supabase SQL editor), use the hand-runnable scripts and run order in
-[`../../backend/scripts/manual/README.md`](../../backend/scripts/manual/README.md). The rules
-for writing migrations are in [`../../backend/migrations/README.md`](../../backend/migrations/README.md)
-and [`../../backend/migrations/tenant/README.md`](../../backend/migrations/tenant/README.md);
+**Do not apply migration files by hand with `psql -f`.** That applies the SQL without
+recording it in the ledger, so the runner applies it again later. The historical files in
+`backend/migrations/history/` (`global/`, `tenant/`, `manual-applied/`,
+`legacy-repair-scripts/`) are kept for reference only and are never run — the baseline
+already contains them. If you cannot run node against the database (e.g. the Supabase SQL
+editor), see [`../../backend/scripts/manual/README.md`](../../backend/scripts/manual/README.md)
+and the section on paste-able migrations in
+[`../../backend/migrations/README.md`](../../backend/migrations/README.md), which is the
+authoritative description of the layout and the runners. The rules for tenant migrations
+are in [`../../backend/migrations/tenant/README.md`](../../backend/migrations/tenant/README.md);
 adding a per-tenant table is walked through in
 [`FEATURE_IMPLEMENTATION_STEPS.md`](FEATURE_IMPLEMENTATION_STEPS.md).
 
@@ -169,11 +172,15 @@ psql -h localhost -U aureoncare_user -d aureoncare < backup_YYYYMMDD.sql
 ## 7. Load reference content and create the first accounts
 
 ```bash
-npm run packs:load        # publish the specialty packs (needs public.specialties, from migration 085)
+npm run packs:load          # publish the specialty packs into public.specialty_packs
 npm run check:form-library  # every tenant has the system form library
 npm run platform:operator -- <email> <password> ["Full Name"]
 ```
 
+- Reference data is not in the baseline: a fresh install has the ICD-10 / CPT and medication
+  tables, empty. Optional medication sample data: `backend/scripts/load_medication_data.sh`
+  (or `.bat`); background in `backend/migrations/history/MEDICATION_DATA_README.md` and
+  `backend/migrations/history/README_MEDICAL_CODES.md`.
 - Without `packs:load`, the setup wizard lists every specialty as having "no starter
   content yet" — `public.specialty_packs` is simply empty. Authoring packs:
   [`../../backend/data/specialty-packs/README.md`](../../backend/data/specialty-packs/README.md).
@@ -233,7 +240,13 @@ Selected API routes, for a quick check with curl (all mounted under `/api`; see
   `GET|PUT /api/patient-portal/:patientId/profile`, `GET /api/patient-portal/:patientId/medical-records`
 - medical records: `GET|POST /api/medical-records`, `PUT /api/medical-records/:id`,
   `POST /api/medical-records/upload`, `POST /api/medical-records/with-file`
-  (10 MB limit; JPEG, PNG, PDF, DOC, DOCX, TXT)
+  (10 MB limit; JPEG, PNG, PDF, DOC, DOCX, TXT; stored under
+  `backend/uploads/medical-records/<date>/` and served only to signed-in users through the
+  authenticated `GET /uploads/*` route, never as static files)
+- country and timezone: `PUT /api/users/:id`, the patient routes and
+  `PUT /api/patient-portal/:patientId/profile` accept a two-letter `country` and derive
+  `timezone` with `backend/utils/timezoneUtils.js` (`getTimezoneFromCountry`)
+- Google Calendar sync for the portal: see [`../integrations/OAUTH_SETUP.md`](../integrations/OAUTH_SETUP.md)
 
 ## 10. Troubleshooting
 
@@ -263,7 +276,7 @@ run migrations with the owner connection.
 **`relation "..." does not exist` (42P01)** — either the migrations have not run (run both
 runners), or a tenant migration was pasted into a SQL editor, where its unqualified names
 resolve against `public`, which has held no tenant tables since migration 066. Use the
-runners or `backend/scripts/manual/`.
+runners; see `backend/migrations/README.md` for files meant to be pasted.
 
 **`psql: command not found`** — install the PostgreSQL client tools or add their `bin`
 directory to `PATH` (Windows: e.g. `C:\Program Files\PostgreSQL\15\bin`).

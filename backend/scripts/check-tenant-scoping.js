@@ -59,7 +59,7 @@ function tenantTables() {
 // migrations. These files still contain legacy runtime DDL and are allowlisted; the list
 // must only ever SHRINK as their DDL moves into migrations. New entries are not allowed.
 // Now EMPTY: all legacy runtime DDL has moved into migrations
-// (migrations/tenant/001_adopt_runtime_created_tables.sql and 072_global_runtime_ddl.sql).
+// (migrations/history/tenant/001_adopt_runtime_created_tables.sql and 072_global_runtime_ddl.sql).
 // Do not add entries — schema changes belong in migrations.
 const RUNTIME_DDL_ALLOWLIST = new Set([]);
 const DDL_RE = /\b(CREATE\s+(TABLE|EXTENSION|INDEX|SCHEMA)|ALTER\s+TABLE|DROP\s+TABLE)\b/i;

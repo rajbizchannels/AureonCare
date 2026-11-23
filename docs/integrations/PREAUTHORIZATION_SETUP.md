@@ -2,38 +2,35 @@
 
 This guide will help you set up the Pre-Authorization (Prior Authorization) feature in your local development environment.
 
+> **Current setup:** the `insurance_payers`, `preapprovals` and related columns are part of
+> the database baseline, so `npm run migrate` followed by `npm run migrate:tenants` creates
+> them (see [`../engineering/SETUP.md`](../engineering/SETUP.md)). The per-feature runner
+> this guide originally described — `npm run migrate:preauth` and
+> `backend/scripts/run-preapprovals-migration.js` — has been removed (the root
+> `run-preapprovals-migration.bat` still calls it and no longer works); the source migrations are kept for reference in
+> `backend/migrations/history/global/` (031, 032, 035). The verification and
+> troubleshooting below still apply.
+
 ## Prerequisites
 
 - PostgreSQL installed and running
 - Node.js installed
 - Database connection configured in `backend/.env`
 
-## Quick Setup (Recommended)
+## Setup
 
-### Option 1: Using NPM Script
-
-From the project root directory, run:
+From the project root:
 
 ```bash
-npm run migrate:preauth
+npm run migrate
+npm run migrate:tenants
 ```
 
-This will automatically:
-1. Create the `insurance_payers` table (if not exists)
-2. Add `insurance_payer_id` column to `patients` table
-3. Create the `preapprovals` table with all required fields
-4. Add `preapproval_id` column to `claims` table
-
-### Option 2: Using Batch File (Windows)
-
-Double-click `run-preapprovals-migration.bat` in the project root directory.
-
-### Option 3: Manual Node.js Execution
-
-```bash
-cd backend
-node scripts/run-preapprovals-migration.js
-```
+On a new database this builds everything from the baseline, including:
+1. the `insurance_payers` table
+2. the `insurance_payer_id` column on `patients`
+3. the `preapprovals` table with all required fields
+4. the `preapproval_id` column on `claims`
 
 ## Verify Installation
 
@@ -58,10 +55,6 @@ You should see:
 
 ## Troubleshooting
 
-### Error: "relation already exists"
-
-This is normal - it means the tables are already created. The migration script will skip existing tables.
-
 ### Error: "database 'aureoncare' does not exist"
 
 Create the database first:
@@ -70,30 +63,18 @@ Create the database first:
 CREATE DATABASE aureoncare;
 ```
 
-Then run the migration again.
+Then run the migrations again.
 
 ### Error: "password authentication failed"
 
-Check your `backend/.env` file and ensure:
-- `DB_HOST` is set correctly (usually `localhost`)
-- `DB_PORT` is correct (usually `5432`)
-- `DB_USER` is correct (usually `postgres`)
-- `DB_PASSWORD` matches your PostgreSQL password
-- `DB_NAME` is set to `aureoncare`
-
-Example `.env` configuration:
-
-```
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=aureoncare
-DB_USER=postgres
-DB_PASSWORD=your_password_here
-```
+Check `backend/.env`: if `AC_PG_URI` is set it is used and overrides the individual
+variables; otherwise `AC_DB_H` (host, usually `localhost`), `AC_DB_P` (usually `5432`),
+`AC_DB_U` (user), `AC_DB_W` (password) and `AC_DB_N` (`aureoncare`). See
+[`../engineering/SETUP.md`](../engineering/SETUP.md).
 
 ### Error: "role 'postgres' does not exist"
 
-If you're using a different PostgreSQL user, update `DB_USER` in your `.env` file.
+If you're using a different PostgreSQL user, set `AC_DB_U` in `backend/.env`.
 
 ## What Gets Created
 
@@ -162,7 +143,7 @@ The following endpoints are now available:
 
 If you encounter any issues:
 
-1. Check the console output from the migration script
+1. Check the console output from the migration runners
 2. Review the PostgreSQL logs
 3. Verify your database connection settings
 4. Ensure PostgreSQL is running

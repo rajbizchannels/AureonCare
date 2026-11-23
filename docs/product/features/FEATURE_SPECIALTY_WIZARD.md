@@ -201,14 +201,14 @@ already exposes, instead of a bundled JS array.
   migration 066 set the *database* default `search_path` to
   `tenant_default, public, control`, so unqualified DDL in a global migration lands in
   `tenant_default`. Follow the `SET search_path TO public;` + `public.` prefix pattern from
-  `migrations/072_global_runtime_ddl.sql`.
+  `migrations/history/global/072_global_runtime_ddl.sql`.
 - Provenance columns on existing tenant tables (`source_pack`, `source_pack_version`,
   `is_customised`) are **tenant** migrations: `backend/migrations/tenant/NNN_*.sql`,
   *unqualified* names, inside a transaction, additive and nullable.
 - Any brand-new tenant table also needs a global migration registering it in
   `control.tenant_tables` and cloning it into the golden `template`
   (`control.clone_table` + `control.replicate_intra_fks`) — the
-  `migrations/071_sec05_lazy_created_tenant_tables.sql` pattern. Without it, newly
+  `migrations/history/global/071_sec05_lazy_created_tenant_tables.sql` pattern. Without it, newly
   provisioned tenants lack the table and lazy `CREATE TABLE IF NOT EXISTS` produces empty
   shadow copies.
 - Hook the wizard into `services/tenantProvisioning.js` only to *mark* onboarding as

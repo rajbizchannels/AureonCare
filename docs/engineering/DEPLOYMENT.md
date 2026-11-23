@@ -1,3 +1,8 @@
+> **Release-by-release checklist:** the ordered, per-release steps (migrations, role
+> switch, verification, release notes) are in
+> [`../../DEPLOYMENT_CHECKLIST.md`](../../DEPLOYMENT_CHECKLIST.md). This guide covers the
+> deployment models and infrastructure; local development is in [`SETUP.md`](SETUP.md).
+
 # AureonCare Deployment Guide
 
 AureonCare supports three deployment models:
@@ -145,7 +150,7 @@ docker compose up -d
 docker compose --profile redis up -d
 
 # 4. Run migrations
-docker compose exec backend node run_migrations.js
+docker compose exec backend sh -c "node run-migrations.js && node run-tenant-migrations.js"
 
 # 5. Verify services are running
 docker compose ps
@@ -175,7 +180,7 @@ Migrations are SQL files in `backend/migrations/` and are idempotent (safe to re
 
 ```bash
 # Run all pending migrations
-docker compose exec backend node run_migrations.js
+docker compose exec backend sh -c "node run-migrations.js && node run-tenant-migrations.js"
 
 # Check migration status (examine logs)
 docker compose logs backend | grep -i migration
@@ -270,7 +275,7 @@ docker compose pull
 docker compose up -d
 
 # Run any new migrations
-docker compose exec backend node run_migrations.js
+docker compose exec backend sh -c "node run-migrations.js && node run-tenant-migrations.js"
 ```
 
 **Set your subscription key** (required to access private release channels):
@@ -366,7 +371,7 @@ sed -i "s/^AUREONCARE_VERSION=.*/AUREONCARE_VERSION=${AUREONCARE_VERSION}/" .env
 docker compose up -d
 
 # 4. Run new migrations
-docker compose exec backend node run_migrations.js
+docker compose exec backend sh -c "node run-migrations.js && node run-tenant-migrations.js"
 
 # 5. Verify
 curl http://localhost:3000/health
@@ -570,7 +575,7 @@ helm upgrade --install aureoncare ./helm/aureoncare/ \
 # 7. Run migrations (first deploy only)
 kubectl exec -n aureoncare \
   deployment/$(kubectl get deploy -n aureoncare -l app.kubernetes.io/component=backend -o name | head -1 | cut -d/ -f2) \
-  -- node run_migrations.js
+  -- sh -c "node run-migrations.js && node run-tenant-migrations.js"
 ```
 
 **Using AWS RDS instead of in-cluster PostgreSQL:**
@@ -716,7 +721,7 @@ helm upgrade aureoncare aureoncare/aureoncare \
 # Run migrations after upgrade
 kubectl exec -n aureoncare \
   deployment/aureoncare-backend \
-  -- node run_migrations.js
+  -- sh -c "node run-migrations.js && node run-tenant-migrations.js"
 ```
 
 ---

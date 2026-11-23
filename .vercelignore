@@ -31,10 +31,13 @@
 /*.pptx
 /*.docx
 
-# Documentation committed at the root: architecture and security material
-# (ARCHITECTURE_DIAGRAM, SAST, SSDLC, SEC-05_MULTI_TENANCY_PLAN, audit and
-# refactoring guides), operator runbooks (DEPLOYMENT, SETUP, OAUTH_SETUP) and
-# business collateral (COMPETITIVE_ANALYSIS, EXECUTIVE_SUMMARY). Between them
+# Documentation. Most of it now lives under docs/ (excluded above):
+# architecture and security material (docs/engineering/ARCHITECTURE.md,
+# docs/security/SAST.md, SSDLC.md, SEC-05_MULTI_TENANCY_PLAN.md, audit
+# logging), operator runbooks (docs/engineering/DEPLOYMENT.md, SETUP.md,
+# docs/integrations/OAUTH_SETUP.md) and business collateral
+# (docs/product/COMPETITIVE_ANALYSIS.md, EXECUTIVE_SUMMARY.md); the root keeps
+# DEPLOYMENT_CHECKLIST.md, which this pattern still excludes. Between them
 # they describe tenancy internals, the security control set and where it is
 # still incomplete, and our read of the market — none of which has any reason
 # to travel to the deployment.

@@ -192,6 +192,49 @@ Quick reference for setting up social login with Google, Microsoft, and Facebook
 
 ---
 
+## Google Calendar Sync (Patient Portal)
+
+Patients can connect their Google Calendar from the portal and push appointments to it.
+This uses the same Google OAuth client as sign-in, with a **client secret** and the
+**Google Calendar API** enabled (scope `https://www.googleapis.com/auth/calendar.events`).
+(This section replaces the calendar part of the former root `IMPLEMENTATION_GUIDE.md`,
+whose `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` / `GOOGLE_REDIRECT_URI` names the code
+does not read.)
+
+**Backend environment** (`backend/.env`), as read by `backend/routes/calendar-sync.js`:
+
+| Variable | Meaning |
+|---|---|
+| `REACT_APP_GG_CID` | Google OAuth client id (`AC_GG_CID` is accepted as a fallback; the two must be equal) |
+| `AC_GG_CSK` | Google OAuth client secret |
+| `AC_GG_URI` | redirect URI registered on the client; defaults to `${AC_BE_URL}/api/calendar-sync/callback` |
+| `AC_FE_URL` | frontend origin the callback returns the patient to |
+
+Without the client id and secret the API logs a warning and calendar sync is disabled.
+
+**Google Cloud Console:** enable the Google Calendar API, then on the OAuth client add the
+authorized redirect URI `http://localhost:3001/api/calendar-sync/callback` (development)
+and `https://<api-domain>/api/calendar-sync/callback` (production).
+
+**Endpoints** (all but the callback require a signed-in user with access to that patient):
+
+| Method and path | Purpose |
+|---|---|
+| `GET /api/calendar-sync/auth-url` | Google authorization URL |
+| `GET /api/calendar-sync/callback` | OAuth callback |
+| `GET /api/calendar-sync/status/:patientId` | connection status (`{ "connected": false }` before connecting) |
+| `DELETE /api/calendar-sync/disconnect/:patientId` | disconnect |
+| `POST /api/calendar-sync/sync-appointment` | `{ appointmentId, patientId }` — push one appointment |
+| `PUT /api/calendar-sync/auto-sync/:patientId` | turn auto-sync on or off |
+
+Frontend: `frontend/src/components/calendar/GoogleCalendarIntegration.js` (the connect
+panel), `useCalendarSync.js` and `AddToCalendarButton.js`.
+
+**A 403 from the Calendar API** usually means the API is not enabled on the project, the
+scope was not granted, or the token has expired.
+
+---
+
 ## Environment Configuration Summary
 
 Your `frontend/.env` should look like this:

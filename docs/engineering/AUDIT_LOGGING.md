@@ -1,400 +1,208 @@
-# Audit Logging Implementation Guide
+# Audit Logging
 
-This guide provides comprehensive instructions for adding audit logging to all forms, modals, and views in AureonCare.
+**Contents.** How AureonCare records who did what: the per-practice `audit_logs` table and
+why it is append-only, the server-side record of PHI reads, the frontend `useAudit` hook
+with the patterns for forms, modals and views (every one of which now uses it), the audit
+API, viewing and exporting logs in the Admin Panel, retention, and troubleshooting. It
+merges the former `AUDIT_IMPLEMENTATION_GUIDE.md` and `AUDIT_LOGGING_SUMMARY.md` (a
+progress log of the roll-out, now complete).
 
-## Table of Contents
-- [Overview](#overview)
-- [Quick Start](#quick-start)
-- [Implementation Patterns](#implementation-patterns)
-- [Component List](#component-list)
-- [Examples](#examples)
+---
 
-## Overview
+## 1. Where audit records live
 
-The audit logging system tracks all user interactions with forms, modals, and views across the AureonCare application. It provides:
+| Trail | Table | Written by |
+|---|---|---|
+| Clinical / practice activity | `audit_logs` in **each tenant schema** (created by migration `040_create_audit_logs_table.sql`, now in `backend/migrations/history/global/`; moved into tenant schemas at the SEC-05 cut-over) | the frontend through `POST /api/audit`, and the backend for PHI reads |
+| Platform operator actions | `control.audit_log` (migration 069) | the operator console (`logPlatformAction`) |
 
-- **Comprehensive Tracking**: View, create, update, delete actions
-- **Detailed Context**: User info, timestamps, IP addresses, duration
-- **Data Changes**: Before/after values for updates
-- **Error Tracking**: Failed actions and error messages
-- **Security**: Audit trail for compliance and security monitoring
+Each record carries the actor (`user_id`, plus `user_email`, `user_name`, `user_role`
+denormalised), session, IP and user agent, `action_type` (`view`, `create`, `update`,
+`delete`, `submit`, `open`, `close`, `error`), `resource_type` (`form`, `modal`, `view`),
+`resource_name`, `resource_id`, `module`, related `patient_id` / `provider_id` /
+`appointment_id` / `claim_id`, `old_values` / `new_values` / `changed_fields` for updates,
+`status` and `error_message`, `metadata`, and an optional duration.
 
-## Quick Start
+**Append-only (SEC-25).** Tenant migration 002 adds a `BEFORE UPDATE OR DELETE` trigger
+(`audit_logs_no_mutate`) that rejects both: an audit trail the application can rewrite is
+not evidence. Tenant migration 003 then dropped the foreign keys on `user_id`,
+`patient_id` and `provider_id` — their `ON DELETE SET NULL` is an UPDATE, which the trigger
+rejected, so deleting any user, patient or provider failed. The ids remain plain uuids that
+may point at deleted rows; the denormalised name, email and role keep attribution intact.
+Both are in `backend/migrations/history/tenant/` and part of the baseline.
 
-### 1. Import the useAudit Hook
+**PHI reads are recorded server-side (SEC-25).** `backend/middleware/phiAccessLog.js`
+(`auditPhiRead`) and `backend/services/phiAudit.js` log a successful (2xx) read *after* the
+response is sent, so auditing adds no latency and a logging failure never breaks a clinical
+read (it is logged loudly instead). It records the resource accessed, never the data
+returned. It is mounted on the read routes of patients, medical records, diagnoses,
+prescriptions, lab orders, sick notes and eligibility.
 
-```javascript
-import { useAudit } from '../../hooks/useAudit';
-```
+**Form actor integrity (SEC-51).** `backend/routes/form-management.js` takes the actor for
+submissions, reviews, templates and the form audit log from the verified session
+(`req.user`), never from client-supplied headers.
 
-### 2. Initialize the Hook
-
-```javascript
-const { logFormView, logFormSubmit, logCreate, logUpdate, logDelete, logError, logModalOpen, logModalClose, logViewAccess, startAction } = useAudit();
-```
-
-### 3. Add Logging Calls
-
-See the implementation patterns below for specific examples.
-
-## Implementation Patterns
-
-### Pattern 1: Forms
-
-Forms should log three main events:
-1. **View**: When the form opens
-2. **Submit**: When the form is submitted (with success/failure)
-3. **Create/Update**: When data is successfully saved
-
-#### Example (DiagnosisForm.js - ALREADY IMPLEMENTED):
+## 2. The `useAudit` hook — `frontend/src/hooks/useAudit.js`
 
 ```javascript
 import { useAudit } from '../../hooks/useAudit';
 
-const DiagnosisForm = ({ theme, api, patient, ...props }) => {
-  const { logFormView, logCreate, logUpdate, logError, startAction } = useAudit();
-
-  // Log form view on mount
-  useEffect(() => {
-    startAction(); // Start timing
-    logFormView('DiagnosisForm', {
-      module: 'EHR',
-      patient_id: patient?.id,
-      metadata: {
-        mode: editMode ? 'edit' : 'create',
-      },
-    });
-  }, []);
-
-  const handleSubmit = async () => {
-    try {
-      const result = await api.createDiagnosis(data);
-
-      // Log successful creation
-      logCreate('DiagnosisForm', data, {
-        module: 'EHR',
-        resource_id: result.id,
-        patient_id: data.patientId,
-        provider_id: data.providerId,
-      });
-
-      // Or log update if editing
-      if (editMode) {
-        logUpdate('DiagnosisForm', oldData, newData, {
-          module: 'EHR',
-          resource_id: result.id,
-          patient_id: data.patientId,
-        });
-      }
-    } catch (error) {
-      // Log errors
-      logError('DiagnosisForm', 'form', error.message, {
-        module: 'EHR',
-        patient_id: data.patientId,
-      });
-    }
-  };
-};
+const {
+  logAudit, logFormView, logFormSubmit, logModalOpen, logModalClose, logViewAccess,
+  logCreate, logUpdate, logDelete, logError, startAction,
+} = useAudit();
 ```
 
-### Pattern 2: Modals
+| Function | Signature | Records |
+|---|---|---|
+| `startAction()` | — | starts the duration timer |
+| `logFormView` | `(name, options)` | `view` of a form |
+| `logFormSubmit` | `(name, options)` | `submit` |
+| `logModalOpen` / `logModalClose` | `(name, options)` | `open` / `close` of a modal |
+| `logViewAccess` | `(name, options)` | `view` of a page |
+| `logCreate` | `(name, data, options)` | `create`, `new_values = data`, with duration |
+| `logUpdate` | `(name, oldData, newData, options)` | `update`, old/new values and the computed `changed_fields`, with duration |
+| `logDelete` | `(name, data, options)` | `delete`, `old_values = data` |
+| `logError` | `(name, resourceType, message, options)` | `error` with `status: 'error'` |
+| `logAudit` | `({ ... })` | any of the above, all fields explicit |
 
-Modals should log:
-1. **Open**: When modal opens
-2. **Close**: When modal closes
-3. **Submit** (if applicable): When action is taken
+`options` takes `module`, `resource_id`, `patient_id`, `provider_id`, `appointment_id`,
+`claim_id`, `status`, `metadata` and `includeDuration` (time since `startAction()`).
 
-#### Example (CredentialModal.js):
+### Pattern 1 — forms
 
-```javascript
-import { useAudit } from '../../hooks/useAudit';
-
-const CredentialModal = ({ isOpen, onClose, providerName, ...props }) => {
-  const { logModalOpen, logModalClose, logError, startAction } = useAudit();
-
-  useEffect(() => {
-    if (isOpen) {
-      startAction();
-      logModalOpen('CredentialModal', {
-        module: 'Admin',
-        metadata: {
-          provider: providerName,
-        },
-      });
-    }
-  }, [isOpen]);
-
-  const handleClose = () => {
-    logModalClose('CredentialModal', {
-      module: 'Admin',
-      metadata: {
-        provider: providerName,
-      },
-    });
-    onClose();
-  };
-
-  const handleSubmit = async () => {
-    try {
-      await api.saveCredentials(credentials);
-      logModalClose('CredentialModal', {
-        module: 'Admin',
-        status: 'success',
-      });
-      onClose();
-    } catch (error) {
-      logError('CredentialModal', 'modal', error.message, {
-        module: 'Admin',
-      });
-    }
-  };
-};
-```
-
-### Pattern 3: Views/Pages
-
-Views should log access when the component mounts:
-
-#### Example (PatientLoginPage.js):
+Log the view on mount, the create/update on success, and errors.
 
 ```javascript
-import { useAudit } from '../../hooks/useAudit';
+const { logFormView, logCreate, logUpdate, logError, startAction } = useAudit();
 
-const PatientLoginPage = () => {
-  const { logViewAccess, logError } = useAudit();
-
-  useEffect(() => {
-    logViewAccess('PatientLoginPage', {
-      module: 'Patient Portal',
-    });
-  }, []);
-
-  const handleLogin = async (credentials) => {
-    try {
-      await api.login(credentials);
-      // Login success is logged by auth system
-    } catch (error) {
-      logError('PatientLoginPage', 'view', error.message, {
-        module: 'Patient Portal',
-        metadata: {
-          email: credentials.email,
-        },
-      });
-    }
-  };
-};
-```
-
-## Component List
-
-### Forms (21 total)
-
-Apply **Pattern 1** to these forms:
-
-1. ✅ **DiagnosisForm.js** - ALREADY IMPLEMENTED
-2. **MedicalRecordUploadForm.js** - Module: 'EHR', track file uploads
-3. **NewAppointmentForm.js** - Module: 'Scheduling', track patient_id, provider_id
-4. **NewAppointmentTypeForm.js** - Module: 'Admin', track configuration changes
-5. **NewCampaignForm.js** - Module: 'CRM', track campaign data
-6. **NewClaimForm.js** - Module: 'RCM', track claim_id, patient_id
-7. **NewConsentFormForm.js** - Module: 'Admin', track form template creation
-8. **NewDenialForm.js** - Module: 'RCM', track claim_id, denial reason
-9. **NewHealthcareOfferingForm.js** - Module: 'Offerings', track offering details
-10. **NewInsurancePayerForm.js** - Module: 'RCM', track payer info
-11. **NewIntakeFlowForm.js** - Module: 'Patient Intake', track flow configuration
-12. **NewIntakeFormForm.js** - Module: 'Patient Intake', track form template
-13. **NewLaboratoryForm.js** - Module: 'EHR', track lab info
-14. **NewLabOrderForm.js** - Module: 'EHR', track patient_id, provider_id, lab tests
-15. **NewPatientForm.js** - Module: 'EHR', track patient creation
-16. **NewPaymentForm.js** - Module: 'RCM', track payment_id, patient_id, amount
-17. **NewPaymentPostingForm.js** - Module: 'RCM', track claim_id, payment details
-18. **NewPharmacyForm.js** - Module: 'EHR', track pharmacy info
-19. **NewPreapprovalForm.js** - Module: 'RCM', track claim_id, patient_id
-20. **NewTaskForm.js** - Module: 'Practice Management', track task assignment
-21. **NewUserForm.js** - Module: 'Admin', track user creation/updates
-
-### Modals (9 total)
-
-Apply **Pattern 2** to these modals:
-
-1. **CredentialModal.js** - Module: 'Admin', track provider type
-2. **ePrescribeModal.js** - Module: 'EHR', track patient_id, medication
-3. **ForgotPasswordModal.js** - Module: 'Auth', track email
-4. **PatientLoginPage.js** - Module: 'Patient Portal'
-5. ~~**RegisterPage.js**~~ - removed with self-registration (SEC-39); portal invitations are recorded server-side in `portal_invites`
-6. **SettingsModal.js** - Module: 'Settings', track settings changes
-7. **UserFormModal.js** - Module: 'Admin', track user operations
-8. **UserProfileModal.js** - Module: 'Profile', track profile updates
-9. **ViewEditModal.js** - Module: 'General', track viewed entity
-
-### Views (21 total)
-
-Apply **Pattern 3** to these views:
-
-1. **AdminPanelView.backup.js** - Module: 'Admin'
-2. **AdminPanelView.js** - Module: 'Admin'
-3. **AppointmentTypesManagementView.js** - Module: 'Admin'
-4. **CampaignsManagementView.js** - Module: 'CRM'
-5. **ClinicalServicesView.js** - Module: 'EHR'
-6. **CRMView.js** - Module: 'CRM'
-7. **DashboardView.js** - Module: 'Dashboard'
-8. **EHRView.js** - Module: 'EHR'
-9. **FHIRView.js** - Module: 'FHIR'
-10. **IntegrationsView.js** - Module: 'Admin'
-11. **LaboratoryManagementView.js** - Module: 'EHR'
-12. **OfferingManagementView.js** - Module: 'Offerings'
-13. **PatientDiagnosisView.js** - Module: 'EHR', track patient_id
-14. **PatientHistoryView.js** - Module: 'EHR', track patient_id
-15. **PatientIntakeView.js** - Module: 'Patient Intake', track patient_id
-16. **PatientPortalView.js** - Module: 'Patient Portal', track patient_id
-17. **PharmacyManagementView.js** - Module: 'EHR'
-18. **PracticeManagementView.js** - Module: 'Practice Management'
-19. **ProviderManagementView.js** - Module: 'Admin'
-20. **RCMView.js** - Module: 'RCM'
-21. **ReportsView.js** - Module: 'Reports'
-22. **TelehealthView.js** - Module: 'Telehealth', track session_id
-23. **WaitlistManagementView.js** - Module: 'Scheduling'
-
-## Best Practices
-
-### 1. Always Include Module Information
-
-```javascript
-logFormView('MyForm', {
-  module: 'EHR', // or 'RCM', 'Admin', 'CRM', etc.
-  // ... other options
-});
-```
-
-### 2. Track Related Entities
-
-```javascript
-logCreate('NewClaimForm', claimData, {
-  module: 'RCM',
-  patient_id: claim.patient_id,
-  claim_id: result.id,
-  provider_id: claim.provider_id,
-});
-```
-
-### 3. Include Meaningful Metadata
-
-```javascript
-logFormView('NewPaymentForm', {
-  module: 'RCM',
-  metadata: {
-    payment_method: 'credit_card',
-    amount: formData.amount,
-  },
-});
-```
-
-### 4. Always Log Errors
-
-```javascript
-try {
-  await api.submitForm(data);
-} catch (error) {
-  logError('MyForm', 'form', error.message, {
-    module: 'EHR',
-    metadata: { formData: data },
-  });
-  throw error;
-}
-```
-
-### 5. Use startAction() for Duration Tracking
-
-```javascript
 useEffect(() => {
-  startAction(); // Starts timer
-  logFormView('MyForm', {
+  startAction();
+  logFormView('DiagnosisForm', {
     module: 'EHR',
-    includeDuration: true, // Will include time from startAction() to this call
+    patient_id: patient?.id,
+    metadata: { mode: editMode ? 'edit' : 'create' },
   });
 }, []);
+
+const handleSubmit = async () => {
+  // Prepare the payload before the try block, so the catch can refer to it.
+  const data = { ...formState };
+  try {
+    const result = editMode ? await api.updateDiagnosis(id, data) : await api.createDiagnosis(data);
+    if (editMode) {
+      logUpdate('DiagnosisForm', original, data, { module: 'EHR', resource_id: result.id, patient_id: data.patientId });
+    } else {
+      logCreate('DiagnosisForm', data, { module: 'EHR', resource_id: result.id, patient_id: data.patientId, provider_id: data.providerId });
+    }
+  } catch (error) {
+    logError('DiagnosisForm', 'form', error.message, { module: 'EHR', patient_id: data.patientId });
+  }
+};
 ```
 
-## Testing
+### Pattern 2 — modals
 
-After adding audit logging to a component:
+```javascript
+const { logModalOpen, logModalClose, logError, startAction } = useAudit();
 
-1. **Open the component** - Check that a 'view' audit log is created
-2. **Perform actions** - Verify create/update/delete logs are created
-3. **Trigger errors** - Confirm error logs are created
-4. **Check Admin Panel** - View logs in Admin Panel > Audit Logs tab
-5. **Verify data** - Ensure all relevant IDs and metadata are captured
+useEffect(() => {
+  if (isOpen) {
+    startAction();
+    logModalOpen('CredentialModal', { module: 'Admin', metadata: { provider: providerName } });
+  }
+}, [isOpen]);
 
-## Viewing Audit Logs
-
-1. Navigate to **Admin Panel** (admin users only)
-2. Click the **Audit Logs** tab
-3. Use filters to find specific logs:
-   - Filter by user email
-   - Filter by action type (view, create, update, delete)
-   - Filter by resource (form, modal, view)
-   - Filter by date range
-4. Click **View Details** to see full log information
-5. Use **Export** button to download logs as CSV
-
-## Permissions
-
-By default, only users with the **admin** role can:
-- View audit logs
-- Export audit logs
-- Delete old audit logs
-
-This is configured in the database migration `040_create_audit_logs_table.sql`.
-
-## Maintenance
-
-### Automatic Cleanup
-
-The audit logs table can grow large over time. Use the cleanup endpoint:
-
-```bash
-DELETE /api/audit/cleanup?days=90
+const handleClose = () => {
+  logModalClose('CredentialModal', { module: 'Admin', metadata: { provider: providerName } });
+  onClose();
+};
+// on a failed save: logError('CredentialModal', 'modal', error.message, { module: 'Admin' });
 ```
 
-This deletes logs older than 90 days (configurable).
+### Pattern 3 — views
 
-### Manual Cleanup
+```javascript
+const { logViewAccess, logError } = useAudit();
+useEffect(() => { logViewAccess('PatientLoginPage', { module: 'Patient Portal' }); }, []);
+// login success is recorded by the auth system; failures with logError(..., 'view', ...)
+```
 
-Administrators can delete old logs from the Admin Panel or via API.
+### Coverage
 
-## Troubleshooting
+Every form, modal and view on the original roll-out list uses the hook, including the 14
+forms the roll-out log tracked (`NewDenialForm`, `NewHealthcareOfferingForm`,
+`NewInsurancePayerForm`, `NewIntakeFlowForm`, `NewIntakeFormForm`, `NewLaboratoryForm`,
+`NewLabOrderForm`, `NewPatientForm`, `NewPaymentForm`, `NewPaymentPostingForm`,
+`NewPharmacyForm`, `NewPreapprovalForm`, `NewTaskForm`, `NewUserForm`), the other forms
+(`DiagnosisForm`, `MedicalRecordUploadForm`, `NewAppointmentForm`, `NewAppointmentTypeForm`,
+`NewCampaignForm`, `NewClaimForm`, `NewConsentFormForm`, `NewCouponForm`), the modals
+(`CredentialModal`, `ePrescribeModal`, `ForgotPasswordModal`, `PatientLoginPage`,
+`SettingsModal`, `UserProfileModal`, `ViewEditModal`) and the views (Admin Panel,
+appointment types, campaigns, clinical services, CRM, dashboard, EHR, FHIR, integrations,
+laboratories, offerings, patient diagnosis/history/intake/portal, pharmacies, practice
+management, providers, RCM, reports, telehealth, waitlist, plus accounts, forms, inventory
+and messages). `RegisterPage` was removed with self-registration (SEC-39); portal
+invitations are recorded server-side in `portal_invites`.
 
-### Logs Not Appearing
+**Module names are not normalised.** The convention was a display name — `EHR`, `RCM`,
+`Admin`, `CRM`, `Scheduling`, `Offerings`, `Patient Intake`, `Practice Management`,
+`Patient Portal`, `Settings`, `Profile`, `Auth` — and most forms follow it, but several
+views log camelCase identifiers instead (`patientPortal`, `inventory`, `accounts`, `rcm`,
+`admin`, …). Filter on `module` case-insensitively, and use the display-name form in new
+code.
 
-1. Check browser console for errors
-2. Verify API is running: `http://localhost:3001/health`
-3. Check database migration 040 was run
-4. Verify user has required permissions
+### Practices
 
-### Missing Context Data
+1. Always pass `module`.
+2. Pass the related ids (`patient_id`, `provider_id`, `claim_id`, …) — they are what an
+   investigation filters on.
+3. Keep `metadata` to identifying fields (name, type, status), not whole records: the
+   trail must not become a second copy of the PHI it protects.
+4. Always log errors.
+5. Call `startAction()` at the start of the view effect so create/update carry a duration.
 
-Ensure you're passing all relevant IDs:
-- patient_id
-- provider_id
-- claim_id
-- etc.
+## 3. Audit API — `backend/routes/audit.js`
 
-### Performance Issues
+All routes require authentication and run against the caller's tenant schema
+(`req.db`).
 
-If audit logging is slowing down the app:
-1. Check that audit API calls are not blocking UI (they shouldn't be)
-2. Verify database indexes are created (they are in migration 040)
-3. Consider implementing rate limiting for high-frequency actions
+| Method and path | Purpose |
+|---|---|
+| `POST /api/audit` | create an entry |
+| `GET /api/audit` | list, filtered by `user_id`, `user_email`, `action_type`, `resource_type`, `resource_name`, `module`, `patient_id`, `provider_id`, `status`, `start_date`, `end_date` |
+| `GET /api/audit/:id` | one entry |
+| `GET /api/audit/stats/summary`, `/stats/top-users`, `/stats/top-resources` | statistics |
+| `GET /api/audit/export/csv` | CSV export, same filters |
+| `DELETE /api/audit/cleanup?days=90` | delete entries older than N days — **rejected by the append-only trigger** on any migrated tenant |
 
-## Summary
+Migration 040 grants the `audit.view`, `audit.export` and `audit.admin` permissions to the
+`admin` role in the legacy `role_permissions` table. The routes themselves check
+authentication only, not that permission; the Admin Panel is where the logs are offered.
 
-This comprehensive audit logging system provides:
-- ✅ Complete audit trail for compliance
-- ✅ Security monitoring and breach detection
-- ✅ User activity tracking
-- ✅ Error tracking and debugging
-- ✅ Performance monitoring (via duration tracking)
-- ✅ Easy integration with existing components
-- ✅ Admin GUI for viewing and managing logs
+If a tenant schema has no `audit_logs` table the API answers 503 naming the schema; an
+account that is not bound to an active tenant resolves to `public` (which holds no
+`audit_logs`) and gets a 503 pointing at `GET /api/auth/tenant-status`. The existence check
+is cached per schema for five minutes.
 
-For questions or issues, refer to the useAudit hook source code at `frontend/src/hooks/useAudit.js`.
+## 4. Viewing and exporting
+
+1. **Admin Panel → Audit Logs**.
+2. Filter by user, action type, resource, module, status or date range.
+3. **View Details** shows the full entry; **Export** downloads CSV.
+
+## 5. Retention
+
+Entries cannot be deleted by the application. Retention or rotation, when introduced, must
+run as a role that drops the trigger deliberately, not as the application deleting rows.
+
+## 6. Troubleshooting
+
+- **Logs not appearing** — check the browser console; check the API is up
+  (`GET /health`); a 503 from `/api/audit` names the schema without the table (run both
+  migration runners — see [`SETUP.md`](SETUP.md)) or says the account has no tenant.
+- **Missing context** — pass the related ids in `options`.
+- **Performance** — audit calls are fire-and-forget and must not block the UI; the indexes
+  come with migration 040.
+- **`audit_logs is append-only (UPDATE is not permitted)`** when deleting a user, patient or
+  provider — tenant migration 003 has not reached that schema; run `npm run migrate:tenants`.

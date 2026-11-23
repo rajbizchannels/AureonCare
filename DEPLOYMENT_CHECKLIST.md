@@ -81,7 +81,7 @@ Add `--dry-run` to either to see what would run without touching anything.
 > one. Run directly, `audit_logs` resolves against `public` where it does not exist and you
 > get `ERROR: 42P01: relation "audit_logs" does not exist` — which describes how they were
 > run, not the migrations. Without node, use
-> `backend/scripts/manual/apply-tenant-migrations.sql`, which does the per-schema loop
+> `backend/migrations/history/manual-applied/apply-tenant-migrations.sql`, which does the per-schema loop
 > itself.
 
 - [ ] `--adopt` run exactly once on the existing database (skip on a brand-new one)
@@ -127,7 +127,7 @@ Until `088` + `tenant/011` have run, permissions fall back to the built-in role 
 the same behaviour as before the feature existed — so the gap is safe. Until `086` has
 run, a self-serve plan change fails outright.
 
-`backend/scripts/manual/apply-module-permissions.sql` carries both halves of the
+`backend/migrations/history/manual-applied/apply-module-permissions.sql` carries both halves of the
 permissions pair for an operator who cannot run node against the database; the other
 manual scripts are listed in `backend/scripts/manual/README.md`.
 
@@ -702,7 +702,7 @@ Every link AureonCare sends or shares — staff and patient-portal invitations, 
 reset, telehealth join links, and the booking / meeting links staff copy — goes out as a
 short link on your own domain, e.g. `https://app.aureoncare.tech/s/k3J9xQ2mWb7Z`.
 
-- **Migration:** `backend/migrations/091_short_links.sql` (safe to paste into the SQL editor).
+- **Migration:** `backend/migrations/history/global/091_short_links.sql` (safe to paste into the SQL editor).
 - **Routing:** `/s/(.*)` must reach the backend. `vercel.json` and `docker/nginx/nginx.conf`
   already route it.
 - **Optional:** `AC_SHORT_BASE=https://<short-domain>` to use a dedicated short domain. It must
@@ -753,7 +753,7 @@ refusal under the 24-hour rule is logged with the template to approve. Email is 
 
 ## Practice profiles (directory Phase 2)
 
-- **Migration:** `backend/migrations/092_practice_profiles.sql` (safe to paste into the SQL editor).
+- **Migration:** `backend/migrations/history/global/092_practice_profiles.sql` (safe to paste into the SQL editor).
 - **Routing:** `/p/(.*)` must reach the backend; `vercel.json` and `docker/nginx/nginx.conf` already do.
 - **Visibility** (Settings → Practice Profile, admins only, default **Off**):
   Off = the page does not exist; Link only = by link/QR, `noindex`, optionally an unguessable
@@ -779,7 +779,7 @@ refusal under the 24-hour rule is logged with the template to approve. Email is 
 ## People in several practices (Phase 1: memberships)
 
 **Order matters: apply the migration BEFORE deploying this code.**
-1. Paste `backend/migrations/093_memberships.sql` into the SQL editor. It creates
+1. Paste `backend/migrations/history/global/093_memberships.sql` into the SQL editor. It creates
    `public.memberships`, gives every existing account its membership, and adds a trigger that
    keeps memberships in step with `users.practice_id` / `users.role`. Check:
    `SELECT count(*) FROM public.users WHERE practice_id IS NOT NULL;` equals
@@ -804,7 +804,7 @@ Not yet: a patient with charts at several practices still has one portal sign-in
 ## Guest booking requests, "Find a practice" link, "Ask to join" from profile pages
 
 **Order matters: apply the migration BEFORE deploying this code.**
-1. Paste `backend/migrations/094_profile_join_requests.sql` into the SQL editor (safe to re-run).
+1. Paste `backend/migrations/history/global/094_profile_join_requests.sql` into the SQL editor (safe to re-run).
    Check: `SELECT filename FROM public.schema_migrations WHERE filename LIKE '094%';` returns one row.
 2. Deploy.
 
@@ -826,7 +826,7 @@ What changes:
 
 ## Sign-in rate limit fix + lockout after 4 wrong passwords
 
-1. Paste `backend/migrations/095_login_lockouts.sql` into the SQL editor (safe to re-run).
+1. Paste `backend/migrations/history/global/095_login_lockouts.sql` into the SQL editor (safe to re-run).
    Until it is applied, sign-in works but WITHOUT lockout (it fails open; the logs say
    "[lockout] disabled … apply migration 095").
 2. Deploy.
@@ -847,7 +847,7 @@ What changes:
 
 ## Sick notes
 
-1. Paste `backend/migrations/096_sick_notes.sql` into the SQL editor as the database owner
+1. Paste `backend/migrations/history/global/096_sick_notes.sql` into the SQL editor as the database owner
    (safe to re-run). It registers the table for new practices and creates it in `template`
    and every existing practice. The notice says how many schemas it created it in.
 2. Deploy.
@@ -883,7 +883,7 @@ No migration. Deploy.
 
 ## Patient Google/Microsoft sign-in + tenant migrations 010/013
 
-1. Paste `backend/scripts/manual/apply-tenant-migrations-010-013.sql` into the SQL editor as
+1. Paste `backend/migrations/history/manual-applied/apply-tenant-migrations-010-013.sql` into the SQL editor as
    postgres. Production is missing tenant migration 010 (the five AI tables) in `template`
    and tenant_default — found by the SEC-05 schema check. The last query must return
    `missing_tables = 0`. Safe to re-run.
@@ -901,7 +901,7 @@ What changes:
 
 ## Google / Microsoft sign-in in the mobile app (+ SEC-48)
 
-1. Paste `backend/migrations/098_mobile_oauth_flows.sql` into the SQL editor (safe to re-run).
+1. Paste `backend/migrations/history/global/098_mobile_oauth_flows.sql` into the SQL editor (safe to re-run).
 2. Register one more redirect URI with each provider (same clients the web app uses):
    - Google Cloud Console → APIs & Services → Credentials → the web OAuth client →
      Authorized redirect URIs: `https://app.aureoncare.tech/api/auth/mobile/oauth/google/callback`
@@ -929,7 +929,7 @@ email, and a Microsoft `mail` value counts as verified only in the UPN's own dom
 
 ## Patients can request a sick note (web portal and mobile app)
 
-1. Paste `backend/migrations/099_sick_note_requests.sql` into the SQL editor as postgres (safe to
+1. Paste `backend/migrations/history/global/099_sick_note_requests.sql` into the SQL editor as postgres (safe to
    re-run; it creates the table in `template` and every practice and registers it for new ones).
 2. Deploy; ship a new app build for the mobile part.
 
@@ -1023,7 +1023,7 @@ Still required before go-live (none of this can be done in code alone):
 
 ## Migration 100 — notifications, eligibility, claim checks, low stock, per-practice settings
 
-**Run before deploying this code:** paste `backend/migrations/100_notifications_eligibility_scrub.sql`
+**Run before deploying this code:** paste `backend/migrations/history/global/100_notifications_eligibility_scrub.sql`
 into the SQL editor as postgres (safe to re-run). It:
 - adds `npi`, `website`, `currency` to `public.practices` and copies the values every practice used
   to share (SEC-53): currency to every practice; NPI and website only when there is a single

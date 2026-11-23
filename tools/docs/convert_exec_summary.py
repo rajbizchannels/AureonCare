@@ -9,6 +9,7 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from docx.oxml.ns import qn
 from docx.oxml import OxmlElement
 import re
+from pathlib import Path
 
 def parse_markdown_to_word(md_file, docx_file):
     """Convert executive summary markdown to professionally formatted Word document"""
@@ -266,4 +267,6 @@ def apply_inline_formatting(paragraph):
         paragraph.add_run(current_text)
 
 if __name__ == '__main__':
-    parse_markdown_to_word('EXECUTIVE_SUMMARY.md', 'EXECUTIVE_SUMMARY.docx')
+    # Repository-relative: tools/docs/ -> repo root -> docs/product/
+    product = Path(__file__).resolve().parents[2] / 'docs' / 'product'
+    parse_markdown_to_word(str(product / 'EXECUTIVE_SUMMARY.md'), str(product / 'EXECUTIVE_SUMMARY.docx'))
