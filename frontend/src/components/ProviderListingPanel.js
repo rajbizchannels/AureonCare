@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Globe, Loader2, Upload } from 'lucide-react';
 import { getTranslations } from '../config/translations';
 import { useOptionalApp } from '../context/AppContext';
+import { checkUpload, guidelineText, noteFor } from '../utils/uploadGuidelines';
 
 const useT = () => getTranslations(useOptionalApp()?.language || 'en');
 
@@ -13,6 +14,7 @@ const useT = () => getTranslations(useOptionalApp()?.language || 'en');
  */
 const ProviderListingPanel = ({ theme = 'light', api, addNotification }) => {
   const t = useT();
+  const lang = useOptionalApp()?.language || 'en';
   const dark = theme === 'dark';
   const [data, setData] = useState(null);
   const [form, setForm] = useState(null);
@@ -65,6 +67,9 @@ const ProviderListingPanel = ({ theme = 'light', api, addNotification }) => {
 
   const uploadPhoto = async (file) => {
     if (!file) return;
+    const verdict = await checkUpload('provider', file, lang);
+    if (verdict.error) { setError(verdict.error); return; }
+    if (verdict.warning) addNotification?.('alert', verdict.warning);
     setBusy(true); setError('');
     try {
       const ph = await api.uploadProfilePhoto('provider', file);
@@ -136,6 +141,9 @@ const ProviderListingPanel = ({ theme = 'light', api, addNotification }) => {
               <input type="file" accept="image/jpeg,image/png" className="sr-only" onChange={(e) => { uploadPhoto(e.target.files[0]); e.target.value = ''; }} />
             </label>
           </div>
+        )}
+        {form.consented && form.show_photo && (
+          <p className={`pl-6 mt-1 text-xs ${muted}`}>{guidelineText('provider', lang)}<br />{noteFor('provider', lang)}</p>
         )}
       </fieldset>
 

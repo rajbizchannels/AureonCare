@@ -6,6 +6,8 @@ import {
 } from 'lucide-react';
 import { formatDateTime } from '../../utils/formatters';
 import AIAssistButton from '../integrations/AIAssistButton';
+import { attachTitle } from '../../utils/uploadGuidelines';
+import { useOptionalApp } from '../../context/AppContext';
 
 /**
  * Right pane: one conversation, its transcript, and the composer.
@@ -68,6 +70,7 @@ const MessageThreadPanel = ({
   addNotification,
 }) => {
   const dark = theme === 'dark';
+  const lang = useOptionalApp()?.language || 'en';
   const [draft, setDraft] = useState('');
   const [attachments, setAttachments] = useState([]);
   const [downloadingId, setDownloadingId] = useState(null);
@@ -408,6 +411,7 @@ const MessageThreadPanel = ({
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
+              title={attachTitle(lang)}
               aria-label="Attach a file"
               className={`p-2.5 rounded-lg transition-colors ${dark ? 'text-slate-400 hover:bg-slate-800' : 'text-gray-500 hover:bg-gray-100'}`}
             >

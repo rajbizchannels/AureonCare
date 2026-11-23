@@ -55,6 +55,7 @@ import {
 } from '../utils/validators';
 import { hasPermission, isAdmin } from '../utils/rolePermissions';
 import { usIdentifiersApply, countryOptions, isValidNpi, isValidDea } from '../utils/practiceRegion';
+import { guidelineText } from '../utils/uploadGuidelines';
 import ThemedSelect from '../components/forms/ThemedSelect';
 
 /**
@@ -3726,6 +3727,7 @@ const AdminPanelView = ({
             </div>
           )}
 
+          <p className={`text-xs mb-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>{guidelineText('backup', language)}</p>
           <input
             type="file"
             accept=".json"

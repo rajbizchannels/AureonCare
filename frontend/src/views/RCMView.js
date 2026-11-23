@@ -15,6 +15,8 @@ import ConfirmationModal from '../components/modals/ConfirmationModal';
 import { useAudit } from '../hooks/useAudit';
 import ClaimCheckDialog from '../components/rcm/ClaimCheckDialog';
 import { useShellTab } from '../hooks/useShellTab';
+import { checkUpload, guidelineText, noteFor } from '../utils/uploadGuidelines';
+import { useOptionalApp } from '../context/AppContext';
 
 const RCMView = ({
   theme,
@@ -35,6 +37,7 @@ const RCMView = ({
   currency = 'USD',
   user = null,
 }) => {
+  const uploadLang = useOptionalApp()?.language || 'en';
   const [activeTab, setActiveTab, tabsInShell] = useShellTab(shellTab, onTabChange, 'claims');
   const [showPaymentForm, setShowPaymentForm] = useState(false);
   const [showClaimForm, setShowClaimForm] = useState(false);
@@ -870,7 +873,10 @@ const RCMView = ({
             className="hidden"
             onChange={async (e) => {
               const file = e.target.files[0];
+              e.target.value = '';
               if (!file) return;
+              const verdict = await checkUpload('edi835', file, uploadLang);
+              if (verdict.error) { addNotification('alert', verdict.error); return; }
 
               try {
                 addNotification('info', 'Uploading and processing EDI 835 file...');
@@ -910,6 +916,7 @@ const RCMView = ({
           />
         </div>
       </div>
+      <p className={`-mt-2 mb-4 text-xs ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>{guidelineText('edi835', uploadLang)} — {noteFor('edi835', uploadLang)}</p>
 
       {/* Payment Postings Table */}
       <div className={`bg-gradient-to-br rounded-xl border overflow-hidden ${theme === 'dark' ? 'from-slate-800/50 to-slate-900/50 border-slate-700/50' : 'from-gray-100/50 to-gray-200/50 border-gray-300/50'}`}>

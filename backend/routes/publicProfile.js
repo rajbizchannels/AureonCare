@@ -207,6 +207,9 @@ button{margin-top:16px;width:100%;padding:11px;border:0;border-radius:8px;backgr
 }
 const send = (res, status, title, inner) => {
   res.set('Cache-Control', 'no-store');
+  // Let the form post carry this page's origin (helmet's default no-referrer makes browsers
+  // send "Origin: null"); same-origin never leaks the address to another site.
+  res.set('Referrer-Policy', 'same-origin');
   res.set('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'");
   res.status(status).type('html').send(shell(title, inner));
 };

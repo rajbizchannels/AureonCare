@@ -4,8 +4,11 @@ import ConfirmationModal from '../modals/ConfirmationModal';
 import { useAudit } from '../../hooks/useAudit';
 import { apiFetch } from '../../api/apiService';
 import ThemedSelect from './ThemedSelect';
+import { guidelineText, noteFor } from '../../utils/uploadGuidelines';
+import { useOptionalApp } from '../../context/AppContext';
 
 const MedicalRecordUploadForm = ({ patientId, onSuccess, onCancel, theme = 'light', providers = [] }) => {
+  const lang = useOptionalApp()?.language || 'en';
   const { logFormView, logCreate, logError, startAction } = useAudit();
   const [formData, setFormData] = useState({
     title: '',
@@ -259,11 +262,14 @@ const MedicalRecordUploadForm = ({ patientId, onSuccess, onCancel, theme = 'ligh
                     type="file"
                     onChange={handleFileChange}
                     className="hidden"
-                    accept="image/*,.pdf,.doc,.docx,.txt"
+                    accept=".jpg,.jpeg,.png,.pdf,.doc,.docx,.txt"
                   />
                 </label>
                 <p className={`text-xs mt-2 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>
-                  PNG, JPG, PDF, DOC up to 10MB
+                  {guidelineText('medicalRecord', lang)}
+                </p>
+                <p className={`text-xs mt-1 ${theme === 'dark' ? 'text-slate-500' : 'text-gray-400'}`}>
+                  {noteFor('medicalRecord', lang)}
                 </p>
               </div>
             ) : (

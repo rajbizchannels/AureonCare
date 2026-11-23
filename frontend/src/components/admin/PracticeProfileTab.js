@@ -3,6 +3,18 @@ import { Globe, Link2, Search, EyeOff, Save, Upload, Check, X, Trash2, RefreshCw
 import QrCodeButton from '../common/QrCodeButton';
 import { getTranslations } from '../../config/translations';
 import { useOptionalApp } from '../../context/AppContext';
+import { checkUpload, guidelineText, noteFor } from '../../utils/uploadGuidelines';
+
+/** Size and format guidance under an upload control. */
+const UploadHint = ({ kind, dark }) => {
+  const lang = useOptionalApp()?.language || 'en';
+  const note = noteFor(kind, lang);
+  return (
+    <p className={`text-xs mt-1 ${dark ? 'text-slate-400' : 'text-gray-500'}`}>
+      {guidelineText(kind, lang)}{note ? <><br />{note}</> : null}
+    </p>
+  );
+};
 
 const useT = () => getTranslations(useOptionalApp()?.language || 'en');
 
@@ -90,6 +102,10 @@ const PracticeProfileTab = ({ theme = 'light', api, addNotification }) => {
 
   const upload = async (kind, file) => {
     if (!file) return;
+    // Size and type are checked here first, with the reason, rather than after a round trip.
+    const verdict = await checkUpload(kind, file);
+    if (verdict.error) { setError(verdict.error); return; }
+    if (verdict.warning) addNotification?.('alert', verdict.warning);
     setBusyPhoto(kind); setError('');
     try {
       const ph = await api.uploadProfilePhoto(kind, file);
@@ -281,6 +297,7 @@ const PracticeProfileTab = ({ theme = 'light', api, addNotification }) => {
                     </label>
                   )}
                 </div>
+                <UploadHint kind={kind} dark={dark} />
               </div>
             );
           })}
@@ -300,6 +317,7 @@ const PracticeProfileTab = ({ theme = 'light', api, addNotification }) => {
             </label>
           )}
         </div>
+        <UploadHint kind="gallery" dark={dark} />
         {pending.length > 0 && (
           <div className="mt-5">
             <div className={label}>{t.pubProfileAwaitingApproval || 'Waiting for approval'}</div>
