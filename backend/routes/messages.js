@@ -670,6 +670,12 @@ router.post('/threads/:threadId/messages', async (req, res) => {
       return res.status(409).json({ error: 'This thread is closed. Reopen it to reply.' });
     }
 
+    // Hosted storage on the practice's plan (tier billing): refuse before anything is written.
+    const incoming = attachments.reduce((n, att) => n + (att && att.contentBase64 ? Math.floor(String(att.contentBase64).length * 3 / 4) : 0), 0);
+    if (incoming > 0 && req.tenant && req.tenant.practiceId) {
+      const full = await require('../services/planAddons').storageRoom(req.app.locals.pool, req.db || req.app.locals.pool, req.tenant.practiceId, incoming);
+      if (full) return res.status(402).json({ error: 'StorageLimitReached', message: full });
+    }
     await client.query('BEGIN');
     await client.query(`SET LOCAL search_path TO ${req.tenant && /^[a-z_][a-z0-9_]*$/.test(req.tenant.schemaName || '') ? req.tenant.schemaName : 'public'}, public, control`); // SEC-05
 

@@ -72,7 +72,13 @@ router.get('/plans', async (req, res) => {
               max_users, max_providers, max_patients, features, trial_days, free_months,
               (${TRIAL_ELIGIBLE}) AS can_trial, (${CHECKOUT_ELIGIBLE}) AS can_checkout,
               COALESCE(to_jsonb(sp)->>'tier', name) AS tier,
-              COALESCE((to_jsonb(sp)->>'is_tier_default')::boolean, true) AS is_tier_default
+              COALESCE((to_jsonb(sp)->>'is_tier_default')::boolean, true) AS is_tier_default,
+              (to_jsonb(sp)->>'included_providers')::int AS included_providers,
+              (to_jsonb(sp)->>'extra_provider_price')::numeric AS extra_provider_price,
+              (to_jsonb(sp)->>'included_locations')::int AS included_locations,
+              (to_jsonb(sp)->>'max_locations')::int AS max_locations,
+              (to_jsonb(sp)->>'extra_location_price')::numeric AS extra_location_price,
+              (to_jsonb(sp)->>'storage_gb')::int AS storage_gb
          FROM public.subscription_plans sp
         WHERE (${TRIAL_ELIGIBLE}) OR (${CHECKOUT_ELIGIBLE})
         ORDER BY price ASC NULLS FIRST, id ASC`

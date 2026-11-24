@@ -78,11 +78,12 @@ function configStatus() {
  * personal data through Stripe.
  */
 async function createSubscriptionCheckout({
-  priceId, email, clientReferenceId, successUrl, cancelUrl, trialDays, promoCode,
+  priceId, email, clientReferenceId, successUrl, cancelUrl, trialDays, promoCode, addons = [],
 }) {
   const params = {
     mode: 'subscription',
-    line_items: [{ price: priceId, quantity: 1 }],
+    // The base plan, plus any extra providers / locations the practice already set up (trial).
+    line_items: [{ price: priceId, quantity: 1 }, ...addons.filter((a) => a.priceId && a.quantity > 0).map((a) => ({ price: a.priceId, quantity: a.quantity }))],
     customer_email: email,
     client_reference_id: clientReferenceId,
     success_url: successUrl,
@@ -237,7 +238,9 @@ async function pushPlanToStripe({
 async function previewPlanChange({ subscriptionId, newPriceId, prorationDate: pinned }) {
   const s = stripe();
   const sub = await s.subscriptions.retrieve(subscriptionId);
-  const itemId = sub.items.data[0] && sub.items.data[0].id;
+  // The base plan item — not an extra-provider or extra-location add-on.
+  const base = sub.items.data.find((it) => !addonOf(it)) || sub.items.data[0];
+  const itemId = base && base.id;
   if (!itemId) {
     const e = new Error('That subscription has no billable item to change.');
     e.statusCode = 409;
@@ -279,7 +282,9 @@ async function previewPlanChange({ subscriptionId, newPriceId, prorationDate: pi
 async function changeSubscriptionPlan({ subscriptionId, newPriceId, prorationDate }) {
   const s = stripe();
   const sub = await s.subscriptions.retrieve(subscriptionId);
-  const itemId = sub.items.data[0] && sub.items.data[0].id;
+  // The base plan item — not an extra-provider or extra-location add-on.
+  const base = sub.items.data.find((it) => !addonOf(it)) || sub.items.data[0];
+  const itemId = base && base.id;
   if (!itemId) {
     const e = new Error('That subscription has no billable item to change.');
     e.statusCode = 409;
@@ -295,6 +300,71 @@ async function changeSubscriptionPlan({ subscriptionId, newPriceId, prorationDat
 }
 
 /**
+ * Create (or replace) a plan's add-on price — extra provider or extra location — billed per unit
+ * alongside the base price. The price carries metadata { aureoncare_addon: kind } so a
+ * subscription's add-on items can always be told apart from its base item, even after prices are
+ * re-created. The add-on product is reused from the previous price when there is one.
+ * → { priceId, archivedPriceId }
+ */
+async function pushAddonPrice({ kind, planName, amount, currency = 'eur', billingCycle, previousPriceId = null }) {
+  const s = stripe();
+  const recurring = recurringFor(billingCycle);
+  if (!recurring) { const e = new Error(`Billing cycle "${billingCycle}" cannot be sold as a Stripe subscription.`); e.statusCode = 400; throw e; }
+  const cents = Math.round(Number(amount) * 100);
+  if (!Number.isFinite(cents) || cents <= 0) { const e = new Error(`The extra ${kind} price must be more than 0.`); e.statusCode = 400; throw e; }
+  let productId = null;
+  if (previousPriceId) {
+    try { const prev = await s.prices.retrieve(previousPriceId); productId = typeof prev.product === 'string' ? prev.product : prev.product && prev.product.id; } catch { /* make a new product */ }
+  }
+  if (!productId) productId = (await s.products.create({ name: `${planName} — extra ${kind}`, metadata: { aureoncare_addon: kind } })).id;
+  const price = await s.prices.create({ product: productId, unit_amount: cents, currency: String(currency).toLowerCase(), recurring, metadata: { aureoncare_addon: kind } });
+  let archivedPriceId = null;
+  if (previousPriceId && previousPriceId !== price.id) {
+    try { await s.prices.update(previousPriceId, { active: false }); archivedPriceId = previousPriceId; } catch (err) { console.warn('[platformBilling] could not archive previous add-on price:', err.message); }
+  }
+  return { priceId: price.id, archivedPriceId };
+}
+
+/** Archive an add-on price that the plan no longer offers. */
+async function archivePrice(priceId) {
+  try { await stripe().prices.update(priceId, { active: false }); return true; } catch (err) { console.warn('[platformBilling] archive failed:', err.message); return false; }
+}
+
+const addonOf = (item) => (item && item.price && item.price.metadata && item.price.metadata.aureoncare_addon) || null;
+
+/**
+ * Set a subscription's add-on quantities: { provider: { priceId, quantity }, location: { priceId, quantity } }.
+ * Quantity 0 removes the item. Each item is moved to the plan's current add-on price. Prorated:
+ * Stripe credits or charges the difference on the next invoice.
+ */
+async function setSubscriptionAddons({ subscriptionId, addons, prorationBehavior = 'create_prorations' }) {
+  const s = stripe();
+  const sub = await s.subscriptions.retrieve(subscriptionId);
+  const items = [];
+  for (const [kind, want] of Object.entries(addons)) {
+    const existing = (sub.items.data || []).filter((it) => addonOf(it) === kind);
+    const qty = Math.max(0, Number(want.quantity) || 0);
+    if (qty === 0) { for (const it of existing) items.push({ id: it.id, deleted: true }); continue; }
+    if (!want.priceId) { const e = new Error(`Extra ${kind}s cannot be bought online for this plan yet.`); e.statusCode = 409; throw e; }
+    if (existing[0]) items.push({ id: existing[0].id, price: want.priceId, quantity: qty });
+    else items.push({ price: want.priceId, quantity: qty });
+    for (const it of existing.slice(1)) items.push({ id: it.id, deleted: true });
+  }
+  if (!items.length) return sub;
+  return s.subscriptions.update(subscriptionId, { items, proration_behavior: prorationBehavior });
+}
+
+/** The add-on quantities on a Stripe subscription object: { provider, location } */
+function addonQuantities(subscription) {
+  const out = { provider: 0, location: 0 };
+  for (const it of (subscription && subscription.items && subscription.items.data) || []) {
+    const kind = addonOf(it);
+    if (kind && out[kind] !== undefined) out[kind] += Number(it.quantity) || 0;
+  }
+  return out;
+}
+
+/**
  * Move a subscription to the plan's new price from its NEXT renewal — the platform changed the
  * plan's price, not the customer's plan. No proration and no charge now; the current period
  * stays at the price already paid. → { changed: boolean, fromPriceId }
@@ -302,7 +372,7 @@ async function changeSubscriptionPlan({ subscriptionId, newPriceId, prorationDat
 async function movePriceAtRenewal({ subscriptionId, newPriceId }) {
   const s = stripe();
   const sub = await s.subscriptions.retrieve(subscriptionId);
-  const item = sub.items.data[0];
+  const item = sub.items.data.find((it) => !addonOf(it)) || sub.items.data[0];
   if (!item) {
     const e = new Error('That subscription has no billable item.');
     e.statusCode = 409;
@@ -442,6 +512,7 @@ const retrieveCheckoutSession = (id) =>
   stripe().checkout.sessions.retrieve(id, { expand: ['subscription'] });
 
 module.exports = {
+  pushAddonPrice, archivePrice, setSubscriptionAddons, addonQuantities,
   movePriceAtRenewal,
   isConfigured, createSubscriptionCheckout, findPromotionCode,
   describePromotionCode, retrieveCheckoutSession, pushPlanToStripe, recurringFor,

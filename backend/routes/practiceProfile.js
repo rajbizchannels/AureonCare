@@ -171,6 +171,8 @@ router.post('/photos', async (req, res) => {
     if (e instanceof ImageRejected) return res.status(400).json({ error: e.message });
     throw e;
   }
+  const full = await require('../services/planAddons').storageRoom(pool, req.db || pool, practiceId, img.bytes.length);
+  if (full) return res.status(402).json({ error: full });
   try {
     if (kind === 'gallery') {
       const { rows: [{ n }] } = await pool.query(

@@ -21,7 +21,13 @@ router.get('/', async (req, res) => {
              max_users, max_providers, max_patients, features, trial_days,
              (stripe_price_id IS NOT NULL) AS purchasable,
              COALESCE(to_jsonb(sp)->>'tier', name) AS tier,
-             COALESCE((to_jsonb(sp)->>'is_tier_default')::boolean, true) AS is_tier_default
+             COALESCE((to_jsonb(sp)->>'is_tier_default')::boolean, true) AS is_tier_default,
+              (to_jsonb(sp)->>'included_providers')::int AS included_providers,
+              (to_jsonb(sp)->>'extra_provider_price')::numeric AS extra_provider_price,
+              (to_jsonb(sp)->>'included_locations')::int AS included_locations,
+              (to_jsonb(sp)->>'max_locations')::int AS max_locations,
+              (to_jsonb(sp)->>'extra_location_price')::numeric AS extra_location_price,
+              (to_jsonb(sp)->>'storage_gb')::int AS storage_gb
         FROM public.subscription_plans sp
        WHERE is_active = true
        ORDER BY price ASC NULLS FIRST, id
@@ -91,6 +97,45 @@ router.get('/current', async (req, res) => {
 });
 
 /**
+ * GET /api/plans/usage — what the practice has and uses: providers and locations (included, extra
+ * bought, limit, in use, price of one more) and hosted storage. Any signed-in staff member.
+ */
+router.get('/usage', async (req, res) => {
+  try {
+    if (!req.user.practiceId) return res.status(403).json({ error: 'Your account is not linked to a practice.' });
+    res.json(await require('../services/planAddons').usage(req.app.locals.pool, req.db || req.app.locals.pool, req.user.practiceId));
+  } catch (e) {
+    if (e.status) return res.status(e.status).json({ error: e.message });
+    console.error('Error reading plan usage:', e.message);
+    res.status(500).json({ error: 'Could not read your plan usage.' });
+  }
+});
+
+/**
+ * PUT /api/plans/addons { extraProviders?, extraLocations? } — buy or remove extra providers and
+ * locations (admin). Billed through Stripe for a Stripe-billed practice (prorated), else recorded.
+ */
+router.put('/addons', authorize('admin'), async (req, res) => {
+  try {
+    if (!req.user.practiceId) return res.status(403).json({ error: 'Your account is not linked to a practice.' });
+    const A = require('../services/planAddons');
+    const before = await A.usage(req.app.locals.pool, req.db || req.app.locals.pool, req.user.practiceId);
+    const out = await A.setAddons(req.app.locals.pool, req.db || req.app.locals.pool, req.user.practiceId, req.body || {});
+    await req.app.locals.pool.query(
+      `INSERT INTO control.audit_log (operator_id, action, target_type, target_id, tenant_id, detail)
+       SELECT NULL, 'tenant.addons_change', 'tenant', s.tenant_id, s.tenant_id, $2 FROM control.subscriptions s WHERE s.practice_id = $1`,
+      [req.user.practiceId, JSON.stringify({ by: req.user.email, providers: [before.providers.extra, out.providers.extra], locations: [before.locations.extra, out.locations.extra] })])
+      .catch(() => {});
+    res.json(out);
+  } catch (e) {
+    if (e.status) return res.status(e.status).json({ error: e.message });
+    if (e.statusCode && !e.type) return res.status(e.statusCode).json({ error: e.message });
+    console.error('Error changing add-ons:', e.message);
+    res.status(502).json({ error: 'The change could not be made. Nothing was charged or changed.' });
+  }
+});
+
+/**
  * Subscribe this practice through Stripe Checkout — how a free trial (or any practice Stripe
  * does not bill yet) becomes a paying one. Returns the Checkout URL; the signed webhook
  * attaches the subscription to this practice when payment is set up (signup intent kind
@@ -106,11 +151,12 @@ router.post('/checkout', authorize('admin'), async (req, res) => {
   if (!billing.isConfigured()) return res.status(503).json({ error: 'Online payment is not available yet. Please contact support to subscribe.' });
   try {
     const { rows: [plan] } = await pool.query(
-      'SELECT id, stripe_price_id FROM public.subscription_plans WHERE id = $1 AND is_active = true', [planId]);
+      'SELECT * FROM public.subscription_plans WHERE id = $1 AND is_active = true', [planId]);
     if (!plan) return res.status(404).json({ error: 'Plan not found' });
     if (!plan.stripe_price_id) return res.status(409).json({ error: 'That plan cannot be bought online yet. Please contact support.' });
     const { rows: [sub] } = await pool.query(
-      'SELECT status, trial_end, stripe_subscription_id FROM control.subscriptions WHERE practice_id = $1', [practiceId]);
+      `SELECT status, trial_end, stripe_subscription_id, seats, COALESCE((to_jsonb(s)->>'extra_locations')::int, 0) AS extra_locations
+         FROM control.subscriptions s WHERE practice_id = $1`, [practiceId]);
     if (sub && sub.stripe_subscription_id && sub.status !== 'canceled') {
       return res.status(409).json({ error: 'This practice is already billed by Stripe — change plan instead.' });
     }
@@ -125,6 +171,11 @@ router.post('/checkout', authorize('admin'), async (req, res) => {
     const app = (process.env.FRONTEND_URL || 'http://localhost:3000').split(',')[0].trim().replace(/\/$/, '');
     const session = await billing.createSubscriptionCheckout({
       priceId: plan.stripe_price_id, email: req.user.email, clientReferenceId: intent.id, trialDays: trialLeft,
+      // Extras the practice set up during its trial are billed from the start too.
+      addons: [
+        { priceId: plan.stripe_provider_price_id, quantity: (sub && sub.seats) || 0 },
+        { priceId: plan.stripe_location_price_id, quantity: (sub && sub.extra_locations) || 0 },
+      ],
       successUrl: `${app}/?subscribed=1`, cancelUrl: `${app}/`,
     });
     await pool.query('UPDATE control.signup_intents SET stripe_checkout_session_id = $2 WHERE id = $1', [intent.id, session.id]);
@@ -240,6 +291,29 @@ router.put('/current', authorize('admin'), async (req, res) => {
       return res.status(400).json({ error: 'You are already on that plan.' });
     }
 
+    // A smaller tier must fit what the practice already uses: providers and locations above the new
+    // tier's cap would be left without a place. Extras carry over, trimmed to the new tier's room.
+    const addons = require('../services/planAddons');
+    const now = await addons.usage(pool, req.db || pool, req.user.practiceId);
+    const fits = (kind, info, inc, cap) => {
+      if (inc == null) return null;
+      if (cap != null && cap !== -1 && info.used > cap) return `${plan.display_name || plan.name} allows up to ${cap} ${kind}s and you have ${info.used} active. Deactivate some first.`;
+      return null;
+    };
+    const tooBig = fits('provider', now.providers, plan.included_providers, plan.max_providers)
+      || fits('location', now.locations, plan.included_locations, plan.max_locations);
+    if (tooBig) return res.status(409).json({ error: tooBig });
+    const roomFor = (inc, cap, price, extra, used) => {
+      if (inc == null || !(Number(price) > 0)) return 0;                  // the new tier sells no extras
+      const needed = Math.max(0, used - inc);                              // keep enough for what is in use
+      const keep = Math.max(extra || 0, needed);
+      return cap == null || cap === -1 ? keep : Math.min(keep, Math.max(0, cap - inc));
+    };
+    const nextExtras = {
+      provider: roomFor(plan.included_providers, plan.max_providers, plan.extra_provider_price, now.providers.extra, now.providers.used),
+      location: roomFor(plan.included_locations, plan.max_locations, plan.extra_location_price, now.locations.extra, now.locations.used),
+    };
+
     // Price the change BEFORE applying it. Afterwards the subscription is already on the
     // new price and there is nothing left to quote — the proration would be recorded as
     // zero and the books would show a tier change that cost nothing.
@@ -257,15 +331,20 @@ router.put('/current', authorize('admin'), async (req, res) => {
         // ledger is the amount Stripe bills rather than a second reading taken later.
         prorationDate: quote.prorationDate,
       });
+      // Extra providers / locations move to the new tier's add-on prices.
+      await billing.setSubscriptionAddons({ subscriptionId: sub.stripe_subscription_id, addons: {
+        provider: { priceId: plan.stripe_provider_price_id || null, quantity: nextExtras.provider },
+        location: { priceId: plan.stripe_location_price_id || null, quantity: nextExtras.location },
+      } });
       prorated = true;
     }
 
     const { rows: updated } = await pool.query(
       `UPDATE control.subscriptions
-          SET plan_id = $2, plan_name = $3, updated_at = now()
+          SET plan_id = $2, plan_name = $3, seats = $4, extra_locations = $5, updated_at = now()
         WHERE practice_id = $1
         RETURNING plan_id, plan_name, status, current_period_end`,
-      [req.user.practiceId, plan.id, plan.name]
+      [req.user.practiceId, plan.id, plan.name, nextExtras.provider, nextExtras.location]
     );
     invalidateEntitlements(req.user.practiceId);
 

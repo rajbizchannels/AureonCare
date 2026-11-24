@@ -4182,6 +4182,22 @@ const api = {
     return d;
   },
 
+  // Providers / locations included, extra bought, in use; hosted storage.
+  getPlanUsage: async () => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/plans/usage`);
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d.error || 'Could not load plan usage');
+    return d;
+  },
+  // Buy or remove extra providers / locations: { extraProviders, extraLocations }.
+  setPlanAddons: async (change) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/plans/addons`, {
+      method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(change),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d.error || 'Could not change your plan extras');
+    return d;
+  },
   // Start paying (e.g. at the end of a free trial): returns Stripe Checkout's URL.
   subscribeCheckout: async (planId) => {
     const response = await authenticatedFetch(`${API_BASE_URL}/plans/checkout`, {

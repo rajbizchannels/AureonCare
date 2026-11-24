@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Check, Loader2, AlertCircle, CreditCard } from 'lucide-react';
+import { Check, Loader2, AlertCircle, CreditCard, Minus, Plus, Users, MapPin, HardDrive } from 'lucide-react';
 
 /**
  * The practice's real subscription, and the plans it can move to.
@@ -18,16 +18,21 @@ const SubscriptionPlansPanel = ({ theme, api, addNotification }) => {
   const [error, setError] = useState('');
   const [pending, setPending] = useState(null);   // { plan, preview }
   const [busy, setBusy] = useState(false);
+  const [usage, setUsage] = useState(null);
+  const [extras, setExtras] = useState(null); // { provider, location } being edited
 
   const load = useCallback(async () => {
     setError('');
     try {
-      const [p, c] = await Promise.all([
+      const [p, c, u] = await Promise.all([
         api.getSubscriptionPlans(),
         api.getCurrentSubscription().catch(() => null),
+        api.getPlanUsage ? api.getPlanUsage().catch(() => null) : null,
       ]);
       setPlans(p);
       setCurrent(c);
+      setUsage(u);
+      setExtras(u ? { provider: u.providers.extra, location: u.locations.extra } : null);
     } catch (e) {
       setError(e.message || 'Could not load subscription information.');
     } finally {
@@ -62,6 +67,27 @@ const SubscriptionPlansPanel = ({ theme, api, addNotification }) => {
       setError(e.message || 'Could not start checkout.');
       setBusy(false);
     }
+  };
+
+  const saveExtras = async () => {
+    const dProv = extras.provider - usage.providers.extra;
+    const dLoc = extras.location - usage.locations.extra;
+    const cost = dProv * (usage.providers.price || 0) + dLoc * (usage.locations.price || 0);
+    const what = [dProv ? `${dProv > 0 ? 'add' : 'remove'} ${Math.abs(dProv)} provider place${Math.abs(dProv) === 1 ? '' : 's'}` : null,
+      dLoc ? `${dLoc > 0 ? 'add' : 'remove'} ${Math.abs(dLoc)} location${Math.abs(dLoc) === 1 ? '' : 's'}` : null].filter(Boolean).join(' and ');
+    const billing = usage.billedByStripe
+      ? `Your bill changes by ${money(cost, usage.plan.currency)} a month, prorated on your next invoice.`
+      : `That is ${money(cost, usage.plan.currency)} a month on your plan.`;
+    if (!window.confirm(`Confirm: ${what}? ${billing}`)) return;
+    setBusy(true); setError('');
+    try {
+      const u = await api.setPlanAddons({ extraProviders: extras.provider, extraLocations: extras.location });
+      setUsage(u); setExtras({ provider: u.providers.extra, location: u.locations.extra });
+      addNotification?.('success', 'Your plan extras were updated.');
+    } catch (e) {
+      setError(e.message || 'Could not change your plan extras.');
+      setExtras({ provider: usage.providers.extra, location: usage.locations.extra });
+    } finally { setBusy(false); }
   };
 
   const confirmChange = async () => {
@@ -125,6 +151,50 @@ const SubscriptionPlansPanel = ({ theme, api, addNotification }) => {
         )}
       </div>
 
+      {usage && extras && (usage.providers.included != null || usage.locations.included != null) && (
+        <div className={`border rounded-lg p-5 ${card}`} data-testid="plan-usage">
+          <h3 className={`font-semibold ${text}`}>What your plan includes</h3>
+          <div className="mt-3 grid gap-4 md:grid-cols-3">
+            {[['provider', 'Providers', Users, usage.providers], ['location', 'Locations', MapPin, usage.locations]].map(([key, label, Icon, info]) => {
+              if (info.included == null) return null;
+              const limit = info.included + extras[key];
+              const capped = info.max != null && info.max !== -1;
+              const canAdd = info.price > 0 && (!capped || limit < info.max);
+              const canRemove = extras[key] > 0 && limit - 1 >= info.used;
+              return (
+                <div key={key}>
+                  <p className={`text-sm flex items-center gap-1.5 ${muted}`}><Icon className="w-4 h-4" /> {label}</p>
+                  <p className={`text-lg font-semibold ${text}`}>{info.used} of {limit} in use</p>
+                  <p className={`text-xs ${muted}`}>{info.included} included{extras[key] ? ` + ${extras[key]} extra` : ''}{capped ? ` · up to ${info.max} on this plan` : ''}</p>
+                  {info.price > 0 ? (
+                    <div className="mt-2 flex items-center gap-2">
+                      <button type="button" aria-label={`Fewer extra ${label.toLowerCase()}`} disabled={!canRemove || busy}
+                        onClick={() => setExtras((x) => ({ ...x, [key]: x[key] - 1 }))} className={`p-1 rounded border ${card} disabled:opacity-40`}><Minus className="w-4 h-4" /></button>
+                      <span className={`text-sm ${text}`}>{extras[key]} extra</span>
+                      <button type="button" aria-label={`More extra ${label.toLowerCase()}`} disabled={!canAdd || busy}
+                        onClick={() => setExtras((x) => ({ ...x, [key]: x[key] + 1 }))} className={`p-1 rounded border ${card} disabled:opacity-40`}><Plus className="w-4 h-4" /></button>
+                      <span className={`text-xs ${muted}`}>{money(info.price, usage.plan.currency)} each / month</span>
+                    </div>
+                  ) : <p className={`mt-2 text-xs ${muted}`}>Need more? Move to a larger plan.</p>}
+                </div>
+              );
+            })}
+            <div>
+              <p className={`text-sm flex items-center gap-1.5 ${muted}`}><HardDrive className="w-4 h-4" /> File storage</p>
+              <p className={`text-lg font-semibold ${text}`}>{(usage.storage.usedBytes / 1024 ** 3).toFixed(2)} GB{usage.storage.limitGb != null && usage.storage.limitGb !== -1 ? ` of ${usage.storage.limitGb} GB` : ''}</p>
+              <p className={`text-xs ${muted}`}>Message attachments and profile photos. Records go to your own cloud storage.</p>
+            </div>
+          </div>
+          {(extras.provider !== usage.providers.extra || extras.location !== usage.locations.extra) && (
+            <div className="mt-4 flex gap-2">
+              <button type="button" onClick={saveExtras} disabled={busy} className="px-4 py-2 rounded-lg bg-blue-600 text-white font-medium disabled:opacity-60">Save changes</button>
+              <button type="button" onClick={() => setExtras({ provider: usage.providers.extra, location: usage.locations.extra })} disabled={busy} className={`px-4 py-2 rounded-lg border ${card} ${text}`}>Cancel</button>
+            </div>
+          )}
+          <p className={`mt-3 text-xs ${muted}`}>Staff accounts (reception, admin, billing) and patients are unlimited. AI and messaging use your own provider accounts, so they are not limited here.</p>
+        </div>
+      )}
+
       {error && (
         <div className="flex items-start gap-2 p-3 rounded-lg bg-red-50 border border-red-200 text-red-800">
           <AlertCircle size={18} className="mt-0.5 shrink-0" /><span>{error}</span>
@@ -148,9 +218,16 @@ const SubscriptionPlansPanel = ({ theme, api, addNotification }) => {
                 {plan.description && <p className={`mt-2 text-sm ${muted}`}>{plan.description}</p>}
 
                 <ul className={`mt-4 space-y-1 text-sm ${muted}`}>
-                  <li>{limit(plan.max_users)} users</li>
-                  <li>{limit(plan.max_providers)} providers</li>
-                  <li>{limit(plan.max_patients)} patients</li>
+                  {plan.included_providers != null ? (<>
+                    <li>{plan.included_providers} provider{plan.included_providers === 1 ? '' : 's'} included{plan.extra_provider_price > 0 ? ` · +${money(plan.extra_provider_price, plan.currency)} each${plan.max_providers > 0 ? `, up to ${plan.max_providers}` : ''}` : ''}</li>
+                    <li>{plan.included_locations} location{plan.included_locations === 1 ? '' : 's'} included{plan.extra_location_price > 0 ? ` · +${money(plan.extra_location_price, plan.currency)} each${plan.max_locations > 0 ? `, up to ${plan.max_locations}` : ''}` : ''}</li>
+                    <li>Unlimited staff and patients</li>
+                    {plan.storage_gb != null && <li>{plan.storage_gb === -1 ? 'Unlimited' : `${plan.storage_gb} GB`} file storage</li>}
+                  </>) : (<>
+                    <li>{limit(plan.max_users)} users</li>
+                    <li>{limit(plan.max_providers)} providers</li>
+                    <li>{limit(plan.max_patients)} patients</li>
+                  </>)}
                   {plan.trial_days > 0 && <li>{plan.trial_days}-day trial</li>}
                 </ul>
 
