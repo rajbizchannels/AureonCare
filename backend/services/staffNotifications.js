@@ -56,6 +56,9 @@ const CATALOG = [
   { key: 'appointment.updated', group: 'Appointments', label: 'One of my appointments is changed', roles: CLINICIANS, defaults: { in_app: false, email: true, whatsapp: true } },
   { key: 'appointment.cancelled', group: 'Appointments', label: 'One of my appointments is cancelled', roles: CLINICIANS, defaults: { in_app: false, email: true, whatsapp: true } },
   { key: 'appointment.status_changed', group: 'Appointments', label: "An appointment's status changes (checked in, completed…)", roles: CLINICIANS, defaults: { in_app: false, email: true, whatsapp: true } },
+  // Appointment reminders (services/appointmentReminders.js). Only what each person chose is sent.
+  { key: 'appointment.reminder', group: 'Appointments', label: 'A reminder before each of my appointments', roles: CLINICIANS, defaults: { in_app: true, email: false, whatsapp: false } },
+  { key: 'schedule.daily_digest', group: 'Appointments', label: "Tomorrow's appointments in the practice (one summary a day)", roles: ['admin', 'receptionist', 'nurse', 'staff'], defaults: { in_app: true, email: false, whatsapp: false } },
   { key: 'telehealth.session_created', group: 'Appointments', label: 'A video visit is scheduled with me', roles: CLINICIANS, defaults: { in_app: false, email: true, whatsapp: true } },
   { key: 'prescription.created', group: 'Clinical', label: 'A prescription is written under my name', roles: CLINICIANS, defaults: { in_app: false, email: true, whatsapp: true } },
   { key: 'lab_order.created', group: 'Clinical', label: 'A lab order is placed under my name', roles: CLINICIANS, defaults: { in_app: false, email: true, whatsapp: true } },

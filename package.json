@@ -79,7 +79,8 @@
     "test:audit-access": "node backend/test/security/audit-access.test.js",
     "test:us-identifiers": "node backend/test/security/us-identifiers.test.js",
     "test:data-import": "node backend/test/import/data-import.test.js",
-    "test:trial": "node backend/test/signup/trial.test.js"
+    "test:trial": "node backend/test/signup/trial.test.js",
+    "test:reminders": "node backend/test/reminders/appointment-reminders.test.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.6.0",
