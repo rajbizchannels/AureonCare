@@ -4,6 +4,7 @@ const billing = require('../services/platformBilling');
 const subscriptionChanges = require('../services/subscriptionChanges');
 const { invalidateEntitlements } = require('../services/entitlements');
 const { sendDbError } = require('../utils/dbErrors');
+const planCatalog = require('../services/planCatalog');
 const router = express.Router();
 router.use(authenticate);
 
@@ -14,16 +15,27 @@ router.get('/', async (req, res) => {
 
     // Only plans that can actually be switched to: active, and with a Stripe price, so
     // the page never offers a plan the change endpoint would then refuse.
+    // tier / is_tier_default are read through to_jsonb so this still works before migration 107.
     const result = await pool.query(`
       SELECT id, name, display_name, description, price, currency, billing_cycle,
              max_users, max_providers, max_patients, features, trial_days,
-             (stripe_price_id IS NOT NULL) AS purchasable
-        FROM subscription_plans
+             (stripe_price_id IS NOT NULL) AS purchasable,
+             COALESCE(to_jsonb(sp)->>'tier', name) AS tier,
+             COALESCE((to_jsonb(sp)->>'is_tier_default')::boolean, true) AS is_tier_default
+        FROM public.subscription_plans sp
        WHERE is_active = true
        ORDER BY price ASC NULLS FIRST, id
     `);
 
-    res.json(result.rows);
+    // One plan per tier, in the clinic's currency when the platform offers it, else the tier's
+    // default — and always the plan the practice is already on (services/planCatalog.js).
+    const practiceId = (req.tenant && req.tenant.practiceId) || (req.user && req.user.practiceId) || null;
+    const currency = await planCatalog.practiceCurrency(pool, practiceId);
+    let currentPlanId = null;
+    if (practiceId) {
+      try { currentPlanId = (await pool.query('SELECT plan_id FROM control.subscriptions WHERE practice_id = $1', [practiceId])).rows[0]?.plan_id || null; } catch { /* no control plane */ }
+    }
+    res.json(planCatalog.pickForCurrency(result.rows, currency, { keepIds: [currentPlanId] }));
   } catch (error) {
     console.error('Error fetching plans:', error);
     res.status(500).json({ error: 'Failed to fetch plans' });

@@ -60,18 +60,27 @@ const APP_URL = () =>
 const TRIAL_ELIGIBLE = `is_active = true AND COALESCE(trial_days, 0) > 0 AND COALESCE(price, 0) > 0`;
 const CHECKOUT_ELIGIBLE = `is_active = true AND self_serve = true AND stripe_price_id IS NOT NULL AND COALESCE(price, 0) > 0`;
 
-/** Plans offered on the signup page, with what each allows: a free trial, checkout, or both. */
+/**
+ * Plans offered on the signup page, with what each allows: a free trial, checkout, or both.
+ * ?currency=eur or ?country=ES picks, per tier, the variant in that currency when the platform
+ * offers one, else the tier's default (services/planCatalog.js).
+ */
 router.get('/plans', async (req, res) => {
   try {
     const { rows } = await req.app.locals.pool.query(
       `SELECT id, name, display_name, description, price, currency, billing_cycle,
               max_users, max_providers, max_patients, features, trial_days, free_months,
-              (${TRIAL_ELIGIBLE}) AS can_trial, (${CHECKOUT_ELIGIBLE}) AS can_checkout
-         FROM public.subscription_plans
+              (${TRIAL_ELIGIBLE}) AS can_trial, (${CHECKOUT_ELIGIBLE}) AS can_checkout,
+              COALESCE(to_jsonb(sp)->>'tier', name) AS tier,
+              COALESCE((to_jsonb(sp)->>'is_tier_default')::boolean, true) AS is_tier_default
+         FROM public.subscription_plans sp
         WHERE (${TRIAL_ELIGIBLE}) OR (${CHECKOUT_ELIGIBLE})
         ORDER BY price ASC NULLS FIRST, id ASC`
     );
-    res.json(rows);
+    const { pickForCurrency, currencyForCountry } = require('../services/planCatalog');
+    const wanted = /^[a-z]{3}$/i.test(String(req.query.currency || '')) ? String(req.query.currency).toLowerCase()
+      : currencyForCountry(req.query.country);
+    res.json(pickForCurrency(rows, wanted));
   } catch (err) {
     if (schemaOutOfDate(err, res, 'loading plans')) return;
     console.error('[signup] plans error:', err);

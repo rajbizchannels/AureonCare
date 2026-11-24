@@ -44,10 +44,18 @@ async function provisionTenant(pool, opts) {
   try {
     await client.query('BEGIN');
 
+    // The practice's currency: what the caller says, else the chosen plan's (a clinic that signed
+    // up for a plan in GBP bills in GBP), else its country's. Plan lists then keep matching it
+    // (services/planCatalog.js).
+    let practiceCurrency = opts.currency || null;
+    if (!practiceCurrency && opts.planId) {
+      practiceCurrency = (await client.query('SELECT currency FROM public.subscription_plans WHERE id = $1', [opts.planId])).rows[0]?.currency || null;
+    }
+    if (!practiceCurrency) practiceCurrency = require('./planCatalog').currencyForCountry(country);
     const { rows: pr } = await client.query(
-      `INSERT INTO public.practices (id, name, plan_tier, country, timezone)
-       VALUES (gen_random_uuid(), $1, COALESCE($2,'professional'), $3, $4) RETURNING id`,
-      [name, planTier || null, country || null, timezone || null]
+      `INSERT INTO public.practices (id, name, plan_tier, country, timezone, currency)
+       VALUES (gen_random_uuid(), $1, COALESCE($2,'professional'), $3, $4, UPPER($5)) RETURNING id`,
+      [name, planTier || null, country || null, timezone || null, practiceCurrency]
     );
     const practiceId = pr[0].id;
     const schema = 'tenant_' + practiceId.replace(/-/g, '');

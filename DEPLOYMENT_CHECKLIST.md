@@ -1171,3 +1171,19 @@ Who receives what — each person's own choice:
 - Practices whose workspace is read-only (subscription ended) are skipped.
 
 Verify: after the first run, Vercel → Logs shows `[cron] reminders: {...}` with the counts sent.
+
+## Migration 107 — plans by currency (variants per tier)
+
+Paste `backend/migrations/107_plan_tiers_by_currency.sql` (safe to re-run). Each plan gets a **tier**;
+existing plans become single-variant tiers, each its own default, so nothing changes until you add a variant.
+
+To sell a plan in another currency: platform console → Plans → **Create plan** with the same **Tier** as the
+existing plan (e.g. `clinical_pro`), the new currency and price; then "Create in Stripe" as usual. One active
+variant per currency per tier; tick **Default variant** on the one clinics should see when their currency has
+no variant of its own.
+
+Who sees which variant (per tier):
+- **Practices** (Settings → Subscription Plans): the variant in the currency set in Clinic Settings, else the
+  tier's default — and always the plan they are already on.
+- **Signup page:** the variant in the currency of the country typed in (else the browser's region), else the
+  default. A clinic created by signup is saved with its plan's currency.
