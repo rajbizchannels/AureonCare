@@ -39,7 +39,8 @@ const SignupPage = ({ theme = 'light', onBack, onSignIn }) => {
   useEffect(() => {
     let alive = true;
     api.signupPlans()
-      .then((p) => { if (alive) { setPlans(p); if (p[0]) setPlanId(p[0].id); } })
+      // Start on the first plan with a free trial — the no-card path — when there is one.
+      .then((p) => { if (alive) { setPlans(p); const first = p.find((x) => x.can_trial) || p[0]; if (first) setPlanId(first.id); } })
       .catch(() => { if (alive) setError('Could not load plans. Please try again shortly.'); })
       .finally(() => { if (alive) setLoadingPlans(false); });
     return () => { alive = false; };

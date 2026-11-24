@@ -58,7 +58,7 @@ const APP_URL = () =>
 // on-premises licence) and has trial days. It can be bought straight away through Stripe
 // Checkout when it is also marked self-serve and linked to a Stripe price.
 const TRIAL_ELIGIBLE = `is_active = true AND COALESCE(trial_days, 0) > 0 AND COALESCE(price, 0) > 0`;
-const CHECKOUT_ELIGIBLE = `is_active = true AND self_serve = true AND stripe_price_id IS NOT NULL`;
+const CHECKOUT_ELIGIBLE = `is_active = true AND self_serve = true AND stripe_price_id IS NOT NULL AND COALESCE(price, 0) > 0`;
 
 /** Plans offered on the signup page, with what each allows: a free trial, checkout, or both. */
 router.get('/plans', async (req, res) => {
