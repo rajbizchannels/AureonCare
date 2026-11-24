@@ -1187,3 +1187,31 @@ Who sees which variant (per tier):
   tier's default — and always the plan they are already on.
 - **Signup page:** the variant in the currency of the country typed in (else the browser's region), else the
   default. A clinic created by signup is saved with its plan's currency.
+
+## Migration 108 — tier billing (providers and locations included, extras per unit)
+
+Paste `backend/migrations/108_tier_billing.sql` (safe to re-run). It sets, per tier (every currency variant):
+
+| Tier | Providers incl. / max | Extra provider | Locations incl. / max | Extra location | Hosted storage |
+|---|---|---|---|---|---|
+| Essentials €49 | 1 / 1 | — | 1 / 1 | — | 10 GB |
+| Pro €79 | 3 / 10 | €25 | 1 / 3 | €29 | 50 GB |
+| Enterprise €119 | 5 / no limit | €29 | 3 / no limit | €19 | 200 GB |
+
+Staff users and patients are unlimited on every paid tier. AI and messaging are not limited or metered:
+every integration is bring-your-own-key, so practices pay their providers directly.
+
+Then, in the platform console → Plans, for each linked plan press **"Re-create price in Stripe"** — it now
+creates the extra-provider and extra-location prices too (tagged as add-ons). Edit allowances and extra
+prices per plan in the new "Tier allowances" fields; a changed extra price is pushed to Stripe on save.
+Other currency variants: set their extra prices there (the migration only sets EUR ones).
+
+How it works for practices (Settings → Subscription Plans → "What your plan includes"):
+- Adding a provider (doctor) or location beyond the limit is refused with what to do.
+- Admins add or remove extra providers and locations; for a Stripe-billed practice the Stripe quantities
+  change first (prorated on the next invoice), a refusal changes nothing; Stripe-side changes are recorded
+  by the webhook. Trials record them, and they are added to the Checkout when the practice subscribes.
+- Changing plan: refused while the practice uses more than the new tier allows; extras carry over within
+  the new tier's room, moved to its add-on prices.
+- Hosted storage (message attachments, profile photos) is capped per tier; records and documents go to the
+  practice's own cloud storage and do not count.

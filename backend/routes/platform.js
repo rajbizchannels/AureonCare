@@ -336,7 +336,15 @@ router.get('/plans', async (req, res) => {
             max_users, max_patients, max_providers, features, is_active, self_serve,
             stripe_price_id, stripe_product_id, trial_days, free_months,
             COALESCE(to_jsonb(sp)->>'tier', name) AS tier,
-            COALESCE((to_jsonb(sp)->>'is_tier_default')::boolean, true) AS is_tier_default
+            COALESCE((to_jsonb(sp)->>'is_tier_default')::boolean, true) AS is_tier_default,
+            (to_jsonb(sp)->>'included_providers')::int AS included_providers,
+            (to_jsonb(sp)->>'extra_provider_price')::numeric AS extra_provider_price,
+            (to_jsonb(sp)->>'included_locations')::int AS included_locations,
+            (to_jsonb(sp)->>'max_locations')::int AS max_locations,
+            (to_jsonb(sp)->>'extra_location_price')::numeric AS extra_location_price,
+            (to_jsonb(sp)->>'storage_gb')::int AS storage_gb,
+            to_jsonb(sp)->>'stripe_provider_price_id' AS stripe_provider_price_id,
+            to_jsonb(sp)->>'stripe_location_price_id' AS stripe_location_price_id
        FROM public.subscription_plans sp ORDER BY COALESCE(to_jsonb(sp)->>'tier', name), is_active DESC, price NULLS FIRST, id`);
   res.json(rows);
 });
@@ -471,6 +479,9 @@ router.put('/plans/:id', requireOperatorRole('billing'), async (req, res) => {
     // Currency variants (migration 107): which tier this plan belongs to, and whether it is the
     // variant shown when a clinic's currency has none of its own.
     tier, isTierDefault,
+    // Tier allowances (migration 108): included and maximum providers and locations, the price of
+    // each extra one, and hosted storage. -1 = no limit; '' or null = unchanged.
+    includedProviders, maxProviders, extraProviderPrice, includedLocations, maxLocations, extraLocationPrice, storageGb,
     // Renaming the KEY is separate from the display name: plan_name is snapshotted onto
     // control.subscriptions, so a rename has to carry through or the console shows one
     // name and the subscription another.
@@ -498,7 +509,10 @@ router.put('/plans/:id', requireOperatorRole('billing'), async (req, res) => {
   }
   try {
     const { rows: [before] } = await pool.query(
-      'SELECT price, currency, billing_cycle, stripe_price_id, to_jsonb(sp)->>\'tier\' AS tier FROM public.subscription_plans sp WHERE id = $1', [req.params.id]);
+      `SELECT price, currency, billing_cycle, stripe_price_id, to_jsonb(sp)->>'tier' AS tier,
+              (to_jsonb(sp)->>'extra_provider_price')::numeric AS extra_provider_price,
+              (to_jsonb(sp)->>'extra_location_price')::numeric AS extra_location_price
+         FROM public.subscription_plans sp WHERE id = $1`, [req.params.id]);
     const { rows } = await pool.query(
       `UPDATE public.subscription_plans
           SET self_serve = COALESCE($2, self_serve),
@@ -526,6 +540,30 @@ router.put('/plans/:id', requireOperatorRole('billing'), async (req, res) => {
        cleanKey]
     );
     if (!rows.length) return res.status(404).json({ error: 'Plan not found' });
+
+    // Tier allowances. A number must be a whole number >= -1 (counts) or >= 0 (prices).
+    const allowance = { included_providers: includedProviders, max_providers: maxProviders, included_locations: includedLocations,
+      max_locations: maxLocations, storage_gb: storageGb };
+    const prices = { extra_provider_price: extraProviderPrice, extra_location_price: extraLocationPrice };
+    const sets = []; const vals = [rows[0].id];
+    for (const [col, v] of Object.entries(allowance)) {
+      if (v === undefined || v === '' ) continue;
+      if (v !== null && (!Number.isInteger(Number(v)) || Number(v) < -1)) return res.status(400).json({ error: `${col.replace(/_/g, ' ')} must be a whole number (-1 = no limit).` });
+      vals.push(v === null ? null : Number(v)); sets.push(`${col} = $${vals.length}`);
+    }
+    for (const [col, v] of Object.entries(prices)) {
+      if (v === undefined || v === '') continue;
+      if (v !== null && !(Number(v) >= 0)) return res.status(400).json({ error: `${col.replace(/_/g, ' ')} must be 0 or more.` });
+      vals.push(v === null ? null : Number(v)); sets.push(`${col} = $${vals.length}`);
+    }
+    if (sets.length) {
+      const { rows: [t] } = await pool.query(`UPDATE public.subscription_plans SET ${sets.join(', ')}, updated_at = CURRENT_TIMESTAMP WHERE id = $1 RETURNING *`, vals);
+      // Older screens read the per-seat price from base_price_per_provider; keep it in step.
+      if (prices.extra_provider_price !== undefined && prices.extra_provider_price !== '') {
+        await pool.query('UPDATE public.subscription_plans SET base_price_per_provider = extra_provider_price WHERE id = $1', [rows[0].id]);
+      }
+      rows[0] = t;
+    }
     const cleanTier = tier == null || String(tier).trim() === '' ? null : String(tier).trim().toLowerCase().replace(/[^a-z0-9_]+/g, '_');
     if (cleanTier || typeof isTierDefault === 'boolean') {
       const c = await pool.connect();
@@ -573,14 +611,16 @@ router.put('/plans/:id', requireOperatorRole('billing'), async (req, res) => {
     const after = rows[0];
     const priceChanged = before && (Number(before.price) !== Number(after.price) || before.currency !== after.currency
       || before.billing_cycle !== after.billing_cycle);
+    const addonChanged = before && (String(before.extra_provider_price ?? '') !== String(after.extra_provider_price ?? '')
+      || String(before.extra_location_price ?? '') !== String(after.extra_location_price ?? ''));
     // Push unless the operator pasted a different Stripe price id in the same save.
     const priceIdKept = stripePriceId === undefined || String(stripePriceId || '') === String((before && before.stripe_price_id) || '');
-    if (priceChanged && after.stripe_price_id && priceIdKept) {
+    if ((priceChanged || addonChanged) && after.stripe_price_id && priceIdKept) {
       if (!billing.isConfigured()) {
         stripeSync = { pushed: false, error: 'Stripe is not configured; the new price is not in Stripe yet.' };
       } else {
         try {
-          const pushed = await planPricing.pushPlanPrice(pool, after.id);
+          const pushed = await planPricing.pushPlanPrice(pool, after.id, { base: priceChanged, addons: priceChanged || addonChanged });
           stripeSync = { pushed: true, priceId: pushed.plan.stripe_price_id, archivedPriceId: pushed.archivedPriceId };
           await logPlatformAction(pool, { operatorId: req.operator.id, action: 'plan.push_to_stripe',
             targetType: 'plan', targetId: String(after.id), detail: { priceId: stripeSync.priceId, archived: stripeSync.archivedPriceId, auto: true }, ip: clientIp(req) });

@@ -192,6 +192,13 @@ const SignupPage = ({ theme = 'light', onBack, onSignIn }) => {
                     <div className={`text-xs ${muted}`}>{p.billing_cycle || 'monthly'}</div>
                   </div>
                 </div>
+                {p.included_providers != null && (
+                  <div className={`mt-2 text-xs ${muted}`}>
+                    {p.included_providers} provider{p.included_providers === 1 ? '' : 's'} included{p.extra_provider_price > 0 ? ` (+${money(p.extra_provider_price, p.currency)} each)` : ''}
+                    {' · '}{p.included_locations} location{p.included_locations === 1 ? '' : 's'}{p.extra_location_price > 0 ? ` (+${money(p.extra_location_price, p.currency)} each)` : ''}
+                    {' · '}unlimited staff
+                  </div>
+                )}
                 {p.trial_days > 0 && p.can_trial && (
                   <div className="mt-2 text-xs text-green-600 font-medium">{p.trial_days}-day free trial · no card needed</div>
                 )}

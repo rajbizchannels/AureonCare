@@ -27,6 +27,8 @@ async function loadPlan(pool, req) {
         max_providers: ent.maxProviders ?? UNLIMITED,
         features: ent.features,
         provider_seats_purchased: ent.seats,
+        provider_limit: ent.providerLimit,
+        included_providers: ent.includedProviders,
         enforcement_enabled: ent.enforcementEnabled,
         plan_end_date: ent.currentPeriodEnd,   // period end acts as the expiry date
         is_trial: ent.status === 'trialing',
@@ -62,6 +64,8 @@ function isPlanExpired(plan) {
 }
 
 function effectiveProviderLimit(plan) {
+  // Tier plans: included + bought, capped (services/entitlements.js).
+  if (plan.provider_limit !== undefined && plan.included_providers != null) return plan.provider_limit;
   if (plan.max_providers === UNLIMITED) return UNLIMITED;
   return plan.max_providers + (plan.provider_seats_purchased || 0);
 }
@@ -202,7 +206,11 @@ async function enforceProviderQuota(req, res, next) {
     if (current >= limit) {
       return res.status(402).json({
         error: 'ProviderSeatLimitReached',
-        message: `Your ${plan.plan_name} plan includes ${plan.max_providers} provider seat(s) with ${plan.provider_seats_purchased} additional seat(s) purchased (${limit} total). Purchase additional provider seats to add more doctors.`,
+        message: plan.included_providers != null
+          ? (limit >= plan.max_providers && plan.max_providers !== UNLIMITED
+            ? `Your ${plan.plan_name} plan allows up to ${plan.max_providers} provider(s). Move to a larger plan to add more.`
+            : `Your ${plan.plan_name} plan has ${limit} provider place(s) (${plan.included_providers} included + ${plan.provider_seats_purchased || 0} extra). Add an extra provider under Settings → Subscription Plans, then try again.`)
+          : `Your ${plan.plan_name} plan includes ${plan.max_providers} provider seat(s) with ${plan.provider_seats_purchased} additional seat(s) purchased (${limit} total). Purchase additional provider seats to add more doctors.`,
         resource: 'providers',
         current,
         limit,
@@ -279,7 +287,42 @@ async function enforceActiveBilling(req, res, next) {
   }
 }
 
+/**
+ * Blocks adding (or re-activating) a location beyond the plan's limit: the included locations
+ * plus extra locations bought, never above the tier's cap (migration 108). Plans without a
+ * location allowance are not limited.
+ */
+async function enforceLocationQuota(req, res, next) {
+  try {
+    const practiceId = req.tenant && req.tenant.practiceId;
+    if (!practiceId) return next();
+    if (req.method === 'PUT' || req.method === 'PATCH') {
+      if (req.body?.isActive !== true && req.body?.is_active !== true) return next();
+      const { rows: [loc] } = await (req.db || req.app.locals.pool).query('SELECT is_active FROM locations WHERE id::text = $1::text', [req.params.id]);
+      if (!loc || loc.is_active) return next();
+    } else if (req.body?.isActive === false || req.body?.is_active === false) {
+      return next(); // an inactive location does not count
+    }
+    const ent = await getTenantEntitlements(req.app.locals.pool, practiceId);
+    if (!ent || !ent.enforcementEnabled || ent.locationLimit == null || ent.locationLimit === UNLIMITED) return next();
+    const { rows: [{ n }] } = await (req.db || req.app.locals.pool).query('SELECT count(*)::int AS n FROM locations WHERE is_active IS NOT FALSE');
+    if (n < ent.locationLimit) return next();
+    const capped = ent.maxLocations != null && ent.maxLocations !== UNLIMITED && ent.locationLimit >= ent.maxLocations;
+    return res.status(402).json({
+      error: 'LocationLimitReached',
+      message: capped
+        ? `Your ${ent.planName || ''} plan allows up to ${ent.maxLocations} location(s). Move to a larger plan to add more.`
+        : `Your plan has ${ent.locationLimit} location(s) (${ent.includedLocations} included + ${ent.extraLocations} extra). Add an extra location under Settings → Subscription Plans, then try again.`,
+      resource: 'locations', current: n, limit: ent.locationLimit, upgrade_required: true,
+    });
+  } catch (err) {
+    console.error('[planEnforcement] enforceLocationQuota error:', err.message);
+    next();
+  }
+}
+
 module.exports = {
+  enforceLocationQuota,
   loadPlan,          // also used by the data importer's patient-limit check
   isPlanExpired,
   UNLIMITED,

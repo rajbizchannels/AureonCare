@@ -112,6 +112,12 @@
 
   // Everything the server returns is escaped through esc(); this page never builds
   // markup from unescaped data.
+  // A number input for the plan form; empty means "not set".
+  function num(name, label, v, step) {
+    return '<label>' + esc(label) + '<input name="' + name + '" type="number"' + (step ? ' step="' + step + '" min="0"' : ' min="-1" step="1"') +
+      ' value="' + esc(v == null ? '' : v) + '" /></label>';
+  }
+
   async function loadPlans() {
     var el = $('plansList');
     el.textContent = 'Loading…';
@@ -134,6 +140,8 @@
           '<p class="muted small">' + (p.price != null ? esc(p.price) + ' ' + esc((p.currency || 'usd').toUpperCase()) : 'no price') +
           ' · ' + esc(p.billing_cycle || 'monthly') +
           ' · tier <strong>' + esc(p.tier || p.name) + '</strong>' + (p.is_tier_default ? ' (default variant)' : '') +
+          (p.included_providers != null ? ' · ' + esc(p.included_providers) + ' provider(s) incl.' + (p.extra_provider_price != null ? ', +' + esc(p.extra_provider_price) + ' each' : '') : '') +
+          (p.stripe_provider_price_id || p.stripe_location_price_id ? ' · add-ons in Stripe' : '') +
           (p.stripe_price_id ? ' · ' + esc(p.stripe_price_id) : '') + '</p>' +
           '<form class="planForm" data-id="' + esc(p.id) + '">' +
             '<label class="check"><input type="checkbox" name="isActive"' +
@@ -145,6 +153,15 @@
             '<label>Currency<select name="currency">' + currencyOptions(p.currency) + '</select></label>' +
             '<label>Stripe price id<input name="stripePriceId" placeholder="price_…" value="' +
               esc(p.stripe_price_id || '') + '" /></label>' +
+            '<fieldset class="small"><legend>Tier allowances (-1 = no limit; extra price empty = not sold)</legend>' +
+              num('includedProviders', 'Providers included', p.included_providers) +
+              num('maxProviders', 'Max providers', p.max_providers) +
+              num('extraProviderPrice', 'Extra provider / month', p.extra_provider_price, '0.01') +
+              num('includedLocations', 'Locations included', p.included_locations) +
+              num('maxLocations', 'Max locations', p.max_locations) +
+              num('extraLocationPrice', 'Extra location / month', p.extra_location_price, '0.01') +
+              num('storageGb', 'Hosted storage (GB)', p.storage_gb) +
+            '</fieldset>' +
             '<label>Trial days<input name="trialDays" type="number" min="0" value="' +
               esc(p.trial_days == null ? 0 : p.trial_days) + '" /></label>' +
             '<label>Free months<input name="freeMonths" type="number" min="0" value="' +
@@ -188,6 +205,13 @@
           name: form.name.value.trim() || null,
           tier: form.tier.value.trim() || null,
           isTierDefault: form.isTierDefault.checked,
+          includedProviders: form.includedProviders.value === '' ? undefined : Number(form.includedProviders.value),
+          maxProviders: form.maxProviders.value === '' ? undefined : Number(form.maxProviders.value),
+          extraProviderPrice: form.extraProviderPrice.value === '' ? null : Number(form.extraProviderPrice.value),
+          includedLocations: form.includedLocations.value === '' ? undefined : Number(form.includedLocations.value),
+          maxLocations: form.maxLocations.value === '' ? undefined : Number(form.maxLocations.value),
+          extraLocationPrice: form.extraLocationPrice.value === '' ? null : Number(form.extraLocationPrice.value),
+          storageGb: form.storageGb.value === '' ? undefined : Number(form.storageGb.value),
         },
       });
       var sync = saved && saved.stripeSync;

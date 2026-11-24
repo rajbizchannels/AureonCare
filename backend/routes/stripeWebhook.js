@@ -454,6 +454,10 @@ async function handleSubscriptionChange(pool, subscription) {
     return;
   }
 
+  // Extra providers / locations changed in Stripe (or confirmed after a change in the app).
+  await require('../services/planAddons').syncFromStripe(pool, subscription)
+    .catch((e) => console.error('[stripe-webhook] add-on sync failed:', e.message));
+
   // A cancellation is revenue walking out of the door — somebody should hear about it.
   // Keyed on the subscription and status so Stripe's retries of the same transition do not
   // re-alert, while a later re-cancellation does.

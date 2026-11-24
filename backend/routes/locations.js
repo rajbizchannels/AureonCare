@@ -7,7 +7,7 @@ const express = require('express');
 const router = express.Router();
 const { authenticate, authorize } = require('../middleware/auth');
 const { requireModuleAccess } = require('../middleware/modulePermissions');
-const { enforceActiveBilling } = require('../middleware/planEnforcement');
+const { enforceActiveBilling, enforceLocationQuota } = require('../middleware/planEnforcement');
 const { LOCATION_TYPES } = require('../utils/locations');
 const { sendDbError } = require('../utils/dbErrors');
 
@@ -118,7 +118,7 @@ router.get('/:id', async (req, res) => {
 // ── writes ───────────────────────────────────────────────────────────────────────────
 
 // POST /api/locations
-router.post('/', authorize('admin'), async (req, res) => {
+router.post('/', authorize('admin'), enforceLocationQuota, async (req, res) => {
   const {
     name, locationType, address, city, state, country, postalCode,
     phone, email, latitude, longitude, timezone, notes, isActive,
@@ -153,7 +153,7 @@ router.post('/', authorize('admin'), async (req, res) => {
 });
 
 // PUT /api/locations/:id
-router.put('/:id', authorize('admin'), async (req, res) => {
+router.put('/:id', authorize('admin'), enforceLocationQuota, async (req, res) => {
   const {
     name, locationType, address, city, state, country, postalCode,
     phone, email, latitude, longitude, timezone, notes, isActive,
