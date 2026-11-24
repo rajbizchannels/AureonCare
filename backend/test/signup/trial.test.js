@@ -51,6 +51,24 @@ const report = (err) => {
     `INSERT INTO public.subscription_plans (name, display_name, price, currency, billing_cycle, trial_days, is_active, self_serve, max_users, max_providers, max_patients, features)
      VALUES ($1, 'Trial Pro', 79, 'eur', 'monthly', 14, true, false, -1, -1, -1, '{}') RETURNING id`, [`trial_pro_${RUN}`]);
 
+  // A GBP variant of the same tier (migration 107): the EUR plan above stays the tier's default.
+  const { rows: [gbp] } = await pool.query(
+    `INSERT INTO public.subscription_plans (name, display_name, price, currency, billing_cycle, trial_days, is_active, self_serve, max_users, max_providers, max_patients, features, tier)
+     VALUES ($1, 'Trial Pro', 69, 'gbp', 'monthly', 14, true, false, -1, -1, -1, '{}', $2) RETURNING id, is_tier_default`, [`trial_pro_gbp_${RUN}`, `trial_pro_${RUN}`]);
+  check('a second currency variant is not the default', gbp.is_tier_default === false);
+  const inTier = (list) => (Array.isArray(list) ? list.filter((p) => p.tier === `trial_pro_${RUN}`) : []);
+  const gb = inTier((await call('GET', '/api/signup/plans?country=GB')).body);
+  check('signup in the UK: the GBP variant, and only one plan for the tier', gb.length === 1 && gb[0].id === gbp.id && gb[0].currency === 'gbp');
+  const es = inTier((await call('GET', '/api/signup/plans?country=es')).body);
+  check('signup in Spain: the EUR variant', es.length === 1 && es[0].id === plan.id);
+  const jp = inTier((await call('GET', '/api/signup/plans?country=JP')).body);
+  check('signup where the tier has no variant in that currency: the default (EUR)', jp.length === 1 && jp[0].id === plan.id);
+  const usd = inTier((await call('GET', '/api/signup/plans?currency=GBP')).body);
+  check('?currency= works too', usd.length === 1 && usd[0].id === gbp.id);
+  const { pickForCurrency } = require(path.join(BACKEND, 'services/planCatalog.js'));
+  const picked = pickForCurrency([{ id: 1, tier: 't', currency: 'eur', is_tier_default: true, price: 79 }, { id: 2, tier: 't', currency: 'gbp', is_tier_default: false, price: 69 }], 'gbp', { keepIds: [1] });
+  check("the plan a practice is already on wins over its currency's variant", picked.length === 1 && picked[0].id === 1);
+
   // ── the signup page ──────────────────────────────────────────────────────────────
   const plans = await call('GET', '/api/signup/plans');
   const listed = Array.isArray(plans.body) && plans.body.find((p) => p.id === plan.id);
@@ -119,6 +137,18 @@ const report = (err) => {
   check(`after the trial ends the workspace is read-only (got ${after.status})`, after.status === 402 && /free trial has ended/.test(after.body.message || ''));
   check('...reading still works', (await call('GET', '/api/patients', token)).status === 200);
   check('...and the Subscription page says the trial ended', (await call('GET', '/api/plans/current', token)).body.status === 'trial_expired');
+
+  // ── in the app: the clinic's currency ───────────────────────────────────────────────
+  const inApp = async () => inTier((await call('GET', '/api/plans', token)).body);
+  check('the trial practice was created in its plan\'s currency (EUR)',
+    (await pool.query('SELECT currency FROM public.practices WHERE id = $1', [sub.practice_id])).rows[0].currency === 'EUR');
+  check('in the app: the plan it is on', (await inApp()).map((p) => p.id).join() === String(plan.id));
+  await pool.query("UPDATE public.practices SET currency = 'GBP' WHERE id = $1", [sub.practice_id]);
+  await pool.query('UPDATE control.subscriptions SET plan_id = NULL WHERE practice_id = $1', [sub.practice_id]);
+  check('a clinic set to GBP is shown the GBP variant', (await inApp()).map((p) => p.id).join() === String(gbp.id));
+  await pool.query("UPDATE public.practices SET currency = 'JPY' WHERE id = $1", [sub.practice_id]);
+  check('a clinic in a currency with no variant is shown the default', (await inApp()).map((p) => p.id).join() === String(plan.id));
+  await pool.query('UPDATE control.subscriptions SET plan_id = $2 WHERE practice_id = $1', [sub.practice_id, plan.id]);
 
   // ── duplicates ───────────────────────────────────────────────────────────────────
   check('a second trial with the same email is refused', (await call('POST', '/api/signup/trial', null, { practiceName: 'Again', email, password: PW, planId: plan.id })).status === 409);

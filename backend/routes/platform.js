@@ -334,8 +334,10 @@ router.get('/plans', async (req, res) => {
   const { rows } = await pool.query(
     `SELECT id, name, display_name, description, price, currency, billing_cycle,
             max_users, max_patients, max_providers, features, is_active, self_serve,
-            stripe_price_id, stripe_product_id, trial_days
-       FROM public.subscription_plans ORDER BY is_active DESC, price NULLS FIRST, id`);
+            stripe_price_id, stripe_product_id, trial_days, free_months,
+            COALESCE(to_jsonb(sp)->>'tier', name) AS tier,
+            COALESCE((to_jsonb(sp)->>'is_tier_default')::boolean, true) AS is_tier_default
+       FROM public.subscription_plans sp ORDER BY COALESCE(to_jsonb(sp)->>'tier', name), is_active DESC, price NULLS FIRST, id`);
   res.json(rows);
 });
 
@@ -345,7 +347,7 @@ router.post('/plans', requireOperatorRole('billing'), async (req, res) => {
   const pool = req.app.locals.pool;
   const {
     name, displayName, description, price, currency, billingCycle,
-    maxUsers, maxProviders, maxPatients, trialDays, isActive,
+    maxUsers, maxProviders, maxPatients, trialDays, isActive, tier,
   } = req.body || {};
 
   const slug = String(name || '').trim().toLowerCase().replace(/[^a-z0-9_]+/g, '_');
@@ -377,6 +379,22 @@ router.post('/plans', requireOperatorRole('billing'), async (req, res) => {
        trialDays == null ? null : Number(trialDays),
        typeof isActive === 'boolean' ? isActive : null]
     );
+    // A tier groups currency variants of one plan (migration 107). Without one the plan is its
+    // own tier; the first variant of a tier becomes its default.
+    const cleanTier = String(tier || '').trim().toLowerCase().replace(/[^a-z0-9_]+/g, '_');
+    if (cleanTier && cleanTier !== rows[0].tier) {
+      try {
+        const { rows: [t] } = await pool.query(
+          `UPDATE public.subscription_plans p SET tier = $2::text,
+                  is_tier_default = NOT EXISTS (SELECT 1 FROM public.subscription_plans d WHERE d.tier = $2::text AND d.is_tier_default AND d.id <> p.id)
+            WHERE id = $1 RETURNING *`, [rows[0].id, cleanTier]);
+        rows[0] = t;
+      } catch (te) {
+        await pool.query('DELETE FROM public.subscription_plans WHERE id = $1', [rows[0].id]).catch(() => {});
+        if (te.code === '23505') return res.status(409).json({ error: `Tier "${cleanTier}" already has an active plan in ${String(rows[0].currency).toUpperCase()}.` });
+        throw te;
+      }
+    }
     // self_serve starts false on purpose: a plan is not sellable until it has a Stripe
     // price, which is a separate, deliberate step.
     await logPlatformAction(pool, { operatorId: req.operator.id, action: 'plan.create',
@@ -450,6 +468,9 @@ router.put('/plans/:id', requireOperatorRole('billing'), async (req, res) => {
   const {
     selfServe, stripePriceId, trialDays, isActive, displayName, description, price,
     currency, billingCycle, freeMonths,
+    // Currency variants (migration 107): which tier this plan belongs to, and whether it is the
+    // variant shown when a clinic's currency has none of its own.
+    tier, isTierDefault,
     // Renaming the KEY is separate from the display name: plan_name is snapshotted onto
     // control.subscriptions, so a rename has to carry through or the console shows one
     // name and the subscription another.
@@ -477,7 +498,7 @@ router.put('/plans/:id', requireOperatorRole('billing'), async (req, res) => {
   }
   try {
     const { rows: [before] } = await pool.query(
-      'SELECT price, currency, billing_cycle, stripe_price_id FROM public.subscription_plans WHERE id = $1', [req.params.id]);
+      'SELECT price, currency, billing_cycle, stripe_price_id, to_jsonb(sp)->>\'tier\' AS tier FROM public.subscription_plans sp WHERE id = $1', [req.params.id]);
     const { rows } = await pool.query(
       `UPDATE public.subscription_plans
           SET self_serve = COALESCE($2, self_serve),
@@ -505,6 +526,33 @@ router.put('/plans/:id', requireOperatorRole('billing'), async (req, res) => {
        cleanKey]
     );
     if (!rows.length) return res.status(404).json({ error: 'Plan not found' });
+    const cleanTier = tier == null || String(tier).trim() === '' ? null : String(tier).trim().toLowerCase().replace(/[^a-z0-9_]+/g, '_');
+    if (cleanTier || typeof isTierDefault === 'boolean') {
+      const c = await pool.connect();
+      try {
+        await c.query('BEGIN');
+        const targetTier = cleanTier || rows[0].tier;
+        if (isTierDefault === true) {
+          await c.query('UPDATE public.subscription_plans SET is_tier_default = false WHERE tier = $1 AND id <> $2', [targetTier, rows[0].id]);
+        }
+        const { rows: [t] } = await c.query(
+          `UPDATE public.subscription_plans SET tier = $2::text,
+                  is_tier_default = CASE WHEN $3::boolean IS NULL THEN is_tier_default ELSE $3::boolean END
+            WHERE id = $1 RETURNING *`, [rows[0].id, targetTier, typeof isTierDefault === 'boolean' ? isTierDefault : null]);
+        // A tier always keeps exactly one default: if this left the old or new tier without one, its oldest variant takes it.
+        await c.query(
+          `UPDATE public.subscription_plans p SET is_tier_default = true
+            WHERE p.id IN (SELECT min(q.id) FROM public.subscription_plans q WHERE q.tier = ANY($1::text[])
+                            AND NOT EXISTS (SELECT 1 FROM public.subscription_plans d WHERE d.tier = q.tier AND d.is_tier_default) GROUP BY q.tier)`,
+          [[targetTier, before && before.tier].filter(Boolean)]);
+        await c.query('COMMIT');
+        rows[0] = (await pool.query('SELECT * FROM public.subscription_plans WHERE id = $1', [rows[0].id])).rows[0] || t;
+      } catch (te) {
+        await c.query('ROLLBACK').catch(() => {});
+        if (te.code === '23505') return res.status(409).json({ error: 'That tier already has an active plan in this currency, or already has a default.' });
+        throw te;
+      } finally { c.release(); }
+    }
     if (cleanKey) {
       // Carry the rename onto every subscription holding the old snapshot, so the console
       // and the tenant's own settings page agree on what the plan is called.
@@ -514,7 +562,7 @@ router.put('/plans/:id', requireOperatorRole('billing'), async (req, res) => {
     }
     await logPlatformAction(pool, { operatorId: req.operator.id, action: 'plan.update',
       targetType: 'plan', targetId: String(req.params.id),
-      detail: { selfServe, stripePriceId, trialDays, isActive, price, currency, billingCycle }, ip: clientIp(req) });
+      detail: { selfServe, stripePriceId, trialDays, isActive, price, currency, billingCycle, tier, isTierDefault }, ip: clientIp(req) });
 
     // The platform is the source of truth for prices: a price change on a plan already sold
     // through Stripe is pushed to Stripe now (new Price, old one archived), and practices see

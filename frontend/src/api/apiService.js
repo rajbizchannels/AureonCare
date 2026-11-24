@@ -4118,8 +4118,10 @@ const api = {
   // account's token_version (invalidating this and any other clinician JWT) and clears
 
   // ── Self-serve signup (public — no auth header) ─────────────────────────────
-  signupPlans: async () => {
-    const r = await fetch(`${API_BASE_URL}/signup/plans`);
+  // country (two letters) picks each plan in that country's currency when the platform has it.
+  signupPlans: async (country) => {
+    const q = country && /^[A-Za-z]{2}$/.test(country) ? `?country=${encodeURIComponent(country.toUpperCase())}` : '';
+    const r = await fetch(`${API_BASE_URL}/signup/plans${q}`);
     if (!r.ok) throw new Error('Failed to load plans');
     return r.json();
   },

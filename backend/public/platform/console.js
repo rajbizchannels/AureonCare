@@ -133,6 +133,7 @@
           ' <span class="small" style="font-weight:400">' + (sellable ? '✓ ' : '· ') + esc(why) + '</span></h3>' +
           '<p class="muted small">' + (p.price != null ? esc(p.price) + ' ' + esc((p.currency || 'usd').toUpperCase()) : 'no price') +
           ' · ' + esc(p.billing_cycle || 'monthly') +
+          ' · tier <strong>' + esc(p.tier || p.name) + '</strong>' + (p.is_tier_default ? ' (default variant)' : '') +
           (p.stripe_price_id ? ' · ' + esc(p.stripe_price_id) : '') + '</p>' +
           '<form class="planForm" data-id="' + esc(p.id) + '">' +
             '<label class="check"><input type="checkbox" name="isActive"' +
@@ -150,6 +151,9 @@
               esc(p.free_months == null ? 0 : p.free_months) + '" /></label>' +
             '<label>Display name<input name="displayName" value="' + esc(p.display_name || '') + '" /></label>' +
             '<label>Key<input name="name" value="' + esc(p.name || '') + '" /></label>' +
+            '<label title="Plans with the same tier are one plan in different currencies; clinics see the one in their currency, else the default.">Tier<input name="tier" value="' + esc(p.tier || p.name || '') + '" /></label>' +
+            '<label class="check"><input type="checkbox" name="isTierDefault"' + (p.is_tier_default ? ' checked' : '') +
+              ' /> <span>Default variant (shown when a clinic\'s currency has no variant)</span></label>' +
             '<button type="submit" class="primary">Save</button>' +
             '<button type="button" class="pushStripe" data-id="' + esc(p.id) + '">' +
               (p.stripe_price_id ? 'Re-create price in Stripe' : 'Create in Stripe') + '</button>' +
@@ -182,6 +186,8 @@
           freeMonths: form.freeMonths.value === '' ? null : Number(form.freeMonths.value),
           displayName: form.displayName.value.trim() || null,
           name: form.name.value.trim() || null,
+          tier: form.tier.value.trim() || null,
+          isTierDefault: form.isTierDefault.checked,
         },
       });
       var sync = saved && saved.stripeSync;
@@ -269,6 +275,7 @@
           trialDays: Number($('pTrial').value || 0),
           maxUsers: Number($('pMaxUsers').value || -1),
           maxProviders: Number($('pMaxProviders').value || -1),
+          tier: $('pTier').value.trim() || null,
         },
       });
       msg.textContent = 'Created. Now use "Create in Stripe", then tick "Sell on the public signup page".';

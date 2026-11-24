@@ -36,15 +36,32 @@ const SignupPage = ({ theme = 'light', onBack, onSignIn }) => {
 
   const api = require('../../api/apiService').default;
 
+  // Plans come in the clinic's currency when the platform offers it: the country typed below,
+  // else the browser's region (e.g. es-ES → ES). Changing the country reloads them, keeping the
+  // same plan tier selected.
+  const browserCountry = (() => {
+    try { return (new Intl.Locale(navigator.language || '').maximize().region || '').toUpperCase(); } catch { return ''; }
+  })();
+  const planCountry = /^[A-Za-z]{2}$/.test(form.country) ? form.country.toUpperCase() : browserCountry;
   useEffect(() => {
     let alive = true;
-    api.signupPlans()
-      // Start on the first plan with a free trial — the no-card path — when there is one.
-      .then((p) => { if (alive) { setPlans(p); const first = p.find((x) => x.can_trial) || p[0]; if (first) setPlanId(first.id); } })
+    setLoadingPlans(true);
+    api.signupPlans(planCountry)
+      .then((p) => {
+        if (!alive) return;
+        setPlans(p);
+        setPlanId((prev) => {
+          const prevTier = (plans.find((x) => x.id === prev) || {}).tier;
+          const same = prevTier && p.find((x) => x.tier === prevTier);
+          // Otherwise start on the first plan with a free trial — the no-card path.
+          const first = same || p.find((x) => x.can_trial) || p[0];
+          return first ? first.id : null;
+        });
+      })
       .catch(() => { if (alive) setError('Could not load plans. Please try again shortly.'); })
       .finally(() => { if (alive) setLoadingPlans(false); });
     return () => { alive = false; };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [planCountry]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 

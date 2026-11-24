@@ -224,6 +224,20 @@ const api = async (method, url, body, token) => {
   check(`existing subscribers move to the new price at renewal (got ${applied.status} ${JSON.stringify(applied.body)})`,
         applied.status === 200 && applied.body.moved >= 1 && moved && moved[1].proration_behavior === 'none' && moved[1].items[0].price === 'price_new');
 
+  // ── currency variants of one tier (migration 107) ─────────────────────────────
+  const tierKey = 'acct_tier_' + RUN;
+  const vEur = await api('POST', '/api/platform/plans', { name: 'v_eur_' + RUN, displayName: 'Variant', price: 79, currency: 'eur', tier: tierKey }, billing);
+  const vGbp = await api('POST', '/api/platform/plans', { name: 'v_gbp_' + RUN, displayName: 'Variant', price: 69, currency: 'gbp', tier: tierKey }, billing);
+  check(`variants are created in one tier (got ${vEur.status}/${vGbp.status})`, vEur.status === 201 && vGbp.status === 201 && vEur.body.tier === tierKey && vGbp.body.tier === tierKey);
+  check('...the first is the default, the second is not', vEur.body.is_tier_default === true && vGbp.body.is_tier_default === false);
+  const dupCur = await api('POST', '/api/platform/plans', { name: 'v_eur2_' + RUN, displayName: 'Variant', price: 80, currency: 'eur', tier: tierKey }, billing);
+  check(`a second active variant in the same currency is refused (got ${dupCur.status})`, dupCur.status === 409);
+  const switched = await api('PUT', `/api/platform/plans/${vGbp.body.id}`, { isTierDefault: true }, billing);
+  const { rows: defs } = await pool.query('SELECT id FROM public.subscription_plans WHERE tier = $1 AND is_tier_default', [tierKey]);
+  check(`making another variant the default moves the default (got ${switched.status})`, switched.status === 200 && defs.length === 1 && defs[0].id === vGbp.body.id);
+  const listed = (await api('GET', '/api/platform/plans', undefined, readonly)).body.filter((p) => p.tier === tierKey);
+  check('the console lists both variants with their tier', listed.length === 2);
+
   // ── operator management ───────────────────────────────────────────────────
   const created = await api('POST', '/api/platform/operators',
     { email: `new_${RUN}@example.com`, password: 'A-Strong-Passphrase!23', role: 'billing', name: 'New' }, owner);
