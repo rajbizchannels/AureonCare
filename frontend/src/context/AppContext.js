@@ -308,10 +308,11 @@ const AppProvider = ({ children }) => {
         expired: 'That confirmation link has expired or was already used. If your workspace is ready, sign in; otherwise start the trial again.',
         failed: 'We could not create your workspace. Please try again, or contact support@aureoncare.tech.',
       };
-      const msg = trial ? notices[trial] : (params.get('subscribed') === '1' ? 'Thank you — your subscription is being set up. It shows under Settings → Subscription Plans within a minute.' : null);
+      const listingDone = params.get('listing') === 'ready' ? 'Your free listing is ready — sign in to set up your public page and online booking.' : null;
+      const msg = listingDone || (trial ? notices[trial] : null) || (params.get('subscribed') === '1' ? 'Thank you — your subscription is being set up. It shows under Settings → Subscription Plans within a minute.' : null);
       if (msg) {
         setSessionNotice(msg);
-        params.delete('trial'); params.delete('subscribed');
+        params.delete('trial'); params.delete('subscribed'); params.delete('listing');
         const q = params.toString();
         window.history.replaceState(null, '', window.location.pathname + (q ? `?${q}` : '') + window.location.hash);
       }
@@ -333,13 +334,21 @@ const AppProvider = ({ children }) => {
     setError(null);
     try {
       console.log('AppContext: Starting data fetch...');
+      // The practice's real plan decides what the app shows. On the free Listing plan only the
+      // public page, booking requests and confirmed bookings exist, so nothing else is loaded.
+      const sub = api.getCurrentSubscription ? await api.getCurrentSubscription().catch(() => null) : null;
+      const listing = Boolean(sub && sub.features && (sub.features.listing === true || sub.features.listing === 'true'));
+      const tier = sub && (sub.tier || sub.plan_name);
+      if (listing) setPlanTier('listing');
+      else if (tier && ['essentials', 'clinical_pro', 'enterprise', 'onprem'].includes(tier)) setPlanTier(tier);
+      const none = () => Promise.resolve([]);
       const dataPromises = [
         api.getAppointments().catch(err => { console.error('Failed to fetch appointments:', err); return []; }),
-        api.getPatients().catch(err => { console.error('Failed to fetch patients:', err); return []; }),
-        api.getClaims().catch(err => { console.error('Failed to fetch claims:', err); return []; }),
-        api.getPayments().catch(err => { console.error('Failed to fetch payments:', err); return []; }),
+        listing ? none() : api.getPatients().catch(err => { console.error('Failed to fetch patients:', err); return []; }),
+        listing ? none() : api.getClaims().catch(err => { console.error('Failed to fetch claims:', err); return []; }),
+        listing ? none() : api.getPayments().catch(err => { console.error('Failed to fetch payments:', err); return []; }),
         api.getNotifications(user?.id).catch(err => { console.error('Failed to fetch notifications:', err); return []; }),
-        api.getTasks().catch(err => { console.error('Failed to fetch tasks:', err); return []; }),
+        listing ? none() : api.getTasks().catch(err => { console.error('Failed to fetch tasks:', err); return []; }),
         api.getUsers().catch(err => { console.error('Failed to fetch users:', err); return []; })
       ];
 

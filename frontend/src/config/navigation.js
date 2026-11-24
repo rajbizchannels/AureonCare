@@ -977,6 +977,16 @@ export const filterNavigation = (navigation, canAccess) =>
     })
     .filter((group) => group.sections.length > 0);
 
+/** Keep only the items whose id is in `keep` (e.g. the free Listing plan), then drop empty sections and groups. */
+export const pruneNavigation = (navigation, keep) => {
+  const prune = (items) => items
+    .filter((item) => keep.has(item.id) || (item.children && prune(item.children).length))
+    .map((item) => (item.children ? { ...item, children: prune(item.children) } : item));
+  return navigation
+    .map((group) => ({ ...group, sections: group.sections.map((sec) => ({ ...sec, items: prune(sec.items) })).filter((sec) => sec.items.length) }))
+    .filter((group) => group.sections.length);
+};
+
 /** Flat list of every item in a group — nested children included, in display order. */
 export const groupItems = (group) =>
   group ? flattenItems(group.sections.reduce((all, section) => all.concat(section.items), [])) : [];

@@ -12,6 +12,16 @@ import { canAccessModule } from '../utils/rolePermissions';
  * installations that have not yet run migration 053.
  */
 export const planFeatures = {
+  // ── Free: Listing (migration 109) ─────────────────────────────────────────
+  // The public practice page, booking requests and the booking setup they need. The server
+  // refuses everything else (middleware/listingGate.js); navigation is pruned to LISTING_NAV.
+  listing: [
+    'dashboard',
+    'notificationSettings',
+    'providerManagement',
+    'adminPanel',
+  ],
+
   // ── Tier 1: Practice Essentials ───────────────────────────────────────────
   essentials: [
     'dashboard',
@@ -109,13 +119,20 @@ export const planDisplayNames = {
   clinical_pro: 'Clinical Pro',
   enterprise:   'Enterprise',
   onprem:       'On-Premises / Customer Cloud',
+  listing:      'Listing (free)',
   free:         'Practice Essentials',
   starter:      'Practice Essentials',
   professional: 'Clinical Pro',
 };
 
 /** Ordered from cheapest to most capable — used for upgrade-path logic. */
-export const planTierOrder = ['essentials', 'clinical_pro', 'enterprise', 'onprem'];
+export const planTierOrder = ['listing', 'essentials', 'clinical_pro', 'enterprise', 'onprem'];
+
+/** Navigation entries a practice on the free Listing plan sees (everything else is hidden). */
+export const LISTING_NAV = new Set([
+  'home.dashboard', 'scheduling.providerManagement',
+  'settings.notifications', 'settings.clinic', 'settings.practiceProfile', 'settings.locations', 'settings.plans',
+]);
 
 /** Returns true when targetTier is a higher tier than currentTier. */
 export function isUpgrade(currentTier, targetTier) {

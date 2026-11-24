@@ -17,11 +17,13 @@ import api from './api/apiService';
 // Config
 import { getTranslations, applyTerminology } from './config/translations';
 import { getModules } from './config/modules';
-import { hasAccess, isModuleVisible } from './config/planFeatures';
+import { hasAccess, isModuleVisible, LISTING_NAV } from './config/planFeatures';
+import ListingHomeView from './views/ListingHomeView';
 import {
   getNavigation,
   getPatientNavigation,
   filterNavigation,
+  pruneNavigation,
   findNavLocation,
   defaultItemFor,
 } from './config/navigation';
@@ -293,10 +295,12 @@ function App() {
   // A patient's Home is the portal, not the practice dashboard, and their rail
   // carries nothing else.
   const isPatient = user?.role === 'patient';
-  const navigation = filterNavigation(
+  const allowedNavigation = filterNavigation(
     isPatient ? getPatientNavigation(t) : getNavigation(t),
     hasModuleAccess
   );
+  // The free Listing plan shows only its own screens (the server refuses the rest).
+  const navigation = planTier === 'listing' && !isPatient ? pruneNavigation(allowedNavigation, LISTING_NAV) : allowedNavigation;
   const activeModule = isPatient && currentModule === 'dashboard' ? 'patientPortal' : currentModule;
 
   // Appointments keep their sub-module in appointmentViewType (list/calendar/waitlist).
@@ -434,6 +438,12 @@ function App() {
   const renderModule = () => {
     switch (activeModule) {
       case 'dashboard':
+        if (planTier === 'listing') {
+          return (
+            <ListingHomeView theme={theme} api={api} appointments={appointments} addNotification={addNotification}
+              onNavigate={(module, tab) => handleSelectNavItem({ module, tab })} />
+          );
+        }
         return (
           <DashboardView
             theme={theme}

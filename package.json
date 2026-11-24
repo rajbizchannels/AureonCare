@@ -81,7 +81,8 @@
     "test:data-import": "node backend/test/import/data-import.test.js",
     "test:trial": "node backend/test/signup/trial.test.js",
     "test:reminders": "node backend/test/reminders/appointment-reminders.test.js",
-    "test:tier-billing": "node backend/test/billing/tier-billing.test.js"
+    "test:tier-billing": "node backend/test/billing/tier-billing.test.js",
+    "test:listing": "node backend/test/billing/listing-plan.test.js"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^1.6.0",
