@@ -1,12 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Check, Loader2, Tag, CreditCard, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Check, Loader2, Tag, CreditCard, AlertCircle, Mail, Sparkles } from 'lucide-react';
+
+// Prices in the plan's own currency (the platform catalogue decides it).
+const money = (amount, currency) => {
+  if (amount == null) return '—';
+  try { return new Intl.NumberFormat(undefined, { style: 'currency', currency: String(currency || 'eur').toUpperCase(), maximumFractionDigits: Number(amount) % 1 ? 2 : 0 }).format(Number(amount)); }
+  catch { return `${amount} ${String(currency || '').toUpperCase()}`; }
+};
 
 /**
- * Self-serve signup: pick a plan, enter details, pay on Stripe.
- *
- * Card details are never entered here — the form hands off to Stripe's hosted Checkout
- * page. Nothing is provisioned until Stripe's webhook confirms payment, so this page's
- * job ends at the redirect; /signup/complete polls for the workspace.
+ * Self-serve signup: pick a plan, enter details, then either
+ *   - start a FREE TRIAL with no card: we email a confirmation link and the workspace (with
+ *     sample data, unless declined) is created when it is clicked; or
+ *   - pay on Stripe's hosted Checkout (plans the platform has linked to a Stripe price).
+ * Card details are never entered here. Nothing is provisioned before the email is confirmed
+ * or Stripe's webhook confirms payment.
  */
 const SignupPage = ({ theme = 'light', onBack, onSignIn }) => {
   const dark = theme === 'dark';
@@ -23,6 +31,8 @@ const SignupPage = ({ theme = 'light', onBack, onSignIn }) => {
   const [promo, setPromo] = useState(null);
   const [promoError, setPromoError] = useState('');
   const [checkingPromo, setCheckingPromo] = useState(false);
+  const [withSamples, setWithSamples] = useState(true);
+  const [trialSent, setTrialSent] = useState(null); // { email, trialDays }
 
   const api = require('../../api/apiService').default;
 
@@ -50,15 +60,31 @@ const SignupPage = ({ theme = 'light', onBack, onSignIn }) => {
     }
   };
 
-  const submit = async (e) => {
+  const submit = async (e, how) => {
     e.preventDefault();
     setError('');
     if (form.password !== form.confirmPassword) return setError('Passwords do not match.');
     // Mirrors the server-side policy so the customer is told before a round trip; the
     // server enforces it regardless.
     if (form.password.length < 12) return setError('Password must be at least 12 characters.');
+    const chosen = plans.find((p) => p.id === planId);
+    const mode = how || (chosen && chosen.can_trial ? 'trial' : 'pay');
 
     setSubmitting(true);
+    if (mode === 'trial') {
+      try {
+        const out = await api.startTrial({
+          practiceName: form.practiceName, email: form.email, password: form.password,
+          firstName: form.firstName, lastName: form.lastName, planId,
+          country: form.country || undefined, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          sampleData: withSamples,
+        });
+        setTrialSent({ email: form.email, trialDays: out.trialDays });
+      } catch (err) {
+        setError(err.message || 'Could not start the trial. Please try again.');
+      } finally { setSubmitting(false); }
+      return;
+    }
     try {
       const { checkoutUrl } = await api.startSignup({
         practiceName: form.practiceName,
@@ -87,6 +113,20 @@ const SignupPage = ({ theme = 'light', onBack, onSignIn }) => {
 
   const selected = plans.find((p) => p.id === planId);
 
+  if (trialSent) {
+    return (
+      <div className={`min-h-screen ${bg} py-10 px-4`}>
+        <div className={`max-w-md mx-auto p-6 rounded-xl border ${card}`} role="status">
+          <Mail className="text-blue-600" size={28} />
+          <h1 className={`text-2xl font-semibold mt-3 ${text}`}>Check your email</h1>
+          <p className={`mt-2 ${muted}`}>We sent a link to <strong className={text}>{trialSent.email}</strong>. Click it and your workspace is ready in seconds — {trialSent.trialDays} days free, no card needed.</p>
+          <p className={`mt-3 text-sm ${muted}`}>The link works once, for 24 hours. Nothing there? Check spam, or go back and try again.</p>
+          {onSignIn && <button type="button" onClick={onSignIn} className="mt-5 text-blue-600 hover:underline text-sm">Go to sign in</button>}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={`min-h-screen ${bg} py-10 px-4`}>
       <div className="max-w-4xl mx-auto">
@@ -98,7 +138,7 @@ const SignupPage = ({ theme = 'light', onBack, onSignIn }) => {
 
         <h1 className={`text-3xl font-semibold ${text}`}>Start your practice on AureonCare</h1>
         <p className={`mt-2 ${muted}`}>
-          Your own isolated workspace, ready in under a minute after checkout.
+          Your own isolated workspace. Start with a free trial — no card needed — or subscribe straight away.
         </p>
 
         {error && (
@@ -130,12 +170,12 @@ const SignupPage = ({ theme = 'light', onBack, onSignIn }) => {
                     {p.description && <div className={`text-sm mt-1 ${muted}`}>{p.description}</div>}
                   </div>
                   <div className={`text-right ${text}`}>
-                    <div className="text-xl font-semibold">{p.price != null ? `$${p.price}` : '—'}</div>
+                    <div className="text-xl font-semibold">{money(p.price, p.currency)}</div>
                     <div className={`text-xs ${muted}`}>{p.billing_cycle || 'monthly'}</div>
                   </div>
                 </div>
-                {p.trial_days > 0 && (
-                  <div className="mt-2 text-xs text-green-600 font-medium">{p.trial_days}-day free trial</div>
+                {p.trial_days > 0 && p.can_trial && (
+                  <div className="mt-2 text-xs text-green-600 font-medium">{p.trial_days}-day free trial · no card needed</div>
                 )}
                 {planId === p.id && <div className="mt-2 flex items-center gap-1 text-blue-600 text-sm"><Check size={14} /> Selected</div>}
               </button>
@@ -145,7 +185,7 @@ const SignupPage = ({ theme = 'light', onBack, onSignIn }) => {
           {/* Details */}
           <section>
             <h2 className={`font-medium mb-3 ${text}`}>Your details</h2>
-            <form onSubmit={submit} className={`p-5 rounded-xl border ${card} space-y-3`}>
+            <form onSubmit={(e) => submit(e)} className={`p-5 rounded-xl border ${card} space-y-3`}>
               <input className={input} placeholder="Practice name" required
                      value={form.practiceName} onChange={set('practiceName')} />
               <div className="grid grid-cols-2 gap-3">
@@ -161,6 +201,14 @@ const SignupPage = ({ theme = 'light', onBack, onSignIn }) => {
               <input className={input} maxLength={2} placeholder="Country code (e.g. US)"
                      value={form.country} onChange={set('country')} />
 
+              {selected && selected.can_trial ? (
+                <label className={`flex items-start gap-2 text-sm ${muted}`}>
+                  <input type="checkbox" className="mt-1" checked={withSamples} onChange={(e) => setWithSamples(e.target.checked)} />
+                  <span>Add sample patients, appointments, services and stock so I can explore. You can remove them any time.</span>
+                </label>
+              ) : null}
+
+              {selected && selected.can_checkout ? (<>
               <div className="flex gap-2">
                 <input className={input} placeholder="Coupon code (optional)"
                        value={form.promoCode} onChange={set('promoCode')} />
@@ -172,20 +220,31 @@ const SignupPage = ({ theme = 'light', onBack, onSignIn }) => {
               {promo && (
                 <div className="flex items-center gap-2 text-sm text-green-700">
                   <Tag size={14} />
-                  {promo.percentOff ? `${promo.percentOff}% off` : `$${promo.amountOff} off`}
+                  {promo.percentOff ? `${promo.percentOff}% off` : `${money(promo.amountOff, selected && selected.currency)} off`}
                   {promo.durationInMonths ? ` for ${promo.durationInMonths} months` : promo.duration === 'forever' ? ', forever' : ''}
                   {' '}applied.
                 </div>
               )}
               {promoError && <div className="text-sm text-red-600">{promoError}</div>}
+              </>) : null}
 
-              <button type="submit" disabled={submitting || !planId || loadingPlans}
-                      className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-blue-600 text-white font-medium disabled:opacity-60">
-                {submitting ? <Loader2 className="animate-spin" size={16} /> : <CreditCard size={16} />}
-                {submitting ? 'Redirecting to checkout…' : `Continue to payment${selected && selected.price != null ? ` — $${selected.price}` : ''}`}
-              </button>
+              {selected && selected.can_trial ? (
+                <button type="submit" disabled={submitting || !planId || loadingPlans}
+                        className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-blue-600 text-white font-medium disabled:opacity-60">
+                  {submitting ? <Loader2 className="animate-spin" size={16} /> : <Sparkles size={16} />}
+                  {submitting ? 'Starting…' : `Start ${selected.trial_days}-day free trial — no card`}
+                </button>
+              ) : null}
+              {selected && selected.can_checkout ? (
+                <button type={selected.can_trial ? 'button' : 'submit'} onClick={selected.can_trial ? (e) => submit(e, 'pay') : undefined}
+                        disabled={submitting || !planId || loadingPlans}
+                        className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-lg font-medium disabled:opacity-60 ${selected.can_trial ? `border ${card} ${text}` : 'bg-blue-600 text-white'}`}>
+                  {submitting && !selected.can_trial ? <Loader2 className="animate-spin" size={16} /> : <CreditCard size={16} />}
+                  {`Subscribe now — ${money(selected.price, selected.currency)} / ${selected.billing_cycle === 'yearly' ? 'year' : 'month'}`}
+                </button>
+              ) : null}
               <p className={`text-xs text-center ${muted}`}>
-                Payment is handled by Stripe. Your card details never reach our servers.
+                {selected && selected.can_checkout ? 'Payment is handled by Stripe. Your card details never reach our servers.' : 'No card needed for the trial. Choose a plan inside the app when you are ready.'}
               </p>
               {onSignIn && (
                 <p className={`text-sm text-center ${muted}`}>

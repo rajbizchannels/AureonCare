@@ -153,6 +153,7 @@
             '<button type="submit" class="primary">Save</button>' +
             '<button type="button" class="pushStripe" data-id="' + esc(p.id) + '">' +
               (p.stripe_price_id ? 'Re-create price in Stripe' : 'Create in Stripe') + '</button>' +
+            (p.stripe_price_id ? '<button type="button" class="applySubscribers" data-id="' + esc(p.id) + '">Apply price to existing subscribers</button>' : '') +
             '<span class="planMsg small"></span>' +
           '</form>' +
         '</div>';
@@ -169,7 +170,7 @@
     var msg = form.querySelector('.planMsg');
     msg.textContent = 'Saving…';
     try {
-      await api('/plans/' + encodeURIComponent(form.dataset.id), {
+      var saved = await api('/plans/' + encodeURIComponent(form.dataset.id), {
         method: 'PUT',
         body: {
           isActive: form.isActive.checked,
@@ -183,12 +184,35 @@
           name: form.name.value.trim() || null,
         },
       });
-      msg.textContent = 'Saved.';
+      var sync = saved && saved.stripeSync;
+      msg.textContent = !sync ? 'Saved.'
+        : sync.pushed ? 'Saved, and the new price is in Stripe (' + sync.priceId + '). Practices see it now; use "Apply price to existing subscribers" to bill them from their next renewal.'
+          : 'Saved here, but Stripe did not take the new price: ' + sync.error + ' Use "Re-create price in Stripe" to retry.';
+      if (sync && !sync.pushed) toast(msg.textContent, true);
       // Re-read from the server: the badge must reflect what was stored, not what was typed.
       loadPlans();
     } catch (err) {
       msg.textContent = err.message;
     }
+  });
+
+  // Platform -> practices billed by Stripe: move them to the plan's current price at renewal.
+  document.addEventListener('click', async function (e) {
+    var btn = e.target.closest('button.applySubscribers');
+    if (!btn) return;
+    var msg = btn.closest('form.planForm').querySelector('.planMsg');
+    if (!window.confirm('Move every practice Stripe bills on this plan to its current price?\n\n' +
+      'They keep the price already paid until their next renewal; nobody is charged now.')) return;
+    btn.disabled = true; msg.textContent = 'Applying…';
+    try {
+      var out = await api('/plans/' + encodeURIComponent(btn.dataset.id) + '/apply-to-subscribers', { method: 'POST' });
+      msg.textContent = out.checked === 0 ? 'No practice is billed by Stripe on this plan.'
+        : out.moved + ' moved from their next renewal, ' + out.unchanged + ' already on this price' +
+          (out.skipped ? ', ' + out.skipped + ' cancelled' : '') + (out.errors.length ? ', ' + out.errors.length + ' failed' : '') + '.';
+      if (out.errors.length) toast(out.errors.length + ' subscriptions could not be moved — see the audit log.', true);
+    } catch (err) {
+      msg.textContent = err.message; toast(err.message, true);
+    } finally { btn.disabled = false; }
   });
 
   // Create the Product and Price in Stripe, so an operator never has to copy a price id
@@ -240,7 +264,7 @@
           displayName: $('pDisplay').value.trim(),
           description: $('pDesc').value.trim() || null,
           price: Number($('pPrice').value),
-          currency: $('pCurrency').value.trim() || 'usd',
+          currency: $('pCurrency').value.trim() || 'eur',
           billingCycle: $('pCycle').value,
           trialDays: Number($('pTrial').value || 0),
           maxUsers: Number($('pMaxUsers').value || -1),

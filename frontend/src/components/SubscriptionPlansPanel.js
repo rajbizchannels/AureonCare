@@ -52,6 +52,18 @@ const SubscriptionPlansPanel = ({ theme, api, addNotification }) => {
     }
   };
 
+  // A free trial (not billed by Stripe yet) subscribes through Stripe Checkout.
+  const subscribe = async (plan) => {
+    setBusy(true); setError('');
+    try {
+      const { checkoutUrl } = await api.subscribeCheckout(plan.id);
+      window.location.assign(checkoutUrl);
+    } catch (e) {
+      setError(e.message || 'Could not start checkout.');
+      setBusy(false);
+    }
+  };
+
   const confirmChange = async () => {
     setBusy(true);
     try {
@@ -69,8 +81,11 @@ const SubscriptionPlansPanel = ({ theme, api, addNotification }) => {
   const card = dark ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200';
   const text = dark ? 'text-white' : 'text-gray-900';
   const muted = dark ? 'text-slate-400' : 'text-gray-500';
-  const money = (v, cur) =>
-    v == null ? '—' : `${Number(v).toFixed(2)} ${(cur || 'usd').toUpperCase()}`;
+  const money = (v, cur) => {
+    if (v == null) return '—';
+    try { return new Intl.NumberFormat(undefined, { style: 'currency', currency: String(cur || 'eur').toUpperCase() }).format(Number(v)); }
+    catch { return `${Number(v).toFixed(2)} ${String(cur || '').toUpperCase()}`; }
+  };
   const limit = (v) => (v == null || Number(v) < 0 ? 'Unlimited' : v);
 
   if (loading) {
@@ -78,6 +93,8 @@ const SubscriptionPlansPanel = ({ theme, api, addNotification }) => {
   }
 
   const currentPlanId = current && current.plan_id;
+  const onTrial = current && !current.billing_linked && ['trialing', 'trial_expired'].includes(current.status);
+  const trialDaysLeft = current && current.trial_end ? Math.max(0, Math.ceil((new Date(current.trial_end) - Date.now()) / 86400000)) : null;
 
   return (
     <div className="space-y-6">
@@ -93,7 +110,14 @@ const SubscriptionPlansPanel = ({ theme, api, addNotification }) => {
         ) : (
           <p className={`mt-1 text-sm ${muted}`}>No subscription record found for this practice.</p>
         )}
-        {current && current.billing_linked === false && (
+        {onTrial && (
+          <div className={`mt-3 p-3 rounded-lg border text-sm ${current.status === 'trial_expired' ? 'bg-amber-50 border-amber-300 text-amber-900' : (dark ? 'bg-blue-500/10 border-blue-500/30 text-blue-100' : 'bg-blue-50 border-blue-200 text-blue-900')}`} role="status">
+            {current.status === 'trial_expired'
+              ? 'Your free trial has ended, so the workspace is read-only. Subscribe to a plan below to carry on — all your data is kept.'
+              : `Free trial: ${trialDaysLeft} day${trialDaysLeft === 1 ? '' : 's'} left${current.trial_end ? ` (until ${new Date(current.trial_end).toLocaleDateString()})` : ''}. Subscribe any time — you will not be charged before the trial ends.`}
+          </div>
+        )}
+        {current && current.billing_linked === false && !onTrial && (
           <p className={`mt-2 text-sm ${muted}`}>
             This practice is not billed through Stripe, so plan changes are recorded but
             nothing is charged.
@@ -130,6 +154,12 @@ const SubscriptionPlansPanel = ({ theme, api, addNotification }) => {
                   {plan.trial_days > 0 && <li>{plan.trial_days}-day trial</li>}
                 </ul>
 
+                {onTrial ? (
+                  <button onClick={() => subscribe(plan)} disabled={busy || !plan.purchasable}
+                    className="mt-5 w-full py-2 rounded-lg font-medium bg-blue-600 text-white disabled:opacity-60">
+                    {!plan.purchasable ? 'Contact us to subscribe' : isCurrent ? 'Subscribe to this plan' : 'Subscribe to this plan instead'}
+                  </button>
+                ) : (
                 <button
                   onClick={() => startChange(plan)}
                   disabled={isCurrent || busy || !plan.purchasable}
@@ -143,6 +173,7 @@ const SubscriptionPlansPanel = ({ theme, api, addNotification }) => {
                     <span className="flex items-center justify-center gap-1"><Check className="w-4 h-4" /> Current plan</span>
                   ) : !plan.purchasable ? 'Not available' : 'Switch to this plan'}
                 </button>
+                )}
               </div>
             );
           })}

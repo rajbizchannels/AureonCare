@@ -189,6 +189,31 @@ async function handleSignupCheckout(pool, session) {
   }
   const intent = rows[0];
 
+  // A practice that already exists (usually at the end of a free trial) subscribing from
+  // Settings → Subscription Plans: attach the Stripe subscription to it.
+  if (intent.kind === 'upgrade') {
+    try {
+      const { rows: [plan] } = await pool.query('SELECT id, name FROM public.subscription_plans WHERE id = $1', [intent.plan_id]);
+      await pool.query(
+        `UPDATE control.subscriptions
+            SET plan_id = $2, plan_name = $3, status = 'active', stripe_customer_id = $4, stripe_subscription_id = $5,
+                trial_end = NULL, updated_at = now()
+          WHERE tenant_id = $1`,
+        [intent.tenant_id, plan ? plan.id : intent.plan_id, plan ? plan.name : null, intent.stripe_customer_id, intent.stripe_subscription_id]);
+      await pool.query(`UPDATE control.signup_intents SET status='completed', completed_at=now() WHERE id=$1`, [intentId]);
+      try { require('../services/entitlements').invalidateEntitlements(); } catch { /* cache only */ }
+      await pool.query(
+        `INSERT INTO control.audit_log (operator_id, action, target_type, target_id, tenant_id, detail)
+         VALUES (NULL, 'tenant.self_serve_subscribe', 'tenant', $1, $1, $2)`,
+        [intent.tenant_id, JSON.stringify({ email: intent.email, planId: intent.plan_id })]).catch(() => {});
+      console.log(`[stripe-webhook] tenant ${intent.tenant_id} subscribed (plan ${intent.plan_id})`);
+    } catch (err) {
+      await pool.query(`UPDATE control.signup_intents SET status='failed', failure_reason=$2 WHERE id=$1`, [intentId, String(err.message).slice(0, 500)]).catch(() => {});
+      console.error(`[stripe-webhook] SUBSCRIBE FAILED for paid upgrade ${intentId}:`, err);
+    }
+    return true;
+  }
+
   try {
     const { provisionTenant } = require('../services/tenantProvisioning');
     const { tenant, adminUserId } = await provisionTenant(pool, {
@@ -223,6 +248,13 @@ async function handleSignupCheckout(pool, session) {
     ).catch((e) => console.error('[stripe-webhook] signup audit failed:', e.message));
 
     console.log(`[stripe-webhook] provisioned tenant ${tenant.slug} for ${intent.email}`);
+
+    // A plan bought with a free trial starts with sample data, like the no-card trial.
+    const { rows: [bought] } = await pool.query('SELECT trial_days FROM public.subscription_plans WHERE id = $1', [intent.plan_id]).catch(() => ({ rows: [] }));
+    if (intent.sample_data !== false && bought && Number(bought.trial_days) > 0) {
+      await require('../services/sampleData').seedSampleData(pool, { practiceId: tenant.practice_id, schemaName: tenant.schema_name, userId: adminUserId })
+        .catch((e) => console.error('[stripe-webhook] sample data failed (the workspace is fine):', e.message));
+    }
   } catch (err) {
     // Leave a durable trace: the customer has paid, so this needs operator attention
     // rather than a silent failure.

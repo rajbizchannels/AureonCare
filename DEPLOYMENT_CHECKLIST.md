@@ -1124,3 +1124,27 @@ What ships with it:
 
 Verify after deploying: open `https://app.aureoncare.tech/api/import/formats` (JSON, no sign-in), then in
 Settings → Import Data download the patients template and run a dry run with it.
+
+## Migration 104 — plan prices in euros (platform is the source of truth)
+
+Paste `backend/migrations/104_plan_prices_eur.sql` (safe to re-run): Essentials €49, Pro €79, Enterprise
+€119 a month, per practice. Practices see the new prices at once (they read the platform catalogue).
+
+Pricing flows one way: **platform → Stripe → practices**. In the platform console (Plans):
+- changing a linked plan's price pushes a new Stripe price automatically (the old one is archived);
+  "Create in Stripe" / "Re-create price in Stripe" does the same by hand;
+- "Apply price to existing subscribers" moves Stripe-billed practices to the new price from their next
+  renewal (no mid-period charge).
+Nothing is read back from Stripe into the catalogue.
+
+## Migration 105 — self-serve free trial and in-app subscribe
+
+Paste `backend/migrations/105_self_serve_trial.sql` (safe to re-run). Then:
+- **Free trial, no card:** the signup page offers every active, priced plan with trial days. The person
+  confirms their email (one-time link, 24 h) and the workspace is created as `trialing`, with sample
+  data unless they untick it. After the trial end date the workspace is read-only until they subscribe.
+- **Subscribe:** Settings → Subscription Plans → "Subscribe" goes to Stripe Checkout (days left on the
+  trial carry over); the webhook attaches the subscription to the practice.
+- **To sell through Stripe** a plan still needs "Create in Stripe" and "Sell on the public signup page"
+  in the platform console; without them the trial works and "Subscribe" says to contact you.
+- **Sample data** (trial workspaces): Settings → Import Data shows it with a "Remove sample data" button.

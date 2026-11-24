@@ -132,6 +132,23 @@ router.delete('/keys/:id', adminOnly, async (req, res) => {
   }
 });
 
+// ── sample data (free trials start with it) ──────────────────────────────────────
+router.get('/sample-data', adminOnly, async (req, res) => {
+  try { res.json(await require('../services/sampleData').sampleDataStatus(req.db)); }
+  catch (e) { console.error('[import] sample status:', e.message); res.json({ present: false, counts: {} }); }
+});
+
+router.delete('/sample-data', adminOnly, async (req, res) => {
+  try {
+    const out = await require('../services/sampleData').removeSampleData(pool(req), { schemaName: req.tenant.schemaName });
+    await logPhiRead(req, { resourceType: 'patient', action: 'delete', description: `Removed sample data: ${JSON.stringify(out.removed)}` });
+    res.json(out);
+  } catch (e) {
+    console.error('[import] remove sample data:', e.message);
+    res.status(500).json({ error: 'Could not remove the sample data.' });
+  }
+});
+
 // ── import ──────────────────────────────────────────────────────────────────────────
 router.post('/:kind/csv', importAuth, enforceActiveBilling, express.text({ type: ['text/csv', 'text/plain', 'application/csv'], limit: '10mb' }), (req, res) => {
   if (!kindOk(req, res)) return undefined;

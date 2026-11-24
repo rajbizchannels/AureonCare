@@ -29,7 +29,7 @@ Module.prototype.require = function (id) {
         },
         invoices: { createPreview: async () => ({ amount_due: 0, currency: 'usd', lines: { data: [] } }), list: async () => ({ data: [] }) },
         products: { create: async () => ({ id: 'prod_1' }), update: async (i) => ({ id: i }) },
-        prices: { create: async () => ({ id: 'price_new' }), update: async (i) => ({ id: i }) },
+        prices: { create: async (p) => { stripeCalls.push(['prices.create', p]); return { id: 'price_new' }; }, update: async (i, p) => { stripeCalls.push(['prices.update', { id: i, ...p }]); return { id: i }; } },
         checkout: { sessions: { create: async () => ({ id: 'cs', url: '/x' }) } },
       };
     };
@@ -199,6 +199,30 @@ const api = async (method, url, body, token) => {
   check('the rename carried onto the subscription snapshot', subSnap[0].plan_name === newKey);
   check('renaming to an existing key is refused',
         (await api('PUT', `/api/platform/plans/${plans[1].id}`, { name: newKey }, billing)).status === 409);
+
+  // ── the platform is the source of truth for prices: platform → Stripe → practices ──
+  await pool.query("UPDATE public.subscription_plans SET stripe_product_id='prod_x', stripe_price_id='price_old', price=10, currency='usd' WHERE id=$1", [plans[1].id]);
+  await pool.query("UPDATE control.subscriptions SET plan_id=$2, stripe_subscription_id='sub_t', status='active' WHERE tenant_id=$1", [t.tenant.id, plans[1].id]);
+  stripeCalls.length = 0;
+  // The console form always sends the current Stripe price id with the new price.
+  const repriced = await api('PUT', `/api/platform/plans/${plans[1].id}`, { price: 79, currency: 'eur', stripePriceId: 'price_old' }, billing);
+  const pushedPrice = stripeCalls.find((c) => c[0] === 'prices.create');
+  check(`a new price on the platform is pushed to Stripe (got ${repriced.status} ${JSON.stringify(repriced.body.stripeSync)})`,
+        repriced.status === 200 && repriced.body.stripeSync && repriced.body.stripeSync.pushed === true
+        && pushedPrice && pushedPrice[1].unit_amount === 7900 && pushedPrice[1].currency === 'eur');
+  check('...the old Stripe price is archived', stripeCalls.some((c) => c[0] === 'prices.update' && c[1].id === 'price_old' && c[1].active === false));
+  const { rows: [linked] } = await pool.query('SELECT price, currency, stripe_price_id FROM public.subscription_plans WHERE id=$1', [plans[1].id]);
+  check('...and the catalogue keeps the platform price, linked to the new Stripe price',
+        Number(linked.price) === 79 && linked.currency === 'eur' && linked.stripe_price_id === 'price_new');
+  stripeCalls.length = 0;
+  const noPrice = await api('PUT', `/api/platform/plans/${plans[1].id}`, { displayName: 'Pro' }, billing);
+  check('saving without a price change pushes nothing', noPrice.status === 200 && !noPrice.body.stripeSync && !stripeCalls.some((c) => c[0] === 'prices.create'));
+  check('readonly cannot apply prices to subscribers',
+        (await api('POST', `/api/platform/plans/${plans[1].id}/apply-to-subscribers`, {}, readonly)).status === 403);
+  const applied = await api('POST', `/api/platform/plans/${plans[1].id}/apply-to-subscribers`, {}, billing);
+  const moved = stripeCalls.find((c) => c[0] === 'subscriptions.update');
+  check(`existing subscribers move to the new price at renewal (got ${applied.status} ${JSON.stringify(applied.body)})`,
+        applied.status === 200 && applied.body.moved >= 1 && moved && moved[1].proration_behavior === 'none' && moved[1].items[0].price === 'price_new');
 
   // ── operator management ───────────────────────────────────────────────────
   const created = await api('POST', '/api/platform/operators',

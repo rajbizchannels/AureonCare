@@ -54,14 +54,21 @@ function schemaOutOfDate(err, res, what) {
 const APP_URL = () =>
   (process.env.FRONTEND_URL || 'http://localhost:3000').split(',')[0].trim().replace(/\/$/, '');
 
-/** Plans a customer may actually buy: active, self-serve, and mapped to a Stripe price. */
+// A plan can be started as a free trial without a card when it is active, priced (not the
+// on-premises licence) and has trial days. It can be bought straight away through Stripe
+// Checkout when it is also marked self-serve and linked to a Stripe price.
+const TRIAL_ELIGIBLE = `is_active = true AND COALESCE(trial_days, 0) > 0 AND COALESCE(price, 0) > 0`;
+const CHECKOUT_ELIGIBLE = `is_active = true AND self_serve = true AND stripe_price_id IS NOT NULL`;
+
+/** Plans offered on the signup page, with what each allows: a free trial, checkout, or both. */
 router.get('/plans', async (req, res) => {
   try {
     const { rows } = await req.app.locals.pool.query(
-      `SELECT id, name, display_name, description, price, billing_cycle,
-              max_users, max_providers, max_patients, features, trial_days, free_months
+      `SELECT id, name, display_name, description, price, currency, billing_cycle,
+              max_users, max_providers, max_patients, features, trial_days, free_months,
+              (${TRIAL_ELIGIBLE}) AS can_trial, (${CHECKOUT_ELIGIBLE}) AS can_checkout
          FROM public.subscription_plans
-        WHERE is_active = true AND self_serve = true AND stripe_price_id IS NOT NULL
+        WHERE (${TRIAL_ELIGIBLE}) OR (${CHECKOUT_ELIGIBLE})
         ORDER BY price ASC NULLS FIRST, id ASC`
     );
     res.json(rows);
@@ -180,6 +187,102 @@ router.post('/', signupLimiter, async (req, res) => {
     // A constraint the request broke is the caller's to fix, not a server fault.
     if (sendDbError(res, err, 'Signup failed. Please try again.')) return;
     res.status(500).json({ error: 'Signup failed. Please try again.' });
+  }
+});
+
+// ── Free trial, no card ──────────────────────────────────────────────────────────
+//
+//   POST /api/signup/trial            { practiceName, email, password, firstName?, lastName?, planId?, country?, timezone?, sampleData? }
+//                                     → 202: a confirmation link is emailed; nothing is created yet
+//   GET  /api/signup/trial/verify?t=  the link: creates the workspace as 'trialing' (with sample
+//                                     data unless declined) and sends the person to sign in
+//
+// The email is proven before anything is provisioned, so nobody can open a workspace in
+// someone else's name. Only SHA-256 of the link token is stored; the link works once, for 24 h.
+const crypto = require('crypto');
+const sha = (t) => crypto.createHash('sha256').update(String(t)).digest('hex');
+const verifyLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 30, standardHeaders: true, legacyHeaders: false,
+  store: storeFor('signup-verify'), skip: () => process.env.AC_RL_TEST_BYPASS === '1' && process.env.NODE_ENV !== 'production' });
+
+router.post('/trial', signupLimiter, async (req, res) => {
+  const pool = req.app.locals.pool;
+  const { practiceName, email, password, firstName, lastName, planId, country, timezone, sampleData } = req.body || {};
+  if (!practiceName || !String(practiceName).trim()) return res.status(400).json({ error: 'Practice name is required' });
+  const cleanEmail = String(email || '').trim().toLowerCase();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(cleanEmail)) return res.status(400).json({ error: 'A valid email address is required' });
+  const pw = await checkNewPassword(password);
+  if (!pw.valid) return res.status(400).json({ error: pw.message });
+  try {
+    const existing = await pool.query('SELECT 1 FROM public.users WHERE LOWER(email) = $1', [cleanEmail]);
+    if (existing.rows.length) return res.status(409).json({ error: 'An account with that email already exists. Please sign in instead.' });
+    const { rows: [plan] } = await pool.query(
+      `SELECT id, display_name, name, trial_days FROM public.subscription_plans
+        WHERE ${TRIAL_ELIGIBLE} AND ($1::int IS NULL OR id = $1)
+        ORDER BY price ASC NULLS FIRST, id ASC LIMIT 1`, [planId ? Number(planId) : null]);
+    if (!plan) return res.status(400).json({ error: 'That plan has no free trial.' });
+
+    const token = crypto.randomBytes(32).toString('base64url');
+    await pool.query(`UPDATE control.signup_intents SET status = 'expired' WHERE LOWER(email) = $1 AND status = 'pending'`, [cleanEmail]);
+    await pool.query(
+      `INSERT INTO control.signup_intents
+         (email, practice_name, first_name, last_name, password_hash, plan_id, country, timezone, kind, verify_token_hash, sample_data)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'trial',$9,$10)`,
+      [cleanEmail, String(practiceName).trim().slice(0, 200), firstName || null, lastName || null, await hashPassword(password),
+       plan.id, country ? String(country).slice(0, 2).toUpperCase() : null, timezone || null, sha(token), sampleData !== false]);
+
+    const { sendEmail, buildEmailHtml, emailButton, escapeHtml } = require('../services/notificationService');
+    const link = `${APP_URL()}/api/signup/trial/verify?t=${token}`;
+    await sendEmail(cleanEmail, 'Confirm your email to start your AureonCare trial', buildEmailHtml(
+      'Start your free trial', '#08B39C', `Hello${firstName ? ` ${escapeHtml(firstName)}` : ''},`,
+      `Confirm your email address and your <strong>${escapeHtml(String(practiceName).trim())}</strong> workspace will be ready in seconds — ${plan.trial_days} days free, no card needed.`,
+      [['Plan', plan.display_name || plan.name], ['Trial', `${plan.trial_days} days`]],
+      emailButton(link, 'Confirm and start my trial') + '<p style="font-size:13px;color:#64748B">The link works once, for 24 hours. If you did not ask for this, ignore this email.</p>',
+      { practiceName: 'AureonCare' })).catch((e) => console.error('[signup] trial email failed:', e.message));
+    res.status(202).json({ sent: true, trialDays: plan.trial_days });
+  } catch (err) {
+    if (schemaOutOfDate(err, res, 'starting a trial')) return;
+    console.error('[signup] trial error:', err);
+    res.status(500).json({ error: 'Could not start the trial. Please try again.' });
+  }
+});
+
+router.get('/trial/verify', verifyLimiter, async (req, res) => {
+  const pool = req.app.locals.pool;
+  const back = (q) => res.redirect(303, `${APP_URL()}/?${q}`);
+  try {
+    // Claim the intent: only one click provisions, however often the link is opened.
+    const { rows: [intent] } = await pool.query(
+      `UPDATE control.signup_intents SET status = 'provisioning', verify_token_hash = NULL
+        WHERE verify_token_hash = $1 AND kind = 'trial' AND status = 'pending' AND expires_at > now()
+        RETURNING *`, [sha(req.query.t || '')]);
+    if (!intent) return back('trial=expired');
+    const { rows: [plan] } = await pool.query('SELECT trial_days FROM public.subscription_plans WHERE id = $1', [intent.plan_id]);
+    const trialEnd = new Date(Date.now() + (Number(plan && plan.trial_days) || 14) * 86400000);
+    try {
+      const { provisionTenant } = require('../services/tenantProvisioning');
+      const { tenant, adminUserId } = await provisionTenant(pool, {
+        name: intent.practice_name, planId: intent.plan_id, country: intent.country, timezone: intent.timezone,
+        subscription: { status: 'trialing', trialEnd, currentPeriodEnd: trialEnd },
+        admin: { email: intent.email, passwordHash: intent.password_hash, firstName: intent.first_name, lastName: intent.last_name },
+      });
+      await pool.query(`UPDATE control.signup_intents SET status = 'completed', tenant_id = $2, completed_at = now() WHERE id = $1`, [intent.id, tenant.id]);
+      await pool.query(
+        `INSERT INTO control.audit_log (operator_id, action, target_type, target_id, tenant_id, detail)
+         VALUES (NULL, 'tenant.self_serve_trial', 'tenant', $1, $1, $2)`,
+        [tenant.id, JSON.stringify({ email: intent.email, practice: intent.practice_name, adminUserId, trialEnd })]).catch(() => {});
+      if (intent.sample_data) {
+        await require('../services/sampleData').seedSampleData(pool, { practiceId: tenant.practice_id, schemaName: tenant.schema_name, userId: adminUserId })
+          .catch((e) => console.error('[signup] sample data failed (the workspace is fine):', e.message));
+      }
+      return back('trial=ready');
+    } catch (err) {
+      await pool.query(`UPDATE control.signup_intents SET status = 'failed', failure_reason = $2 WHERE id = $1`, [intent.id, String(err.message).slice(0, 500)]).catch(() => {});
+      console.error('[signup] trial provisioning failed:', err);
+      return back('trial=failed');
+    }
+  } catch (err) {
+    console.error('[signup] trial verify error:', err);
+    return back('trial=failed');
   }
 });
 

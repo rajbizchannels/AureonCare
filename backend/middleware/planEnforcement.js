@@ -265,7 +265,9 @@ async function enforceActiveBilling(req, res, next) {
     if (ent && ent.enforcementEnabled && ent.isReadOnly) {
       return res.status(402).json({
         error: 'SubscriptionInactive',
-        message: `This workspace is read-only because its subscription is ${ent.status}. Update billing to resume changes.`,
+        message: ent.status === 'trial_expired'
+          ? 'Your free trial has ended, so this workspace is read-only. Choose a plan under Settings → Subscription Plans to carry on — your data is all here.'
+          : `This workspace is read-only because its subscription is ${ent.status}. Update billing to resume changes.`,
         status: ent.status,
         upgrade_required: true,
       });

@@ -40,6 +40,7 @@ const { BCRYPT_COST, checkNewPassword } = require('../utils/passwordPolicy');
 const { invalidateEntitlements } = require('../services/entitlements');
 const { provisionTenant } = require('../services/tenantProvisioning');
 const billing = require('../services/platformBilling');
+const planPricing = require('../services/planPricing'); // platform catalogue -> Stripe and practices
 const ledger = require('../services/billingLedger');
 const subscriptionChanges = require('../services/subscriptionChanges');
 const { issuePlatformCookies, clearPlatformCookies } = require('../utils/authCookies');
@@ -364,7 +365,7 @@ router.post('/plans', requireOperatorRole('billing'), async (req, res) => {
       `INSERT INTO public.subscription_plans
          (name, display_name, description, price, currency, billing_cycle,
           max_users, max_providers, max_patients, trial_days, is_active, self_serve)
-       VALUES ($1,$2,$3,$4,COALESCE(LOWER($5),'usd'),COALESCE($6,'monthly'),
+       VALUES ($1,$2,$3,$4,COALESCE(LOWER($5),'eur'),COALESCE($6,'monthly'),
                COALESCE($7,-1),COALESCE($8,-1),COALESCE($9,-1),COALESCE($10,0),
                COALESCE($11,true), false)
        RETURNING *`,
@@ -403,30 +404,11 @@ router.post('/plans/:id/stripe', requireOperatorRole('billing'), async (req, res
     return res.status(503).json({ error: 'Platform billing is not configured (set AC_STRIPE_SK).' });
   }
   try {
-    const { rows } = await pool.query('SELECT * FROM public.subscription_plans WHERE id = $1', [req.params.id]);
-    const plan = rows[0];
-    if (!plan) return res.status(404).json({ error: 'Plan not found' });
-
-    const result = await billing.pushPlanToStripe({
-      name: plan.display_name || plan.name,
-      description: plan.description,
-      amount: plan.price,
-      currency: plan.currency || 'usd',
-      billingCycle: plan.billing_cycle,
-      productId: plan.stripe_product_id,
-      previousPriceId: plan.stripe_price_id,
-    });
-
-    const { rows: updated } = await pool.query(
-      `UPDATE public.subscription_plans
-          SET stripe_product_id = $2, stripe_price_id = $3, updated_at = CURRENT_TIMESTAMP
-        WHERE id = $1 RETURNING *`,
-      [plan.id, result.productId, result.priceId]
-    );
+    const { plan: updated, archivedPriceId } = await planPricing.pushPlanPrice(pool, req.params.id);
     await logPlatformAction(pool, { operatorId: req.operator.id, action: 'plan.push_to_stripe',
-      targetType: 'plan', targetId: String(plan.id),
-      detail: { priceId: result.priceId, archived: result.archivedPriceId }, ip: clientIp(req) });
-    res.json({ ...updated[0], archivedPriceId: result.archivedPriceId });
+      targetType: 'plan', targetId: String(updated.id),
+      detail: { priceId: updated.stripe_price_id, archived: archivedPriceId }, ip: clientIp(req) });
+    res.json({ ...updated, archivedPriceId });
   } catch (e) {
     if (e.statusCode && !e.type) return res.status(e.statusCode).json({ error: e.message });
     // Surface Stripe's own message AND its classification. "Invalid API Key", "you do not
@@ -438,6 +420,25 @@ router.post('/plans/:id/stripe', requireOperatorRole('billing'), async (req, res
       stripeType: e.type || null,
       stripeCode: e.code || null,
     });
+  }
+});
+
+/**
+ * Move the practices Stripe bills on this plan to its current price, from their next renewal
+ * (no mid-period charge). Practices not billed by Stripe already follow the catalogue.
+ */
+router.post('/plans/:id/apply-to-subscribers', requireOperatorRole('billing'), async (req, res) => {
+  const pool = req.app.locals.pool;
+  if (!billing.isConfigured()) return res.status(503).json({ error: 'Platform billing is not configured (set AC_STRIPE_SK).' });
+  try {
+    const out = await planPricing.applyPriceToSubscribers(pool, req.params.id);
+    await logPlatformAction(pool, { operatorId: req.operator.id, action: 'plan.apply_price_to_subscribers',
+      targetType: 'plan', targetId: String(req.params.id), detail: { ...out, errors: out.errors.length }, ip: clientIp(req) });
+    res.json(out);
+  } catch (e) {
+    if (e.statusCode && !e.type) return res.status(e.statusCode).json({ error: e.message });
+    console.error('[platform] apply price failed:', e.message);
+    res.status(502).json({ error: stripeErrorMessage(e) });
   }
 });
 
@@ -475,6 +476,8 @@ router.put('/plans/:id', requireOperatorRole('billing'), async (req, res) => {
     }
   }
   try {
+    const { rows: [before] } = await pool.query(
+      'SELECT price, currency, billing_cycle, stripe_price_id FROM public.subscription_plans WHERE id = $1', [req.params.id]);
     const { rows } = await pool.query(
       `UPDATE public.subscription_plans
           SET self_serve = COALESCE($2, self_serve),
@@ -511,8 +514,36 @@ router.put('/plans/:id', requireOperatorRole('billing'), async (req, res) => {
     }
     await logPlatformAction(pool, { operatorId: req.operator.id, action: 'plan.update',
       targetType: 'plan', targetId: String(req.params.id),
-      detail: { selfServe, stripePriceId, trialDays, isActive }, ip: clientIp(req) });
-    res.json(rows[0]);
+      detail: { selfServe, stripePriceId, trialDays, isActive, price, currency, billingCycle }, ip: clientIp(req) });
+
+    // The platform is the source of truth for prices: a price change on a plan already sold
+    // through Stripe is pushed to Stripe now (new Price, old one archived), and practices see
+    // the new catalogue price at once. Existing subscribers move only when an operator applies
+    // it ("Apply to existing subscribers"), and then from their next renewal.
+    planPricing.refreshPractices();
+    let stripeSync = null;
+    const after = rows[0];
+    const priceChanged = before && (Number(before.price) !== Number(after.price) || before.currency !== after.currency
+      || before.billing_cycle !== after.billing_cycle);
+    // Push unless the operator pasted a different Stripe price id in the same save.
+    const priceIdKept = stripePriceId === undefined || String(stripePriceId || '') === String((before && before.stripe_price_id) || '');
+    if (priceChanged && after.stripe_price_id && priceIdKept) {
+      if (!billing.isConfigured()) {
+        stripeSync = { pushed: false, error: 'Stripe is not configured; the new price is not in Stripe yet.' };
+      } else {
+        try {
+          const pushed = await planPricing.pushPlanPrice(pool, after.id);
+          stripeSync = { pushed: true, priceId: pushed.plan.stripe_price_id, archivedPriceId: pushed.archivedPriceId };
+          await logPlatformAction(pool, { operatorId: req.operator.id, action: 'plan.push_to_stripe',
+            targetType: 'plan', targetId: String(after.id), detail: { priceId: stripeSync.priceId, archived: stripeSync.archivedPriceId, auto: true }, ip: clientIp(req) });
+          return res.json({ ...pushed.plan, stripeSync });
+        } catch (e) {
+          // The catalogue keeps the new price either way; say plainly that Stripe did not follow.
+          stripeSync = { pushed: false, error: stripeErrorMessage(e) };
+        }
+      }
+    }
+    res.json(stripeSync ? { ...after, stripeSync } : after);
   } catch (e) {
     console.error('Plan update error:', e);
     // A constraint the request broke is the caller's to fix, not a server fault.
