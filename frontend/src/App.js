@@ -131,6 +131,7 @@ function App() {
     setTheme,
     language,
     planTier,
+    planResolved,
     selectedItem,
     setSelectedItem,
     showNotifications,
@@ -184,7 +185,8 @@ function App() {
 
   // The practice's specialty configuration: what the navigation hides, and what the
   // labels say. Fails quiet — an unconfigured practice gets the generic product.
-  const { setup: practiceSetup, reload: reloadPracticeSetup, shouldOfferWizard } = usePracticeSetup(user);
+  // Practice setup is not part of the free Listing plan; wait until the plan is known.
+  const { setup: practiceSetup, reload: reloadPracticeSetup, shouldOfferWizard } = usePracticeSetup(planResolved && planTier !== 'listing' ? user : null);
   // Dismissed for this session only. Pressing "Skip for now" INSIDE the wizard is what
   // records the decision on the server; waving the banner away should not.
   const [wizardDismissed, setWizardDismissed] = React.useState(false);
@@ -261,7 +263,8 @@ function App() {
   const [unreadMessages, setUnreadMessages] = React.useState(0);
 
   React.useEffect(() => {
-    if (!isAuthenticated) {
+    // Not signed in, or on the free Listing plan (no messaging): no badge, no polling.
+    if (!isAuthenticated || !planResolved || planTier === 'listing') {
       setUnreadMessages(0);
       return undefined;
     }
@@ -283,7 +286,7 @@ function App() {
     // currentModule is a dependency so the badge re-checks on navigation:
     // leaving the messages view should clear it straight away rather than
     // leave a stale count sitting there for the rest of the minute.
-  }, [isAuthenticated, currentModule]);
+  }, [isAuthenticated, currentModule, planTier, planResolved]);
 
   // ── App-shell navigation ──────────────────────────────────────────────────
   // The shell tracks which sub-module (tab) of a module is on screen. It is
@@ -438,6 +441,10 @@ function App() {
   const renderModule = () => {
     switch (activeModule) {
       case 'dashboard':
+        // The dashboard loads plan-specific data; wait until the plan is known.
+        if (!planResolved) {
+          return <div className={`p-8 text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-500'}`}>Loading…</div>;
+        }
         if (planTier === 'listing') {
           return (
             <ListingHomeView theme={theme} api={api} appointments={appointments} addNotification={addNotification}

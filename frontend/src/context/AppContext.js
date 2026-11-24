@@ -86,6 +86,9 @@ const AppProvider = ({ children }) => {
   const [language, setLanguage] = useState('en');
   const [theme, setTheme] = useState('dark');
   const [planTier, setPlanTier] = useState('professional');
+  // True once the practice's real plan is known (read at the start of fetchAllData). Screens that
+  // differ by plan — the Listing home, the messages badge — wait for it.
+  const [planResolved, setPlanResolved] = useState(false);
   const [selectedItem, setSelectedItem] = useState(null);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
@@ -319,6 +322,7 @@ const AppProvider = ({ children }) => {
     } catch { /* no URL params */ }
   }, []);
   useEffect(() => { if (isAuthenticated) setSessionNotice(null); }, [isAuthenticated]);
+  useEffect(() => { if (!isAuthenticated) setPlanResolved(false); }, [isAuthenticated]);
 
   /**
    * Fetches all data from the backend API
@@ -329,7 +333,7 @@ const AppProvider = ({ children }) => {
     // A portal patient has no staff session: every loader below is a staff route and
     // answered 401/403 (users, claims, appointments of the whole practice…). The patient
     // portal loads its own data through /api/patient-portal/:id.
-    if (user?.role === 'patient') { setLoading(false); return; }
+    if (user?.role === 'patient') { setPlanResolved(true); setLoading(false); return; }
     setLoading(true);
     setError(null);
     try {
@@ -341,6 +345,7 @@ const AppProvider = ({ children }) => {
       const tier = sub && (sub.tier || sub.plan_name);
       if (listing) setPlanTier('listing');
       else if (tier && ['essentials', 'clinical_pro', 'enterprise', 'onprem'].includes(tier)) setPlanTier(tier);
+      setPlanResolved(true);
       const none = () => Promise.resolve([]);
       const dataPromises = [
         api.getAppointments().catch(err => { console.error('Failed to fetch appointments:', err); return []; }),
@@ -595,6 +600,7 @@ const AppProvider = ({ children }) => {
     theme,
     setTheme,
     planTier,
+    planResolved,
     setPlanTier,
     selectedItem,
     setSelectedItem,
