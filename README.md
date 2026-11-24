@@ -77,7 +77,8 @@ database schema (schema-per-tenant); one sign-in can belong to several practices
 - **My notifications**: each staff member chooses, per notification and per channel (in the app,
   email, WhatsApp), what they receive
 - Notifications by email and WhatsApp (approved templates), secure messaging
-- **Data import** of patients and appointments: CSV with published templates (Settings → Import Data)
+- **Data import** of suppliers, products & stock, services & prices, insurers, patients and appointments:
+  CSV or Excel with published templates (Settings → Import Data)
   or the API with practice API keys — checked first, all or nothing, re-runnable
   ([`docs/integrations/DATA_IMPORT.md`](docs/integrations/DATA_IMPORT.md))
 - Audit log of PHI access and changes; backup, restore and archiving
