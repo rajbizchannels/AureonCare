@@ -1215,3 +1215,19 @@ How it works for practices (Settings → Subscription Plans → "What your plan 
   the new tier's room, moved to its add-on prices.
 - Hosted storage (message attachments, profile photos) is capped per tier; records and documents go to the
   practice's own cloud storage and do not count.
+
+## Migration 109 — the free Listing plan
+
+Paste `backend/migrations/109_listing_plan.sql` (safe to re-run). It adds the plan `listing` (€0, no end date,
+feature `listing`): 1 provider, 1 location, 1 staff user, 1 GB of hosted photos.
+
+- **What it covers:** the public practice page and "Find a practice" listing, online booking requests (and the
+  booking setup they need: providers, availability, appointment types), confirmed bookings (read only), clinic
+  settings, locations, notifications, the Subscription page. Everything else answers 402 "choose a plan"
+  (`middleware/listingGate.js`, run inside `authenticate`), and the app shows only those screens.
+- **Signing up:** the signup page offers "Create my free listing" — email confirmed by link, like the trial.
+- **Moving up:** from Listing a practice starts ONE free trial of a paid plan (Settings → Subscription Plans, or
+  the Listing home) or subscribes through Stripe Checkout; a free switch to a paid plan is refused.
+- **Moving down:** a practice Stripe does not bill (e.g. a trial that ended) can return to Listing for free if it
+  fits its limits; it cannot start another trial.
+- New practices are never put on Listing by default (provisioning skips it).

@@ -86,7 +86,7 @@ const SignupPage = ({ theme = 'light', onBack, onSignIn }) => {
     // server enforces it regardless.
     if (form.password.length < 12) return setError('Password must be at least 12 characters.');
     const chosen = plans.find((p) => p.id === planId);
-    const mode = how || (chosen && chosen.can_trial ? 'trial' : 'pay');
+    const mode = how || (chosen && (chosen.can_trial || chosen.can_list) ? 'trial' : 'pay');
 
     setSubmitting(true);
     if (mode === 'trial') {
@@ -97,7 +97,7 @@ const SignupPage = ({ theme = 'light', onBack, onSignIn }) => {
           country: form.country || undefined, timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
           sampleData: withSamples,
         });
-        setTrialSent({ email: form.email, trialDays: out.trialDays });
+        setTrialSent({ email: form.email, trialDays: out.trialDays, listing: out.listing });
       } catch (err) {
         setError(err.message || 'Could not start the trial. Please try again.');
       } finally { setSubmitting(false); }
@@ -137,7 +137,9 @@ const SignupPage = ({ theme = 'light', onBack, onSignIn }) => {
         <div className={`max-w-md mx-auto p-6 rounded-xl border ${card}`} role="status">
           <Mail className="text-blue-600" size={28} />
           <h1 className={`text-2xl font-semibold mt-3 ${text}`}>Check your email</h1>
-          <p className={`mt-2 ${muted}`}>We sent a link to <strong className={text}>{trialSent.email}</strong>. Click it and your workspace is ready in seconds — {trialSent.trialDays} days free, no card needed.</p>
+          <p className={`mt-2 ${muted}`}>We sent a link to <strong className={text}>{trialSent.email}</strong>. {trialSent.listing
+            ? 'Click it and your free listing is ready in seconds — your public page and online booking requests, free for as long as you like.'
+            : `Click it and your workspace is ready in seconds — ${trialSent.trialDays} days free, no card needed.`}</p>
           <p className={`mt-3 text-sm ${muted}`}>The link works once, for 24 hours. Nothing there? Check spam, or go back and try again.</p>
           {onSignIn && <button type="button" onClick={onSignIn} className="mt-5 text-blue-600 hover:underline text-sm">Go to sign in</button>}
         </div>
@@ -199,6 +201,9 @@ const SignupPage = ({ theme = 'light', onBack, onSignIn }) => {
                     {' · '}unlimited staff
                   </div>
                 )}
+                {p.can_list && (
+                  <div className="mt-2 text-xs text-green-600 font-medium">Free for as long as you like · public page and booking requests</div>
+                )}
                 {p.trial_days > 0 && p.can_trial && (
                   <div className="mt-2 text-xs text-green-600 font-medium">{p.trial_days}-day free trial · no card needed</div>
                 )}
@@ -226,7 +231,7 @@ const SignupPage = ({ theme = 'light', onBack, onSignIn }) => {
               <input className={input} maxLength={2} placeholder="Country code (e.g. US)"
                      value={form.country} onChange={set('country')} />
 
-              {selected && selected.can_trial ? (
+              {selected && selected.can_trial && !selected.can_list ? (
                 <label className={`flex items-start gap-2 text-sm ${muted}`}>
                   <input type="checkbox" className="mt-1" checked={withSamples} onChange={(e) => setWithSamples(e.target.checked)} />
                   <span>Add sample patients, appointments, services and stock so I can explore. You can remove them any time.</span>
@@ -253,6 +258,13 @@ const SignupPage = ({ theme = 'light', onBack, onSignIn }) => {
               {promoError && <div className="text-sm text-red-600">{promoError}</div>}
               </>) : null}
 
+              {selected && selected.can_list ? (
+                <button type="submit" disabled={submitting || !planId || loadingPlans}
+                        className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-blue-600 text-white font-medium disabled:opacity-60">
+                  {submitting ? <Loader2 className="animate-spin" size={16} /> : <Sparkles size={16} />}
+                  {submitting ? 'Creating…' : 'Create my free listing'}
+                </button>
+              ) : null}
               {selected && selected.can_trial ? (
                 <button type="submit" disabled={submitting || !planId || loadingPlans}
                         className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg bg-blue-600 text-white font-medium disabled:opacity-60">
@@ -269,7 +281,8 @@ const SignupPage = ({ theme = 'light', onBack, onSignIn }) => {
                 </button>
               ) : null}
               <p className={`text-xs text-center ${muted}`}>
-                {selected && selected.can_checkout ? 'Payment is handled by Stripe. Your card details never reach our servers.' : 'No card needed for the trial. Choose a plan inside the app when you are ready.'}
+                {selected && selected.can_list ? 'No card, no end date. Start a free trial of a paid plan from inside the app whenever you like.'
+                  : selected && selected.can_checkout ? 'Payment is handled by Stripe. Your card details never reach our servers.' : 'No card needed for the trial. Choose a plan inside the app when you are ready.'}
               </p>
               {onSignIn && (
                 <p className={`text-sm text-center ${muted}`}>

@@ -71,7 +71,8 @@ const api = async (method, url, body, token) => {
   // Two plans with Stripe prices.
   await pool.query(`UPDATE public.subscription_plans SET stripe_price_id = 'price_' || id, self_serve = true`);
   const { rows: plans } = await pool.query(
-    'SELECT id, name FROM public.subscription_plans WHERE is_active = true ORDER BY price ASC NULLS FIRST, id');
+    // Not the free Listing plan (migration 109): it is moved to only through its own rules.
+    "SELECT id, name FROM public.subscription_plans WHERE is_active = true AND COALESCE(features->>'listing', 'false') <> 'true' ORDER BY price ASC NULLS FIRST, id");
   const planA = plans[0], planB = plans[1];
 
   // A practice with its own subscription, billed through Stripe.

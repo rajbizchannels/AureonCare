@@ -124,7 +124,8 @@ const DAY = 86400;
   const RUN = crypto.randomBytes(4).toString('hex');
   await pool.query("UPDATE public.subscription_plans SET stripe_price_id = 'price_' || id, self_serve = true");
   const { rows: plans } = await pool.query(
-    'SELECT id, name, display_name, price, currency, billing_cycle FROM public.subscription_plans WHERE is_active = true ORDER BY price ASC NULLS FIRST, id');
+    // Not the free Listing plan (migration 109): it is moved to only through its own rules.
+    "SELECT id, name, display_name, price, currency, billing_cycle FROM public.subscription_plans WHERE is_active = true AND COALESCE(features->>'listing', 'false') <> 'true' ORDER BY price ASC NULLS FIRST, id");
   const planA = plans[0]; const planB = plans[1]; const planC = plans[2] || plans[0];
 
   const t = await provisionTenant(pool, { name: `Change Clinic ${RUN}`, planId: planA.id });

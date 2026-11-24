@@ -120,6 +120,16 @@ const SubscriptionPlansPanel = ({ theme, api, addNotification }) => {
 
   const currentPlanId = current && current.plan_id;
   const onTrial = current && !current.billing_linked && ['trialing', 'trial_expired'].includes(current.status);
+  // The free Listing plan moves up by a free trial (once) or by subscribing — never a free switch.
+  const onListing = Boolean(current && current.features && (current.features.listing === true || current.features.listing === 'true'));
+  const startTrial = async (plan) => {
+    setBusy(true); setError('');
+    try {
+      await api.startPlanTrial(plan.id);
+      addNotification?.('success', `Your ${plan.trial_days}-day free trial of ${plan.display_name || plan.name} has started.`);
+      window.location.reload();
+    } catch (e) { setError(e.message || 'Could not start the trial.'); setBusy(false); }
+  };
   const trialDaysLeft = current && current.trial_end ? Math.max(0, Math.ceil((new Date(current.trial_end) - Date.now()) / 86400000)) : null;
 
   return (
@@ -143,7 +153,12 @@ const SubscriptionPlansPanel = ({ theme, api, addNotification }) => {
               : `Free trial: ${trialDaysLeft} day${trialDaysLeft === 1 ? '' : 's'} left${current.trial_end ? ` (until ${new Date(current.trial_end).toLocaleDateString()})` : ''}. Subscribe any time — you will not be charged before the trial ends.`}
           </div>
         )}
-        {current && current.billing_linked === false && !onTrial && (
+        {onListing && (
+          <div className={`mt-3 p-3 rounded-lg border text-sm ${dark ? 'bg-blue-500/10 border-blue-500/30 text-blue-100' : 'bg-blue-50 border-blue-200 text-blue-900'}`} role="status">
+            You are on the free Listing plan: your public page and online booking requests.{current.trial_end ? ' Subscribe to a plan below for the rest of AureonCare.' : ' Start a free trial of any plan below — no card needed — or subscribe.'}
+          </div>
+        )}
+        {current && current.billing_linked === false && !onTrial && !onListing && (
           <p className={`mt-2 text-sm ${muted}`}>
             This practice is not billed through Stripe, so plan changes are recorded but
             nothing is charged.
@@ -231,7 +246,15 @@ const SubscriptionPlansPanel = ({ theme, api, addNotification }) => {
                   {plan.trial_days > 0 && <li>{plan.trial_days}-day trial</li>}
                 </ul>
 
-                {onTrial ? (
+                {onListing && !isCurrent && Number(plan.price) > 0 ? (
+                  <div className="mt-5 space-y-2">
+                    {plan.trial_days > 0 && !current.trial_end ? (
+                      <button onClick={() => startTrial(plan)} disabled={busy} className="w-full py-2 rounded-lg font-medium bg-blue-600 text-white disabled:opacity-60">Start {plan.trial_days}-day free trial</button>
+                    ) : null}
+                    <button onClick={() => subscribe(plan)} disabled={busy || !plan.purchasable}
+                      className={`w-full py-2 rounded-lg font-medium border ${card} ${text} disabled:opacity-60`}>{plan.purchasable ? 'Subscribe' : 'Contact us to subscribe'}</button>
+                  </div>
+                ) : onTrial ? (
                   <button onClick={() => subscribe(plan)} disabled={busy || !plan.purchasable}
                     className="mt-5 w-full py-2 rounded-lg font-medium bg-blue-600 text-white disabled:opacity-60">
                     {!plan.purchasable ? 'Contact us to subscribe' : isCurrent ? 'Subscribe to this plan' : 'Subscribe to this plan instead'}

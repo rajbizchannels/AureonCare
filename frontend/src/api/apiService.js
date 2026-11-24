@@ -4182,6 +4182,15 @@ const api = {
     return d;
   },
 
+  // From the free Listing plan: start the (one) free trial of a paid plan.
+  startPlanTrial: async (planId) => {
+    const r = await authenticatedFetch(`${API_BASE_URL}/plans/start-trial`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ plan_id: planId }),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d.error || 'Could not start the trial');
+    return d;
+  },
   // Providers / locations included, extra bought, in use; hosted storage.
   getPlanUsage: async () => {
     const r = await authenticatedFetch(`${API_BASE_URL}/plans/usage`);

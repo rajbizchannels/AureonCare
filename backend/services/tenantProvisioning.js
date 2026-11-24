@@ -143,7 +143,9 @@ async function provisionTenant(pool, opts) {
     const { rows: planRows } = await client.query(
       planId
         ? 'SELECT id, name FROM public.subscription_plans WHERE id = $1'
+        // Never the free Listing plan by default: a practice is put on it only on purpose.
         : `SELECT id, name FROM public.subscription_plans WHERE is_active = true
+              AND COALESCE(features->>'listing', 'false') <> 'true'
              ORDER BY price ASC NULLS LAST, id ASC LIMIT 1`,
       planId ? [planId] : []
     );

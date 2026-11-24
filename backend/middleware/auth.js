@@ -217,7 +217,8 @@ const authenticate = async (req, res, next) => {
     // SEC-05 (S3): attach tenant context (defensive; transparent until routes adopt it).
     await attachTenantContext(pool, req, user.id, membership ? membership.practiceId : null);
 
-    next();
+    // A practice on the free Listing plan reaches only its public page and booking requests.
+    return require('./listingGate').listingGate(req, res, next);
   } catch (error) {
     console.error('Authentication error:', error);
     res.status(500).json({ error: 'Authentication failed' });

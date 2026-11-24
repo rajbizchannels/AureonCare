@@ -156,7 +156,7 @@ Mobile app: see [`mobile/README.md`](mobile/README.md) (`cd mobile && npm instal
   new practices are cloned from. Run both, in that order, on every deploy.
 - The full history (global 001–100, tenant 001–016) is one baseline,
   `backend/migrations/baseline/000_baseline.sql`, used only for empty databases; the historical
-  files are kept in `backend/migrations/history/`. Next numbers: global **109**, tenant **020**.
+  files are kept in `backend/migrations/history/`. Next numbers: global **110**, tenant **020**.
 - Production is migrated by pasting the new migration into the Supabase SQL editor; migrations
   that touch practice schemas are written to fan out to every schema themselves.
 - Health checks: `npm run check:schema-health`, `npm run check:tenant-scoping`, `npm run check:db-role`.

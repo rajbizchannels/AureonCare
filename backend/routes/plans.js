@@ -65,6 +65,7 @@ router.get('/current', async (req, res) => {
                 CASE WHEN s.status = 'trialing' AND s.stripe_subscription_id IS NULL AND s.trial_end < now()
                      THEN 'trial_expired' ELSE s.status END AS status,
                 p.stripe_price_id IS NOT NULL AS plan_can_checkout,
+                COALESCE(to_jsonb(p)->>'tier', p.name) AS tier,
                 (s.stripe_subscription_id IS NOT NULL) AS billing_linked,
                 p.display_name AS plan_display_name, p.description AS plan_description,
                 p.price AS plan_price, p.currency, p.billing_cycle,
@@ -93,6 +94,41 @@ router.get('/current', async (req, res) => {
   } catch (error) {
     console.error('Error fetching current plan:', error);
     res.status(500).json({ error: 'Failed to fetch current plan' });
+  }
+});
+
+/**
+ * POST /api/plans/start-trial { plan_id } — a practice on the free Listing plan starts the free
+ * trial of a paid plan (admin). Once per practice: a practice that has had a trial subscribes.
+ */
+router.post('/start-trial', authorize('admin'), async (req, res) => {
+  const pool = req.app.locals.pool;
+  const practiceId = req.user.practiceId;
+  if (!practiceId) return res.status(403).json({ error: 'Your account is not linked to a practice.' });
+  try {
+    const { rows: [sub] } = await pool.query(
+      `SELECT s.*, p.features AS from_features FROM control.subscriptions s LEFT JOIN public.subscription_plans p ON p.id = s.plan_id
+        WHERE s.practice_id = $1`, [practiceId]);
+    if (!sub) return res.status(409).json({ error: 'This practice has no subscription record. Contact support.' });
+    const onListing = sub.from_features && (sub.from_features.listing === true || sub.from_features.listing === 'true');
+    if (!onListing) return res.status(409).json({ error: 'A free trial starts from the free Listing plan.' });
+    if (sub.trial_end) return res.status(409).json({ error: 'This practice has already had its free trial — subscribe to a plan instead.' });
+    const { rows: [plan] } = await pool.query(
+      'SELECT * FROM public.subscription_plans WHERE id = $1 AND is_active = true AND COALESCE(trial_days, 0) > 0 AND COALESCE(price, 0) > 0', [req.body && req.body.plan_id]);
+    if (!plan) return res.status(400).json({ error: 'That plan has no free trial.' });
+    const trialEnd = new Date(Date.now() + plan.trial_days * 86400000);
+    await pool.query(
+      `UPDATE control.subscriptions SET plan_id = $2, plan_name = $3, status = 'trialing', trial_end = $4, current_period_end = $4, updated_at = now()
+        WHERE practice_id = $1`, [practiceId, plan.id, plan.name, trialEnd]);
+    invalidateEntitlements(practiceId);
+    await pool.query(
+      `INSERT INTO control.audit_log (operator_id, action, target_type, target_id, tenant_id, detail)
+       VALUES (NULL, 'tenant.listing_trial_start', 'tenant', $1, $1, $2)`,
+      [sub.tenant_id, JSON.stringify({ by: req.user.email, plan: plan.name, trialEnd })]).catch(() => {});
+    res.json({ plan_id: plan.id, plan_name: plan.name, status: 'trialing', trial_end: trialEnd });
+  } catch (e) {
+    console.error('Error starting a trial from Listing:', e.message);
+    res.status(500).json({ error: 'Could not start the trial.' });
   }
 });
 
@@ -291,6 +327,18 @@ router.put('/current', authorize('admin'), async (req, res) => {
       return res.status(400).json({ error: 'You are already on that plan.' });
     }
 
+    // The free Listing plan (migration 109). Leaving it for a paid plan goes through a free trial
+    // or Stripe Checkout — never a free switch. Moving TO it is for practices Stripe does not bill
+    // (e.g. a trial that ended), as long as they fit its limits (checked below).
+    const isListingPlan = (p) => Boolean(p && p.features && (p.features.listing === true || p.features.listing === 'true'));
+    const { rows: [fromPlan] } = sub.plan_id ? await pool.query('SELECT features FROM public.subscription_plans WHERE id = $1', [sub.plan_id]) : { rows: [] };
+    if (isListingPlan(fromPlan) && Number(plan.price) > 0) {
+      return res.status(402).json({ error: 'Start a free trial or subscribe to move from the free Listing plan.', upgrade_required: true });
+    }
+    if (isListingPlan(plan) && sub.stripe_subscription_id && sub.status !== 'canceled') {
+      return res.status(409).json({ error: 'This practice is billed by Stripe. Cancel the subscription first (contact support), then move to the free Listing plan.' });
+    }
+
     // A smaller tier must fit what the practice already uses: providers and locations above the new
     // tier's cap would be left without a place. Extras carry over, trimmed to the new tier's room.
     const addons = require('../services/planAddons');
@@ -341,10 +389,13 @@ router.put('/current', authorize('admin'), async (req, res) => {
 
     const { rows: updated } = await pool.query(
       `UPDATE control.subscriptions
-          SET plan_id = $2, plan_name = $3, seats = $4, extra_locations = $5, updated_at = now()
+          SET plan_id = $2, plan_name = $3, seats = $4, extra_locations = $5, updated_at = now(),
+              -- Back on the free Listing plan the workspace is active again; trial_end is kept, since
+              -- it records that the practice has had its one free trial.
+              status = CASE WHEN $6::boolean THEN 'active' ELSE status END
         WHERE practice_id = $1
         RETURNING plan_id, plan_name, status, current_period_end`,
-      [req.user.practiceId, plan.id, plan.name, nextExtras.provider, nextExtras.location]
+      [req.user.practiceId, plan.id, plan.name, nextExtras.provider, nextExtras.location, isListingPlan(plan)]
     );
     invalidateEntitlements(req.user.practiceId);
 
