@@ -4141,6 +4141,18 @@ const api = {
     return data;
   },
 
+  // Free trial, no card: emails a confirmation link; the workspace is made when it is clicked.
+  startTrial: async (payload) => {
+    const r = await fetch(`${API_BASE_URL}/signup/trial`, {
+      method: 'POST',
+      headers: publicPostHeaders(),
+      body: JSON.stringify(payload),
+    });
+    const data = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(data.error || 'Could not start the trial');
+    return data;
+  },
+
   signupStatus: async (intentId) => {
     const r = await fetch(`${API_BASE_URL}/signup/${intentId}/status`);
     if (!r.ok) throw new Error('Failed to check signup status');
@@ -4168,6 +4180,15 @@ const api = {
     return d;
   },
 
+  // Start paying (e.g. at the end of a free trial): returns Stripe Checkout's URL.
+  subscribeCheckout: async (planId) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/plans/checkout`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ plan_id: planId }),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || 'Could not start checkout');
+    return data;
+  },
   changePlan: async (planId, prorationDate) => {
     const r = await authenticatedFetch(`${API_BASE_URL}/plans/current`, {
       method: 'PUT',

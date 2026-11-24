@@ -55,6 +55,7 @@ function safeEqual(a, b) {
  */
 const SESSION_INDEPENDENT = new Set([
   'POST /api/signup',
+  'POST /api/signup/trial',   // a free-trial request: same reasoning as POST /api/signup
   'POST /api/invites/accept',
   'POST /api/team-access/join',
   // Only ever removes the caller's own session cookies (SEC-40). A forged call can at

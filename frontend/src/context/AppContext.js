@@ -298,6 +298,25 @@ const AppProvider = ({ children }) => {
     setNotifications([]); setTasks([]); setUsers([]);
     setSelectedItem(null); setEditingItem(null);
   }, [isAuthenticated]);
+  // Arriving from the trial confirmation link, or back from subscribing on Stripe.
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const trial = params.get('trial');
+      const notices = {
+        ready: 'Your free trial workspace is ready — sign in with the email and password you chose. It includes sample data to explore; remove it any time under Settings → Import Data.',
+        expired: 'That confirmation link has expired or was already used. If your workspace is ready, sign in; otherwise start the trial again.',
+        failed: 'We could not create your workspace. Please try again, or contact support@aureoncare.tech.',
+      };
+      const msg = trial ? notices[trial] : (params.get('subscribed') === '1' ? 'Thank you — your subscription is being set up. It shows under Settings → Subscription Plans within a minute.' : null);
+      if (msg) {
+        setSessionNotice(msg);
+        params.delete('trial'); params.delete('subscribed');
+        const q = params.toString();
+        window.history.replaceState(null, '', window.location.pathname + (q ? `?${q}` : '') + window.location.hash);
+      }
+    } catch { /* no URL params */ }
+  }, []);
   useEffect(() => { if (isAuthenticated) setSessionNotice(null); }, [isAuthenticated]);
 
   /**

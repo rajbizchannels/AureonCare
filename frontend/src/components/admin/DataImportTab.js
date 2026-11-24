@@ -51,10 +51,32 @@ const DataImportTab = ({ theme, addNotification }) => {
   const [keysNote, setKeysNote] = useState(null);
   const [newKeyName, setNewKeyName] = useState('');
   const [newKey, setNewKey] = useState(null);
+  const [samples, setSamples] = useState(null); // { present, counts }
+  const [removingSamples, setRemovingSamples] = useState(false);
 
   useEffect(() => {
     apiFetch('/import/formats').then(readJson).then(setFormats).catch(() => setFormats(null));
   }, []);
+
+  const loadSamples = useCallback(async () => {
+    const r = await apiFetch('/import/sample-data');
+    if (r.ok) setSamples(await readJson(r));
+  }, []);
+  useEffect(() => { loadSamples().catch(() => {}); }, [loadSamples]);
+
+  const removeSamples = async () => {
+    if (!window.confirm('Remove all sample data? Only records marked as samples are deleted; anything you entered yourself stays.')) return;
+    setRemovingSamples(true);
+    try {
+      const r = await apiFetch('/import/sample-data', { method: 'DELETE' });
+      const b = await readJson(r);
+      if (!r.ok) throw new Error(b.error || 'Could not remove the sample data.');
+      const kept = Object.values(b.kept || {}).reduce((a, n) => a + n, 0);
+      addNotification?.('success', kept ? `Sample data removed. ${kept} sample record${kept === 1 ? ' was' : 's were'} kept because you have used them (e.g. billed).` : 'Sample data removed.');
+      loadSamples();
+    } catch (e) { addNotification?.('alert', e.message); }
+    finally { setRemovingSamples(false); }
+  };
 
   const loadKeys = useCallback(async () => {
     const r = await apiFetch('/import/keys');
@@ -133,6 +155,18 @@ const DataImportTab = ({ theme, addNotification }) => {
         <h2 className={`text-xl font-semibold ${strong}`}>Import data</h2>
         <p className={`text-sm mt-1 ${muted}`}>Bring your data from your previous system using the templates below (CSV or Excel). Each file is checked first; nothing is saved until you confirm, and an import is all or nothing. Running the same file twice adds nothing twice.</p>
       </div>
+
+      {samples && samples.present ? (
+        <div className={`rounded-lg border p-4 flex flex-wrap items-center justify-between gap-3 ${dark ? 'border-amber-500/40 bg-amber-500/10 text-amber-100' : 'border-amber-300 bg-amber-50 text-amber-900'}`} data-testid="sample-data-banner">
+          <p className="text-sm">
+            <strong>This workspace includes sample data</strong> so you can explore:{' '}
+            {Object.entries(samples.counts).filter(([, n]) => n > 0).map(([k, n]) => `${n} ${k}`).join(', ')}, and their appointments. Remove it before you import your own.
+          </p>
+          <button type="button" onClick={removeSamples} disabled={removingSamples} className={`${btn} bg-amber-600 hover:bg-amber-700 text-white`}>
+            {removingSamples ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />} Remove sample data
+          </button>
+        </div>
+      ) : null}
 
       {/* 1. What to import, in order */}
       <div className={card}>

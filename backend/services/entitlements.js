@@ -24,7 +24,7 @@ async function getTenantEntitlements(pool, practiceId) {
   let rows;
   try {
     ({ rows } = await pool.query(
-      `SELECT s.status, s.seats, s.enforcement_enabled, s.current_period_end,
+      `SELECT s.status, s.seats, s.enforcement_enabled, s.current_period_end, s.trial_end, s.stripe_subscription_id,
               sp.name AS plan_name, sp.max_users, sp.max_patients, sp.max_providers, sp.features
          FROM control.subscriptions s
          LEFT JOIN public.subscription_plans sp ON sp.id = s.plan_id
@@ -38,7 +38,11 @@ async function getTenantEntitlements(pool, practiceId) {
   if (rows.length === 0) return null;
 
   const r = rows[0];
-  const status = r.status || 'active';
+  // A free trial not billed by Stripe ends on its own date: after it the workspace is
+  // read-only (nothing is lost) until the practice subscribes. Stripe-billed trials are
+  // ended by Stripe's own webhook instead.
+  const trialOver = r.status === 'trialing' && !r.stripe_subscription_id && r.trial_end && new Date(r.trial_end) < new Date();
+  const status = trialOver ? 'trial_expired' : (r.status || 'active');
   const providerLimit = (r.max_providers === UNLIMITED || r.max_providers == null)
     ? (r.max_providers ?? null)
     : r.max_providers + (r.seats || 0);
@@ -53,7 +57,8 @@ async function getTenantEntitlements(pool, practiceId) {
     enforcementEnabled: r.enforcement_enabled !== false,
     currentPeriodEnd: r.current_period_end || null,
     isActive: status === 'active' || status === 'trialing',
-    isReadOnly: status === 'past_due' || status === 'canceled',
+    isReadOnly: status === 'past_due' || status === 'canceled' || status === 'trial_expired',
+    trialEnd: r.trial_end || null,
     providerLimit,
   };
   _cache.set(practiceId, { ent, ts: Date.now() });

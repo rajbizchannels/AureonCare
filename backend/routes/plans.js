@@ -43,7 +43,10 @@ router.get('/current', async (req, res) => {
 
     if (practiceId) {
       const { rows } = await pool.query(
-        `SELECT s.plan_id, s.plan_name, s.status, s.seats, s.trial_end, s.current_period_end,
+        `SELECT s.plan_id, s.plan_name, s.seats, s.trial_end, s.current_period_end,
+                CASE WHEN s.status = 'trialing' AND s.stripe_subscription_id IS NULL AND s.trial_end < now()
+                     THEN 'trial_expired' ELSE s.status END AS status,
+                p.stripe_price_id IS NOT NULL AS plan_can_checkout,
                 (s.stripe_subscription_id IS NOT NULL) AS billing_linked,
                 p.display_name AS plan_display_name, p.description AS plan_description,
                 p.price AS plan_price, p.currency, p.billing_cycle,
@@ -72,6 +75,51 @@ router.get('/current', async (req, res) => {
   } catch (error) {
     console.error('Error fetching current plan:', error);
     res.status(500).json({ error: 'Failed to fetch current plan' });
+  }
+});
+
+/**
+ * Subscribe this practice through Stripe Checkout — how a free trial (or any practice Stripe
+ * does not bill yet) becomes a paying one. Returns the Checkout URL; the signed webhook
+ * attaches the subscription to this practice when payment is set up (signup intent kind
+ * 'upgrade'). Days left on a trial carry over, so nobody pays before their trial ends.
+ */
+router.post('/checkout', authorize('admin'), async (req, res) => {
+  const pool = req.app.locals.pool;
+  const planId = req.body && req.body.plan_id;
+  const practiceId = req.user.practiceId;
+  const tenantId = req.tenant && req.tenant.tenantId;
+  if (!planId) return res.status(400).json({ error: 'Plan ID is required' });
+  if (!practiceId || !tenantId) return res.status(403).json({ error: 'Your account is not linked to a practice.' });
+  if (!billing.isConfigured()) return res.status(503).json({ error: 'Online payment is not available yet. Please contact support to subscribe.' });
+  try {
+    const { rows: [plan] } = await pool.query(
+      'SELECT id, stripe_price_id FROM public.subscription_plans WHERE id = $1 AND is_active = true', [planId]);
+    if (!plan) return res.status(404).json({ error: 'Plan not found' });
+    if (!plan.stripe_price_id) return res.status(409).json({ error: 'That plan cannot be bought online yet. Please contact support.' });
+    const { rows: [sub] } = await pool.query(
+      'SELECT status, trial_end, stripe_subscription_id FROM control.subscriptions WHERE practice_id = $1', [practiceId]);
+    if (sub && sub.stripe_subscription_id && sub.status !== 'canceled') {
+      return res.status(409).json({ error: 'This practice is already billed by Stripe — change plan instead.' });
+    }
+    const { rows: [pr] } = await pool.query('SELECT name FROM public.practices WHERE id = $1', [practiceId]);
+    const trialLeft = sub && sub.trial_end ? Math.max(0, Math.floor((new Date(sub.trial_end) - Date.now()) / 86400000)) : 0;
+    await pool.query(`UPDATE control.signup_intents SET status = 'expired' WHERE tenant_id = $1 AND kind = 'upgrade' AND status = 'pending'`, [tenantId]);
+    await pool.query(`UPDATE control.signup_intents SET status = 'expired' WHERE LOWER(email) = LOWER($1) AND status = 'pending'`, [req.user.email]);
+    const { rows: [intent] } = await pool.query(
+      `INSERT INTO control.signup_intents (email, practice_name, first_name, last_name, password_hash, plan_id, kind, tenant_id, sample_data)
+       VALUES ($1, $2, $3, $4, '', $5, 'upgrade', $6, false) RETURNING id`,
+      [req.user.email, (pr && pr.name) || 'Practice', req.user.firstName || null, req.user.lastName || null, plan.id, tenantId]);
+    const app = (process.env.FRONTEND_URL || 'http://localhost:3000').split(',')[0].trim().replace(/\/$/, '');
+    const session = await billing.createSubscriptionCheckout({
+      priceId: plan.stripe_price_id, email: req.user.email, clientReferenceId: intent.id, trialDays: trialLeft,
+      successUrl: `${app}/?subscribed=1`, cancelUrl: `${app}/`,
+    });
+    await pool.query('UPDATE control.signup_intents SET stripe_checkout_session_id = $2 WHERE id = $1', [intent.id, session.id]);
+    res.status(201).json({ checkoutUrl: session.url });
+  } catch (error) {
+    console.error('Error starting subscription checkout:', error.message);
+    res.status(502).json({ error: 'Could not start checkout. Please try again.' });
   }
 });
 

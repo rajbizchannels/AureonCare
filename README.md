@@ -76,6 +76,9 @@ database schema (schema-per-tenant); one sign-in can belong to several practices
   (web and mobile)
 - **My notifications**: each staff member chooses, per notification and per channel (in the app,
   email, WhatsApp), what they receive
+- **Appointment reminders** to patients (their portal channel choices), providers and front desk
+  (daily summary), each on the channels they chose; scheduled by Vercel Cron (`CRON_SECRET`)
+- **Self-serve free trial** (no card, email-confirmed) with sample data; subscribe in-app via Stripe
 - Notifications by email and WhatsApp (approved templates), secure messaging
 - **Data import** of suppliers, products & stock, services & prices, insurers, patients and appointments:
   CSV or Excel with published templates (Settings → Import Data)
@@ -153,7 +156,7 @@ Mobile app: see [`mobile/README.md`](mobile/README.md) (`cd mobile && npm instal
   new practices are cloned from. Run both, in that order, on every deploy.
 - The full history (global 001–100, tenant 001–016) is one baseline,
   `backend/migrations/baseline/000_baseline.sql`, used only for empty databases; the historical
-  files are kept in `backend/migrations/history/`. Next numbers: global **104**, tenant **019**.
+  files are kept in `backend/migrations/history/`. Next numbers: global **107**, tenant **020**.
 - Production is migrated by pasting the new migration into the Supabase SQL editor; migrations
   that touch practice schemas are written to fan out to every schema themselves.
 - Health checks: `npm run check:schema-health`, `npm run check:tenant-scoping`, `npm run check:db-role`.

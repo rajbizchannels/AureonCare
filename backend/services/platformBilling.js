@@ -294,6 +294,30 @@ async function changeSubscriptionPlan({ subscriptionId, newPriceId, prorationDat
   });
 }
 
+/**
+ * Move a subscription to the plan's new price from its NEXT renewal — the platform changed the
+ * plan's price, not the customer's plan. No proration and no charge now; the current period
+ * stays at the price already paid. → { changed: boolean, fromPriceId }
+ */
+async function movePriceAtRenewal({ subscriptionId, newPriceId }) {
+  const s = stripe();
+  const sub = await s.subscriptions.retrieve(subscriptionId);
+  const item = sub.items.data[0];
+  if (!item) {
+    const e = new Error('That subscription has no billable item.');
+    e.statusCode = 409;
+    throw e;
+  }
+  const fromPriceId = item.price && item.price.id;
+  if (fromPriceId === newPriceId) return { changed: false, fromPriceId };
+  if (['canceled', 'incomplete_expired'].includes(sub.status)) return { changed: false, fromPriceId, skipped: sub.status };
+  await s.subscriptions.update(subscriptionId, {
+    items: [{ id: item.id, price: newPriceId }],
+    proration_behavior: 'none',
+  });
+  return { changed: true, fromPriceId };
+}
+
 /** A customer's invoices, newest first — the authoritative document list from Stripe. */
 async function listInvoices(customerId, limit = 24) {
   const list = await stripe().invoices.list({ customer: customerId, limit });
@@ -418,6 +442,7 @@ const retrieveCheckoutSession = (id) =>
   stripe().checkout.sessions.retrieve(id, { expand: ['subscription'] });
 
 module.exports = {
+  movePriceAtRenewal,
   isConfigured, createSubscriptionCheckout, findPromotionCode,
   describePromotionCode, retrieveCheckoutSession, pushPlanToStripe, recurringFor,
   previewPlanChange, changeSubscriptionPlan, listInvoices,

@@ -80,7 +80,8 @@ const report = (err) => {
   const sBill = await api('GET', '/notification-settings', A.billing_manager.token);
   check('billing manager: offered claims, payments and low stock', ['claim.status_changed', 'payment.received', 'inventory.low_stock'].every((k) => keys(sBill.body).includes(k)));
   const sRec = await api('GET', '/notification-settings', A.receptionist.token);
-  check('receptionist: none of these (nothing to opt into)', sRec.status === 200 && keys(sRec.body).length === 0);
+  // Front desk: only the daily summary of tomorrow's appointments (added with appointment reminders).
+  check("receptionist: only tomorrow's appointment summary", sRec.status === 200 && JSON.stringify(keys(sRec.body)) === JSON.stringify(['schedule.daily_digest']));
   const sAdm = await api('GET', '/notification-settings', A.admin.token);
   const admLow = obj(sAdm.body).events.find((e) => e.key === 'inventory.low_stock');
   check('admin: low stock offered, OFF by default with the fallback explained', admLow && admLow.channels.in_app.enabled === false && /only when nobody else/.test(admLow.note || ''));

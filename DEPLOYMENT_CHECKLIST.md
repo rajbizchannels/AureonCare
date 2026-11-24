@@ -1124,3 +1124,50 @@ What ships with it:
 
 Verify after deploying: open `https://app.aureoncare.tech/api/import/formats` (JSON, no sign-in), then in
 Settings → Import Data download the patients template and run a dry run with it.
+
+## Migration 104 — plan prices in euros (platform is the source of truth)
+
+Paste `backend/migrations/104_plan_prices_eur.sql` (safe to re-run): Essentials €49, Pro €79, Enterprise
+€119 a month, per practice. Practices see the new prices at once (they read the platform catalogue).
+
+Pricing flows one way: **platform → Stripe → practices**. In the platform console (Plans):
+- changing a linked plan's price pushes a new Stripe price automatically (the old one is archived);
+  "Create in Stripe" / "Re-create price in Stripe" does the same by hand;
+- "Apply price to existing subscribers" moves Stripe-billed practices to the new price from their next
+  renewal (no mid-period charge).
+Nothing is read back from Stripe into the catalogue.
+
+## Migration 105 — self-serve free trial and in-app subscribe
+
+Paste `backend/migrations/105_self_serve_trial.sql` (safe to re-run). Then:
+- **Free trial, no card:** the signup page offers every active, priced plan with trial days. The person
+  confirms their email (one-time link, 24 h) and the workspace is created as `trialing`, with sample
+  data unless they untick it. After the trial end date the workspace is read-only until they subscribe.
+- **Subscribe:** Settings → Subscription Plans → "Subscribe" goes to Stripe Checkout (days left on the
+  trial carry over); the webhook attaches the subscription to the practice.
+- **To sell through Stripe** a plan still needs "Create in Stripe" and "Sell on the public signup page"
+  in the platform console; without them the trial works and "Subscribe" says to contact you.
+- **Sample data** (trial workspaces): Settings → Import Data shows it with a "Remove sample data" button.
+
+## Migration 106 — appointment reminders
+
+1. Paste `backend/migrations/106_appointment_reminders.sql` (safe to re-run): a per-practice delivery
+   log so each reminder is sent once per person and channel.
+2. In Vercel → Settings → Environment Variables (Production) add **`CRON_SECRET`**: a random string of
+   16+ characters. Vercel Cron sends it automatically; without it the job refuses to run.
+3. Redeploy. `vercel.json` schedules `GET /api/internal/cron/reminders` daily at 06:00 UTC — the most the
+   Hobby plan allows. Each run sends reminders for appointments in the next 24 hours (or the provider's
+   own "hours before"). For reminders closer to exactly 24 h, run it hourly: on Vercel Pro change the
+   schedule to `0 * * * *`, or call the URL hourly from any scheduler with
+   `Authorization: Bearer <CRON_SECRET>`. Running more often never sends anything twice.
+
+Who receives what — each person's own choice:
+- **Patients:** on the channels they chose in the patient portal — email unless switched off, WhatsApp
+  only if switched on (SMS is not sent: no SMS provider). A provider's booking settings can turn patient
+  reminders off or change the hours before.
+- **Providers:** My notifications → "A reminder before each of my appointments" (default: in the app).
+- **Front desk, nurses, admins:** My notifications → "Tomorrow's appointments in the practice", one
+  summary a day (default: in the app; email and WhatsApp give counts only, no patient names).
+- Practices whose workspace is read-only (subscription ended) are skipped.
+
+Verify: after the first run, Vercel → Logs shows `[cron] reminders: {...}` with the counts sent.

@@ -288,6 +288,7 @@ app.use('/api/insurance-payers', require('./routes/insurance-payers'));
 app.use('/api/intake-forms', require('./routes/intake-forms'));
 app.use('/api/backup', require('./routes/backup'));
 app.use('/api/import', require('./routes/dataImport'));          // CSV / API data import + practice API keys
+app.use('/api/internal/cron', require('./routes/cron'));         // scheduled jobs (CRON_SECRET)
 app.use('/api/archive', require('./routes/archive'));
 app.use('/api/archive-rules', require('./routes/archiveRules'));
 app.use('/api/audit', require('./routes/audit'));
