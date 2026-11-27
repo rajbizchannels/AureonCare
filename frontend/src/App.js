@@ -326,6 +326,15 @@ function App() {
 
   const canMessage = isPatient || hasModuleAccess('messages');
 
+  // Back from Stripe's Card payments onboarding: open that settings screen (it re-reads the status).
+  React.useEffect(() => {
+    if (!isAuthenticated || isPatient) return;
+    try {
+      if (new URLSearchParams(window.location.search).has('card_payments')) handleSelectNavItem({ module: 'admin', tab: 'cardPayments' });
+    } catch { /* no URL */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, isPatient]);
+
   const goToMessages = () => {
     if (isPatient) {
       handleSelectNavItem({ module: 'patientPortal' });
@@ -420,6 +429,8 @@ function App() {
     if (/^\/join\/?$/.test(path)) return { kind: 'join' };
     // Public directory search (Phase 3).
     if (/^\/find\/?$/.test(path)) return { kind: 'find' };
+    // Back from paying an invoice on Stripe (card payments, Stripe Connect).
+    if (/^\/pay\/done\/?$/.test(path)) return { kind: 'payDone', status: params.get('status'), fromPortal: params.get('from') === 'portal' };
     // Patient portal invitation sent by the practice (Phase 1 onboarding).
     if (/^\/portal\/activate\/?$/.test(path) && params.get('token')) {
       return { kind: 'portalActivate', token: params.get('token') };
@@ -853,6 +864,21 @@ function App() {
   }
   if (publicRoute?.kind === 'signupComplete') {
     return <SignupCompletePage theme={theme} intentId={publicRoute.intentId} onSignIn={goToSignIn} />;
+  }
+  if (publicRoute?.kind === 'payDone') {
+    const paid = publicRoute.status === 'paid';
+    return (
+      <div className={`min-h-screen flex items-center justify-center p-6 ${theme === 'dark' ? 'bg-slate-900 text-white' : 'bg-gray-50 text-gray-900'}`}>
+        <div className={`max-w-md w-full rounded-2xl border p-8 text-center ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-gray-200'}`} data-testid="pay-done">
+          <h1 className="text-2xl font-semibold">{paid ? 'Thank you — payment received' : 'Payment not made'}</h1>
+          <p className={`mt-3 text-sm ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`}>
+            {paid ? 'Your practice has been paid and the invoice will show as paid shortly. A receipt is on its way by email.'
+              : 'Nothing was charged. You can use the same link again, or pay from your patient portal.'}
+          </p>
+          <a href="/" className="mt-6 inline-block px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-medium">{publicRoute.fromPortal ? 'Back to your portal' : 'Sign in'}</a>
+        </div>
+      </div>
+    );
   }
   if (publicRoute?.kind === 'find') {
     return <DirectorySearchPage theme={theme} />;

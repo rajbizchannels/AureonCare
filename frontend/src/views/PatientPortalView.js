@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import SickNoteRequestPanel from '../components/patients/SickNoteRequestPanel';
+import PortalBillsPanel from '../components/portal/PortalBillsPanel';
 import { openPdf } from '../utils/openPdf';
-import { Calendar, FileText, User, Edit, Check, X, Lock, Trash2, XCircle, Upload, Printer, MessageCircle, Activity, Pill, Plus, Heart, Star, Clock, ClipboardList, AlertCircle, ChevronRight, Search, Stethoscope, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Calendar, FileText, User, Edit, Check, X, Lock, Trash2, XCircle, Upload, Printer, MessageCircle, Activity, Pill, Plus, Heart, Star, Clock, ClipboardList, AlertCircle, ChevronRight, Search, Stethoscope, ToggleLeft, ToggleRight, Receipt } from 'lucide-react';
 import DynamicFormRenderer from '../components/forms/DynamicFormRenderer';
 import { FORM_TEMPLATES } from '../data/formTemplates';
 import { formatDate, formatTime, toLocalDateString } from '../utils/formatters';
@@ -3443,6 +3444,7 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
           { id: 'prescriptions', label: t.prescriptionsTab || 'Prescriptions', icon: Pill, count: prescriptions.length },
           { id: 'records', label: t.recordsTab || 'Records', icon: FileText, count: medicalRecords.length },
           { id: 'sickNotes', label: t.sickNotes || 'Sick Notes', icon: FileText, count: sickNotes.length || null },
+          { id: 'bills', label: t.billsTab || 'Bills', icon: Receipt, count: null },
           { id: 'forms', label: 'Forms Requested', icon: ClipboardList, count: pendingForms.filter(f => isFormOutstanding(f)).length || null, highlight: pendingForms.filter(f => isFormOutstanding(f)).length > 0 },
           { id: 'messages', label: t.messages || 'Messages', icon: MessageCircle, count: unreadMessages || null, highlight: unreadMessages > 0 }
         ].map((tab) => (
@@ -3482,6 +3484,7 @@ const PatientPortalView = ({ theme, api, addNotification, user, activeTab: shell
       {currentView === 'records' && renderMedicalRecords()}
       {currentView === 'sickNotes' && renderSickNotes()}
       {currentView === 'forms' && renderForms()}
+      {currentView === 'bills' && <PortalBillsPanel theme={theme} api={api} patientId={user.id} addNotification={addNotification} />}
       {currentView === 'messages' && (
         <SecureMessaging
           theme={theme}

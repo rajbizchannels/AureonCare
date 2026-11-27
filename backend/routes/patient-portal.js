@@ -1449,6 +1449,41 @@ router.delete('/:patientId/waitlist/:entryId', async (req, res) => {
   }
 });
 
+// The patient's own invoices (sent ones; drafts stay with the practice), and whether the practice
+// takes card payments, so the portal can offer "Pay".
+router.get('/:patientId/invoices', async (req, res) => {
+  try {
+    const { rows } = await portalDb(req).query(
+      `SELECT id, invoice_number, status, issue_date, due_date, total_amount, amount_paid, balance_due
+         FROM billing_invoices WHERE patient_id = $1 AND status NOT IN ('draft', 'cancelled', 'canceled', 'void')
+        ORDER BY issue_date DESC NULLS LAST, created_at DESC LIMIT 100`, [req.params.patientId]);
+    let cardPayments = false;
+    let currency = null;
+    try {
+      const st = await require('../services/stripeConnect').status(req.app.locals.pool, req.tenant.practiceId);
+      cardPayments = st.ready && st.platformConfigured;
+      currency = await require('../services/planCatalog').practiceCurrency(req.app.locals.pool, req.tenant.practiceId);
+    } catch (_) { /* no practice row: no card payments */ }
+    res.json({ invoices: rows.map(portalCamel), cardPayments, currency });
+  } catch (error) {
+    if (error.code === '42P01') return res.json({ invoices: [], cardPayments: false });
+    console.error('[portal] invoices:', error.message);
+    res.status(500).json({ error: 'Failed to load invoices' });
+  }
+});
+router.post('/:patientId/invoices/:invoiceId/pay', async (req, res) => {
+  const { fail, appUrl } = require('./cardPayments');
+  try {
+    const db = portalDb(req);
+    const { rows: [own] } = await db.query('SELECT id FROM billing_invoices WHERE id = $1 AND patient_id = $2', [req.params.invoiceId, req.params.patientId]);
+    if (!own) return res.status(404).json({ error: 'Invoice not found' });
+    const back = `${appUrl()}/pay/done`;
+    const out = await require('../services/stripeConnect').createPayLink(req.app.locals.pool, db, req.tenant.practiceId, own.id,
+      { successUrl: `${back}?status=paid&from=portal`, cancelUrl: `${back}?status=cancelled&from=portal` });
+    res.json({ url: out.url, amount: out.amount, currency: out.currency });
+  } catch (e) { fail(res, e, 'start the payment'); }
+});
+
 // Notification channel preferences (email / sms / whatsapp).
 router.get('/:patientId/notification-preferences', async (req, res) => {
   try {

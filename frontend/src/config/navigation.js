@@ -852,6 +852,15 @@ export const getNavigation = (t = {}) => [
             tab: ADMIN_TABS.PLANS,
             access: 'adminPanel',
           },
+          {
+            id: 'settings.cardPayments',
+            label: t.cardPayments || 'Card payments',
+            description: t.cardPaymentsNavDescription || 'Patients pay invoices by card, into your own Stripe account',
+            icon: Wallet,
+            module: 'admin',
+            tab: ADMIN_TABS.CARD_PAYMENTS,
+            access: 'adminPanel',
+          },
         ],
       },
       {

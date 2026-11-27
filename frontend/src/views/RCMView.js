@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Plus, Eye, Edit, Trash2, CreditCard, Shield, FileCheck, DollarSign, Search, AlertCircle, TrendingUp, X, Receipt, FileText, Tag, Bell, ArrowRightLeft } from 'lucide-react';
+import { Plus, Eye, Edit, Trash2, CreditCard, Shield, FileCheck, DollarSign, Search, AlertCircle, TrendingUp, X, Receipt, FileText, Tag, Bell, ArrowRightLeft, Link2 } from 'lucide-react';
 import { formatCurrency, formatDate } from '../utils/formatters';
 import NewPaymentForm from '../components/forms/NewPaymentForm';
 import NewClaimForm from '../components/forms/NewClaimForm';
@@ -1372,6 +1372,19 @@ const RCMView = ({
                   <td className="px-6 py-4"><span className={`px-3 py-1 rounded-full text-xs font-medium ${statusBadge(invoice.status)}`}>{invoice.status?.replace('_', ' ')}</span></td>
                   <td className="px-6 py-4">
                     <div className="flex gap-2">
+                      {parseFloat(invoice.balanceDue) > 0 && !['draft', 'paid', 'cancelled', 'void'].includes(invoice.status) ? (
+                        <button onClick={async () => {
+                          try {
+                            const { url } = await api.createInvoicePayLink(invoice.id);
+                            let copied = false;
+                            try { await navigator.clipboard.writeText(url); copied = true; } catch { /* clipboard blocked */ }
+                            if (!copied) window.prompt('Card payment link — copy it and send it to the patient:', url);
+                            addNotification('success', copied ? 'Card payment link copied — send it to the patient. It works for 23 hours.' : 'Card payment link created.');
+                          } catch (err) { addNotification('alert', err.message); }
+                        }} className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-200'}`} title="Pay link (card)" data-testid="invoice-pay-link">
+                          <Link2 className={`w-4 h-4 ${theme === 'dark' ? 'text-blue-400' : 'text-blue-600'}`} />
+                        </button>
+                      ) : null}
                       <button onClick={() => { setEditingInvoice(invoice); setShowInvoiceForm(true); }} className={`p-2 rounded-lg transition-colors ${theme === 'dark' ? 'hover:bg-slate-700' : 'hover:bg-gray-200'}`} title="Edit">
                         <Edit className={`w-4 h-4 ${theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}`} />
                       </button>

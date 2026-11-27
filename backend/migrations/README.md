@@ -4,8 +4,8 @@
 migrations/
   baseline/000_baseline.sql   the whole history (global 001–100, tenant 001–016) as ONE snapshot
   baseline/contains.txt       the historical files the baseline contains
-  NNN_description.sql         new GLOBAL migrations (public / control) — next number: 110
-  tenant/NNN_description.sql  new TENANT migrations (every practice schema + template) — next: 020
+  NNN_description.sql         new GLOBAL migrations (public / control) — next number: 112
+  tenant/NNN_description.sql  new TENANT migrations (every practice schema + template) — next: 022
   history/                    the historical files, kept for reference — never run
     global/  tenant/  manual-applied/  legacy-repair-scripts/
 ```

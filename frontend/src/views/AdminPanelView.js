@@ -32,6 +32,7 @@ import ArchiveManagementTab from '../components/admin/ArchiveManagementTab';
 import LocationsTab from '../components/admin/LocationsTab';
 import PracticeProfileTab from '../components/admin/PracticeProfileTab';
 import DataImportTab from '../components/admin/DataImportTab';
+import CardPaymentsTab from '../components/admin/CardPaymentsTab';
 import ModulePermissionsTab from '../components/admin/ModulePermissionsTab';
 import BusyButton from '../components/common/BusyButton';
 import { useClinicSettings } from '../hooks/useClinicSettings';
@@ -439,6 +440,7 @@ const AdminPanelView = ({
       // Billing is admin-only. The API enforces this too (authorize('admin') on
       // PUT /api/plans/current); hiding the tab stops non-admins reaching a 403.
       ...(isAdmin(user) ? [{ id: ADMIN_TABS.PLANS, label: t.subscriptionPlans || 'Subscription Plans', icon: CreditCard }] : []),
+      ...(isAdmin(user) ? [{ id: ADMIN_TABS.CARD_PAYMENTS, label: t.cardPayments || 'Card payments', icon: CreditCard }] : []),
       { id: ADMIN_TABS.TELEHEALTH, label: t.telehealthSetup || 'Telehealth Setup', icon: Video },
       { id: ADMIN_TABS.HOURS, label: t.workingHours || 'Working Hours', icon: Clock },
       { id: ADMIN_TABS.APPOINTMENTS, label: t.appointmentSettings || 'Appointment Settings', icon: Settings },
@@ -3991,6 +3993,9 @@ const AdminPanelView = ({
           {activeTab === ADMIN_TABS.USERS && renderUserManagementTab()}
           {activeTab === ADMIN_TABS.ROLES && renderRolesPermissionsTab()}
           {activeTab === ADMIN_TABS.PLANS && renderSubscriptionPlansTab()}
+          {activeTab === ADMIN_TABS.CARD_PAYMENTS && (isAdmin(user)
+            ? <CardPaymentsTab theme={theme} addNotification={addNotification} />
+            : <p className={theme === 'dark' ? 'text-slate-400' : 'text-gray-600'}>Only practice administrators can set up card payments.</p>)}
           {activeTab === ADMIN_TABS.TELEHEALTH && renderTelehealthTab()}
           {activeTab === ADMIN_TABS.HOURS && renderWorkingHoursTab()}
           {activeTab === ADMIN_TABS.APPOINTMENTS && renderAppointmentSettingsTab()}
