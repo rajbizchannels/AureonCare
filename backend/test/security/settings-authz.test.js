@@ -52,9 +52,12 @@ const leaks = (text, values) => values.filter((v) => v && text.includes(v));
   const schema = t.tenant.schema_name;
   const mk = async (role) => {
     const email = `${role}_${RUN}@example.com`;
-    await pool.query(`INSERT INTO public.users (id,email,first_name,last_name,role,status,password_hash,practice_id,created_at)
-      VALUES (gen_random_uuid(),$1,'A','B',$2,'active',$3,$4,NOW())`,
+    const { rows: [u] } = await pool.query(`INSERT INTO public.users (id,email,first_name,last_name,role,status,password_hash,practice_id,created_at)
+      VALUES (gen_random_uuid(),$1,'A','B',$2,'active',$3,$4,NOW()) RETURNING id, email, role, practice_id, token_version`,
       [email, role, await bcrypt.hash('A-Strong-Passphrase!23', 12), t.practiceId]);
+    // The staff sign-in refuses patient accounts (they use the portal), so a patient-role
+    // session is minted directly: what is under test is that the settings APIs refuse it.
+    if (role === 'patient') return require(path.join(BACKEND, 'middleware/auth.js')).signToken(u);
     const r = await call('POST', '/api/auth/login', null, { email, password: 'A-Strong-Passphrase!23' });
     return r.body.token;
   };

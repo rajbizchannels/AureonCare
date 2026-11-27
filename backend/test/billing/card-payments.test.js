@@ -7,7 +7,7 @@
 // practice's account (direct charge), for the balance, naming only the invoice number, with the
 // optional platform fee; a new link expires the old one; the Connect webhook (own secret) records
 // the payment once, marks the invoice paid, and ignores an event from an account that is not the
-// practice's; the patient portal lists the patient's own invoices and starts a payment, for its
+// practice's; refunds made in Stripe reduce what was paid, once each; the patient portal lists the patient's own invoices and starts a payment, for its
 // own invoices only.
 
 const path = require('path');
@@ -171,6 +171,23 @@ const report = (err) => {
   check('...once, however often Stripe sends it', again.body.recorded === false
     && (await pool.query(`SELECT count(*)::int n FROM ${A.schema}.billing_payments`)).rows[0].n === 1);
   check('a paid invoice gets no new link', (await call('POST', `/api/billing/invoices/${invA.body.id}/pay-link`, A.token)).status === 409);
+
+  // ── refunds made in the practice's Stripe dashboard ──────────────────────────────
+  const refund = (cents, account = acct) => hook({ id: 'evt_' + crypto.randomBytes(4).toString('hex'), type: 'charge.refunded', account,
+    data: { object: { id: 'ch_1', object: 'charge', payment_intent: 'pi_123', amount: 12000, amount_refunded: cents, currency: 'eur' } } });
+  const invRow = async () => (await pool.query(`SELECT i.status, i.amount_paid, i.balance_due, p.status AS pstatus, p.refunded_amount
+    FROM ${A.schema}.billing_invoices i JOIN ${A.schema}.billing_payments p ON p.invoice_id = i.id WHERE i.id = $1`, [invA.body.id])).rows[0];
+  check('a refund from another account changes nothing', (await refund(2000, 'acct_someone_else')).body.recorded === false && (await invRow()).status === 'paid');
+  const r1 = await refund(2000);
+  let row = await invRow();
+  check(`a partial refund reopens the invoice for what was refunded (got ${JSON.stringify(r1.body)})`, r1.body.recorded === true
+    && row.status === 'partially_paid' && Number(row.amount_paid) === 100 && Number(row.balance_due) === 20
+    && row.pstatus === 'partially_refunded' && Number(row.refunded_amount) === 20);
+  check('...the same event again changes nothing', (await refund(2000)).body.recorded === false && Number((await invRow()).amount_paid) === 100);
+  await refund(12000);
+  row = await invRow();
+  check('a further refund (running total) refunds the rest', row.status === 'sent' && Number(row.amount_paid) === 0
+    && Number(row.balance_due) === 120 && row.pstatus === 'refunded' && Number(row.refunded_amount) === 120);
 
   // ── patient portal ──────────────────────────────────────────────────────────────
   const inv2 = await call('POST', '/api/billing/invoices', A.token, { patientId: A.patient, status: 'sent', totalAmount: 45.5 });

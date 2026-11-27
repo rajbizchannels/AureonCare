@@ -1267,9 +1267,31 @@ bills practices for AureonCare, as before.
    Settings. In test mode first.
 2. **Webhook:** Developers → Webhooks → Add endpoint → `https://<api host>/api/stripe-connect-webhook`,
    **"Listen to events on Connected accounts"**, events `checkout.session.completed`,
-   `checkout.session.async_payment_succeeded`, `account.updated`. Copy its signing secret.
+   `checkout.session.async_payment_succeeded`, `account.updated`, `charge.refunded`. Copy its signing secret.
 3. **Vercel env (Production):** `AC_STRIPE_CONNECT_WHS` = that signing secret. `AC_STRIPE_SK` is reused (the
    platform key creates the connected accounts and the Checkout Sessions on them). Optional
    `AC_CONNECT_FEE_BPS` — a platform fee per payment in basis points (100 = 1 %); leave unset for none.
 4. Redeploy, then in a practice: Settings → Card payments → Connect Stripe, finish Stripe's form, and check the
    screen says "Patients can pay by card".
+
+## Migration 111 — secure messages and purchase-order lines per practice; refunds from Stripe
+
+Paste `backend/migrations/111_messages_per_practice.sql` (safe to re-run) **before deploying this release**.
+
+- **Why:** the secure-messaging tables (`message_threads`, `messages`, `message_attachments`,
+  `message_thread_participants`, `message_read_receipts`) and `inventory_purchase_order_lines` were shared tables
+  in `public` with no practice column, like billing before migration 110. Every practice's inbox would have listed
+  every other practice's threads, and patient threads and order lines pointed at `tenant_default`, so any other
+  practice's messaging and purchase orders failed.
+- **Existing messages are moved, not lost.** Production has messages in the shared tables. The migration copies
+  every row, with the same id, into the practice it belongs to: a thread by its patient, otherwise by the practice
+  of the staff member who started it (with a single practice, that practice), and messages, attachments,
+  participants and read receipts follow their thread. Order lines follow their purchase order. Chart records and
+  form submissions that link to a message are re-pointed at the practice's own copy.
+- The shared tables are **dropped only when every row has been copied**. If a row matches no practice, the
+  migration prints `public.<table> has N row(s) not matched to a practice: left in place` and keeps the tables;
+  move those rows by hand and re-run.
+- **Refunds:** `billing_payments.refunded_amount`. A refund made in a practice's Stripe dashboard now reduces what
+  was paid on the invoice (partial refunds add up; a repeated event changes nothing), and marks the payment
+  refunded or partially refunded. **Add `charge.refunded` to the Connect webhook's events** (Developers →
+  Webhooks → the `/api/stripe-connect-webhook` endpoint → Select events).

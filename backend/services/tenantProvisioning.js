@@ -67,6 +67,16 @@ async function provisionTenant(pool, opts) {
 
     await client.query('SELECT control.provision_schema($1)', [schema]);
 
+    // provision_schema clones table structure only — not triggers. Secure messages keep their
+    // thread's last-message time and count with a trigger (migration 111), so add it here.
+    await client.query(`DO $t$ BEGIN
+      IF to_regclass('${schema}.messages') IS NOT NULL AND to_regprocedure('public.touch_message_thread()') IS NOT NULL THEN
+        DROP TRIGGER IF EXISTS trg_touch_message_thread ON ${schema}.messages;
+        CREATE TRIGGER trg_touch_message_thread AFTER INSERT ON ${schema}.messages
+          FOR EACH ROW EXECUTE FUNCTION public.touch_message_thread();
+      END IF;
+    END $t$`);
+
     // Seed the tenant's primary site. provision_schema clones structure only, and
     // tenant/004 will never run for this schema (it inherits template's
     // schema_migrations), so this is the ONLY path that gives a new tenant its primary

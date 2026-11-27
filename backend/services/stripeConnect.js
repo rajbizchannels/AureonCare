@@ -223,4 +223,54 @@ async function recordCheckoutPayment(pool, event) {
   }
 }
 
-module.exports = { status, startOnboarding, refresh, disconnect, createPayLink, recordCheckoutPayment, saveAccount, toMinor, fromMinor, feeBps };
+/**
+ * A refund made in the practice's Stripe dashboard → the card payment and its invoice. Stripe sends
+ * the charge with its running total refunded, so only the difference since the last event is applied:
+ * repeats change nothing and several partial refunds add up.
+ */
+async function recordRefund(pool, event) {
+  const ch = event.data && event.data.object;
+  const intent = ch && (typeof ch.payment_intent === 'string' ? ch.payment_intent : ch.payment_intent && ch.payment_intent.id);
+  if (!ch || !intent || !event.account) return { recorded: false, reason: 'not_a_card_payment' };
+  const { rows: [t] } = await pool.query(
+    `SELECT t.schema_name FROM public.practices p JOIN control.tenants t ON t.practice_id = p.id AND t.status = 'active'
+      WHERE p.stripe_account_id = $1`, [event.account]);
+  const schema = t && t.schema_name;
+  if (!schema || !/^[a-z_][a-z0-9_]*$/.test(schema)) return { recorded: false, reason: 'account_not_connected' };
+  const refunded = fromMinor(ch.amount_refunded || 0, String(ch.currency || 'eur').toLowerCase());
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query(`SET LOCAL search_path TO ${schema}, public, control`);
+    const { rows: [pay] } = await client.query(
+      'SELECT id, invoice_id, amount, refunded_amount FROM billing_payments WHERE stripe_payment_intent_id = $1 FOR UPDATE', [intent]);
+    if (!pay) { await client.query('ROLLBACK'); return { recorded: false, reason: 'no_payment' }; }
+    const total = Math.min(refunded, Number(pay.amount));
+    const delta = Math.round((total - Number(pay.refunded_amount || 0)) * 100) / 100;
+    if (!(delta > 0)) { await client.query('ROLLBACK'); return { recorded: false, reason: 'already_recorded' }; }
+    await client.query(
+      `UPDATE billing_payments SET refunded_amount = $2,
+              status = CASE WHEN $2 >= amount THEN 'refunded' ELSE 'partially_refunded' END,
+              notes = concat_ws(E'\n', notes, $3::text), updated_at = now()
+        WHERE id = $1`, [pay.id, total, `Refunded ${total} in Stripe`]);
+    if (pay.invoice_id) {
+      await client.query(
+        `UPDATE billing_invoices SET
+           amount_paid = GREATEST(amount_paid - $1, 0),
+           balance_due = total_amount - GREATEST(amount_paid - $1, 0),
+           status = CASE WHEN GREATEST(amount_paid - $1, 0) <= 0 THEN 'sent'
+                         WHEN GREATEST(amount_paid - $1, 0) < total_amount THEN 'partially_paid' ELSE status END,
+           updated_at = now()
+         WHERE id = $2`, [delta, pay.invoice_id]);
+    }
+    await client.query('COMMIT');
+    return { recorded: true, paymentId: pay.id, refunded: total, delta };
+  } catch (e) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw e;
+  } finally {
+    client.release();
+  }
+}
+
+module.exports = { recordRefund, status, startOnboarding, refresh, disconnect, createPayLink, recordCheckoutPayment, saveAccount, toMinor, fromMinor, feeBps };

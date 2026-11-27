@@ -57,7 +57,7 @@ const CardPaymentsTab = ({ theme, addNotification }) => {
         <p className={`mt-1 text-sm ${muted}`}>
           Patients pay invoices by card on a secure Stripe page — from a link you send or from their patient portal.
           The payment is made to <strong>your own Stripe account</strong>: your practice name is on the patient’s card statement,
-          the money goes to your Stripe balance, and you handle refunds in your Stripe dashboard. The payment is recorded on the invoice automatically.
+          the money goes to your Stripe balance, and you handle refunds in your Stripe dashboard. Payments and refunds are recorded on the invoice automatically.
         </p>
       </div>
 

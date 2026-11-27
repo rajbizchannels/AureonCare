@@ -11,6 +11,7 @@ const router = express.Router();
  * its own signing secret in AC_STRIPE_CONNECT_WHS. Every event carries `account` (the practice's
  * acct_…). Handled:
  *   checkout.session.completed / checkout.session.async_payment_succeeded → payment on the invoice
+ *   charge.refunded → the refund on the card payment and its invoice
  *   account.updated → whether the practice can take card payments yet
  * Mounted with express.raw() before the JSON parser, for the signature check.
  */
@@ -30,6 +31,9 @@ router.post('/', async (req, res) => {
       case 'checkout.session.completed':
       case 'checkout.session.async_payment_succeeded':
         result = await connect.recordCheckoutPayment(pool, event);
+        break;
+      case 'charge.refunded':
+        result = await connect.recordRefund(pool, event);
         break;
       case 'account.updated':
         await connect.saveAccount(pool, event.data.object);

@@ -39,17 +39,16 @@ async function locationsInUse(db) {
 }
 
 /**
- * Files AureonCare hosts for the practice, in bytes: message attachments (on threads about its
- * patients) and public-profile photos. Documents and records go to the practice's own cloud storage
+ * Files AureonCare hosts for the practice, in bytes: its message attachments and public-profile
+ * photos. Documents and records go to the practice's own cloud storage
  * (bring-your-own-key) and do not count; platform backups are not per practice.
  */
 async function storageUsed(pool, db, practiceId) {
   let total = 0;
   try {
     total += Number((await db.query(
-      `SELECT COALESCE(sum(a.size_bytes), 0)::bigint AS b FROM public.message_attachments a
-         JOIN public.messages m ON m.id = a.message_id JOIN public.message_threads t ON t.id = m.thread_id
-        WHERE t.patient_id IN (SELECT id FROM patients)`)).rows[0].b) || 0;
+      // The practice's own message attachments (its schema, migration 111).
+      'SELECT COALESCE(sum(size_bytes), 0)::bigint AS b FROM message_attachments')).rows[0].b) || 0;
   } catch { /* messaging not set up */ }
   try {
     total += Number((await pool.query('SELECT COALESCE(sum(octet_length(bytes)), 0)::bigint AS b FROM public.practice_profile_photos WHERE practice_id = $1', [practiceId])).rows[0].b) || 0;
