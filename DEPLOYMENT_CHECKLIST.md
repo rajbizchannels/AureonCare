@@ -1231,3 +1231,45 @@ feature `listing`): 1 provider, 1 location, 1 staff user, 1 GB of hosted photos.
 - **Moving down:** a practice Stripe does not bill (e.g. a trial that ended) can return to Listing for free if it
   fits its limits; it cannot start another trial.
 - New practices are never put on Listing by default (provisioning skips it).
+
+## Migration 110 — billing per practice, and card payments (Stripe Connect)
+
+Paste `backend/migrations/110_billing_per_practice.sql` (safe to re-run). **Paste it before deploying this
+release**: the new code reads invoices, quotes, payments and coupons from each practice's own schema.
+
+- **Why:** `billing_quotes`, `billing_invoices`, `billing_payments` and `billing_coupons` (and their item tables)
+  were shared tables in `public` with no practice column. Every practice's Billing screens would have shown every
+  other practice's records, and their patient links pointed at `tenant_default.patients`, so invoicing a patient
+  of any other practice failed. The migration creates them in every practice schema and the template, re-points
+  the accounting tables' invoice links, and drops the shared copies when they are empty (production had no rows;
+  if a copy has rows it is left in place and a NOTICE says so).
+- **Numbering fix:** the invoice / quote / payment number functions read the counter from inside the year, so
+  the second number in a year failed ("invalid input syntax for type integer"). They are fixed; numbers now start
+  at `INV-2026-000001` in each practice.
+- **Stripe Connect columns:** `public.practices` gets `stripe_account_id` and the account's status; invoices get
+  their pay link; payments their Stripe references.
+
+### Card payments — what it does
+
+Each practice connects **its own** Stripe account (Settings → Card payments → Connect Stripe; a Standard
+connected account, so it signs in to an existing Stripe account or opens one). Patients pay invoices on Stripe's
+hosted Checkout page — from a **Pay link** staff copy from Billing → Invoices, or from **Bills → Pay now** in the
+patient portal. Each payment is a **direct charge on the practice's account**: the practice's name is on the
+card statement, the money goes to its Stripe balance, refunds and disputes are handled in its own Stripe
+dashboard. The page names only "Invoice INV-…" and the amount. When Stripe confirms the payment, it is recorded
+on the invoice (Billing → Payments, method card) automatically, once. The platform's own Stripe account still
+bills practices for AureonCare, as before.
+
+### Card payments — one-time setup
+
+1. **Stripe dashboard (platform account) → Connect → Get started.** Choose the platform / marketplace model with
+   **Standard** accounts, fill in the platform profile, and set branding (name, icon, colour) under Connect →
+   Settings. In test mode first.
+2. **Webhook:** Developers → Webhooks → Add endpoint → `https://<api host>/api/stripe-connect-webhook`,
+   **"Listen to events on Connected accounts"**, events `checkout.session.completed`,
+   `checkout.session.async_payment_succeeded`, `account.updated`. Copy its signing secret.
+3. **Vercel env (Production):** `AC_STRIPE_CONNECT_WHS` = that signing secret. `AC_STRIPE_SK` is reused (the
+   platform key creates the connected accounts and the Checkout Sessions on them). Optional
+   `AC_CONNECT_FEE_BPS` — a platform fee per payment in basis points (100 = 1 %); leave unset for none.
+4. Redeploy, then in a practice: Settings → Card payments → Connect Stripe, finish Stripe's form, and check the
+   screen says "Patients can pay by card".

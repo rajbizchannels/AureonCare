@@ -1143,6 +1143,19 @@ const api = {
     if (!response.ok) throw new Error('Failed to delete appointment');
     return response.json();
   },
+  portalGetInvoices: async (patientId) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/patient-portal/${patientId}/invoices`, { headers: { ...api._getPortalAuthHeader() } });
+    if (!response.ok) throw new Error('Failed to load bills');
+    return response.json();
+  },
+  portalPayInvoice: async (patientId, invoiceId) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/patient-portal/${patientId}/invoices/${invoiceId}/pay`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', ...api._getPortalAuthHeader() },
+    });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(body.error || 'Could not start the payment');
+    return body;
+  },
   getPatientProfile: async (patientId) => {
     const response = await authenticatedFetch(`${API_BASE_URL}/patient-portal/${patientId}/profile`, {
       headers: { ...api._getPortalAuthHeader() }
@@ -3047,6 +3060,13 @@ const api = {
     });
     if (!response.ok) throw new Error('Failed to update invoice');
     return response.json();
+  },
+  // Card payment link for what is owed (Stripe Checkout on the practice's own connected account).
+  createInvoicePayLink: async (id) => {
+    const response = await authenticatedFetch(`${API_BASE_URL}/billing/invoices/${id}/pay-link`, { method: 'POST' });
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(body.error || 'Failed to create the pay link');
+    return body;
   },
   deleteBillingInvoice: async (id) => {
     const response = await authenticatedFetch(`${API_BASE_URL}/billing/invoices/${id}`, {

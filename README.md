@@ -130,6 +130,7 @@ Edit `backend/.env` — the essentials:
 | `AC_SM_H`, `AC_SM_P`, `AC_SM_U`, `AC_SM_W` | SMTP for email (optional in development) |
 | `AC_GG_CSK`, `AC_MS_CSK` + `REACT_APP_GG_CID`, `REACT_APP_MS_CID` | Google / Microsoft sign-in |
 | `AC_STRIPE_SK`, `AC_STRIPE_WHS` | platform billing (optional) |
+| `AC_STRIPE_CONNECT_WHS`, `AC_CONNECT_FEE_BPS` | card payments from patients via Stripe Connect (optional; fee in basis points, default 0) |
 
 `docs/engineering/SETUP.md` lists every variable and the optional ones.
 
@@ -156,7 +157,7 @@ Mobile app: see [`mobile/README.md`](mobile/README.md) (`cd mobile && npm instal
   new practices are cloned from. Run both, in that order, on every deploy.
 - The full history (global 001–100, tenant 001–016) is one baseline,
   `backend/migrations/baseline/000_baseline.sql`, used only for empty databases; the historical
-  files are kept in `backend/migrations/history/`. Next numbers: global **110**, tenant **020**.
+  files are kept in `backend/migrations/history/`. Next numbers: global **111**, tenant **021**.
 - Production is migrated by pasting the new migration into the Supabase SQL editor; migrations
   that touch practice schemas are written to fan out to every schema themselves.
 - Health checks: `npm run check:schema-health`, `npm run check:tenant-scoping`, `npm run check:db-role`.

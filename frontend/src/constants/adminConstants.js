@@ -198,6 +198,7 @@ export const ADMIN_TABS = {
   USERS: 'users',
   ROLES: 'roles',
   PLANS: 'plans',
+  CARD_PAYMENTS: 'cardPayments',
   TELEHEALTH: 'telehealth',
   HOURS: 'hours',
   APPOINTMENTS: 'appointments',

@@ -393,6 +393,19 @@ router.post('/invoices', async (req, res) => {
   }
 });
 
+// A card payment link for what is still owed (Stripe Checkout on the practice's own connected
+// account — services/stripeConnect.js). Opening a new link expires the previous one.
+router.post('/invoices/:id/pay-link', async (req, res) => {
+  const { fail, appUrl } = require('./cardPayments');
+  try {
+    const practiceId = (req.tenant && req.tenant.practiceId) || (req.user && req.user.practice_id);
+    const done = `${appUrl()}/pay/done`;
+    const out = await require('../services/stripeConnect').createPayLink(req.app.locals.pool, req.db, practiceId, req.params.id,
+      { successUrl: `${done}?status=paid`, cancelUrl: `${done}?status=cancelled` });
+    res.json(out);
+  } catch (e) { fail(res, e, 'create the pay link'); }
+});
+
 // Update invoice
 router.put('/invoices/:id', async (req, res) => {
   const { patientId, providerId, status, issueDate, dueDate, subtotal, discountAmount, taxAmount, totalAmount, amountPaid, balanceDue, notes, terms, diagnosisIds, offeringIds, couponId, reminderTaskId, items } = req.body;

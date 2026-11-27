@@ -94,6 +94,9 @@ app.use(cors((req, callback) => {
 // Stripe webhook MUST be mounted before express.json() so it receives the raw body.
 // Stripe-Signature verification fails if the body has been JSON-parsed first.
 app.use('/api/stripe-webhook', express.raw({ type: 'application/json' }), require('./routes/stripeWebhook'));
+// Stripe Connect: events from practices' own Stripe accounts (patient card payments). Its own
+// endpoint and signing secret (AC_STRIPE_CONNECT_WHS), separate from the platform webhook.
+app.use('/api/stripe-connect-webhook', express.raw({ type: 'application/json' }), require('./routes/stripeConnectWebhook'));
 
 // Body parsing — Vercel's @vercel/node runtime consumes the request stream
 // before Express middleware runs but does NOT set req.body, so express.json()
@@ -261,6 +264,7 @@ app.use('/api/vendor-integration-settings', require('./routes/vendorIntegrationS
 app.use('/api/integrations/oauth', require('./routes/integrationOAuth'));
 app.use('/api/backup-providers', require('./routes/backupProviders'));
 app.use('/api/stripe-settings', require('./routes/stripeSettings'));
+app.use('/api/card-payments', require('./routes/cardPayments'));
 app.use('/api/ai', require('./routes/aiIntegrations')); // AI: bring-your-own-key, feature switches, human review
 app.use('/api/clinic-settings', require('./routes/clinicSettings'));
 app.use('/api/locations', require('./routes/locations'));

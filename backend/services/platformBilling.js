@@ -518,4 +518,6 @@ module.exports = {
   describePromotionCode, retrieveCheckoutSession, pushPlanToStripe, recurringFor,
   previewPlanChange, changeSubscriptionPlan, listInvoices,
   listCoupons, createCoupon, deactivateCoupon, grantFreeMonths, configStatus,
+  // The platform client, for Stripe Connect calls on practices' accounts (services/stripeConnect.js).
+  stripe,
 };
