@@ -13,10 +13,25 @@ router.use(requireAdmin);
 
 const appUrl = () => (process.env.FRONTEND_URL || 'http://localhost:3000').split(',')[0].trim().replace(/\/$/, '');
 const practiceOf = (req) => (req.tenant && req.tenant.practiceId) || (req.user && req.user.practice_id);
+// The platform's Stripe account has not been signed up for Connect (or not in this mode — test
+// and live are enabled separately). Nothing a practice can fix: the operator enables Connect.
+const connectNotEnabled = (e) => /signed up for Connect|enable Connect|platform-profile|connect\/onboarding/i.test(String(e && e.message));
+
 const fail = (res, e, what) => {
+  // Stripe's own errors first: they carry Stripe's HTTP status (often 400), which is about our
+  // platform request, not something the practice sent.
+  if (e.type && /^Stripe/.test(e.type)) {
+    if (connectNotEnabled(e)) {
+      console.error('[card-payments] Stripe Connect is not enabled on the platform Stripe account (for this key\'s mode). '
+        + 'Enable it at https://dashboard.stripe.com/connect (and /test/connect for test keys), then try again.');
+      return res.status(503).json({ code: 'connect_not_enabled',
+        error: 'Card payments are not switched on for AureonCare yet. Please try again later or contact AureonCare support.' });
+    }
+    console.error(`[card-payments] ${what}: Stripe ${e.type}: ${e.message}`);
+    return res.status(502).json({ error: 'Stripe could not complete this just now. Please try again in a few minutes.' });
+  }
   if (e.statusCode && e.statusCode < 500) return res.status(e.statusCode).json({ error: e.message, code: e.code });
   if (e.statusCode === 503) return res.status(503).json({ error: e.message });
-  if (e.type && /^Stripe/.test(e.type)) return res.status(502).json({ error: `Stripe: ${e.message}` });
   console.error(`[card-payments] ${what}:`, e.message);
   return res.status(500).json({ error: `Failed to ${what}` });
 };

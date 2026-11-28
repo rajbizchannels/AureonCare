@@ -28,13 +28,16 @@ const BASE = `http://127.0.0.1:${process.env.PORT}`;
 
 const calls = [];
 const accounts = {};
+let failConnect = false;
 const origRequire = Module.prototype.require;
 Module.prototype.require = function (id) {
   if (id === 'stripe') {
     return function StripeStub() {
       return {
         accounts: {
-          create: async (p) => { const id = 'acct_' + crypto.randomBytes(5).toString('hex'); accounts[id] = { id, charges_enabled: false, payouts_enabled: false, details_submitted: false }; calls.push(['accounts.create', p]); return accounts[id]; },
+          create: async (p) => {
+            if (failConnect) { const e = new Error("You can only create new accounts if you've signed up for Connect, which you can do at https://dashboard.stripe.com/connect."); e.type = 'StripeInvalidRequestError'; e.statusCode = 400; throw e; }
+            const id = 'acct_' + crypto.randomBytes(5).toString('hex'); accounts[id] = { id, charges_enabled: false, payouts_enabled: false, details_submitted: false }; calls.push(['accounts.create', p]); return accounts[id]; },
           retrieve: async (id) => { calls.push(['accounts.retrieve', id]); return accounts[id]; },
         },
         accountLinks: { create: async (p) => { calls.push(['accountLinks.create', p]); return { url: `https://connect.stripe.example/setup/${p.account}` }; } },
@@ -114,6 +117,13 @@ const report = (err) => {
   check('...and is not visible to the other practice', (await call('GET', '/api/billing/payments', A.token)).body.length === 0);
 
   // ── connecting Stripe ───────────────────────────────────────────────────────────
+  // The platform's Stripe account without Connect: Stripe answers 400; the admin gets a plain reason.
+  failConnect = true;
+  const off0 = await call('POST', '/api/card-payments/connect', A.token);
+  failConnect = false;
+  check(`a platform without Stripe Connect explains itself (got ${off0.status} ${JSON.stringify(off0.body)})`, off0.status === 503
+    && off0.body.code === 'connect_not_enabled' && !/dashboard\.stripe/.test(off0.body.error)
+    && (await pool.query('SELECT stripe_account_id FROM public.practices WHERE id::text = $1', [A.practiceId])).rows[0].stripe_account_id === null);
   const st0 = (await call('GET', '/api/card-payments', A.token)).body;
   check('card payments start off, not connected', st0.connected === false && st0.ready === false && st0.platformConfigured === true);
   const early = await call('POST', `/api/billing/invoices/${invA.body.id}/pay-link`, A.token);

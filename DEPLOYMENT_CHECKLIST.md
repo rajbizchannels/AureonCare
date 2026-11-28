@@ -1265,6 +1265,10 @@ bills practices for AureonCare, as before.
 1. **Stripe dashboard (platform account) → Connect → Get started.** Choose the platform / marketplace model with
    **Standard** accounts, fill in the platform profile, and set branding (name, icon, colour) under Connect →
    Settings. In test mode first.
+   **Connect is enabled separately for test and live mode** — enable it in the mode that matches
+   `AC_STRIPE_SK` (`sk_test_…` → https://dashboard.stripe.com/test/connect, `sk_live_…` →
+   https://dashboard.stripe.com/connect). Until then "Connect Stripe" answers *Card payments are not switched
+   on for AureonCare yet* and the server log says `Stripe Connect is not enabled on the platform Stripe account`.
 2. **Webhook:** Developers → Webhooks → Add endpoint → `https://<api host>/api/stripe-connect-webhook`,
    **"Listen to events on Connected accounts"**, events `checkout.session.completed`,
    `checkout.session.async_payment_succeeded`, `account.updated`, `charge.refunded`. Copy its signing secret.
